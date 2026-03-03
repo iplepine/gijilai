@@ -156,16 +156,7 @@ function SurveyContent() {
     router.push('/');
   };
 
-  // URL 파라미터와 현재 모듈 동기화
-  useEffect(() => {
-    if (typeParam === 'PARENT' && currentModule !== 'parent') {
-      setCurrentModule('parent');
-      setCurrentIndex(0);
-    } else if (typeParam === 'STYLE' && currentModule !== 'parenting') {
-      setCurrentModule('parenting');
-      setCurrentIndex(0);
-    }
-  }, [typeParam, currentModule]);
+
 
   // Prevent accidental close
   useEffect(() => {
