@@ -47,8 +47,8 @@ function ReportContent() {
   const [activeTab, setActiveTab] = useState<'child' | 'parent' | 'parenting'>('child');
   const { intake, cbqResponses, atqResponses, parentingResponses, isPaid } = useAppStore();
 
-  const [childAiReport, setChildAiReport] = useState<string | null>(null);
-  const [parentAiReport, setParentAiReport] = useState<string | null>(null);
+  const [childAiReport, setChildAiReport] = useState<any>(null);
+  const [parentAiReport, setParentAiReport] = useState<any>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
@@ -90,6 +90,31 @@ function ReportContent() {
       if (!res.ok) throw new Error('Report generation failed');
       const data = await res.json();
       setChildAiReport(data.report);
+    } catch (error) {
+      console.error(error);
+      alert('리포트 생성 중 오류가 발생했습니다.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const generateParentAIReport = async () => {
+    if (isGenerating) return;
+    setIsGenerating(true);
+    try {
+      const scores = parentScores;
+      const answers = Object.entries(atqResponses).map(([id, score]) => ({
+        questionId: id,
+        score: score as number
+      }));
+      const res = await fetch('/api/llm/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userName: '양육자', scores, type: 'PARENT', answers })
+      });
+      if (!res.ok) throw new Error('Report generation failed');
+      const data = await res.json();
+      setParentAiReport(data.report);
     } catch (error) {
       console.error(error);
       alert('리포트 생성 중 오류가 발생했습니다.');
@@ -429,44 +454,119 @@ function ReportContent() {
               </div>
             </section>
 
-            {/* AI 심층 분석 리포트 */}
-            <section className="bg-white dark:bg-slate-800 rounded-[2.5rem] p-8 shadow-xl border border-primary/10">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="font-black text-slate-800 dark:text-white text-lg flex items-center gap-2">
-                  <Icon name="auto_awesome" className="text-primary" /> AI 전문가 심층 리포트
+            {/* AI 심층 분석 리포트 (JSON 기반 렌더링) */}
+            <section className="space-y-6">
+              <div className="flex items-center justify-between px-2">
+                <h3 className="font-black text-slate-800 dark:text-white text-xl flex items-center gap-2">
+                  <span className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">✨</span>
+                  AI 전문가 심층 리포트
                 </h3>
               </div>
 
               {childAiReport ? (
-                <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
-                  <div className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-wrap font-medium text-pretty">
-                    {childAiReport}
+                <div className="space-y-8 animate-fade-in-up">
+                  {/* AI 별명 및 서문 */}
+                  <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] p-8 shadow-xl border-t-8 border-primary relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 text-6xl italic font-black uppercase tracking-tighter pointer-events-none">Insight</div>
+                    <h4 className="text-2xl font-black text-slate-800 dark:text-white mb-4 leading-tight">
+                      {childAiReport.title}
+                    </h4>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed break-keep font-medium">
+                      {childAiReport.intro}
+                    </p>
                   </div>
+
+                  {/* 핵심 분석 & 인사이트 */}
+                  <div className="grid grid-cols-1 gap-6">
+                    <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] p-8 shadow-xl space-y-4">
+                      <div className="inline-flex px-3 py-1 rounded-full bg-indigo-50 text-indigo-500 text-[10px] font-black uppercase tracking-widest">Core Analysis</div>
+                      <p className="text-[14px] text-slate-700 dark:text-slate-300 leading-relaxed break-keep whitespace-pre-wrap">
+                        {childAiReport.analysis?.summary}
+                      </p>
+                    </div>
+                    <div className="bg-indigo-900 rounded-[2.5rem] p-8 shadow-xl space-y-4 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 blur-3xl -mr-16 -mt-16"></div>
+                      <div className="inline-flex px-3 py-1 rounded-full bg-white/10 text-white/80 text-[10px] font-black uppercase tracking-widest">Secret Heart</div>
+                      <h5 className="text-white font-bold">아이의 숨겨진 목소리</h5>
+                      <p className="text-[14px] text-indigo-100 leading-relaxed break-keep whitespace-pre-wrap italic">
+                        {childAiReport.analysis?.insight}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 양육 팁 */}
+                  <div className="space-y-4">
+                    <h5 className="text-sm font-black text-slate-400 px-4 uppercase tracking-[0.2em]">Parenting Solutions</h5>
+                    {childAiReport.parentingTips?.map((tip: any, idx: number) => (
+                      <div key={idx} className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 shadow-md border border-slate-100 dark:border-slate-700">
+                        <h6 className="font-bold text-slate-800 dark:text-white mb-3 flex items-center gap-2 text-sm">
+                          <span className="w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs">{idx + 1}</span>
+                          {tip.situation}
+                        </h6>
+                        <ul className="space-y-2">
+                          {tip.tips?.map((t: string, i: number) => (
+                            <li key={i} className="text-[13px] text-slate-600 dark:text-slate-400 flex gap-2">
+                              <span className="text-primary mt-1 shrink-0">•</span>
+                              <span className="leading-snug break-keep">{t}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* 실전 스크립트 */}
+                  <div className="bg-slate-50 dark:bg-slate-900 rounded-[2.5rem] p-8 space-y-6">
+                    <h5 className="text-sm font-black text-slate-400 uppercase tracking-widest">Magic Scripts</h5>
+                    <div className="space-y-4">
+                      {childAiReport.scripts?.map((s: any, idx: number) => (
+                        <div key={idx} className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border-l-4 border-primary">
+                          <span className="text-[10px] font-bold text-slate-400 block mb-1">{s.situation}</span>
+                          <p className="text-[15px] font-black text-primary mb-2">"{s.script}"</p>
+                          <p className="text-[11px] text-slate-500">{s.guide}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 카톡 공유 메시지 */}
+                  {childAiReport.shareText && (
+                    <div className="bg-[#FAE100]/10 rounded-2xl p-6 border border-[#FAE100]/30">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-lg">💬</span>
+                        <span className="text-xs font-bold text-[#3C1E1E]">배우자에게 공유하기 지침</span>
+                      </div>
+                      <p className="text-[12px] text-[#3C1E1E]/80 leading-relaxed font-medium">
+                        {childAiReport.shareText}
+                      </p>
+                    </div>
+                  )}
                 </div>
               ) : (
-                <div className="text-center py-6 space-y-6">
-                  <p className="text-sm text-slate-500 leading-relaxed break-keep">
-                    아이의 세부 문항 응답 데이터까지 분석하여<br />
-                    가장 정확한 양육 가이드를 생성합니다.
-                  </p>
+                <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] p-10 text-center space-y-6 shadow-xl border border-primary/10">
+                  <div className="w-20 h-20 mx-auto bg-primary/5 rounded-full flex items-center justify-center text-3xl animate-pulse">
+                    🧬
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="font-bold text-slate-800 dark:text-white">준비된 리포트가 없습니다</h4>
+                    <p className="text-sm text-slate-500 leading-relaxed break-keep">
+                      아이의 세부 문항 응답 데이터까지 분석하여<br />
+                      가장 정확한 양육 가이드를 생성합니다.
+                    </p>
+                  </div>
                   <Button
-                    onClick={generateAIReport}
+                    onClick={generateChildAIReport}
                     variant="primary"
                     fullWidth
-                    className="h-14 rounded-2xl flex items-center justify-center gap-2"
+                    className="h-14 rounded-2xl"
                     disabled={isGenerating}
                   >
                     {isGenerating ? (
-                      <>
-                        <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                        <span>리포트 생성 중...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>AI 정밀 리포트 생성하기</span>
-                        <Icon name="arrow_forward" size="sm" />
-                      </>
-                    )}
+                      <div className="flex items-center gap-2">
+                        <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
+                        <span>분석 보고서 작성 중...</span>
+                      </div>
+                    ) : 'AI 정밀 리포트 생성하기'}
                   </Button>
                 </div>
               )}
@@ -589,22 +689,96 @@ function ReportContent() {
               </section>
             </div>
 
-            {/* Parent Section 3: Nutrients */}
-            <section className="bg-slate-900 rounded-[2.5rem] p-10 shadow-2xl space-y-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
-                  <span className="text-xl">🧪</span>
-                </div>
-                <h3 className="text-lg font-black text-white">나를 위한 마음 영양제</h3>
+            {/* 부모 AI 심층 분석 리포트 (JSON 기반) */}
+            <section className="space-y-6">
+              <div className="flex items-center justify-between px-2">
+                <h3 className="font-black text-slate-800 dark:text-white text-xl flex items-center gap-2">
+                  <span className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600">👤</span>
+                  부모 기질 심층 분석
+                </h3>
               </div>
-              <ul className="space-y-3">
-                {parentReport.nutrients.map((n, idx) => (
-                  <li key={idx} className="flex items-center gap-3 p-4 bg-white/5 rounded-2xl border border-white/10">
-                    <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
-                    <span className="text-sm font-medium text-slate-200">{n}</span>
-                  </li>
-                ))}
-              </ul>
+
+              {parentAiReport ? (
+                <div className="space-y-8 animate-fade-in-up">
+                  {/* 타이틀 카드 */}
+                  <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] p-10 shadow-xl border-l-[12px] border-indigo-500 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-4 opacity-5 text-8xl font-black italic">YOU</div>
+                    <h4 className="text-2xl font-black text-slate-800 dark:text-white mb-4 leading-tight">
+                      {parentAiReport.title}
+                    </h4>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed break-keep font-medium">
+                      {parentAiReport.intro}
+                    </p>
+                  </div>
+
+                  {/* 부모 기질 섹션들 */}
+                  <div className="space-y-6">
+                    {parentAiReport.sections?.map((section: any) => (
+                      <div key={section.id} className="bg-white dark:bg-slate-800 rounded-[2.5rem] p-8 shadow-lg border border-slate-100 dark:border-slate-700">
+                        <div className="flex items-center justify-between mb-4">
+                          <h5 className="font-black text-slate-800 dark:text-white text-lg">{section.heading}</h5>
+                          <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-[10px] font-bold text-slate-500">{section.badge}</span>
+                        </div>
+                        <p className="text-[14px] text-slate-600 dark:text-slate-400 leading-relaxed break-keep whitespace-pre-wrap">
+                          {section.content}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* 퍼스널 솔루션 */}
+                  <div className="bg-indigo-900 rounded-[3rem] p-10 shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 blur-3xl -mr-32 -mt-32"></div>
+                    <h5 className="text-white font-black text-lg mb-8 flex items-center gap-2">
+                      <span className="text-2xl">💊</span> 나를 위한 마음 영양제
+                    </h5>
+                    <div className="space-y-6">
+                      {parentAiReport.solutions?.map((sol: any, idx: number) => (
+                        <div key={idx} className="bg-white/10 rounded-2xl p-6 border border-white/10 backdrop-blur-sm">
+                          <h6 className="text-primary font-bold mb-2">{sol.name}</h6>
+                          <p className="text-white text-[14px] leading-relaxed mb-3">{sol.action}</p>
+                          <div className="text-[11px] text-white/40 flex items-center gap-2">
+                            <span className="shrink-0">💡 근거:</span>
+                            <span>{sol.reason}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 다정한 편지 */}
+                  <div className="bg-rose-50 dark:bg-rose-900/20 rounded-[2.5rem] p-10 text-center relative">
+                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-white dark:bg-slate-800 shadow-md px-4 py-1 rounded-full text-xs font-bold text-rose-500">
+                      From. 아이나
+                    </div>
+                    <p className="text-rose-700 dark:text-rose-300 italic leading-loose break-keep font-serif text-lg py-4">
+                      "{parentAiReport.letter}"
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] p-10 text-center space-y-6 shadow-xl">
+                  <div className="w-20 h-20 mx-auto bg-indigo-50 rounded-full flex items-center justify-center text-3xl">
+                    🧘
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="font-bold text-slate-800 dark:text-white">나의 기질 분석이 준비되었습니다</h4>
+                    <p className="text-sm text-slate-500 leading-relaxed break-keep">
+                      나의 타고난 성향을 깊이 있게 이해하고<br />
+                      지치지 않는 양육을 위한 에너지를 얻으세요.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={generateAIReport}
+                    variant="primary"
+                    fullWidth
+                    className="h-14 rounded-2xl bg-indigo-600 hover:bg-indigo-700"
+                    disabled={isGenerating}
+                  >
+                    {isGenerating ? '분석 중...' : '부모 전문 리포트 생성하기'}
+                  </Button>
+                </div>
+              )}
             </section>
 
             {/* Parent Section 4: Letter */}

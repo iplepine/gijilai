@@ -66,8 +66,17 @@ export const generateReport = async (
             { role: 'system', content: promptToUse },
             { role: 'user', content: userMessage },
         ],
+        response_format: { type: "json_object" },
         temperature: 0.7,
     });
 
-    return response.choices[0].message.content;
+    const content = response.choices[0].message.content;
+    if (!content) return null;
+
+    try {
+        return JSON.parse(content);
+    } catch (e) {
+        console.error("JSON Parsing failed for AI report", e);
+        return content; // Fallback to raw string if parsing fails
+    }
 };
