@@ -108,7 +108,7 @@ export interface Database {
                     survey_id: string
                     user_id: string
                     child_id: string | null
-                    type: 'PARENT' | 'CHILD'
+                    type: 'PARENT' | 'CHILD' | 'HARMONY'
                     content: string | null
                     analysis_json: Json | null
                     model_used: string | null
@@ -119,7 +119,7 @@ export interface Database {
                     survey_id: string
                     user_id: string
                     child_id?: string | null
-                    type: 'PARENT' | 'CHILD'
+                    type: 'PARENT' | 'CHILD' | 'HARMONY'
                     content?: string | null
                     analysis_json?: Json | null
                     model_used?: string | null
@@ -130,7 +130,7 @@ export interface Database {
                     survey_id?: string
                     user_id?: string
                     child_id?: string | null
-                    type?: 'PARENT' | 'CHILD'
+                    type?: 'PARENT' | 'CHILD' | 'HARMONY'
                     content?: string | null
                     analysis_json?: Json | null
                     model_used?: string | null

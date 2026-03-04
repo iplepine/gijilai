@@ -25,6 +25,8 @@ import { TemperamentScorer } from '@/lib/TemperamentScorer';
 import { TemperamentClassifier } from '@/lib/TemperamentClassifier';
 import { ParentClassifier } from '@/lib/ParentClassifier';
 import { PRESCRIPTION_DATA } from '@/lib/PrescriptionData';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { db } from '@/lib/db';
 
 ChartJS.register(
   RadialLinearScale,
@@ -44,6 +46,7 @@ function ReportContent() {
   const tabParam = searchParams.get('tab');
   const isChildOnly = searchParams.get('child_only') === 'true';
 
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'child' | 'parent' | 'parenting'>('child');
   const { intake, cbqResponses, atqResponses, parentingResponses, isPaid } = useAppStore();
 
@@ -51,6 +54,10 @@ function ReportContent() {
   const [parentAiReport, setParentAiReport] = useState<any>(null);
   const [harmonyAiReport, setHarmonyAiReport] = useState<any>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // DB Sync States
+  const [dbChildId, setDbChildId] = useState<string | null>(null);
+  const [dbSurveyIds, setDbSurveyIds] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (tabParam === 'parent') {
@@ -74,6 +81,51 @@ function ReportContent() {
     setActiveTab(tab);
   };
 
+  // DB 저장 헬퍼
+  const ensureChildAndSurvey = async (type: 'CHILD' | 'PARENT' | 'PARENTING_STYLE') => {
+    if (!user) return { childId: null, surveyId: null };
+
+    try {
+      let childId = dbChildId;
+      // 1. 아이 프로필 생성/확인
+      if (!childId) {
+        const child = await db.createChild({
+          parent_id: user.id,
+          name: intake.childName || '아이',
+          gender: (intake.gender as 'male' | 'female') || 'male',
+          birth_date: intake.birthDate || new Date().toISOString().split('T')[0],
+          birth_time: intake.birthTime,
+          image_url: null,
+        });
+        childId = child.id;
+        setDbChildId(childId);
+      }
+
+      // 2. 설문 응답 저장
+      let surveyId = dbSurveyIds[type];
+      if (!surveyId) {
+        const responses = type === 'CHILD' ? cbqResponses : (type === 'PARENT' ? atqResponses : parentingResponses);
+        const scores = type === 'CHILD' ? childScores : (type === 'PARENT' ? parentScores : styleScores);
+
+        const survey = await db.saveSurvey({
+          user_id: user.id,
+          child_id: childId,
+          type,
+          answers: responses as any,
+          scores: scores as any,
+          status: 'COMPLETED'
+        });
+        surveyId = survey.id;
+        setDbSurveyIds(prev => ({ ...prev, [type]: surveyId }));
+      }
+
+      return { childId, surveyId };
+    } catch (e) {
+      console.error('DB Sync Error:', e);
+      return { childId: null, surveyId: null };
+    }
+  };
+
   const generateChildAIReport = async () => {
     if (isGenerating) return;
     setIsGenerating(true);
@@ -91,6 +143,19 @@ function ReportContent() {
       if (!res.ok) throw new Error('Report generation failed');
       const data = await res.json();
       setChildAiReport(data.report);
+
+      // DB 저장
+      const { childId, surveyId } = await ensureChildAndSurvey('CHILD');
+      if (user && childId && surveyId) {
+        await db.saveReport({
+          user_id: user.id,
+          child_id: childId,
+          survey_id: surveyId,
+          type: 'CHILD',
+          analysis_json: data.report as any,
+          model_used: 'gpt-4o'
+        });
+      }
     } catch (error) {
       console.error(error);
       alert('리포트 생성 중 오류가 발생했습니다.');
@@ -116,6 +181,19 @@ function ReportContent() {
       if (!res.ok) throw new Error('Report generation failed');
       const data = await res.json();
       setParentAiReport(data.report);
+
+      // DB 저장
+      const { childId, surveyId } = await ensureChildAndSurvey('PARENT');
+      if (user && childId && surveyId) {
+        await db.saveReport({
+          user_id: user.id,
+          child_id: childId, // Parent reports are also linked to a child
+          survey_id: surveyId,
+          type: 'PARENT',
+          analysis_json: data.report as any,
+          model_used: 'gpt-4o'
+        });
+      }
     } catch (error) {
       console.error(error);
       alert('리포트 생성 중 오류가 발생했습니다.');
@@ -152,6 +230,19 @@ function ReportContent() {
       if (!res.ok) throw new Error('Harmony report generation failed');
       const data = await res.json();
       setHarmonyAiReport(data.report);
+
+      // DB 저장 (Harmony는 우선 설문 데이터와 연결하여 'CHILD' 타입 리포트로 확장 저장)
+      const { childId, surveyId } = await ensureChildAndSurvey('PARENTING_STYLE');
+      if (user && childId && surveyId) {
+        await db.saveReport({
+          user_id: user.id,
+          child_id: childId,
+          survey_id: surveyId,
+          type: 'HARMONY', // Changed to HARMONY type
+          analysis_json: data.report as any,
+          model_used: 'gpt-4o'
+        });
+      }
     } catch (error) {
       console.error(error);
       alert('조화 분석 리포트 생성 중 오류가 발생했습니다.');
