@@ -6,7 +6,11 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/auth/AuthProvider';
 import BottomNav from '@/components/layout/BottomNav';
 
-type TabType = 'CONSULT' | 'MISSION';
+import { db, ReportData } from '@/lib/db';
+import { Icon } from '@/components/ui/Icon';
+import { Button } from '@/components/ui/Button';
+
+type TabType = 'REPORT' | 'CONSULT' | 'MISSION';
 
 interface Consultation {
     id: string;
@@ -33,7 +37,8 @@ interface ActionItem {
 export default function RecordPage() {
     const router = useRouter();
     const { user, loading: authLoading } = useAuth();
-    const [activeTab, setActiveTab] = useState<TabType>('CONSULT');
+    const [activeTab, setActiveTab] = useState<TabType>('REPORT');
+    const [reports, setReports] = useState<ReportData[]>([]);
     const [consultations, setConsultations] = useState<Consultation[]>([]);
     const [missions, setMissions] = useState<ActionItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -50,23 +55,28 @@ export default function RecordPage() {
     }, [user, authLoading]);
 
     const fetchData = async () => {
+        if (!user) return;
         setIsLoading(true);
         try {
-            // Fetch Consultations
+            // 1. Fetch TCI Reports
+            const reportData = await db.getReports(user.id);
+            setReports(reportData || []);
+
+            // 2. Fetch Consultations
             const { data: consultData, error: consultError } = await supabase
                 .from('consultations')
                 .select('*')
-                .eq('user_id', user?.id)
+                .eq('user_id', user.id)
                 .order('created_at', { ascending: false });
 
             if (consultError) throw consultError;
             setConsultations(consultData || []);
 
-            // Fetch Action Items (Missions)
+            // 3. Fetch Action Items (Missions)
             const { data: missionData, error: missionError } = await supabase
                 .from('action_items')
                 .select('*')
-                .eq('user_id', user?.id)
+                .eq('user_id', user.id)
                 .order('created_at', { ascending: false });
 
             if (missionError) throw missionError;
@@ -112,24 +122,33 @@ export default function RecordPage() {
                     </h1>
                 </div>
 
-                <div className="flex p-1.5 bg-beige-main/30 dark:bg-black/20 rounded-2xl">
+                <div className="flex p-1 bg-slate-100 dark:bg-black/20 rounded-2xl overflow-x-auto no-scrollbar">
                     <button
-                        onClick={() => setActiveTab('CONSULT')}
-                        className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'CONSULT'
-                            ? 'bg-white dark:bg-surface-dark text-secondary shadow-sm'
-                            : 'text-text-sub dark:text-gray-400 hover:text-secondary/70'
+                        onClick={() => setActiveTab('REPORT')}
+                        className={`flex-none px-4 py-2.5 rounded-xl text-[12px] font-black transition-all ${activeTab === 'REPORT'
+                            ? 'bg-white dark:bg-surface-dark text-primary shadow-sm'
+                            : 'text-slate-400 hover:text-primary'
                             }`}
                     >
-                        처방전 보관함
+                        기질 분석
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('CONSULT')}
+                        className={`flex-none px-4 py-2.5 rounded-xl text-[12px] font-black transition-all ${activeTab === 'CONSULT'
+                            ? 'bg-white dark:bg-surface-dark text-secondary shadow-sm'
+                            : 'text-slate-400 hover:text-secondary'
+                            }`}
+                    >
+                        마음 약국
                     </button>
                     <button
                         onClick={() => setActiveTab('MISSION')}
-                        className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'MISSION'
-                            ? 'bg-white dark:bg-surface-dark text-primary shadow-sm'
-                            : 'text-text-sub dark:text-gray-400 hover:text-primary/70'
+                        className={`flex-none px-4 py-2.5 rounded-xl text-[12px] font-black transition-all ${activeTab === 'MISSION'
+                            ? 'bg-white dark:bg-surface-dark text-green-600 shadow-sm'
+                            : 'text-slate-400 hover:text-green-600'
                             }`}
                     >
-                        우리의 미션 기록
+                        미션 기록
                     </button>
                 </div>
             </header>
@@ -139,6 +158,69 @@ export default function RecordPage() {
                     <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-50">
                         <span className="w-10 h-10 border-4 border-primary/10 border-t-primary rounded-full animate-spin"></span>
                         <p className="text-sm font-medium text-text-sub">기록을 불러오고 있어요</p>
+                    </div>
+                ) : activeTab === 'REPORT' ? (
+                    /* Report List */
+                    <div className="space-y-5">
+                        {reports.length > 0 ? (
+                            reports.map(report => {
+                                const analysis = report.analysis_json as any;
+                                const isHarmony = report.type === 'HARMONY';
+                                const isParent = report.type === 'PARENT';
+
+                                return (
+                                    <div
+                                        key={report.id}
+                                        onClick={() => {
+                                            // 리포트 상세 페이지로 이동 (나중에 reportId로 로드하는 로직 추가 필요)
+                                            alert('상세 보고 기능은 곧 업데이트됩니다!');
+                                        }}
+                                        className="bg-white dark:bg-surface-dark rounded-[2rem] p-6 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 relative overflow-hidden group active:scale-[0.98] transition-all cursor-pointer"
+                                    >
+                                        <div className={`absolute top-0 right-0 w-24 h-24 blur-3xl -mr-8 -mt-8 opacity-20 ${isHarmony ? 'bg-green-500' : isParent ? 'bg-orange-500' : 'bg-primary'}`}></div>
+
+                                        <div className="flex justify-between items-start mb-4 relative z-10">
+                                            <div className="space-y-1">
+                                                <div className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${isHarmony ? 'bg-green-100 text-green-600' :
+                                                    isParent ? 'bg-orange-100 text-orange-600' :
+                                                        'bg-primary/10 text-primary'
+                                                    }`}>
+                                                    {report.type === 'CHILD' ? '아이 기질' : isParent ? '양육자 기질' : '조화 분석'}
+                                                </div>
+                                                <div className="text-[11px] font-bold text-slate-400 mt-1">
+                                                    {formatDate(report.created_at)}
+                                                </div>
+                                            </div>
+                                            <div className="w-10 h-10 rounded-2xl bg-slate-50 dark:bg-black/20 flex items-center justify-center text-slate-300">
+                                                <Icon name="chevron_right" size="sm" />
+                                            </div>
+                                        </div>
+
+                                        <div className="relative z-10">
+                                            <h3 className="text-lg font-black text-slate-800 dark:text-white leading-tight mb-2 break-keep">
+                                                {isHarmony ? analysis?.harmonyTitle : (analysis?.title?.split(':')[1]?.trim() || analysis?.title)}
+                                            </h3>
+                                            <p className="text-[13px] text-slate-500 line-clamp-2 leading-relaxed break-keep">
+                                                {analysis?.intro || analysis?.dynamics?.description || '상세 리포트 내용을 확인해 보세요.'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <div className="py-24 flex flex-col items-center text-center space-y-6">
+                                <div className="text-6xl grayscale opacity-20">📊</div>
+                                <div className="space-y-2">
+                                    <p className="text-slate-800 dark:text-white font-bold">아직 생성된 리포트가 없어요</p>
+                                    <p className="text-slate-400 text-sm break-keep">
+                                        기질 검사를 완료하고 나만을 위한<br />AI 심층 분석 리포트를 받아보세요!
+                                    </p>
+                                </div>
+                                <Button onClick={() => router.push('/')} variant="primary" className="rounded-full px-8">
+                                    검사하러 가기
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 ) : activeTab === 'CONSULT' ? (
                     /* Consultation List */
