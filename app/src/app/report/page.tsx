@@ -89,7 +89,7 @@ function ReportContent() {
     try {
       const { data, error } = await supabase
         .from('reports')
-        .select('*, surveys(*)')
+        .select('*, surveys(*), children(*)')
         .eq('id', id)
         .single();
 
@@ -97,19 +97,33 @@ function ReportContent() {
       if (data) {
         const analysis = data.analysis_json;
         const surveyData = data.surveys;
+        const childData = data.children;
+
+        if (childData) {
+          useAppStore.getState().setIntake({
+            childName: childData.name,
+            gender: childData.gender,
+            birthDate: childData.birth_date,
+          });
+        }
 
         if (data.type === 'CHILD') {
           setChildAiReport(analysis);
           setSavedChildScores(surveyData?.scores);
+          setDbChildId(data.child_id);
+          setDbSurveyIds(prev => ({ ...prev, CHILD: data.survey_id }));
           setActiveTab('child');
         } else if (data.type === 'PARENT') {
           setParentAiReport(analysis);
           setSavedParentScores(surveyData?.scores);
+          setDbChildId(data.child_id);
+          setDbSurveyIds(prev => ({ ...prev, PARENT: data.survey_id }));
           setActiveTab('parent');
         } else if (data.type === 'HARMONY') {
           setHarmonyAiReport(analysis);
+          setDbChildId(data.child_id);
+          setDbSurveyIds(prev => ({ ...prev, PARENTING_STYLE: data.survey_id }));
           // 조화 분석 시에는 아이/부모 점수가 모두 필요할 수 있으므로 저장된 데이터가 있다면 복원
-          // (필요 시 API 응답에 추가 데이터를 포함하거나 별도 쿼리)
           setActiveTab('parenting');
         }
       }
@@ -478,7 +492,7 @@ function ReportContent() {
                 ✨ {childAiReport ? 'AI 정밀 분석 완료' : '아이 기질 검사 완료!'}
               </div>
               <h1 className="text-3xl font-black text-white tracking-tight">
-                {childAiReport?.title?.split(':')[1] || intake.childName + '의'}
+                {childAiReport?.title?.split(':')[0]?.trim() || intake.childName || '아이'}의
                 <br /> {childAiReport ? '심층 리포트' : '기질 리포트'}
               </h1>
               <p className="text-white/70 text-sm font-medium">기질아이가 발견한 우리 아이의 타고난 세계</p>

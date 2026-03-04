@@ -197,7 +197,7 @@ export default function RecordPage() {
 
                                         <div className="relative z-10">
                                             <h3 className="text-lg font-black text-slate-800 dark:text-white leading-tight mb-2 break-keep">
-                                                {isHarmony ? analysis?.harmonyTitle : (analysis?.title?.split(':')[1]?.trim() || analysis?.title)}
+                                                {isHarmony ? (analysis?.harmonyTitle || '조화 분석 리포트') : (analysis?.title || '기질 리포트')}
                                             </h3>
                                             <p className="text-[13px] text-slate-500 line-clamp-2 leading-relaxed break-keep">
                                                 {analysis?.intro || analysis?.dynamics?.description || '상세 리포트 내용을 확인해 보세요.'}
