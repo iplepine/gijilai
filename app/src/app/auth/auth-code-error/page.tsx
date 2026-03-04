@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Icon } from '@/components/ui/Icon';
 import Link from 'next/link';
 
 function ErrorContent() {
     const searchParams = useSearchParams();
     const [fragmentParams, setFragmentParams] = useState<Record<string, string>>({});
+    const router = useRouter();
 
     useEffect(() => {
         // Parse fragment (#) parameters
@@ -19,6 +20,15 @@ function ErrorContent() {
                 parsed[key] = value;
             });
             setFragmentParams(parsed);
+
+            // If we have an access_token, it means the login actually succeeded (Implicit Flow fallback)
+            // Try to recover and redirect home
+            if (parsed.access_token) {
+                const timer = setTimeout(() => {
+                    window.location.href = '/';
+                }, 1000);
+                return () => clearTimeout(timer);
+            }
         }
     }, []);
 
