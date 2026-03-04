@@ -61,15 +61,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const signInWithKakao = async () => {
         setIsLoadingKakao(true);
         try {
-            await supabase.auth.signInWithOAuth({
+            const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'kakao',
                 options: {
                     redirectTo: `${window.location.origin}/auth/callback`,
-                    scopes: 'profile_nickname profile_image',
+                    queryParams: {
+                        scope: 'profile_nickname,profile_image'
+                    }
                 },
             });
+            if (error) throw error;
         } catch (error) {
-            console.error('Logout error:', error);
+            console.error('Kakao sign in error:', error);
             setIsLoadingKakao(false);
         }
     };

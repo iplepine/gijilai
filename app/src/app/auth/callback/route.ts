@@ -6,11 +6,21 @@ export async function GET(request: NextRequest) {
     const { searchParams, origin } = new URL(request.url)
     const code = searchParams.get('code')
     const next = searchParams.get('next') ?? '/'
+    const errorParam = searchParams.get('error')
+    const errorDescription = searchParams.get('error_description')
+
+    if (errorParam) {
+        console.error('Auth callback error parameter:', errorParam, errorDescription)
+        return NextResponse.redirect(`${origin}/auth/auth-code-error?error=${errorParam}&description=${errorDescription}`)
+    }
 
     const cookieStore = await cookies()
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
     const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        supabaseUrl,
+        supabaseAnonKey,
         {
             cookies: {
                 get(name: string) { return cookieStore.get(name)?.value },
@@ -28,10 +38,12 @@ export async function GET(request: NextRequest) {
         }
 
         if (error) {
-            console.error('Supabase exchange error:', error.message)
+            console.error('Supabase exchange error:', error.message, error.status)
             // Fallback: If code exchange failed but session already exists, just redirect
             const { data: { session } } = await supabase.auth.getSession()
             if (session) return NextResponse.redirect(`${origin}${next}`)
+
+            return NextResponse.redirect(`${origin}/auth/auth-code-error?error=exchange_error&message=${encodeURIComponent(error.message)}`)
         }
     } else {
         // No code found - check if we are already logged in before erroring
@@ -39,8 +51,9 @@ export async function GET(request: NextRequest) {
         if (session) {
             return NextResponse.redirect(`${origin}${next}`)
         }
+        console.warn('No code or session found in auth callback')
     }
 
     // Still no session after exchange or no code, go to error page
-    return NextResponse.redirect(`${origin}/auth/auth-code-error`)
+    return NextResponse.redirect(`${origin}/auth/auth-code-error?error=no_code`)
 }
