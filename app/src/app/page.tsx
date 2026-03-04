@@ -13,6 +13,7 @@ import { TemperamentClassifier } from '@/lib/TemperamentClassifier';
 import { ParentClassifier } from '@/lib/ParentClassifier';
 import { CHILD_QUESTIONS, PARENT_QUESTIONS, PARENTING_STYLE_QUESTIONS } from '@/data/questions';
 import { useSurveyStore } from '@/store/surveyStore';
+import { TCI_TERMINOLOGY } from '@/constants/terminology';
 
 export default function HomePage() {
   const router = useRouter();
@@ -303,7 +304,7 @@ export default function HomePage() {
                     </h1>
                     <div className="mt-2 bg-white/60 dark:bg-surface-dark/60 backdrop-blur-sm text-text-main dark:text-gray-200 px-3.5 py-1.5 rounded-full text-[12px] font-medium shadow-[0_2px_10px_-2px_rgba(0,0,0,0.05)] inline-flex items-center gap-1.5 ring-1 ring-black/5 dark:ring-white/10">
                       <span className="material-symbols-outlined text-[16px] text-caregiver">volunteer_activism</span>
-                      양육자 기질 <span className="mx-0.5 text-gray-300 dark:text-gray-600">|</span> <span className="font-bold text-caregiver">{temperamentInfo ? temperamentInfo.parent.soilName : '등록 필요'}</span>
+                      {TCI_TERMINOLOGY.REPORT.PARENT_NAME} <span className="mx-0.5 text-gray-300 dark:text-gray-600">|</span> <span className="font-bold text-caregiver">{temperamentInfo ? temperamentInfo.parent.soilName : '등록 필요'}</span>
                     </div>
                   </div>
                 </div>

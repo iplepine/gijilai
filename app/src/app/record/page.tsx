@@ -9,6 +9,7 @@ import BottomNav from '@/components/layout/BottomNav';
 import { db, ReportData } from '@/lib/db';
 import { Icon } from '@/components/ui/Icon';
 import { Button } from '@/components/ui/Button';
+import { TCI_TERMINOLOGY } from '@/constants/terminology';
 
 type TabType = 'REPORT' | 'CONSULT' | 'MISSION';
 
@@ -184,7 +185,7 @@ export default function RecordPage() {
                                                     isParent ? 'bg-orange-100 text-orange-600' :
                                                         'bg-primary/10 text-primary'
                                                     }`}>
-                                                    {report.type === 'CHILD' ? '아이 기질' : isParent ? '양육자 기질' : '조화 분석'}
+                                                    {report.type === 'CHILD' ? TCI_TERMINOLOGY.REPORT.CHILD_NAME : isParent ? TCI_TERMINOLOGY.REPORT.PARENT_NAME : TCI_TERMINOLOGY.REPORT.HARMONY_TITLE.split(' ')[0] + ' ' + TCI_TERMINOLOGY.REPORT.HARMONY_TITLE.split(' ')[1]}
                                                 </div>
                                                 <div className="text-[11px] font-bold text-slate-400 mt-1">
                                                     {formatDate(report.created_at)}

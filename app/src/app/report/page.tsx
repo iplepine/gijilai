@@ -25,6 +25,7 @@ import { TemperamentScorer } from '@/lib/TemperamentScorer';
 import { TemperamentClassifier } from '@/lib/TemperamentClassifier';
 import { ParentClassifier } from '@/lib/ParentClassifier';
 import { PRESCRIPTION_DATA } from '@/lib/PrescriptionData';
+import { TCI_TERMINOLOGY } from '@/constants/terminology';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { db } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
@@ -368,10 +369,15 @@ function ReportContent() {
   const isParentSurveyComplete = useMemo(() => Object.keys(atqResponses).length >= PARENT_QUESTIONS.length, [atqResponses]);
 
   const radarData = {
-    labels: ['자극 추구', '위험 회피', '사회적 민감성', '지속성'],
+    labels: [
+      TCI_TERMINOLOGY.DIMENSIONS.NS.name,
+      TCI_TERMINOLOGY.DIMENSIONS.HA.name,
+      TCI_TERMINOLOGY.DIMENSIONS.RD.name,
+      TCI_TERMINOLOGY.DIMENSIONS.P.name
+    ],
     datasets: [
       {
-        label: '아이 기질',
+        label: TCI_TERMINOLOGY.REPORT.CHILD_NAME,
         data: [childScores.NS, childScores.HA, childScores.RD, childScores.P],
         backgroundColor: 'rgba(78, 205, 196, 0.2)',
         borderColor: '#4ECDC4',
@@ -380,7 +386,7 @@ function ReportContent() {
         pointRadius: 4,
       },
       {
-        label: '양육자 기질',
+        label: TCI_TERMINOLOGY.REPORT.PARENT_NAME,
         data: [parentScores.NS, parentScores.HA, parentScores.RD, parentScores.P],
         backgroundColor: 'rgba(255, 107, 107, 0.1)',
         borderColor: '#FF6B6B',
