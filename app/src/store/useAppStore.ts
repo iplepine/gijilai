@@ -110,6 +110,7 @@ export const useAppStore = create<AppState>()(
         atqResponses: state.atqResponses,
         parentingResponses: state.parentingResponses,
         surveyProgress: state.surveyProgress,
+        isPaid: state.isPaid,
       }),
     }
   )
