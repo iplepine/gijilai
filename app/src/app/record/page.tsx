@@ -127,8 +127,9 @@ export default function RecordPage() {
             <div className="w-full max-w-md bg-background-light dark:bg-background-dark min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
                 {/* Header */}
                 <header className="w-full max-w-md px-6 pt-12 pb-4 bg-white/50 dark:bg-surface-dark/50 backdrop-blur-md sticky top-0 z-20 border-b border-gray-100 dark:border-gray-800">
-                    <div className="flex items-center justify-between mb-6 gap-3">
-                        <div className="flex items-center gap-2">
+                    <div className="relative flex items-center justify-center h-10 mb-6 w-full">
+                        {/* Left Action: Back Button */}
+                        <div className="absolute left-0">
                             <button
                                 onClick={() => router.back()}
                                 className="w-10 h-10 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-600 dark:text-white hover:bg-slate-200 transition-colors"
@@ -136,24 +137,28 @@ export default function RecordPage() {
                             >
                                 <Icon name="arrow_back" size="sm" />
                             </button>
-                            <h1 className="text-2xl font-bold text-text-main dark:text-white flex items-center gap-2 font-display tracking-tight">
-                                <span className="material-symbols-outlined text-primary fill-1">bookmarks</span>
-                                나의 기록
-                            </h1>
                         </div>
+                        
+                        {/* Center: Title */}
+                        <h1 className="text-xl font-bold text-text-main dark:text-white flex items-center gap-1.5 font-display tracking-tight text-center">
+                            나의 기록
+                        </h1>
 
-                        {children.length > 1 && (
-                            <select
-                                value={selectedChildId}
-                                onChange={(e) => setSelectedChildId(e.target.value)}
-                                className="bg-slate-100 dark:bg-black/20 text-[11px] font-bold px-3 py-1.5 rounded-lg border-none focus:ring-1 focus:ring-primary outline-none"
-                            >
-                                <option value="ALL">전체 아이</option>
-                                {children.map(child => (
-                                    <option key={child.id} value={child.id}>{child.name}</option>
-                                ))}
-                            </select>
-                        )}
+                        {/* Right Action: Child Selector */}
+                        <div className="absolute right-0">
+                            {children.length > 1 && (
+                                <select
+                                    value={selectedChildId}
+                                    onChange={(e) => setSelectedChildId(e.target.value)}
+                                    className="bg-slate-100 dark:bg-black/20 text-[11px] font-bold px-3 py-1.5 rounded-lg border-none focus:ring-1 focus:ring-primary outline-none"
+                                >
+                                    <option value="ALL">전체 아이</option>
+                                    {children.map((child: any) => (
+                                        <option key={child.id} value={child.id}>{child.name}</option>
+                                    ))}
+                                </select>
+                            )}
+                        </div>
                     </div>
 
                     <div className="flex p-1 bg-slate-100 dark:bg-black/20 rounded-2xl overflow-x-auto no-scrollbar">

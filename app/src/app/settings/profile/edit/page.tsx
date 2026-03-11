@@ -85,12 +85,15 @@ export default function ProfileEditPage() {
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen">
             <div className="max-w-md mx-auto relative min-h-screen flex flex-col">
-                <header className="sticky top-0 z-40 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-xl px-4 pt-12 pb-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-800">
-                    <button onClick={() => router.back()} className="size-10 flex items-center justify-center text-navy dark:text-white">
-                        <span className="material-symbols-outlined">arrow_back_ios</span>
-                    </button>
-                    <h1 className="text-lg font-bold text-navy dark:text-white">프로필 수정</h1>
-                    <div className="size-10"></div>
+                <header className="sticky top-0 z-40 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-xl pt-12 pb-4 border-b border-gray-100 dark:border-gray-800">
+                    <div className="relative flex items-center justify-center w-full px-4 min-h-[40px]">
+                        <div className="absolute left-4">
+                            <button onClick={() => router.back()} className="size-10 flex items-center justify-center text-navy dark:text-white">
+                                <span className="material-symbols-outlined">arrow_back_ios</span>
+                            </button>
+                        </div>
+                        <h1 className="text-lg font-bold text-navy dark:text-white text-center">프로필 편집</h1>
+                    </div>
                 </header>
 
                 <main className="flex-1 px-6 py-8">

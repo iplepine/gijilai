@@ -226,7 +226,7 @@ export default function HomePage() {
   return (
     <div className="bg-background-light dark:bg-background-dark text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center justify-center font-body pb-0">
       <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl overflow-hidden relative">
-        <header className="flex items-center px-6 pt-12 pb-4 bg-background-light dark:bg-background-dark sticky top-0 z-10 border-b border-primary/5 dark:border-white/5">
+        <header className="relative flex items-center justify-center h-16 w-full px-6 pt-12 pb-4 bg-background-light dark:bg-background-dark sticky top-0 z-10 border-b border-primary/5 dark:border-white/5">
           <div className="flex items-center gap-2">
             <img src="/gijilai_icon.png" alt="기질아이" className="w-8 h-8 rounded-lg object-contain" />
             <span className="text-xl font-logo tracking-wide text-primary dark:text-white pt-0.5">기질아이</span>

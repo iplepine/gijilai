@@ -74,12 +74,15 @@ export default function ProfilePage() {
         <div className="bg-background-light dark:bg-background-dark text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center justify-center font-body pb-0">
             <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl overflow-hidden relative">
                 {/* Sticky Header */}
-                <header className="sticky top-0 z-40 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-xl px-4 pt-12 pb-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-800">
-                    <button onClick={() => router.back()} className="size-10 flex items-center justify-center text-navy dark:text-white">
-                        <span className="material-symbols-outlined">arrow_back_ios</span>
-                    </button>
-                    <h1 className="text-lg font-bold text-navy dark:text-white">내 정보</h1>
-                    <div className="size-10"></div> {/* Spacer */}
+                <header className="sticky top-0 z-40 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-xl pt-12 pb-4 border-b border-gray-100 dark:border-gray-800">
+                    <div className="relative flex items-center justify-center w-full px-4 min-h-[40px]">
+                        <div className="absolute left-4">
+                            <button onClick={() => router.back()} className="size-10 flex items-center justify-center text-navy dark:text-white">
+                                <span className="material-symbols-outlined">arrow_back_ios</span>
+                            </button>
+                        </div>
+                        <h1 className="text-lg font-bold text-navy dark:text-white text-center">내 정보</h1>
+                    </div>
                 </header>
 
                 <main className="flex-1 px-4 py-6 space-y-8 pb-32">
