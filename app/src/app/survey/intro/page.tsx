@@ -10,7 +10,7 @@ export default function IntroPage() {
 
     const startSurvey = () => {
         resetAll();
-        router.push('/survey');
+        router.replace('/survey');
     };
 
     const startWithRandomData = () => {
@@ -30,9 +30,9 @@ export default function IntroPage() {
         }
 
         setSurveyProgress(100);
-        router.push('/survey'); // Then it will likely redirect to report or allow finishing
+        router.replace('/survey'); // Then it will likely redirect to report or allow finishing
         // Actually, let's go straight to report to see results
-        router.push('/report');
+        router.replace('/report');
     };
 
     return (

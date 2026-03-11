@@ -20,7 +20,7 @@ export default function ProfilePage() {
         async function fetchData() {
             if (authLoading) return;
             if (!user) {
-                router.push('/login');
+                router.replace('/login');
                 return;
             }
 
@@ -40,7 +40,7 @@ export default function ProfilePage() {
     const handleLogout = async () => {
         if (confirm('로그아웃 하시겠습니까?')) {
             await signOut();
-            router.push('/login');
+            router.replace('/login');
         }
     };
 
@@ -53,7 +53,7 @@ export default function ProfilePage() {
                     // If you have a backend/edge-function, call that.
                     // Here we clear data and sign out.
                     await signOut();
-                    router.push('/login');
+                    router.replace('/login');
                 }
             } catch (error) {
                 console.error("Failed to delete account:", error);

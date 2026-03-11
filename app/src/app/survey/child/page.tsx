@@ -37,7 +37,7 @@ export default function ChildSurveyPage() {
             setTimeout(() => nextStep(), 200);
         } else {
             // Navigate to bridge/next section
-            setTimeout(() => router.push('/survey/parent'), 200);
+            setTimeout(() => router.replace('/survey/parent'), 200);
         }
     };
 
@@ -45,7 +45,7 @@ export default function ChildSurveyPage() {
         if (currentStep > 1) {
             prevStep();
         } else {
-            router.push('/survey/intro');
+            router.replace('/survey/intro');
         }
     }
 

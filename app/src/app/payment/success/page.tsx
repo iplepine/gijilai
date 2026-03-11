@@ -22,7 +22,7 @@ function SuccessContent() {
             setStatus('success');
             // Automatically redirect to report after a short delay to show success
             const timer = setTimeout(() => {
-                router.push('/report');
+                router.replace('/report');
             }, 2000);
             return () => clearTimeout(timer);
         } else if (redirectStatus === 'processing') {
@@ -62,7 +62,7 @@ function SuccessContent() {
                         <Button
                             variant="primary"
                             size="lg"
-                            onClick={() => router.push('/report')}
+                            onClick={() => router.replace('/report')}
                             className="h-14 px-10 rounded-2xl font-bold"
                         >
                             분석 결과 보러가기
@@ -78,7 +78,7 @@ function SuccessContent() {
                     </div>
                     <h2 className="text-2xl font-bold text-slate-800 dark:text-white">결제 오류</h2>
                     <p className="text-slate-500 text-sm">결제 처리 중 문제가 발생했습니다. 다시 시도해주세요.</p>
-                    <Button variant="secondary" onClick={() => router.push('/payment')}>
+                    <Button variant="secondary" onClick={() => router.replace('/payment')}>
                         결제 페이지로 돌아가기
                     </Button>
                 </div>

@@ -58,7 +58,7 @@ export default function IntakePage() {
   const handleSubmit = () => {
     if (validate()) {
       resetSurveyOnly();
-      router.push('/survey');
+      router.replace('/survey');
     }
   };
 

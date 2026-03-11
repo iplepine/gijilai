@@ -48,7 +48,7 @@ export default function ParentSurveyPage() {
         if (currentStep < totalQuestions) {
             setTimeout(() => nextStep(), 200);
         } else {
-            setTimeout(() => router.push('/survey/parenting-style'), 200);
+            setTimeout(() => router.replace('/survey/parenting-style'), 200);
         }
     };
 
@@ -58,7 +58,7 @@ export default function ParentSurveyPage() {
         } else {
             // Go back to bridge if at step 1? Or back to child survey?
             // Simplifying: Go back to child survey end
-            router.push('/survey/child');
+            router.replace('/survey/child');
         }
     }
 

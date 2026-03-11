@@ -215,7 +215,7 @@ export default function ConsultPage() {
             });
 
             alert('홈 미션으로 등록되었습니다!');
-            router.push('/');
+            router.replace('/');
         } catch (error) {
             console.error(error);
             alert('미션 등록에 실패했습니다.');

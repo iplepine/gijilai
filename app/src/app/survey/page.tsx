@@ -89,7 +89,7 @@ function SurveyContent() {
       // Current module finished
       if (currentModule === 'child') {
         // 아이 기질 완료 → 즉시 아이 리포트 화면으로 이동 (안 A)
-        router.push('/report?child_only=true');
+        router.replace('/report?child_only=true');
       } else if (currentModule === 'parent') {
         // 부모 기질 완료 시 양육 태도 안내 다이얼로그 노출
         setTransitionType('toParenting');
@@ -146,14 +146,14 @@ function SurveyContent() {
     } else if (transitionType === 'finish') {
       setIsCalculating(true);
       setTimeout(() => {
-        router.push('/report');
+        router.replace('/report');
       }, 2000);
     }
     setTransitionType(null);
   };
 
   const handleExit = () => {
-    router.push('/');
+    router.replace('/');
   };
 
 

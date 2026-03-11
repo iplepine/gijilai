@@ -623,7 +623,7 @@ export default function HomePage() {
                   <button
                     onClick={() => {
                       setShowOnboarding(false);
-                      router.push('/settings/child/new');
+                      router.replace('/settings/child/new');
                     }}
                     className="w-full bg-primary text-white font-black py-5 rounded-[2rem] shadow-2xl shadow-primary/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2 group"
                   >
@@ -665,7 +665,7 @@ export default function HomePage() {
                   <button
                     onClick={() => {
                       resetSurveyOnly();
-                      router.push('/survey');
+                      router.replace('/survey');
                     }}
                     className="w-full bg-[#2E7D32] text-white font-bold py-4 rounded-xl shadow-lg shadow-[#2E7D32]/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                   >

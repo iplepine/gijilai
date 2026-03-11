@@ -98,7 +98,7 @@ export default function EditChildPage() {
             if (error) throw error;
 
             router.refresh();
-            router.push('/');
+            router.replace('/');
         } catch (error: any) {
             console.error('Error updating child:', error);
             alert(`수정에 실패했습니다.\n${error.message}`);
@@ -120,7 +120,7 @@ export default function EditChildPage() {
             if (error) throw error;
 
             router.refresh();
-            router.push('/');
+            router.replace('/');
         } catch (error: any) {
             console.error('Error deleting child:', error);
             alert('삭제에 실패했습니다.');

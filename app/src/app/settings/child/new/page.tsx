@@ -60,7 +60,7 @@ export default function RegisterChildPage() {
             }
 
             router.refresh();
-            router.push('/');
+            router.replace('/');
         } catch (error: any) {
             console.error('Error registering child:', error);
             alert(`아이 등록에 실패했습니다.\n${error.message || error.details || '알 수 없는 오류가 발생했습니다.'}`);

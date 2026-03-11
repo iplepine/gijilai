@@ -38,7 +38,7 @@ export default function ParentingStyleSurveyPage() {
         if (currentStep < totalQuestions) {
             setTimeout(() => nextStep(), 200);
         } else {
-            setTimeout(() => router.push('/report'), 200);
+            setTimeout(() => router.replace('/report'), 200);
         }
     };
 
@@ -46,7 +46,7 @@ export default function ParentingStyleSurveyPage() {
         if (currentStep > 1) {
             prevStep();
         } else {
-            router.push('/survey/parent');
+            router.replace('/survey/parent');
         }
     }
 

@@ -18,7 +18,7 @@ export default function ProfileEditPage() {
 
     useEffect(() => {
         if (!authLoading && !user) {
-            router.push('/login');
+            router.replace('/login');
             return;
         }
 
@@ -65,7 +65,7 @@ export default function ProfileEditPage() {
             });
 
             alert('프로필이 수정되었습니다.');
-            router.push('/settings/profile');
+            router.replace('/settings/profile');
         } catch (error) {
             console.error('Failed to update profile:', error);
             alert('프로필 수정 중 오류가 발생했습니다.');

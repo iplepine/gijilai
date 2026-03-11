@@ -213,7 +213,7 @@ export default function RecordPage() {
                             </div>
 
                             <Button
-                                onClick={() => router.push('/intake')}
+                                onClick={() => router.replace('/intake')}
                                 variant="primary"
                                 className="w-full h-16 rounded-2xl font-black text-lg shadow-xl shadow-primary/20 active:scale-[0.98] transition-all"
                             >
@@ -237,7 +237,7 @@ export default function RecordPage() {
                                         <div
                                             key={report.id}
                                             onClick={() => {
-                                                router.push(`/report?id=${report.id}`);
+                                                router.replace(`/report?id=${report.id}`);
                                             }}
                                             className="bg-white dark:bg-surface-dark rounded-[2rem] p-6 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 relative overflow-hidden group active:scale-[0.98] transition-all cursor-pointer"
                                         >
@@ -286,7 +286,7 @@ export default function RecordPage() {
                                             기질 검사를 완료하고 나만을 위한<br />AI 심층 분석 리포트를 받아보세요!
                                         </p>
                                     </div>
-                                    <Button onClick={() => router.push('/')} variant="primary" className="rounded-full px-10 h-14 font-black">
+                                    <Button onClick={() => router.replace('/')} variant="primary" className="rounded-full px-10 h-14 font-black">
                                         기질 검사 시작하기
                                     </Button>
                                 </div>
@@ -352,7 +352,7 @@ export default function RecordPage() {
                                             육아가 유독 버겁고 힘든 날,<br />언제든 마음 상담소에서 고민을 터놓아주세요.
                                         </p>
                                     </div>
-                                    <Button onClick={() => router.push('/consult')} variant="secondary" className="rounded-full px-10 h-14 font-black">
+                                    <Button onClick={() => router.replace('/consult')} variant="secondary" className="rounded-full px-10 h-14 font-black">
                                         상담 시작하기
                                     </Button>
                                 </div>
