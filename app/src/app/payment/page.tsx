@@ -129,10 +129,10 @@ export default function PaymentPage() {
               {status === 'paying' && clientSecret ? (
                 <div className="space-y-8 animate-fade-in">
                   <section className="text-center space-y-3">
-                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white">카드 정보를 입력해주세요</h2>
-                    <p className="text-slate-500 text-sm">안전한 Stripe 결제 시스템을 사용합니다.</p>
+                    <h2 className="text-2xl font-bold text-text-main dark:text-white">카드 정보를 입력해주세요</h2>
+                    <p className="text-text-sub text-sm">안전한 Stripe 결제 시스템을 사용합니다.</p>
                   </section>
-                  <div className="bg-white dark:bg-slate-800 p-6 rounded-[2.5rem] shadow-xl border border-slate-100 dark:border-slate-700">
+                  <div className="bg-white dark:bg-surface-dark p-6 rounded-2xl shadow-card border border-beige-main/20">
                     <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'stripe' } }}>
                       <CheckoutForm amount={990} onSuccess={handlePaymentSuccess} />
                     </Elements>
@@ -145,16 +145,16 @@ export default function PaymentPage() {
                     <div className="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-bold uppercase tracking-widest">
                       Limited Offer
                     </div>
-                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white break-keep">
+                    <h2 className="text-2xl font-bold text-text-main dark:text-white break-keep">
                       우리 아이를 위한<br />단 한 방울의 이해
                     </h2>
-                    <p className="text-slate-500 text-sm">
+                    <p className="text-text-sub text-sm">
                       990원으로 발견하는 육아의 마법
                     </p>
                   </section>
 
                   {/* Benefits Preview Card */}
-                  <section className="bg-white dark:bg-slate-800 rounded-[2.5rem] overflow-hidden shadow-2xl shadow-primary/5 border border-slate-100 dark:border-slate-700">
+                  <section className="bg-white dark:bg-surface-dark rounded-2xl overflow-hidden shadow-card border border-beige-main/20">
                     <div className="p-8 space-y-6">
                       <div className="space-y-5">
                         <div className="flex items-start gap-4">
@@ -162,8 +162,8 @@ export default function PaymentPage() {
                             <span className="text-xl">💡</span>
                           </div>
                           <div>
-                            <h4 className="text-[15px] font-bold text-slate-800 dark:text-white">아이 신호 통역하기</h4>
-                            <p className="text-xs text-slate-400 mt-1 leading-relaxed">아이 행동의 진짜 원인을 기질 관점에서 명쾌하게 풀어드려요.</p>
+                            <h4 className="text-[15px] font-bold text-text-main dark:text-white">아이 신호 통역하기</h4>
+                            <p className="text-xs text-text-sub mt-1 leading-relaxed">아이 행동의 진짜 원인을 기질 관점에서 명쾌하게 풀어드려요.</p>
                           </div>
                         </div>
 
@@ -172,25 +172,25 @@ export default function PaymentPage() {
                             <span className="text-xl">✨</span>
                           </div>
                           <div>
-                            <h4 className="text-[15px] font-bold text-slate-800 dark:text-white">마법의 한마디</h4>
-                            <p className="text-xs text-slate-400 mt-1 leading-relaxed">당장 오늘 저녁부터 써먹을 수 있는 맞춤형 대화 가이드.</p>
+                            <h4 className="text-[15px] font-bold text-text-main dark:text-white">마법의 한마디</h4>
+                            <p className="text-xs text-text-sub mt-1 leading-relaxed">당장 오늘 저녁부터 써먹을 수 있는 맞춤형 대화 가이드.</p>
                           </div>
                         </div>
 
                         <div className="flex items-start gap-4">
-                          <div className="w-10 h-10 rounded-2xl bg-green-50 flex items-center justify-center shrink-0">
+                          <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
                             <span className="text-xl">🖼️</span>
                           </div>
                           <div>
-                            <h4 className="text-[15px] font-bold text-slate-800 dark:text-white">맞춤형 기질 일러스트</h4>
-                            <p className="text-xs text-slate-400 mt-1 leading-relaxed">내 기질과 아이 기질이 어우러진 배경화면용 카드 증정.</p>
+                            <h4 className="text-[15px] font-bold text-text-main dark:text-white">맞춤형 기질 일러스트</h4>
+                            <p className="text-xs text-text-sub mt-1 leading-relaxed">내 기질과 아이 기질이 어우러진 배경화면용 카드 증정.</p>
                           </div>
                         </div>
                       </div>
 
-                      <div className="pt-4 border-t border-slate-50 dark:border-slate-700">
+                      <div className="pt-4 border-t border-beige-main/20 dark:border-surface-dark/50">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-bold text-slate-800 dark:text-white italic">"오늘의 마음 처방 포함"</span>
+                          <span className="text-sm font-bold text-text-main dark:text-white italic">"오늘의 마음 처방 포함"</span>
                           <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-1 rounded-md">Tier 2 Entry</span>
                         </div>
                       </div>
@@ -199,12 +199,12 @@ export default function PaymentPage() {
 
                   {/* Pricing Card */}
                   <section className="space-y-4">
-                    <div className="bg-slate-800 dark:bg-slate-950 rounded-3xl p-6 text-white relative overflow-hidden">
+                    <div className="bg-primary-dark rounded-2xl p-6 text-white relative overflow-hidden">
                       <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 rounded-full -mr-10 -mt-10 blur-2xl"></div>
 
                       <div className="relative z-10 flex justify-between items-end">
                         <div className="space-y-1">
-                          <p className="text-[11px] font-bold text-slate-400 line-through">정가 4,900원</p>
+                          <p className="text-[11px] font-bold text-white/40 line-through">정가 4,900원</p>
                           <div className="flex items-baseline gap-1">
                             <span className="text-3xl font-black">990</span>
                             <span className="text-lg font-bold">원</span>
@@ -219,8 +219,8 @@ export default function PaymentPage() {
                       </div>
                     </div>
 
-                    <p className="text-[11px] text-slate-400 text-center flex items-center justify-center gap-1.5 px-4 break-keep">
-                      <Icon name="verified" size="sm" className="text-slate-300" />
+                    <p className="text-[11px] text-text-sub text-center flex items-center justify-center gap-1.5 px-4 break-keep">
+                      <Icon name="verified" size="sm" className="text-primary/40" />
                       결제 즉시 분석 리포트와 마음 처방전이 생성됩니다. 분석된 데이터는 전문가가 검증한 로직을 따릅니다.
                     </p>
                   </section>
@@ -230,8 +230,8 @@ export default function PaymentPage() {
 
             {/* Payment Action */}
             {status === 'idle' && (
-              <div className="absolute bottom-0 left-0 right-0 p-6 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-t border-slate-100 dark:border-slate-800 z-30">
-                <Button variant="primary" size="lg" fullWidth onClick={handlePaymentStart} className="h-16 rounded-[24px] text-lg font-bold shadow-2xl shadow-primary/20">
+              <div className="absolute bottom-0 left-0 right-0 p-6 bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl border-t border-beige-main/20 z-30">
+                <Button variant="primary" size="lg" fullWidth onClick={handlePaymentStart} className="h-16 rounded-2xl text-lg font-bold shadow-glow">
                   990원 결제하고 처방전 받기
                 </Button>
               </div>

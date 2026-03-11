@@ -495,7 +495,18 @@ function ReportContent() {
       <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
         <main className={`flex-1 overflow-y-auto no-scrollbar ${isChildOnly ? 'pb-40' : 'pb-24'}`}>
           {/* Header Overlay */}
-          <div className="bg-primary pt-12 pb-24 px-6 rounded-b-[3rem] shadow-xl relative overflow-hidden z-10 mx-[-1px]">
+          <div className="bg-primary pt-6 pb-24 px-6 rounded-b-[3rem] shadow-xl relative overflow-hidden z-10 mx-[-1px]">
+            {/* Top Navigation Bar */}
+            <div className="flex items-center justify-between mb-4 relative z-20">
+              <button
+                onClick={() => router.back()}
+                className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-colors"
+                aria-label="뒤로 가기"
+              >
+                <Icon name="arrow_back" size="sm" />
+              </button>
+            </div>
+            
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
             <div className="relative z-10 text-center space-y-2">
               {isChildOnly ? (
@@ -560,17 +571,17 @@ function ReportContent() {
             {activeTab === 'child' ? (
               !isChildSurveyComplete ? (
                 /* Child Survey Onboarding */
-                <div className="bg-white dark:bg-slate-800 rounded-[3.5rem] p-10 shadow-2xl border border-slate-100 dark:border-slate-800 flex flex-col items-center text-center space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                <div className="bg-white dark:bg-surface-dark rounded-2xl p-10 shadow-card border border-beige-main/20 flex flex-col items-center text-center space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
                   <div className="w-40 h-40 bg-primary/5 rounded-full flex items-center justify-center text-7xl relative">
                     <div className="absolute inset-0 bg-primary/10 rounded-full animate-ping opacity-20"></div>
                     🎁
                   </div>
 
                   <div className="space-y-4">
-                    <h2 className="text-2xl font-black text-slate-800 dark:text-white leading-tight">
+                    <h2 className="text-2xl font-black text-text-main dark:text-white leading-tight">
                       {intake.childName || '아이'}의 기질을<br />알아볼 시간이에요!
                     </h2>
-                    <p className="text-slate-500 dark:text-slate-400 text-[15px] leading-relaxed break-keep px-4">
+                    <p className="text-text-sub dark:text-slate-400 text-[15px] leading-relaxed break-keep px-4">
                       아이의 타고난 빛을 발견하기 위한<br />
                       첫 번째 단계, 기질 검사를 먼저 시작해볼까요?<br />
                       <span className="text-[12px] opacity-70 mt-2 block">(약 3-5분 정도 소요됩니다)</span>
@@ -589,7 +600,7 @@ function ReportContent() {
               ) : (
                 <>
                   {/* Phase 1: Archetype Discovery */}
-                  <div className="bg-white dark:bg-slate-800 rounded-[3.5rem] p-8 shadow-2xl border border-slate-100 dark:border-slate-800 flex flex-col items-center text-center space-y-8 relative overflow-hidden">
+                  <div className="bg-white dark:bg-surface-dark rounded-2xl p-8 shadow-card border border-beige-main/20 flex flex-col items-center text-center space-y-8 relative overflow-hidden">
                     <div className="w-48 h-48 relative flex items-center justify-center">
                       <div className="absolute inset-0 bg-primary/10 rounded-full animate-ping opacity-20"></div>
                       <div className="absolute inset-4 bg-primary/20 rounded-full animate-pulse opacity-30"></div>
@@ -599,14 +610,14 @@ function ReportContent() {
                     </div>
 
                     <div className="space-y-4 px-2">
-                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900 font-black text-[10px] text-slate-500 uppercase tracking-widest">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-beige-light dark:bg-surface-dark font-black text-[10px] text-text-sub uppercase tracking-widest">
                         Current Manifestation
                       </div>
                       <div className="space-y-2">
-                        <h2 className="text-4xl font-black text-slate-900 dark:text-white leading-tight">
+                        <h2 className="text-4xl font-black text-text-main dark:text-white leading-tight">
                           {childAiReport?.title?.split(':')[1]?.trim() || childType.label}
                         </h2>
-                        <p className="text-slate-500 dark:text-slate-400 text-[15px] leading-relaxed break-keep px-4 font-medium">
+                        <p className="text-text-sub dark:text-slate-400 text-[15px] leading-relaxed break-keep px-4 font-medium">
                           {childAiReport?.intro || childType.desc}
                         </p>
                       </div>
@@ -615,30 +626,30 @@ function ReportContent() {
 
                   {/* Phase 2: Relationship Foundation (Parent VS Child) */}
                   <div className="space-y-4">
-                    <h3 className="px-4 text-[13px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                    <h3 className="px-4 text-[13px] font-black text-text-sub uppercase tracking-[0.2em] flex items-center gap-2">
                       <Icon name="diversity_3" size="sm" /> 아이와 나의 기질 궁합
                     </h3>
                     <div className="grid grid-cols-2 gap-4">
                       {/* Parent Card */}
-                      <section className="bg-gradient-to-br from-white to-orange-50/30 dark:from-slate-800 dark:to-orange-900/10 rounded-[2.2rem] p-6 shadow-xl border border-orange-100/50 dark:border-orange-900/20 relative group">
+                      <section className="bg-gradient-to-br from-white to-orange-50/30 dark:from-surface-dark dark:to-orange-900/10 rounded-2xl p-6 shadow-card border border-orange-100/50 dark:border-orange-900/20 relative group">
                         <div className="w-10 h-10 rounded-2xl bg-orange-100 dark:bg-orange-900/50 flex items-center justify-center text-orange-600 dark:text-orange-400 mb-4 transition-transform group-hover:scale-110">
                           <Icon name="person" size="sm" />
                         </div>
                         <span className="text-[9px] font-black text-orange-400 uppercase tracking-widest block mb-1">양육자 기질</span>
-                        <h4 className="text-[14px] font-black text-slate-800 dark:text-white mb-2 leading-tight break-keep">{childType.soil.label}</h4>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug break-keep opacity-0 group-hover:opacity-100 transition-opacity duration-300 absolute inset-0 p-6 bg-white/95 dark:bg-slate-800/95 flex items-center rounded-[2.2rem]">
+                        <h4 className="text-[14px] font-black text-text-main dark:text-white mb-2 leading-tight break-keep">{childType.soil.label}</h4>
+                        <p className="text-[11px] text-text-sub dark:text-slate-400 leading-snug break-keep opacity-0 group-hover:opacity-100 transition-opacity duration-300 absolute inset-0 p-6 bg-white/95 dark:bg-surface-dark/95 flex items-center rounded-2xl">
                           {childType.soil.desc}
                         </p>
                       </section>
 
                       {/* Child Card */}
-                      <section className="bg-gradient-to-br from-white to-teal-50/30 dark:from-slate-800 dark:to-teal-900/10 rounded-[2.2rem] p-6 shadow-xl border border-teal-100/50 dark:border-teal-900/20 relative group">
+                      <section className="bg-gradient-to-br from-white to-teal-50/30 dark:from-surface-dark dark:to-teal-900/10 rounded-2xl p-6 shadow-card border border-teal-100/50 dark:border-teal-900/20 relative group">
                         <div className="w-10 h-10 rounded-2xl bg-teal-100 dark:bg-teal-900/50 flex items-center justify-center text-teal-600 dark:text-teal-400 mb-4 transition-transform group-hover:scale-110">
                           <Icon name="child_care" size="sm" />
                         </div>
                         <span className="text-[9px] font-black text-teal-400 uppercase tracking-widest block mb-1">아이 기질</span>
-                        <h4 className="text-[14px] font-black text-slate-800 dark:text-white mb-2 leading-tight break-keep">{childType.seed.label}</h4>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug break-keep opacity-0 group-hover:opacity-100 transition-opacity duration-300 absolute inset-0 p-6 bg-white/95 dark:bg-slate-800/95 flex items-center rounded-[2.2rem]">
+                        <h4 className="text-[14px] font-black text-text-main dark:text-white mb-2 leading-tight break-keep">{childType.seed.label}</h4>
+                        <p className="text-[11px] text-text-sub dark:text-slate-400 leading-snug break-keep opacity-0 group-hover:opacity-100 transition-opacity duration-300 absolute inset-0 p-6 bg-white/95 dark:bg-surface-dark/95 flex items-center rounded-2xl">
                           {childType.seed.desc}
                         </p>
                       </section>
@@ -652,13 +663,13 @@ function ReportContent() {
                       <div className="flex items-center justify-between">
                         <div className="space-y-1">
                           <span className="text-[10px] font-black text-primary uppercase tracking-widest">Temperament Dynamics</span>
-                          <h3 className="text-2xl font-black text-white dark:text-slate-900">"{childType.harmony.title}"</h3>
+                          <h3 className="text-2xl font-black text-white dark:text-text-main">"{childType.harmony.title}"</h3>
                         </div>
-                        <div className="w-14 h-14 rounded-full bg-white/10 dark:bg-slate-100 flex items-center justify-center border border-white/20 dark:border-slate-200">
+                        <div className="w-14 h-14 rounded-full bg-white/10 dark:bg-background-light flex items-center justify-center border border-white/20 dark:border-beige-main/20">
                           <Icon name="psychology" className="text-primary" />
                         </div>
                       </div>
-                      <p className="text-slate-300 dark:text-slate-600 text-[14px] leading-relaxed break-keep font-medium">
+                      <p className="text-white/80 dark:text-text-sub text-[14px] leading-relaxed break-keep font-medium">
                         {childType.harmony.desc}
                       </p>
                       <div className="pt-4 flex items-center gap-4 text-[11px] font-bold text-slate-500 italic">
@@ -672,7 +683,7 @@ function ReportContent() {
                   {/* AI 심층 분석 리포트 (JSON 기반 렌더링) */}
                   <section className="space-y-6">
                     <div className="flex items-center justify-between px-2">
-                      <h3 className="font-black text-slate-800 dark:text-white text-xl flex items-center gap-2">
+                      <h3 className="font-black text-text-main dark:text-white text-xl flex items-center gap-2">
                         <span className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">✨</span>
                         AI 전문가 심층 리포트
                       </h3>
@@ -682,21 +693,21 @@ function ReportContent() {
                       <div className="relative group">
                         <div className={`space-y-8 animate-fade-in-up transition-all duration-1000 ${!isPaid ? 'blur-xl grayscale opacity-40 pointer-events-none select-none' : ''}`}>
                           {/* AI 별명 및 서문 */}
-                          <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] p-8 shadow-xl border-t-8 border-primary relative overflow-hidden">
+                          <div className="bg-white dark:bg-surface-dark rounded-2xl p-8 shadow-card border-t-8 border-primary relative overflow-hidden">
                             <div className="absolute top-0 right-0 p-4 opacity-10 text-6xl italic font-black uppercase tracking-tighter pointer-events-none">Insight</div>
-                            <h4 className="text-2xl font-black text-slate-800 dark:text-white mb-4 leading-tight">
+                            <h4 className="text-2xl font-black text-text-main dark:text-white mb-4 leading-tight">
                               {childAiReport.title}
                             </h4>
-                            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed break-keep font-medium">
+                            <p className="text-sm text-text-sub dark:text-slate-400 leading-relaxed break-keep font-medium">
                               {childAiReport.intro}
                             </p>
                           </div>
 
                           {/* 핵심 분석 & 인사이트 */}
                           <div className="grid grid-cols-1 gap-6">
-                            <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] p-8 shadow-xl space-y-4">
+                            <div className="bg-white dark:bg-surface-dark rounded-2xl p-8 shadow-card space-y-4">
                               <div className="inline-flex px-3 py-1 rounded-full bg-indigo-50 text-indigo-500 text-[10px] font-black uppercase tracking-widest">Core Analysis</div>
-                              <p className="text-[14px] text-slate-700 dark:text-slate-300 leading-relaxed break-keep whitespace-pre-wrap">
+                              <p className="text-[14px] text-text-main dark:text-text-sub leading-relaxed break-keep whitespace-pre-wrap">
                                 {childAiReport.analysis?.summary}
                               </p>
                             </div>
@@ -712,16 +723,16 @@ function ReportContent() {
 
                           {/* 양육 팁 */}
                           <div className="space-y-4">
-                            <h5 className="text-sm font-black text-slate-400 px-4 uppercase tracking-[0.2em]">Parenting Solutions</h5>
+                            <h5 className="text-sm font-black text-text-sub px-4 uppercase tracking-[0.2em]">Parenting Solutions</h5>
                             {childAiReport.parentingTips?.map((tip: any, idx: number) => (
-                              <div key={idx} className="bg-white dark:bg-slate-800 rounded-[2rem] p-6 shadow-md border border-slate-100 dark:border-slate-700">
-                                <h6 className="font-bold text-slate-800 dark:text-white mb-3 flex items-center gap-2 text-sm">
+                              <div key={idx} className="bg-white dark:bg-surface-dark rounded-2xl p-6 shadow-card border border-beige-main/20">
+                                <h6 className="font-bold text-text-main dark:text-white mb-3 flex items-center gap-2 text-sm">
                                   <span className="w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs">{idx + 1}</span>
                                   {tip.situation}
                                 </h6>
                                 <ul className="space-y-2">
                                   {tip.tips?.map((t: string, i: number) => (
-                                    <li key={i} className="text-[13px] text-slate-600 dark:text-slate-400 flex gap-2">
+                                    <li key={i} className="text-[13px] text-text-sub dark:text-slate-400 flex gap-2">
                                       <span className="text-primary mt-1 shrink-0">•</span>
                                       <span className="leading-snug break-keep">{t}</span>
                                     </li>
@@ -732,18 +743,18 @@ function ReportContent() {
                           </div>
 
                           {/* 실전 스크립트 - 웹 샘플형 */}
-                          <div className="bg-slate-50 dark:bg-slate-900 rounded-[2.5rem] p-8 space-y-6 relative overflow-hidden">
+                          <div className="bg-beige-light dark:bg-surface-dark rounded-2xl p-8 space-y-6 relative overflow-hidden">
                             <div className="flex items-center justify-between">
-                              <h5 className="text-sm font-black text-slate-400 uppercase tracking-widest">Magic Scripts</h5>
+                              <h5 className="text-sm font-black text-text-sub uppercase tracking-widest">Magic Scripts</h5>
                               <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-1 rounded-md">PREMIUM</span>
                             </div>
 
                             <div className="space-y-4">
                               {childAiReport.scripts?.slice(0, 1).map((s: any, idx: number) => (
-                                <div key={idx} className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border-l-4 border-primary">
-                                  <span className="text-[10px] font-bold text-slate-400 block mb-1">{s.situation}</span>
+                                <div key={idx} className="bg-white dark:bg-background-dark p-5 rounded-2xl shadow-sm border-l-4 border-primary">
+                                  <span className="text-[10px] font-bold text-text-sub block mb-1">{s.situation}</span>
                                   <p className="text-[15px] font-black text-primary mb-2">"{s.script}"</p>
-                                  <p className="text-[11px] text-slate-500">{s.guide}</p>
+                                  <p className="text-[11px] text-text-sub">{s.guide}</p>
                                 </div>
                               ))}
                             </div>
@@ -765,11 +776,11 @@ function ReportContent() {
 
                         {!isPaid && (
                           <div className="absolute inset-0 z-30 flex flex-col items-center justify-center px-4">
-                            <div className="w-full bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-2xl border border-primary/20 text-center animate-in zoom-in-95 duration-500 space-y-6">
+                            <div className="w-full bg-white/95 dark:bg-surface-dark/95 backdrop-blur-xl p-8 rounded-2xl shadow-card border border-primary/20 text-center animate-in zoom-in-95 duration-500 space-y-6">
                               <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto text-4xl mb-2">🔒</div>
                               <div className="space-y-2">
-                                <h4 className="text-2xl font-black text-slate-800 dark:text-white break-keep">아이의 마음을 통역해드릴까요?</h4>
-                                <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed break-keep px-4">
+                                <h4 className="text-2xl font-black text-text-main dark:text-white break-keep">아이의 마음을 통역해드릴까요?</h4>
+                                <p className="text-text-sub dark:text-slate-400 text-sm leading-relaxed break-keep px-4">
                                   기질 전문가가 분석한 정밀 리포트와<br />
                                   오늘 저녁 바로 써먹는 [마법의 한마디]가 포함되어 있어요.
                                 </p>
@@ -785,13 +796,13 @@ function ReportContent() {
                         )}
                       </div>
                     ) : (
-                      <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] p-10 text-center space-y-6 shadow-xl border border-primary/10">
+                      <div className="bg-white dark:bg-surface-dark rounded-2xl p-10 text-center space-y-6 shadow-card border border-primary/10">
                         <div className="w-20 h-20 mx-auto bg-primary/5 rounded-full flex items-center justify-center text-3xl animate-pulse">
                           🧬
                         </div>
                         <div className="space-y-2">
-                          <h4 className="font-bold text-slate-800 dark:text-white">준비된 리포트가 없습니다</h4>
-                          <p className="text-sm text-slate-500 leading-relaxed break-keep">
+                          <h4 className="font-bold text-text-main dark:text-white">준비된 리포트가 없습니다</h4>
+                          <p className="text-sm text-text-sub leading-relaxed break-keep">
                             아이의 세부 문항 응답 데이터까지 분석하여<br />
                             가장 정확한 양육 가이드를 생성합니다.
                           </p>

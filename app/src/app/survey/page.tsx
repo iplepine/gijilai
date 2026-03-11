@@ -182,10 +182,10 @@ function SurveyContent() {
               <span className="text-4xl animate-bounce">✨</span>
             </div>
           </div>
-          <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-4 animate-pulse">
+          <h2 className="text-2xl font-bold text-text-main dark:text-white mb-4 animate-pulse">
             {currentModule === 'child' ? '아이 기질 분석 중...' : '우리 가족 기질 분석 중...'}
           </h2>
-          <p className="text-slate-500 dark:text-slate-400 leading-relaxed break-keep">
+          <p className="text-text-sub dark:text-slate-400 leading-relaxed break-keep">
             {currentModule === 'child'
               ? <>{intake.childName || '아이'}의 소중한 답변을 바탕으로<br />딱 맞는 <strong>맞춤형 기질 리포트</strong>를 작성하고 있습니다.</>
               : <>아이와 부모님의 기질이 만나는<br /><strong>아름다운 하모니</strong>를 분석 리포트에 담아내고 있습니다.</>
@@ -211,15 +211,15 @@ function SurveyContent() {
         <Navbar title={title} showBack onBackClick={handlePrev} />
 
         {/* Progress Bar & Module Tabs */}
-        <div className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10">
+        <div className="bg-white dark:bg-surface-dark border-b border-beige-main/20 sticky top-0 z-10">
           <div className="px-4 py-3">
             <div className="flex items-center justify-between mb-1.5 px-1">
-              <span className="text-xs font-semibold text-slate-500">
-                문항 {currentIndex + 1} <span className="text-slate-300">/</span> {questions.length}
+              <span className="text-xs font-semibold text-text-sub">
+                문항 {currentIndex + 1} <span className="text-text-sub/30">/</span> {questions.length}
               </span>
               <span className="text-xs font-bold text-primary">{Math.round(((currentIndex + 1) / questions.length) * 100)}%</span>
             </div>
-            <div className="h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+            <div className="h-1.5 bg-beige-light dark:bg-background-dark rounded-full overflow-hidden">
               <div
                 className="h-full bg-primary transition-all duration-500 ease-out"
                 style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
@@ -242,14 +242,14 @@ function SurveyContent() {
               </div>
             </div>
 
-            <h2 className="text-[17px] sm:text-[19px] font-extrabold text-slate-800 dark:text-white leading-snug whitespace-pre-line mb-3 break-keep">
+            <h2 className="text-[17px] sm:text-[19px] font-extrabold text-text-main dark:text-white leading-snug whitespace-pre-line mb-3 break-keep">
               <span className="text-primary mr-2 text-[19px]">Q.</span>
               {currentQuestion.context}
             </h2>
 
-            <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700/50">
-              <p className="text-[13px] text-slate-500 dark:text-slate-400 leading-relaxed break-keep">
-                <span className="font-bold text-slate-700 dark:text-slate-300 mr-1">Tip.</span>
+            <div className="p-3.5 bg-beige-light dark:bg-surface-dark rounded-2xl border border-beige-main/20">
+              <p className="text-[13px] text-text-sub dark:text-slate-400 leading-relaxed break-keep">
+                <span className="font-bold text-text-main dark:text-slate-300 mr-1">Tip.</span>
                 상황이 완벽히 똑같지 않더라도, <strong>평소 모습이나 가장 가까운 느낌</strong>을 골라주세요.
               </p>
             </div>
@@ -265,18 +265,18 @@ function SurveyContent() {
                 <button
                   key={idx}
                   onClick={() => handleSelect(idx)}
-                  className={`w-full text-left p-3.5 sm:p-4 rounded-[1.25rem] border-2 transition-all duration-300 relative overflow-hidden group flex items-center gap-3.5 ${isSelected
-                    ? 'border-primary bg-primary/5 shadow-md shadow-primary/10 scale-[1.01] z-10'
-                    : 'border-transparent bg-white dark:bg-slate-800 shadow-sm hover:border-primary/30 hover:shadow-md hover:-translate-y-0.5'
+                  className={`w-full text-left p-3.5 sm:p-4 rounded-2xl border-2 transition-all duration-300 relative overflow-hidden group flex items-center gap-3.5 ${isSelected
+                    ? 'border-primary bg-primary/5 shadow-card scale-[1.01] z-10'
+                    : 'border-transparent bg-white dark:bg-surface-dark shadow-sm hover:border-primary/30 hover:shadow-card hover:-translate-y-0.5'
                     }`}
                 >
                   <div className={`
                       w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-black shrink-0 transition-colors
-                      ${isSelected ? 'bg-primary text-white shadow-sm' : 'bg-slate-100 text-slate-400 group-hover:bg-primary/20 group-hover:text-primary'}
+                      ${isSelected ? 'bg-primary text-white shadow-sm' : 'bg-beige-light dark:bg-background-dark text-text-sub group-hover:bg-primary/20 group-hover:text-primary'}
                     `}>
                     {score}
                   </div>
-                  <span className={`text-[14px] sm:text-[15px] leading-snug break-keep flex-1 ${isSelected ? 'font-bold text-slate-900 dark:text-white' : 'font-medium text-slate-600 dark:text-slate-300'}`}>
+                  <span className={`text-[14px] sm:text-[15px] leading-snug break-keep flex-1 ${isSelected ? 'font-bold text-text-main dark:text-white' : 'font-medium text-text-sub dark:text-slate-300'}`}>
                     {choice}
                   </span>
                 </button>
@@ -286,14 +286,14 @@ function SurveyContent() {
         </div>
 
         {/* Bottom Navigation (Safe Area) */}
-        <div className="absolute bottom-0 left-0 right-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 px-4 py-3 pb-6 sm:pb-3 z-20">
+        <div className="absolute bottom-0 left-0 right-0 bg-white/80 dark:bg-surface-dark/80 backdrop-blur-md border-t border-beige-main/20 px-4 py-3 pb-6 sm:pb-3 z-20">
           <div className="max-w-2xl mx-auto flex justify-between items-center">
-            <Button variant="ghost" size="sm" onClick={handlePrev} className="text-slate-400 hover:text-slate-600">
+            <Button variant="ghost" size="sm" onClick={handlePrev} className="text-text-sub hover:text-text-main">
               <Icon name="arrow_back" size="sm" className="mr-1" /> 이전
             </Button>
 
-            <div className="text-[10px] text-slate-300">
-              기질아이 Temperament Test
+            <div className="text-[10px] text-text-sub/50 uppercase tracking-widest">
+              Gijilai Temperament Test
             </div>
           </div>
         </div>
@@ -301,21 +301,21 @@ function SurveyContent() {
         {/* Transition Modal */}
         {showTransitionModal && transitionType && (
           <div className="absolute inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl transform transition-all scale-100">
+            <div className="bg-white dark:bg-surface-dark rounded-[2.5rem] p-8 max-w-sm w-full shadow-card transform transition-all scale-100">
               <div className="text-center">
-                <div className="w-20 h-20 mx-auto mb-6 bg-green-50 rounded-full flex items-center justify-center">
+                <div className="w-20 h-20 mx-auto mb-6 bg-primary/5 rounded-full flex items-center justify-center">
                   <span className="text-4xl">
                     {transitionType === 'toParent' ? '✨' :
                       transitionType === 'toParenting' ? '🤝' : '🎉'}
                   </span>
                 </div>
 
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">
+                <h3 className="text-2xl font-bold text-text-main dark:text-white mb-3">
                   {transitionType === 'toParent' ? '아이 기질 검사 완료!' :
                     transitionType === 'toParenting' ? '부모 기질 검사 완료!' : '모든 검사가 끝났어요!'}
                 </h3>
 
-                <p className="text-slate-600 dark:text-slate-300 mb-8 leading-relaxed break-keep">
+                <p className="text-text-sub dark:text-slate-300 mb-8 leading-relaxed break-keep">
                   {transitionType === 'toParent' ? (
                     <>이제 <strong>부모님(본인)</strong>의 기질을 알아볼까요?<br />아이와 얼마나 잘 맞는지 분석해드려요.</>
                   ) : transitionType === 'toParenting' ? (
@@ -325,7 +325,7 @@ function SurveyContent() {
                   )}
                 </p>
 
-                <Button size="lg" fullWidth onClick={handleTransitionConfirm} className="rounded-2xl py-4 text-lg shadow-lg shadow-primary/30">
+                <Button size="lg" fullWidth onClick={handleTransitionConfirm} className="rounded-2xl h-16 text-lg font-bold shadow-glow">
                   {transitionType === 'finish' ? '결과 보러 가기' : '다음 단계로'}
                 </Button>
               </div>
@@ -336,9 +336,9 @@ function SurveyContent() {
         {/* Exit Modal */}
         {showExitModal && (
           <div className="absolute inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
-            <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 max-w-xs w-full shadow-xl">
-              <h3 className="text-lg font-bold text-center mb-2">잠깐! 나가시겠어요?</h3>
-              <p className="text-sm text-center text-slate-500 mb-6">진행 중인 내용은 저장되지만,<br />완료하지 않으면 결과를 볼 수 없어요.</p>
+            <div className="bg-white dark:bg-surface-dark rounded-[2rem] p-8 max-w-xs w-full shadow-card">
+              <h3 className="text-lg font-bold text-text-main dark:text-white text-center mb-2">잠깐! 나가시겠어요?</h3>
+              <p className="text-sm text-center text-text-sub mb-6">진행 중인 내용은 저장되지만,<br />완료하지 않으면 결과를 볼 수 없어요.</p>
               <div className="flex gap-3">
                 <Button variant="secondary" fullWidth onClick={() => setShowExitModal(false)}>계속 하기</Button>
                 <Button variant="ghost" fullWidth onClick={handleExit} className="text-red-500 bg-red-50 hover:bg-red-100">그만두기</Button>

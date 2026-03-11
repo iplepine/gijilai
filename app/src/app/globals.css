@@ -86,8 +86,8 @@
 /* ========== Base Styles ========== */
 body {
   font-family: 'Noto Sans KR', sans-serif;
-  background: var(--garden-cream);
-  color: var(--garden-brown);
+  background: var(--background-light);
+  color: var(--text-main);
   -webkit-tap-highlight-color: transparent;
 }
 

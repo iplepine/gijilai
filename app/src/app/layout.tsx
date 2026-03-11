@@ -40,7 +40,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
         {/* Kakao SDK */}
-        <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.0/kakao.min.js" integrity="sha384-lTLG7v9U6q46otPrRHXq9SdfpS8PnzPFC2g4MvT979D+SiTf7tS86P1zM8B/9/m4" crossOrigin="anonymous" async></script>
+        <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.0/kakao.min.js" async></script>
       </head>
       <body className="antialiased min-h-screen relative font-sans text-slate-800" suppressHydrationWarning>
         {/* Background handled by globals.css body style */}
@@ -59,7 +59,7 @@ export default function RootLayout({
           }}
         />
         <AuthProvider>
-          <div className="max-w-md mx-auto min-h-screen bg-background-light dark:bg-background-dark">
+          <div className="min-h-screen bg-background-light dark:bg-background-dark">
             <ReferralHandler />
             {children}
           </div>
