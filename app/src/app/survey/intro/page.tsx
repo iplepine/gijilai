@@ -3,6 +3,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppStore } from '@/store/useAppStore';
+import { Navbar } from '@/components/layout/Navbar';
 
 export default function IntroPage() {
     const router = useRouter();
@@ -37,7 +38,9 @@ export default function IntroPage() {
 
     return (
         <div className="bg-background-light dark:bg-background-dark text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center font-body">
-            <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative items-center justify-center p-6 text-center">
+            <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
+                <Navbar title="기질 검사 소개" showBack />
+                <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
                 <div className="max-w-md w-full space-y-8 animate-fadeIn">
                     <div className="relative w-48 h-48 mx-auto mb-8">
                         {/* Placeholder for Illustration */}
@@ -78,6 +81,7 @@ export default function IntroPage() {
                     <div className="mt-8 pt-8 border-t border-gray-100 text-sm text-gray-400">
                         <p>Aina Garden</p>
                     </div>
+                </div>
                 </div>
             </div>
         </div>
