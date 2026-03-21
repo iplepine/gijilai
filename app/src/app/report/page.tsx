@@ -73,8 +73,12 @@ function ReportContent() {
       setActiveTab('child');
     } else if (tabParam === 'parenting') {
       setActiveTab('parenting');
+    } else if (!tabParam) {
+      // 기본 탭: 양육태도 설문까지 완료 시 기질맞춤양육, 아니면 아이진단
+      const styleComplete = PARENTING_STYLE_QUESTIONS.every(q => !!parentingResponses[q.id.toString()]);
+      setActiveTab(styleComplete ? 'parenting' : 'child');
     }
-  }, [tabParam]);
+  }, [tabParam, parentingResponses]);
 
   const reportId = searchParams.get('id');
 
@@ -556,8 +560,15 @@ function ReportContent() {
                     <div className="w-full aspect-[4/3] bg-gradient-to-b from-[#E8F5E9] to-[#C8E6C9]" />
                   )
                 ) : (
-                  <div className="w-full aspect-[4/3] bg-gradient-to-b from-[#FFF3E0] to-[#FFE0B2] flex items-center justify-center">
-                    <span className="text-8xl">🤝</span>
+                  <div className="w-full aspect-[4/3] relative overflow-hidden bg-gradient-to-br from-[#F5EDE4] to-[#E8DDD3] flex items-center justify-center">
+                    <div className="relative w-full h-full flex items-center justify-center">
+                      <div className="w-[57%] h-[90%] rounded-2xl overflow-hidden border-4 border-white shadow-xl rotate-[-3deg] z-10 -mt-4">
+                        <img src={childType.image} alt={childType.label} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="w-[50%] h-[82%] rounded-2xl overflow-hidden border-4 border-white shadow-lg rotate-[5deg] -ml-[9%] z-0">
+                        <img src={parentType.image} alt={parentType.label} className="w-full h-full object-cover" />
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -567,6 +578,17 @@ function ReportContent() {
             {!isChildOnly && (
               <div className="bg-white dark:bg-surface-dark px-6 pt-6 pb-2 -mt-6 rounded-t-3xl relative z-10">
                 <div className="bg-white p-1 rounded-2xl flex gap-1 border border-beige-main/20 shadow-lg">
+                  <button
+                    onClick={() => {
+                      if (isStyleSurveyComplete) handleTabChange('parenting');
+                      else if (confirm('양육 태도 검사를 먼저 완료해야 확인할 수 있어요. 지금 시작할까요?')) {
+                        router.replace('/survey?type=STYLE');
+                      }
+                    }}
+                    className={`flex-1 py-3 rounded-xl text-[11px] font-bold transition-all ${activeTab === 'parenting' ? 'bg-primary text-white shadow-md' : 'text-text-sub hover:text-text-main hover:bg-beige-light/50'}`}
+                  >
+                    기질 맞춤 양육
+                  </button>
                   <button
                     onClick={() => handleTabChange('child')}
                     className={`flex-1 py-3 rounded-xl text-[11px] font-bold transition-all ${activeTab === 'child' ? 'bg-primary text-white shadow-md' : 'text-text-sub hover:text-text-main hover:bg-beige-light/50'}`}
@@ -583,17 +605,6 @@ function ReportContent() {
                     className={`flex-1 py-3 rounded-xl text-[11px] font-bold transition-all ${activeTab === 'parent' ? 'bg-primary text-white shadow-md' : 'text-text-sub hover:text-text-main hover:bg-beige-light/50'}`}
                   >
                     양육자 분석
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (isStyleSurveyComplete) handleTabChange('parenting');
-                      else if (confirm('양육 태도 검사를 먼저 완료해야 확인할 수 있어요. 지금 시작할까요?')) {
-                        router.replace('/survey?type=STYLE');
-                      }
-                    }}
-                    className={`flex-1 py-3 rounded-xl text-[11px] font-bold transition-all ${activeTab === 'parenting' ? 'bg-primary text-white shadow-md' : 'text-text-sub hover:text-text-main hover:bg-beige-light/50'}`}
-                  >
-                    기질 맞춤 양육
                   </button>
                 </div>
               </div>
