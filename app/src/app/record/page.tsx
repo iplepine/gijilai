@@ -127,7 +127,7 @@ export default function RecordPage() {
             <div className="w-full max-w-md bg-background-light dark:bg-background-dark min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
                 {/* Header */}
                 <header className="w-full max-w-md px-6 pt-12 pb-4 bg-white/50 dark:bg-surface-dark/50 backdrop-blur-md sticky top-0 z-20 border-b border-gray-100 dark:border-gray-800">
-                    <div className="relative flex items-center justify-center h-10 mb-6 w-full">
+                    <div className="relative flex items-center justify-center h-10 mb-4 w-full">
                         {/* Left Action: Back Button */}
                         <div className="absolute left-0">
                             <button
@@ -138,28 +138,41 @@ export default function RecordPage() {
                                 <Icon name="arrow_back" size="sm" />
                             </button>
                         </div>
-                        
+
                         {/* Center: Title */}
                         <h1 className="text-xl font-bold text-text-main dark:text-white flex items-center gap-1.5 font-display tracking-tight text-center">
                             나의 기록
                         </h1>
-
-                        {/* Right Action: Child Selector */}
-                        <div className="absolute right-0">
-                            {children.length > 1 && (
-                                <select
-                                    value={selectedChildId}
-                                    onChange={(e) => setSelectedChildId(e.target.value)}
-                                    className="bg-slate-100 dark:bg-black/20 text-[11px] font-bold px-3 py-1.5 rounded-lg border-none focus:ring-1 focus:ring-primary outline-none"
-                                >
-                                    <option value="ALL">전체 아이</option>
-                                    {children.map((child: any) => (
-                                        <option key={child.id} value={child.id}>{child.name}</option>
-                                    ))}
-                                </select>
-                            )}
-                        </div>
                     </div>
+
+                    {/* Child Filter Chips */}
+                    {children.length > 0 && (
+                        <div className="flex gap-2 mb-4 overflow-x-auto no-scrollbar">
+                            <button
+                                onClick={() => setSelectedChildId('ALL')}
+                                className={`px-4 py-2 rounded-full text-[12px] font-black whitespace-nowrap transition-all ${
+                                    selectedChildId === 'ALL'
+                                        ? 'bg-primary text-white shadow-md'
+                                        : 'bg-white dark:bg-surface-dark text-slate-400 border border-slate-100 dark:border-slate-800'
+                                }`}
+                            >
+                                전체
+                            </button>
+                            {children.map((child: any) => (
+                                <button
+                                    key={child.id}
+                                    onClick={() => setSelectedChildId(child.id)}
+                                    className={`px-4 py-2 rounded-full text-[12px] font-black whitespace-nowrap transition-all ${
+                                        selectedChildId === child.id
+                                            ? 'bg-primary text-white shadow-md'
+                                            : 'bg-white dark:bg-surface-dark text-slate-400 border border-slate-100 dark:border-slate-800'
+                                    }`}
+                                >
+                                    {child.name}
+                                </button>
+                            ))}
+                        </div>
+                    )}
 
                     <div className="flex p-1 bg-slate-100 dark:bg-black/20 rounded-2xl overflow-x-auto no-scrollbar">
                         <button
@@ -233,10 +246,16 @@ export default function RecordPage() {
                         /* Report List */
                         <div className="space-y-5">
                             {filteredReports.length > 0 ? (
-                                filteredReports.map(report => {
+                                filteredReports.map((report, idx) => {
                                     const analysis = report.analysis_json as any;
                                     const isHarmony = report.type === 'HARMONY';
                                     const isParent = report.type === 'PARENT';
+                                    // 같은 아이 + 같은 타입의 리포트 중 몇 회차인지 계산
+                                    const sameTypeReports = filteredReports
+                                        .filter(r => r.child_id === report.child_id && r.type === report.type)
+                                        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+                                    const roundNumber = sameTypeReports.findIndex(r => r.id === report.id) + 1;
+                                    const totalRounds = sameTypeReports.length;
 
                                     return (
                                         <div
@@ -258,6 +277,12 @@ export default function RecordPage() {
                                                     </div>
                                                     <div className="text-[11px] font-bold text-slate-400 mt-1 flex items-center gap-2">
                                                         {formatDate(report.created_at)}
+                                                        {totalRounds > 1 && (
+                                                            <span className="text-primary/60 font-black">
+                                                                <span className="w-0.5 h-0.5 rounded-full bg-slate-300 inline-block mr-1.5"></span>
+                                                                {roundNumber}회차
+                                                            </span>
+                                                        )}
                                                         {selectedChildId === 'ALL' && children.find(c => c.id === report.child_id) && (
                                                             <span className="flex items-center gap-1 text-primary/60">
                                                                 <span className="w-0.5 h-0.5 rounded-full bg-slate-300"></span>

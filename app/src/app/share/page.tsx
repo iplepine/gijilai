@@ -5,35 +5,81 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAppStore } from '@/store/useAppStore';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { db, ReportData, ChildProfile } from '@/lib/db';
 import { TemperamentScorer } from '@/lib/TemperamentScorer';
 import { TemperamentClassifier } from '@/lib/TemperamentClassifier';
 import { CHILD_QUESTIONS } from '@/data/questions';
 import { toPng } from 'html-to-image';
 import saveAs from 'file-saver';
+import { Suspense } from 'react';
 
-export default function SharePage() {
+function SharePageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { user } = useAuth();
   const { intake, cbqResponses, atqResponses } = useAppStore();
   const [copied, setCopied] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const [isSharing, setIsSharing] = useState(false);
+  const [isPdfGenerating, setIsPdfGenerating] = useState(false);
 
-  const referralCode = 'TEMPERAMENT-CHILD-' + (intake.childName ? intake.childName.toUpperCase() : 'FRIEND');
+  // DB-loaded data
+  const [report, setReport] = useState<ReportData | null>(null);
+  const [child, setChild] = useState<ChildProfile | null>(null);
+
+  const reportId = searchParams.get('id');
+
+  // Load report from DB if reportId is provided
+  useEffect(() => {
+    async function loadReport() {
+      if (!reportId || !user) return;
+      try {
+        const reports = await db.getReports(user.id);
+        const found = reports.find(r => r.id === reportId);
+        if (found) {
+          setReport(found);
+          if (found.child_id) {
+            const children = await db.getChildren(user.id);
+            const foundChild = children.find(c => c.id === found.child_id);
+            if (foundChild) setChild(foundChild);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load report:', e);
+      }
+    }
+    loadReport();
+  }, [reportId, user]);
+
+  // Derive child name and temperament from DB report or local store
+  const childName = child?.name || intake.childName || '우리 아이';
+
+  const referralCode = 'GIJILAI-' + (user?.id?.substring(0, 8) || 'FRIEND');
 
   // Initialize Kakao
   useEffect(() => {
     if (typeof window !== 'undefined' && window.Kakao) {
       if (!window.Kakao.isInitialized()) {
-        const key = process.env.NEXT_PUBLIC_KAKAO_JS_KEY || '86e2d8a4369a47468132e08e67f08c5c'; // Placeholder if not set
+        const key = process.env.NEXT_PUBLIC_KAKAO_JS_KEY || '86e2d8a4369a47468132e08e67f08c5c';
         window.Kakao.init(key);
       }
     }
   }, []);
 
-  // Calculate Temperament
+  // Calculate Temperament from DB report or local store
   const temperamentInfo = (() => {
+    // Try DB report first
+    if (report?.analysis_json) {
+      const analysis = report.analysis_json as any;
+      if (analysis.label && analysis.desc) {
+        return { label: analysis.label, desc: analysis.desc };
+      }
+    }
+
+    // Fallback to local store
     if (!cbqResponses || Object.keys(cbqResponses).length === 0) return null;
     const scores = TemperamentScorer.calculate(CHILD_QUESTIONS, cbqResponses as any);
 
@@ -60,7 +106,7 @@ export default function SharePage() {
     window.Kakao.Share.sendDefault({
       objectType: 'feed',
       content: {
-        title: `${intake.childName || '우리 아이'}는 "${temperamentInfo?.label || '열정 탐험가'}"예요!`,
+        title: `${childName}는 "${temperamentInfo?.label || '열정 탐험가'}"예요!`,
         description: '과학적인 기질 분석으로 우리 아이의 타고난 빛을 발견해보세요.',
         imageUrl: 'https://images.unsplash.com/photo-1516627145497-ae6968895b74?w=800&auto=format&fit=crop&q=80',
         link: {
@@ -70,7 +116,7 @@ export default function SharePage() {
       },
       buttons: [
         {
-          title: '결과 확인하기',
+          title: '나도 검사해보기',
           link: {
             mobileWebUrl: shareUrl,
             webUrl: shareUrl,
@@ -85,12 +131,63 @@ export default function SharePage() {
     setIsSharing(true);
     try {
       const dataUrl = await toPng(cardRef.current, { cacheBust: true });
-      saveAs(dataUrl, `temperament-${intake.childName || '아이'}.png`);
+      saveAs(dataUrl, `기질아이-${childName}.png`);
     } catch (err) {
       console.error('Image download failed:', err);
       alert('이미지 저장에 실패했습니다.');
     } finally {
       setIsSharing(false);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (cardRef.current === null) return;
+    setIsPdfGenerating(true);
+    try {
+      const dataUrl = await toPng(cardRef.current, { cacheBust: true, pixelRatio: 2 });
+
+      const { default: jsPDF } = await import('jspdf');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+
+      // Calculate image dimensions to fit A4 width with margins
+      const margin = 15;
+      const maxWidth = pageWidth - margin * 2;
+
+      const img = new Image();
+      img.src = dataUrl;
+      await new Promise((resolve) => { img.onload = resolve; });
+
+      const ratio = img.height / img.width;
+      const imgWidth = maxWidth;
+      const imgHeight = imgWidth * ratio;
+
+      pdf.addImage(dataUrl, 'PNG', margin, margin, imgWidth, imgHeight);
+      pdf.save(`기질아이-${childName}-리포트.pdf`);
+    } catch (err) {
+      console.error('PDF generation failed:', err);
+      alert('PDF 생성에 실패했습니다.');
+    } finally {
+      setIsPdfGenerating(false);
+    }
+  };
+
+  // Web Share API for native sharing
+  const handleNativeShare = async () => {
+    if (!navigator.share) {
+      handleCopyCode();
+      return;
+    }
+
+    try {
+      const shareUrl = window.location.origin + '?ref=' + referralCode;
+      await navigator.share({
+        title: `${childName}의 기질 분석 결과`,
+        text: `${childName}는 "${temperamentInfo?.label || '열정 탐험가'}" 기질이에요! 과학적 기질 분석으로 우리 아이를 이해해보세요.`,
+        url: shareUrl,
+      });
+    } catch (err) {
+      // User cancelled share - ignore
     }
   };
 
@@ -125,7 +222,7 @@ export default function SharePage() {
                   </span>
                 </div>
                 <h3 className="text-3xl font-bold mb-2 break-keep">
-                  {intake.childName || '우리 아이'}는<br />
+                  {childName}는<br />
                   <span className="text-primary-light">"{temperamentInfo?.label || '열정 탐험가'}"</span>예요!
                 </h3>
                 <p className="text-sm opacity-80 leading-relaxed font-medium break-keep">
@@ -159,27 +256,50 @@ export default function SharePage() {
             <span className="text-2xl">💬</span> 카카오톡으로 결과 보내기
           </Button>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <button
               onClick={handleCopyCode}
-              className={`h-16 rounded-2xl flex flex-col items-center justify-center gap-1 text-[13px] font-bold border transition-all active:scale-95 ${copied ? 'bg-green-50 text-green-600 border-green-200' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'}`}
+              className={`h-16 rounded-2xl flex flex-col items-center justify-center gap-1 text-[12px] font-bold border transition-all active:scale-95 ${copied ? 'bg-green-50 text-green-600 border-green-200' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'}`}
             >
               <Icon name={copied ? "check" : "link"} size="sm" />
-              {copied ? '링크 복사됨' : '링크 복사'}
+              {copied ? '복사됨' : '링크 복사'}
             </button>
             <button
               onClick={handleDownloadImage}
               disabled={isSharing}
-              className="h-16 rounded-2xl bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center gap-1 text-[13px] font-bold transition-all active:scale-95 disabled:opacity-50"
+              className="h-16 rounded-2xl bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center gap-1 text-[12px] font-bold transition-all active:scale-95 disabled:opacity-50"
             >
               {isSharing ? (
                 <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
               ) : (
-                <Icon name="download" size="sm" />
+                <Icon name="image" size="sm" />
               )}
-              {isSharing ? '저장 중...' : '이미지로 저장'}
+              {isSharing ? '저장 중' : '이미지'}
+            </button>
+            <button
+              onClick={handleDownloadPdf}
+              disabled={isPdfGenerating}
+              className="h-16 rounded-2xl bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center gap-1 text-[12px] font-bold transition-all active:scale-95 disabled:opacity-50"
+            >
+              {isPdfGenerating ? (
+                <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <Icon name="picture_as_pdf" size="sm" />
+              )}
+              {isPdfGenerating ? '생성 중' : 'PDF'}
             </button>
           </div>
+
+          {/* Native Share (mobile) */}
+          {'share' in navigator && (
+            <button
+              onClick={handleNativeShare}
+              className="w-full h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-2 text-[14px] font-bold transition-all active:scale-95"
+            >
+              <Icon name="share" size="sm" />
+              다른 앱으로 공유하기
+            </button>
+          )}
         </section>
 
         {/* Benefits Section */}
@@ -194,10 +314,18 @@ export default function SharePage() {
         </section>
       </div>
 
-      {/* Referral Code Footer */}
+      {/* Footer */}
       <div className="px-6 py-8 text-center text-[11px] text-slate-400 font-medium uppercase tracking-[0.2em]">
-        designed by temperament child
+        designed by gijilai
       </div>
     </div>
+  );
+}
+
+export default function SharePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div></div>}>
+      <SharePageContent />
+    </Suspense>
   );
 }

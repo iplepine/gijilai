@@ -55,9 +55,12 @@ export default function HomePage() {
   ]);
   const [loading, setLoading] = useState(true);
 
+  const [selectedChildIndex, setSelectedChildIndex] = useState(0);
+  const [cooldownStatus, setCooldownStatus] = useState<{ isAvailable: boolean; remainingDays?: number; remainingHours?: number }>({ isAvailable: true });
+
   // Derived Child Profile (DB first, then local intake store)
   const mainChild = useMemo(() => {
-    if (children[0]) return children[0];
+    if (children.length > 0) return children[selectedChildIndex] || children[0];
     if (intake.childName) {
       return {
         id: 'temporary-intake-id',
@@ -68,19 +71,30 @@ export default function HomePage() {
       } as any as ChildProfile;
     }
     return null;
-  }, [children, intake]);
+  }, [children, selectedChildIndex, intake]);
+
+  // Handle Child Selection
+  const handleChildSelect = (index: number) => {
+    setSelectedChildIndex(index);
+  };
 
   const childName = mainChild?.name || "우리 아이";
 
   // Derived Temperament (Parent = Soil, Child = Seed + Plant)
   const temperamentInfo = useMemo(() => {
-    // Check local store responses first for immediate feedback
-    const childAnswers = Object.keys(cbqResponses).length > 0
+    // 해당 아이의 리포트나 설문 데이터 찾기
+    const childSurvey = reports.find(r => r.child_id === mainChild?.id && r.type === 'CHILD');
+    
+    // Check local store responses first for immediate feedback (if it's the current session child)
+    const childAnswers = (mainChild?.id === 'temporary-intake-id' || (children.length > 0 && selectedChildIndex === 0)) && Object.keys(cbqResponses).length > 0
       ? cbqResponses
-      : (latestSurvey?.answers as Record<string, number>);
+      : (childSurvey?.analysis_json as any)?.scores || (latestSurvey?.answers as Record<string, number>);
 
     if (!childAnswers) return null;
-    const scores = TemperamentScorer.calculate(CHILD_QUESTIONS, childAnswers as any);
+    
+    const scores = typeof childAnswers === 'object' && 'NS' in childAnswers 
+      ? childAnswers 
+      : TemperamentScorer.calculate(CHILD_QUESTIONS, childAnswers as any);
 
     // Parent scores for soil context (defaults if not surveyed yet)
     let parentScores = { NS: 50, HA: 50, RD: 50, P: 50 };
@@ -92,14 +106,14 @@ export default function HomePage() {
       parentScores = TemperamentScorer.calculate(PARENT_QUESTIONS, parentAnswers as any);
     }
 
-    const childResult = TemperamentClassifier.analyze(scores, parentScores);
+    const childResult = TemperamentClassifier.analyze(scores as any, parentScores);
     const parentResult = ParentClassifier.analyze(parentScores);
 
     return {
       child: childResult,
       parent: parentResult
     };
-  }, [cbqResponses, atqResponses, latestSurvey, parentSurvey]);
+  }, [mainChild, children, selectedChildIndex, cbqResponses, atqResponses, latestSurvey, parentSurvey, reports]);
 
   useEffect(() => {
     async function fetchData() {
@@ -127,6 +141,24 @@ export default function HomePage() {
 
     fetchData();
   }, [user, authLoading]);
+
+  // Cooldown Check
+  useEffect(() => {
+    if (mainChild && reports.length > 0) {
+      const { checkCooldown } = require('@/lib/dateUtils');
+      // 해당 아이의 가장 최근 리포트 찾기
+      const childReports = reports.filter(r => r.child_id === mainChild.id && r.type === 'CHILD');
+      if (childReports.length > 0) {
+        const lastReport = childReports[0]; // DESC 정렬되어 있음
+        const status = checkCooldown(lastReport.created_at, lastReport.is_paid);
+        setCooldownStatus(status);
+      } else {
+        setCooldownStatus({ isAvailable: true });
+      }
+    } else {
+      setCooldownStatus({ isAvailable: true });
+    }
+  }, [mainChild, reports]);
 
   useEffect(() => {
     // Only show onboarding if no child is registered in DB AND no intake info in local store
@@ -226,11 +258,16 @@ export default function HomePage() {
   return (
     <div className="bg-background-light dark:bg-background-dark text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center justify-center font-body pb-0">
       <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl overflow-hidden relative">
-        <header className="relative flex items-center justify-center h-16 w-full px-6 pt-12 pb-4 bg-background-light dark:bg-background-dark sticky top-0 z-10 border-b border-primary/5 dark:border-white/5">
+        <header className="relative flex items-center justify-between h-16 w-full px-6 pt-12 pb-4 bg-background-light dark:bg-background-dark sticky top-0 z-20 border-b border-primary/5 dark:border-white/5">
           <div className="flex items-center gap-2">
             <img src="/gijilai_icon.png" alt="기질아이" className="w-8 h-8 rounded-lg object-contain" />
             <span className="text-xl font-logo tracking-wide text-primary dark:text-white pt-0.5">기질아이</span>
           </div>
+          {user && children.length > 0 && (
+            <Link href="/settings/child/new" className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary hover:bg-primary/20 transition-colors">
+              <span className="material-symbols-outlined text-[20px]">add</span>
+            </Link>
+          )}
         </header>
 
         <main className="flex-1 overflow-y-auto no-scrollbar pb-24">
@@ -239,6 +276,25 @@ export default function HomePage() {
             <div className="animate-in fade-in duration-700">
               {/* 상단 프로필 섹션 */}
               <div className="relative w-full flex flex-col items-center p-2 pt-8">
+                {/* 아이 선택 탭 (다중 아이인 경우) */}
+                {children.length > 1 && (
+                  <div className="flex gap-2 mb-8 px-6 overflow-x-auto no-scrollbar w-full justify-center">
+                    {children.map((child, idx) => (
+                      <button
+                        key={child.id}
+                        onClick={() => handleChildSelect(idx)}
+                        className={`px-4 py-2 rounded-2xl text-xs font-black transition-all whitespace-nowrap ${
+                          selectedChildIndex === idx
+                            ? 'bg-primary text-white shadow-md'
+                            : 'bg-white dark:bg-surface-dark text-slate-400 border border-slate-100 dark:border-slate-800'
+                        }`}
+                      >
+                        {child.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 <div className="flex flex-col items-center justify-center w-full mb-4">
                   <div
                     className="relative w-32 h-32 mb-4 cursor-pointer group"
@@ -293,26 +349,60 @@ export default function HomePage() {
 
               {/* 기능 카드 리스트 */}
               <div className="px-6 flex flex-col gap-5 mt-8">
-                {!temperamentInfo?.child ? (
-                  <div className="bg-primary dark:bg-surface-dark rounded-2xl p-6 shadow-card relative overflow-hidden mb-2">
-                    <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
-                    <div className="relative z-10">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex flex-col gap-1">
-                          <span className="text-white/80 text-xs font-medium bg-white/10 px-2 py-1 rounded inline-block w-fit">필수 진행 단계</span>
-                          <h3 className="text-xl font-bold text-white leading-snug tracking-tight">우리아이 기질 검사</h3>
-                        </div>
+                {/* 기질 검사 / 재검사 버튼 */}
+                <div className={`${cooldownStatus.isAvailable ? 'bg-primary' : 'bg-slate-200 dark:bg-surface-dark'} rounded-2xl p-6 shadow-card relative overflow-hidden mb-2 transition-colors`}>
+                  <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+                  <div className="relative z-10">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex flex-col gap-1">
+                        <span className={`text-white/80 text-[10px] font-bold ${cooldownStatus.isAvailable ? 'bg-white/10' : 'bg-black/10'} px-2 py-1 rounded inline-block w-fit uppercase tracking-wider`}>
+                          {temperamentInfo?.child ? 'Temperament Audit' : 'Initial Audit'}
+                        </span>
+                        <h3 className="text-xl font-bold text-white leading-snug tracking-tight">
+                          {temperamentInfo?.child ? '우리아이 기질 재검사' : '우리아이 기질 검사'}
+                        </h3>
                       </div>
-                      <p className="text-sm text-white/90 mb-6">기질아이의 과학적인 기질 검사를 시작해보세요.</p>
-                      <Link href="/survey/intro">
-                        <button className="w-full py-4 rounded-xl bg-white text-primary font-bold text-sm shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-                          <span>검사 시작하기</span>
-                          <span className="material-symbols-outlined text-[18px]">play_arrow</span>
-                        </button>
-                      </Link>
+                      {!cooldownStatus.isAvailable && (
+                        <div className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-[14px] text-white">timer</span>
+                          <span className="text-[11px] font-bold text-white">
+                            {cooldownStatus.remainingDays ? `${cooldownStatus.remainingDays}일 후` : `${cooldownStatus.remainingHours}시간 후`}
+                          </span>
+                        </div>
+                      )}
                     </div>
+                    <p className="text-sm text-white/90 mb-6 break-keep leading-relaxed">
+                      {temperamentInfo?.child 
+                        ? (cooldownStatus.isAvailable 
+                            ? '아이의 기질은 성장하며 조금씩 변합니다. 지금의 모습을 다시 체크해보세요.'
+                            : '아이의 변화를 관찰할 시간이 필요해요. 다음 검사 가능 시까지 기다려주세요.')
+                        : '기질아이의 과학적인 기질 검사를 시작해보세요.'
+                      }
+                    </p>
+                    
+                    {cooldownStatus.isAvailable ? (
+                      <button
+                        onClick={() => {
+                          resetSurveyOnly();
+                          useSurveyStore.getState().resetSurvey();
+                          router.replace('/survey/intro');
+                        }}
+                        className="w-full py-4 rounded-xl bg-white text-primary font-bold text-sm shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                      >
+                        <span>{temperamentInfo?.child ? '재검사 시작하기' : '검사 시작하기'}</span>
+                        <span className="material-symbols-outlined text-[18px]">play_arrow</span>
+                      </button>
+                    ) : (
+                      <div className="w-full py-4 rounded-xl bg-white/20 text-white/60 font-bold text-sm flex items-center justify-center gap-2 border border-white/10">
+                        <span className="material-symbols-outlined text-[18px]">lock</span>
+                        <span>{cooldownStatus.remainingDays ? '무료 재검사 대기 중' : '하루 1회 제한 중'}</span>
+                      </div>
+                    )}
                   </div>
-                ) : (!parentSurvey && Object.keys(atqResponses).length < PARENT_QUESTIONS.length) ? (
+                </div>
+
+                {/* 나머지 카드들 */}
+                {(!parentSurvey && Object.keys(atqResponses).length < PARENT_QUESTIONS.length) && temperamentInfo?.child && (
                   <div className="bg-secondary dark:bg-surface-dark rounded-2xl p-6 shadow-card relative overflow-hidden mb-2">
                     <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
                     <div className="relative z-10">
@@ -331,7 +421,9 @@ export default function HomePage() {
                       </Link>
                     </div>
                   </div>
-                ) : (
+                )}
+
+                {temperamentInfo?.child && (
                   <>
                     <div className="bg-white dark:bg-surface-dark/50 rounded-2xl p-6 shadow-soft border border-primary/10 dark:border-primary/50 relative overflow-hidden">
                       <div className="absolute top-0 right-0 w-32 h-32 bg-secondary/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
@@ -552,7 +644,7 @@ export default function HomePage() {
           )}
 
           {/* Debug Reset Button */}
-          {user && (
+          {user && process.env.NODE_ENV === 'development' && (
             <div className="flex justify-center mt-12 mb-8 opacity-20 hover:opacity-100 transition-opacity">
               <button
                 onClick={async () => {

@@ -6,6 +6,8 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
 import { useAppStore } from '@/store/useAppStore';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { db } from '@/lib/db';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import CheckoutForm from '@/components/payment/CheckoutForm';
@@ -24,10 +26,53 @@ const LOADING_MESSAGES = [
 
 export default function PaymentPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const { intake, setIsPaid } = useAppStore();
   const [status, setStatus] = useState<LoadingStatus>('idle');
   const [loadingIndex, setLoadingIndex] = useState(0);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [isApp, setIsApp] = useState(false);
+  const [selectedMethod, setSelectedMethod] = useState<'card' | 'naver' | 'kakao' | 'toss' | 'iap' | null>(null);
+  const [availableCoupon, setAvailableCoupon] = useState<any>(null);
+  const [useCoupon, setUseCoupon] = useState(false);
+
+  useEffect(() => {
+    // Detect if running inside Flutter WebView
+    const ua = navigator.userAgent.toLowerCase();
+    const isFlutter = ua.includes('gijilai_app') || !!(window as any).PaymentBridge;
+    setIsApp(isFlutter);
+    if (isFlutter) setSelectedMethod('iap');
+    else setSelectedMethod('card');
+
+    // Register callback for Flutter
+    (window as any).onPaymentComplete = (data: any) => {
+      if (data.status === 'success') {
+        handlePaymentSuccess();
+      }
+    };
+
+    // Load available coupons
+    if (user) {
+      db.getAvailableCoupons(user.id)
+        .then(coupons => {
+          if (coupons.length > 0) {
+            setAvailableCoupon(coupons[0]);
+          }
+        })
+        .catch(() => { /* Table may not exist yet */ });
+    }
+
+    // Load Portone SDK
+    const script = document.createElement('script');
+    script.src = 'https://cdn.iamport.kr/v1/iamport.js';
+    script.async = true;
+    document.body.appendChild(script);
+
+    return () => {
+      delete (window as any).onPaymentComplete;
+      document.body.removeChild(script);
+    };
+  }, []);
 
   // Simulate loading messages
   useEffect(() => {
@@ -50,26 +95,95 @@ export default function PaymentPage() {
     }
   }, [status, router]);
 
-  const handlePaymentStart = async () => {
-    try {
-      // 990원 결제 Intent 생성
-      const response = await fetch('/api/payment/create-intent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: 990 }),
-      });
+  const finalAmount = useCoupon && availableCoupon ? Math.max(0, 990 - availableCoupon.discount_amount) : 990;
 
-      const data = await response.json();
-      if (data.clientSecret) {
-        setClientSecret(data.clientSecret);
-        setStatus('paying');
-      } else {
-        throw new Error(data.error || 'Failed to create payment intent');
+  const handlePaymentStart = async () => {
+    // If coupon covers full amount, skip payment
+    if (useCoupon && availableCoupon && finalAmount === 0) {
+      try {
+        await db.useCoupon(availableCoupon.id);
+        setAvailableCoupon(null);
+      } catch (e) {
+        console.warn('Coupon use failed:', e);
       }
-    } catch (error) {
-      console.error('Payment initialization error:', error);
-      alert('결제 준비 중 오류가 발생했습니다. 다시 시도해주세요.');
+      handlePaymentSuccess();
+      return;
     }
+
+    if (isApp) {
+      handleIAPRequest();
+      return;
+    }
+
+    if (selectedMethod === 'card') {
+      try {
+        // 990원 결제 Intent 생성
+        const response = await fetch('/api/payment/create-intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount: 990 }),
+        });
+
+        const data = await response.json();
+        if (data.clientSecret) {
+          setClientSecret(data.clientSecret);
+          setStatus('paying');
+        } else {
+          throw new Error(data.error || 'Failed to create payment intent');
+        }
+      } catch (error) {
+        console.error('Payment initialization error:', error);
+        alert('결제 준비 중 오류가 발생했습니다. 다시 시도해주세요.');
+      }
+    } else {
+      handleDomesticPaymentRequest();
+    }
+  };
+
+  const handleIAPRequest = () => {
+    if ((window as any).PaymentBridge) {
+      (window as any).PaymentBridge.postMessage(JSON.stringify({
+        type: 'PAYMENT_REQUEST',
+        provider: 'APPLE_GOOGLE',
+        amount: 990,
+        productName: '기질아이 리포트 분석'
+      }));
+    } else {
+      alert('앱 결제 브릿지를 찾을 수 없습니다.');
+    }
+  };
+
+  const handleDomesticPaymentRequest = () => {
+    const { IMP } = window as any;
+    if (!IMP) {
+      alert('결제 모듈을 불러오는 중입니다. 잠시 후 다시 시도해 주세요.');
+      return;
+    }
+
+    IMP.init('imp00000000'); // TODO: 포트원 관리자 콘솔에서 발급받은 가맹점 식별코드
+
+    const pgMap = {
+      naver: 'naverpay',
+      kakao: 'kakaopay',
+      toss: 'tosspay'
+    };
+
+    IMP.request_pay({
+      pg: pgMap[selectedMethod as keyof typeof pgMap],
+      pay_method: 'card',
+      merchant_uid: `mid_${new Date().getTime()}`,
+      name: '기질아이 리포트 분석',
+      amount: 990,
+      buyer_email: '',
+      buyer_name: intake.childName || '아이',
+      m_redirect_url: `${window.location.origin}/payment/success`
+    }, (rsp: any) => {
+      if (rsp.success) {
+        handlePaymentSuccess();
+      } else {
+        alert(`결제에 실패하였습니다. 에러 내용: ${rsp.error_msg}`);
+      }
+    });
   };
 
   const handlePaymentSuccess = () => {
@@ -187,13 +301,6 @@ export default function PaymentPage() {
                           </div>
                         </div>
                       </div>
-
-                      <div className="pt-4 border-t border-beige-main/20 dark:border-surface-dark/50">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-bold text-text-main dark:text-white italic">"오늘의 마음 처방 포함"</span>
-                          <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-1 rounded-md">Tier 2 Entry</span>
-                        </div>
-                      </div>
                     </div>
                   </section>
 
@@ -219,7 +326,76 @@ export default function PaymentPage() {
                       </div>
                     </div>
 
-                    <p className="text-[11px] text-text-sub text-center flex items-center justify-center gap-1.5 px-4 break-keep">
+                    {/* Coupon */}
+                    {availableCoupon && (
+                      <div
+                        onClick={() => setUseCoupon(!useCoupon)}
+                        className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer ${
+                          useCoupon
+                            ? 'border-primary bg-primary/5'
+                            : 'border-dashed border-gray-200 bg-white dark:bg-surface-dark'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
+                            useCoupon ? 'bg-primary border-primary text-white' : 'border-gray-300'
+                          }`}>
+                            {useCoupon && <Icon name="check" size="sm" className="text-[14px]" />}
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-text-main dark:text-white">할인 쿠폰 적용</p>
+                            <p className="text-[11px] text-text-sub">추천 보상 {availableCoupon.discount_amount}원 할인</p>
+                          </div>
+                        </div>
+                        <span className="text-primary font-black text-lg">-{availableCoupon.discount_amount}원</span>
+                      </div>
+                    )}
+
+                    {/* Payment Method Selector */}
+                    <div className="space-y-3">
+                      <p className="text-xs font-bold text-text-sub ml-1">결제 수단 선택 {isApp && '(In-App Purchase)'}</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {isApp ? (
+                          <button
+                            onClick={() => setSelectedMethod('iap')}
+                            className={`col-span-2 flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${selectedMethod === 'iap' ? 'border-primary bg-primary/5' : 'border-gray-100 bg-white'}`}
+                          >
+                            <Icon name="phone_iphone" size="sm" className={selectedMethod === 'iap' ? 'text-primary' : 'text-gray-400'} />
+                            <span className={`text-sm font-bold ${selectedMethod === 'iap' ? 'text-primary' : 'text-gray-600'}`}>애플/구글 스토어 결제</span>
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => setSelectedMethod('card')}
+                              className={`flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${selectedMethod === 'card' ? 'border-primary bg-primary/5' : 'border-gray-100 bg-white'}`}
+                            >
+                              <Icon name="credit_card" size="sm" className={selectedMethod === 'card' ? 'text-primary' : 'text-gray-400'} />
+                              <span className={`text-sm font-bold ${selectedMethod === 'card' ? 'text-primary' : 'text-gray-600'}`}>신용카드</span>
+                            </button>
+                            <button
+                              onClick={() => setSelectedMethod('naver')}
+                              className={`flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${selectedMethod === 'naver' ? 'border-[#03C75A] bg-[#03C75A]/5' : 'border-gray-100 bg-white'}`}
+                            >
+                              <span className={`text-sm font-bold ${selectedMethod === 'naver' ? 'text-[#03C75A]' : 'text-gray-600'}`}>네이버페이</span>
+                            </button>
+                            <button
+                              onClick={() => setSelectedMethod('kakao')}
+                              className={`flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${selectedMethod === 'kakao' ? 'border-[#FEE500] bg-[#FEE500]/5' : 'border-gray-100 bg-white'}`}
+                            >
+                              <span className={`text-sm font-bold ${selectedMethod === 'kakao' ? 'text-slate-700' : 'text-gray-600'}`}>카카오페이</span>
+                            </button>
+                            <button
+                              onClick={() => setSelectedMethod('toss')}
+                              className={`flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${selectedMethod === 'toss' ? 'border-[#0064FF] bg-[#0064FF]/5' : 'border-gray-100 bg-white'}`}
+                            >
+                              <span className={`text-sm font-bold ${selectedMethod === 'toss' ? 'text-[#0064FF]' : 'text-gray-600'}`}>토스페이</span>
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <p className="text-[11px] text-text-sub text-center flex items-center justify-center gap-1.5 px-4 break-keep pt-4">
                       <Icon name="verified" size="sm" className="text-primary/40" />
                       결제 즉시 분석 리포트와 마음 처방전이 생성됩니다. 분석된 데이터는 전문가가 검증한 로직을 따릅니다.
                     </p>
@@ -232,7 +408,12 @@ export default function PaymentPage() {
             {status === 'idle' && (
               <div className="absolute bottom-0 left-0 right-0 p-6 bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl border-t border-beige-main/20 z-30">
                 <Button variant="primary" size="lg" fullWidth onClick={handlePaymentStart} className="h-16 rounded-2xl text-lg font-bold shadow-glow">
-                  990원 결제하고 처방전 받기
+                  {finalAmount === 0
+                    ? '쿠폰으로 무료 이용하기'
+                    : isApp
+                      ? '결제하고 처방전 받기'
+                      : `${finalAmount.toLocaleString()}원 결제하고 처방전 받기`
+                  }
                 </Button>
               </div>
             )}

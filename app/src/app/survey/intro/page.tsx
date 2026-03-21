@@ -3,6 +3,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppStore } from '@/store/useAppStore';
+import { useSurveyStore } from '@/store/surveyStore';
 import { Navbar } from '@/components/layout/Navbar';
 
 export default function IntroPage() {
@@ -11,11 +12,13 @@ export default function IntroPage() {
 
     const startSurvey = () => {
         resetAll();
+        useSurveyStore.getState().resetSurvey();
         router.replace('/survey');
     };
 
     const startWithRandomData = () => {
         resetAll();
+        useSurveyStore.getState().resetSurvey();
 
         // 아이 기질 (1-20)
         for (let i = 1; i <= 20; i++) {

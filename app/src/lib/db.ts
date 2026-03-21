@@ -105,6 +105,17 @@ export const db = {
         return data as ReportData[];
     },
 
+    updateReportPaymentStatus: async (reportId: string, isPaid: boolean) => {
+        const { data, error } = await supabase
+            .from('reports')
+            .update({ is_paid: isPaid })
+            .eq('id', reportId)
+            .select()
+            .single();
+        if (error) throw error;
+        return data as ReportData;
+    },
+
     // --- Actions ---
     getActionItems: async (userId: string) => {
         const { data, error } = await supabase
@@ -209,6 +220,97 @@ export const db = {
 
         const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
         return data.publicUrl;
+    },
+
+    // --- Referrals ---
+    getReferralCode: async (userId: string): Promise<string> => {
+        // Check if user already has a referral code
+        const { data: existing } = await supabase
+            .from('referrals')
+            .select('code')
+            .eq('referrer_id', userId)
+            .limit(1)
+            .single();
+
+        if (existing?.code) return existing.code;
+
+        // Generate new code: GIJILAI-<8chars>
+        const code = 'GIJILAI-' + userId.substring(0, 8).toUpperCase();
+        const { error } = await supabase
+            .from('referrals')
+            .insert({ referrer_id: userId, code });
+
+        if (error && error.code !== '23505') throw error; // Ignore duplicate
+        return code;
+    },
+
+    applyReferralCode: async (referredUserId: string, code: string) => {
+        // Find referral by code
+        const { data: referral, error: findError } = await supabase
+            .from('referrals')
+            .select('*')
+            .eq('code', code)
+            .eq('status', 'PENDING')
+            .is('referred_id', null)
+            .single();
+
+        if (findError || !referral) return null;
+
+        // Don't allow self-referral
+        if (referral.referrer_id === referredUserId) return null;
+
+        // Mark referral as completed
+        await supabase
+            .from('referrals')
+            .update({ referred_id: referredUserId, status: 'COMPLETED' })
+            .eq('id', referral.id);
+
+        // Issue coupons to both users (990 won discount, expires in 30 days)
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 30);
+        const expiresAtStr = expiresAt.toISOString();
+
+        await supabase.from('coupons').insert([
+            {
+                user_id: referral.referrer_id,
+                referral_id: referral.id,
+                discount_amount: 990,
+                expires_at: expiresAtStr,
+            },
+            {
+                user_id: referredUserId,
+                referral_id: referral.id,
+                discount_amount: 990,
+                expires_at: expiresAtStr,
+            },
+        ]);
+
+        return referral;
+    },
+
+    getAvailableCoupons: async (userId: string) => {
+        const { data, error } = await supabase
+            .from('coupons')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('is_used', false)
+            .gte('expires_at', new Date().toISOString())
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        return data || [];
+    },
+
+    useCoupon: async (couponId: string) => {
+        const { data, error } = await supabase
+            .from('coupons')
+            .update({ is_used: true, used_at: new Date().toISOString() })
+            .eq('id', couponId)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
     },
 
     resetUserData: async (userId: string) => {

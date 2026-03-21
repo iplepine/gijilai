@@ -112,6 +112,7 @@ export interface Database {
                     content: string | null
                     analysis_json: Json | null
                     model_used: string | null
+                    is_paid: boolean
                     created_at: string
                 }
                 Insert: {
@@ -123,6 +124,7 @@ export interface Database {
                     content?: string | null
                     analysis_json?: Json | null
                     model_used?: string | null
+                    is_paid?: boolean
                     created_at?: string
                 }
                 Update: {
@@ -134,6 +136,7 @@ export interface Database {
                     content?: string | null
                     analysis_json?: Json | null
                     model_used?: string | null
+                    is_paid?: boolean
                     created_at?: string
                 }
             }
@@ -210,6 +213,64 @@ export interface Database {
                     selected_reaction_id?: string | null
                     ai_prescription?: Json | null
                     status?: 'DRAFT' | 'AWAITING_REACTION' | 'COMPLETED'
+                    created_at?: string
+                }
+            }
+            referrals: {
+                Row: {
+                    id: string
+                    referrer_id: string
+                    referred_id: string | null
+                    code: string
+                    status: 'PENDING' | 'COMPLETED'
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    referrer_id: string
+                    referred_id?: string | null
+                    code: string
+                    status?: 'PENDING' | 'COMPLETED'
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    referrer_id?: string
+                    referred_id?: string | null
+                    code?: string
+                    status?: 'PENDING' | 'COMPLETED'
+                    created_at?: string
+                }
+            }
+            coupons: {
+                Row: {
+                    id: string
+                    user_id: string
+                    referral_id: string | null
+                    discount_amount: number
+                    is_used: boolean
+                    used_at: string | null
+                    expires_at: string
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    user_id: string
+                    referral_id?: string | null
+                    discount_amount?: number
+                    is_used?: boolean
+                    used_at?: string | null
+                    expires_at: string
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    user_id?: string
+                    referral_id?: string | null
+                    discount_amount?: number
+                    is_used?: boolean
+                    used_at?: string | null
+                    expires_at?: string
                     created_at?: string
                 }
             }
