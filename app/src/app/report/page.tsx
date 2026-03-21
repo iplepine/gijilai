@@ -500,14 +500,14 @@ function ReportContent() {
 
   const analysisResult = useMemo(() => {
     let type = 'NORMAL';
-    let message = '서로 다른 기질이지만, 부모님의 노력으로 균형을 맞춰가고 있습니다.';
+    let message = '서로 다른 기질이지만, 양육자의 노력으로 균형을 맞춰가고 있습니다.';
     const isHighGHI = ghiScore >= 40;
     const isConflictPattern = childScores.NS >= 70 && parentScores.HA >= 70;
 
     if (isHighGHI || isConflictPattern) {
       if (styleScores.Autonomy >= 70) {
         type = 'MITIGATED';
-        message = '기질적인 차이가 크지만, 부모님의 높은 [자율성 지지] 덕분을 통해 아이가 이를 건강하게 극복하고 있습니다.';
+        message = '기질적인 차이가 크지만, 양육자의 높은 [자율성 지지] 덕분을 통해 아이가 이를 건강하게 극복하고 있습니다.';
       } else if (styleScores.Responsiveness <= 50) {
         type = 'CRISIS';
         message = '현재 기질적 갈등이 심화되고 있습니다. 아이의 마음을 먼저 읽어주는 [정서적 반응성]을 높이는 노력이 필요합니다.';
@@ -576,7 +576,7 @@ function ReportContent() {
                 <button
                   onClick={() => {
                     if (isParentSurveyComplete) handleTabChange('parent');
-                    else if (confirm('부모 기질 검사를 먼저 완료해야 확인할 수 있어요. 지금 시작할까요?')) {
+                    else if (confirm('양육자 기질 검사를 먼저 완료해야 확인할 수 있어요. 지금 시작할까요?')) {
                       router.replace('/survey?type=PARENT');
                     }
                   }}
@@ -892,7 +892,7 @@ function ReportContent() {
                     양육자 <span className="text-primary">나</span>의<br />중심을 잡는 마음 기질
                   </h2>
                   <p className="text-slate-500 text-[13px] font-medium leading-relaxed break-keep">
-                    당신은 누군가의 부모이기 이전에,<br />그 자체로 고유한 결을 가진 소중한 사람입니다.
+                    당신은 누군가의 양육자이기 이전에,<br />그 자체로 고유한 결을 가진 소중한 사람입니다.
                   </p>
                 </header>
 
@@ -932,12 +932,12 @@ function ReportContent() {
                   </section>
                 </div>
 
-                {/* 부모 AI 심층 분석 리포트 (JSON 기반) */}
+                {/* 양육자 AI 심층 분석 리포트 (JSON 기반) */}
                 <section className="space-y-6">
                   <div className="flex items-center justify-between px-2">
                     <h3 className="font-black text-slate-800 dark:text-white text-xl flex items-center gap-2">
                       <span className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600">👤</span>
-                      부모 기질 심층 분석
+                      양육자 기질 심층 분석
                     </h3>
                   </div>
 
@@ -957,7 +957,7 @@ function ReportContent() {
 
                         {/* 심층 분석 섹션 - 결제 시에만 공개 (블러 처리) */}
                         <div className={`space-y-8 transition-all duration-1000 ${!isPaid ? 'blur-xl grayscale opacity-40 pointer-events-none select-none' : ''}`}>
-                          {/* 부모 기질 섹션들 */}
+                          {/* 양육자 기질 섹션들 */}
                           <div className="space-y-6">
                             {parentAiReport.sections?.map((section: any) => (
                               <div key={section.id} className="bg-white dark:bg-slate-800 rounded-[2.5rem] p-8 shadow-lg border border-slate-100 dark:border-slate-700">
@@ -1013,13 +1013,13 @@ function ReportContent() {
                             <div className="space-y-2">
                               <h4 className="text-2xl font-black text-slate-800 dark:text-white break-keep">나를 위한 쉼표가 필요하신가요?</h4>
                               <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed break-keep px-4">
-                                부모로서의 나를 깊이 이해하고<br />
+                                양육자로서의 나를 깊이 이해하고<br />
                                 지치지 않는 양육 에너지를 채워주는 전문 리포트입니다.
                               </p>
                             </div>
                             <div className="pt-4 space-y-4">
                               <Button onClick={() => router.replace('/payment')} variant="primary" fullWidth className="h-16 rounded-2xl font-black text-lg bg-indigo-600 shadow-xl shadow-indigo-200 hover:bg-indigo-700">
-                                990원에 부모 정밀 분석 열기
+                                990원에 양육자 정밀 분석 열기
                               </Button>
                               <p className="text-[10px] text-slate-400 font-medium">나를 먼저 돌보는 인지가 조화로운 육아의 시작입니다</p>
                             </div>
@@ -1046,7 +1046,7 @@ function ReportContent() {
                         className="h-14 rounded-2xl bg-indigo-600 hover:bg-indigo-700"
                         disabled={isGenerating}
                       >
-                        {isGenerating ? '분석 중...' : '부모 전문 리포트 생성하기'}
+                        {isGenerating ? '분석 중...' : '양육자 전문 리포트 생성하기'}
                       </Button>
                     </div>
                   )}
@@ -1183,7 +1183,7 @@ function ReportContent() {
                             <div className="space-y-2">
                               <h4 className="text-2xl font-black text-slate-800 dark:text-white break-keep">두 기질의 완벽한 조화를 찾고 싶나요?</h4>
                               <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed break-keep px-4">
-                                아이와 부모의 기질이 만났을 때 생기는<br />
+                                아이와 양육자의 기질이 만났을 때 생기는<br />
                                 특유의 역동성과 관계 해법을 분석해 드립니다.
                               </p>
                             </div>
@@ -1205,7 +1205,7 @@ function ReportContent() {
                       <div className="space-y-2">
                         <h4 className="font-bold text-slate-800 dark:text-white">두 사람을 위한 기질 맞춤 리포트</h4>
                         <p className="text-sm text-slate-500 leading-relaxed break-keep">
-                          아이와 부모의 기질이 만났을 때 생기는<br />
+                          아이와 양육자의 기질이 만났을 때 생기는<br />
                           특유의 역동성과 솔루션을 1인칭으로 분석합니다.
                         </p>
                       </div>
@@ -1279,7 +1279,7 @@ function ReportContent() {
             <div className="m-3 bg-white rounded-[2rem] shadow-2xl border border-slate-100 overflow-hidden">
               <div className="bg-gradient-to-r from-primary/10 to-slate-50 px-5 py-3 border-b border-slate-100">
                 <p className="text-[11px] font-bold text-primary text-center">
-                  🔬 부모님 기질까지 추가하면 더 정밀해져요
+                  🔬 양육자 기질까지 추가하면 더 정밀해져요
                 </p>
               </div>
               <div className="px-5 py-4">
@@ -1291,7 +1291,7 @@ function ReportContent() {
                   className="w-full py-4 rounded-2xl font-black text-white text-base flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
                   style={{ backgroundColor: 'var(--primary)' }}
                 >
-                  <span>부모님 기질 검사 이어하기</span>
+                  <span>양육자 기질 검사 이어하기</span>
                   <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
                 </button>
               </div>

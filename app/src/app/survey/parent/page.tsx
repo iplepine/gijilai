@@ -72,7 +72,7 @@ export default function ParentSurveyPage() {
                     </h2>
                     <p className="text-gray-600 mb-8 leading-relaxed">
                         수고하셨습니다.<br />
-                        이제 <strong>부모님 본인의 기질</strong>을 알아볼 차례입니다.<br />
+                        이제 <strong>양육자 본인의 기질</strong>을 알아볼 차례입니다.<br />
                         <span className="text-sm text-gray-500 mt-2 block">(총 20문항)</span>
                     </p>
                     <button
@@ -90,7 +90,7 @@ export default function ParentSurveyPage() {
 
     return (
         <SurveyLayout
-            title="부모 기질 검사"
+            title="양육자 기질 검사"
             progress={progress}
             themeColor="#4A90E2"
             onBack={handleBack}
@@ -98,7 +98,7 @@ export default function ParentSurveyPage() {
             <div className="w-full max-w-md py-6">
                 <div className="mb-4 text-center">
                     <span className="inline-block px-3 py-1 text-sm font-bold mb-2 rounded-full" style={{ backgroundColor: '#4A90E233', color: '#2C5E9E' }}>
-                        Part 2. 나(부모) 편
+                        Part 2. 나(양육자) 편
                     </span>
                 </div>
                 <QuestionCard

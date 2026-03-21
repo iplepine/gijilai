@@ -68,7 +68,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({ question, currentAns
                             ? "다음 상황에서 아이는 어떻게 행동하나요?"
                             : question.type === 'PARENT'
                                 ? "다음 상황에서 나는 어떻게 행동하나요?"
-                                : "다음 상황에서 부모로서 어떻게 대처하나요?"
+                                : "다음 상황에서 양육자로서 어떻게 대처하나요?"
                         }
                     </p>
                 )}

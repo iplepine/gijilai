@@ -46,7 +46,10 @@ function SurveyContent() {
           responses: cbqResponses,
           setResponse: setCbqResponse,
           title: '아이 기질',
-          color: 'var(--primary)',
+          accent: '#E5A150',        // Warm Amber
+          accentBg: '#FFF8F0',      // Warm tinted background
+          accentLight: '#E5A15020',  // Badge bg
+          accentText: '#B07A28',    // Badge text
           nextModule: 'parent' as SurveyModule
         };
       case 'parent':
@@ -54,8 +57,11 @@ function SurveyContent() {
           questions: PARENT_QUESTIONS,
           responses: atqResponses,
           setResponse: setAtqResponse,
-          title: '부모 기질',
-          color: '#FFB5A7', // Soft Coral/Earth tone
+          title: '양육자 기질',
+          accent: '#2F4F3E',        // Forest Green (primary)
+          accentBg: '#F5F9F7',      // Cool green tinted background
+          accentLight: '#2F4F3E18',  // Badge bg
+          accentText: '#2F4F3E',    // Badge text
           nextModule: 'parenting' as SurveyModule
         };
       case 'parenting':
@@ -64,13 +70,16 @@ function SurveyContent() {
           responses: parentingResponses,
           setResponse: setParentingResponse,
           title: '양육 태도',
-          color: '#A8D5BA', // Soft Green
+          accent: '#7B8CDE',        // Soft Lavender-Blue
+          accentBg: '#F5F5FC',      // Lavender tinted background
+          accentLight: '#7B8CDE20',  // Badge bg
+          accentText: '#5563B0',    // Badge text
           nextModule: null
         };
     }
   }, [currentModule, cbqResponses, atqResponses, parentingResponses, setCbqResponse, setAtqResponse, setParentingResponse]);
 
-  const { questions, responses, setResponse, title, color } = getModuleData();
+  const { questions, responses, setResponse, title, accent, accentBg, accentLight, accentText } = getModuleData();
   const currentQuestion = questions[currentIndex];
   const currentAnswer = responses[String(currentQuestion?.id)];
 
@@ -188,7 +197,7 @@ function SurveyContent() {
           <p className="text-text-sub dark:text-slate-400 leading-relaxed break-keep">
             {currentModule === 'child'
               ? <>{intake.childName || '아이'}의 소중한 답변을 바탕으로<br />딱 맞는 <strong>맞춤형 기질 리포트</strong>를 작성하고 있습니다.</>
-              : <>아이와 부모님의 기질이 만나는<br /><strong>아름다운 하모니</strong>를 분석 리포트에 담아내고 있습니다.</>
+              : <>아이와 양육자의 기질이 만나는<br /><strong>아름다운 하모니</strong>를 분석 리포트에 담아내고 있습니다.</>
             }
           </p>
         </div>
@@ -206,23 +215,23 @@ function SurveyContent() {
   );
 
   return (
-    <div className="bg-background-light dark:bg-background-dark text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center font-body">
-      <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
+    <div className="text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center font-body transition-colors duration-500" style={{ backgroundColor: accentBg }}>
+      <div className="w-full max-w-md h-full min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative" style={{ backgroundColor: accentBg }}>
         <Navbar title={title} showBack onBackClick={handlePrev} />
 
         {/* Progress Bar & Module Tabs */}
-        <div className="bg-white dark:bg-surface-dark border-b border-beige-main/20 sticky top-0 z-10">
+        <div className="bg-white/80 dark:bg-surface-dark backdrop-blur-sm border-b border-beige-main/20 sticky top-0 z-10">
           <div className="px-4 py-3">
             <div className="flex items-center justify-between mb-1.5 px-1">
               <span className="text-xs font-semibold text-text-sub">
                 문항 {currentIndex + 1} <span className="text-text-sub/30">/</span> {questions.length}
               </span>
-              <span className="text-xs font-bold text-primary">{Math.round(((currentIndex + 1) / questions.length) * 100)}%</span>
+              <span className="text-xs font-bold" style={{ color: accent }}>{Math.round(((currentIndex + 1) / questions.length) * 100)}%</span>
             </div>
             <div className="h-1.5 bg-beige-light dark:bg-background-dark rounded-full overflow-hidden">
               <div
-                className="h-full bg-primary transition-all duration-500 ease-out"
-                style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
+                className="h-full transition-all duration-500 ease-out"
+                style={{ width: `${((currentIndex + 1) / questions.length) * 100}%`, backgroundColor: accent }}
               />
             </div>
           </div>
@@ -236,14 +245,14 @@ function SurveyContent() {
           {/* Context Card */}
           <div className="mb-4 animate-fade-in-up">
             <div className="flex items-center justify-between mb-3">
-              <div className="inline-block px-3 py-1.5 rounded-full bg-primary/10 text-primary text-[12px] font-bold">
+              <div className="inline-block px-3 py-1.5 rounded-full text-[12px] font-bold transition-colors duration-500" style={{ backgroundColor: accentLight, color: accentText }}>
                 {currentModule === 'child' ? `${intake.childName || '아이'}의 행동` :
-                  currentModule === 'parent' ? '나(부모)의 성향' : '양육 상황'}
+                  currentModule === 'parent' ? '나(양육자)의 성향' : '양육 상황'}
               </div>
             </div>
 
             <h2 className="text-[17px] sm:text-[19px] font-extrabold text-text-main dark:text-white leading-snug whitespace-pre-line mb-3 break-keep">
-              <span className="text-primary mr-2 text-[19px]">Q.</span>
+              <span className="mr-2 text-[19px]" style={{ color: accent }}>Q.</span>
               {currentQuestion.context}
             </h2>
 
@@ -266,17 +275,23 @@ function SurveyContent() {
                   key={idx}
                   onClick={() => handleSelect(idx)}
                   className={`w-full text-left p-3.5 sm:p-4 rounded-2xl border-2 transition-all duration-300 relative overflow-hidden group flex items-center gap-3.5 ${isSelected
-                    ? 'border-primary bg-primary/5 shadow-card scale-[1.01] z-10'
-                    : 'border-transparent bg-white dark:bg-surface-dark shadow-sm hover:border-primary/30 hover:shadow-card hover:-translate-y-0.5'
+                    ? 'shadow-card scale-[1.01] z-10'
+                    : 'border-transparent bg-white dark:bg-surface-dark shadow-sm hover:shadow-card hover:-translate-y-0.5'
                     }`}
+                  style={isSelected ? { borderColor: accent, backgroundColor: `${accent}08` } : undefined}
                 >
-                  <div className={`
-                      w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-black shrink-0 transition-colors
-                      ${isSelected ? 'bg-primary text-white shadow-sm' : 'bg-beige-light dark:bg-background-dark text-text-sub group-hover:bg-primary/20 group-hover:text-primary'}
-                    `}>
+                  <div
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-black shrink-0 transition-colors ${
+                      !isSelected ? 'bg-beige-light dark:bg-background-dark text-text-sub' : ''
+                    }`}
+                    style={isSelected ? { backgroundColor: accent, color: 'white' } : undefined}
+                  >
                     {score}
                   </div>
-                  <span className={`text-[14px] sm:text-[15px] leading-snug break-keep flex-1 ${isSelected ? 'font-bold text-text-main dark:text-white' : 'font-medium text-text-sub dark:text-slate-300'}`}>
+                  <span
+                    className={`text-[14px] sm:text-[15px] leading-snug break-keep flex-1 font-medium ${isSelected ? 'text-text-main dark:text-white' : 'text-text-sub dark:text-slate-300'}`}
+                    style={isSelected ? { textShadow: '0.4px 0 0 currentColor' } : undefined}
+                  >
                     {choice}
                   </span>
                 </button>
@@ -292,8 +307,8 @@ function SurveyContent() {
               이전
             </Button>
 
-            <div className="text-[10px] text-text-sub/50 uppercase tracking-widest">
-              Gijilai Temperament Test
+            <div className="text-[10px] uppercase tracking-widest" style={{ color: `${accent}80` }}>
+              {currentModule === 'child' ? 'Child Temperament' : currentModule === 'parent' ? 'Parent Temperament' : 'Parenting Style'}
             </div>
           </div>
         </div>
@@ -312,12 +327,12 @@ function SurveyContent() {
 
                 <h3 className="text-2xl font-bold text-text-main dark:text-white mb-3">
                   {transitionType === 'toParent' ? '아이 기질 검사 완료!' :
-                    transitionType === 'toParenting' ? '부모 기질 검사 완료!' : '모든 검사가 끝났어요!'}
+                    transitionType === 'toParenting' ? '양육자 기질 검사 완료!' : '모든 검사가 끝났어요!'}
                 </h3>
 
                 <p className="text-text-sub dark:text-slate-300 mb-8 leading-relaxed break-keep">
                   {transitionType === 'toParent' ? (
-                    <>이제 <strong>부모님(본인)</strong>의 기질을 알아볼까요?<br />아이와 얼마나 잘 맞는지 분석해드려요.</>
+                    <>이제 <strong>양육자(본인)</strong>의 기질을 알아볼까요?<br />아이와 얼마나 잘 맞는지 분석해드려요.</>
                   ) : transitionType === 'toParenting' ? (
                     <>마지막으로 <strong>평소 양육 스타일</strong>을 체크할게요.<br />구체적인 육아 솔루션이 제공됩니다.</>
                   ) : (

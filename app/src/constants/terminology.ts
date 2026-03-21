@@ -34,11 +34,11 @@ export const TCI_TERMINOLOGY = {
     // 분석 리포트 및 UI 레이블
     REPORT: {
         CHILD_NAME: '아이 기질',
-        PARENT_NAME: '부모 기질',
+        PARENT_NAME: '양육자 기질',
         CHILD_TITLE: '아이 기질 분석',
-        PARENT_TITLE: '부모 기질 분석',
+        PARENT_TITLE: '양육자 기질 분석',
         HARMONY_TITLE: '기질 조화 역동',
-        SOIL_CONCEPT: '마음 토양 (부모 기질)',
+        SOIL_CONCEPT: '마음 토양 (양육자 기질)',
         PLANT_CONCEPT: '기질 새싹 (아이 기질)',
         CHEMISTRY: '기질 케미스트리'
     }

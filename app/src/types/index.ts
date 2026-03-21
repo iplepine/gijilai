@@ -80,11 +80,11 @@ export type FitType = 'easy_match' | 'synergy_match' | 'energy_mismatch' | 'emot
 export const FIT_TYPE_LABELS: Record<FitType, { name: string; description: string }> = {
   easy_match: {
     name: '안정적 조화형',
-    description: '부모와 자녀의 기질이 유사하고 부정적 정서가 모두 낮음',
+    description: '양육자와 자녀의 기질이 유사하고 부정적 정서가 모두 낮음',
   },
   synergy_match: {
     name: '역동적 보완형',
-    description: '기질 차이가 있으나 부모의 조절 역량이 높음',
+    description: '기질 차이가 있으나 양육자의 조절 역량이 높음',
   },
   energy_mismatch: {
     name: '에너지 평행선형',
@@ -92,7 +92,7 @@ export const FIT_TYPE_LABELS: Record<FitType, { name: string; description: strin
   },
   emotional_strain: {
     name: '정서적 민감형',
-    description: '자녀의 부정적 정서가 높고 부모의 수용력이 한계에 도달함',
+    description: '자녀의 부정적 정서가 높고 양육자의 수용력이 한계에 도달함',
   },
 };
 
