@@ -389,7 +389,8 @@ function ReportContent() {
   }, [parentingResponses]);
 
   // Temperament Classification
-  const childType = useMemo(() => TemperamentClassifier.analyze(childScores, parentScores), [childScores, parentScores]);
+  const childType = useMemo(() => TemperamentClassifier.analyzeChild(childScores), [childScores]);
+  const harmony = useMemo(() => TemperamentClassifier.analyzeHarmony(childScores, parentScores), [childScores, parentScores]);
   const prescription = useMemo(() => PRESCRIPTION_DATA[childType.label] || PRESCRIPTION_DATA["무한한 잠재력의 아이"], [childType]);
 
   const isStyleSurveyComplete = useMemo(() => {
@@ -633,11 +634,12 @@ function ReportContent() {
                   {/* Phase 1: Archetype Discovery */}
                   <div className="bg-white dark:bg-surface-dark rounded-2xl p-8 shadow-card border border-beige-main/20 flex flex-col items-center text-center space-y-8 relative overflow-hidden">
                     <div className="w-48 h-48 relative flex items-center justify-center">
-                      <div className="absolute inset-0 bg-primary/10 rounded-full animate-ping opacity-20"></div>
-                      <div className="absolute inset-4 bg-primary/20 rounded-full animate-pulse opacity-30"></div>
-                      <div className="relative text-8xl drop-shadow-2xl z-10 hover:scale-110 transition-transform cursor-pointer">
-                        {childType.emoji}
-                      </div>
+                      <div className="absolute inset-0 bg-primary/5 rounded-full"></div>
+                      <img
+                        src={childType.image}
+                        alt={childType.label}
+                        className="relative w-40 h-40 object-contain z-10 drop-shadow-xl hover:scale-110 transition-transform cursor-pointer"
+                      />
                     </div>
 
                     <div className="space-y-4 px-2">
@@ -667,9 +669,9 @@ function ReportContent() {
                           <Icon name="person" size="sm" />
                         </div>
                         <span className="text-[9px] font-black text-orange-400 uppercase tracking-widest block mb-1">양육자 기질</span>
-                        <h4 className="text-[14px] font-black text-text-main dark:text-white mb-2 leading-tight break-keep">{childType.soil.label}</h4>
+                        <h4 className="text-[14px] font-black text-text-main dark:text-white mb-2 leading-tight break-keep">{parentReport?.soilName || '양육자'}</h4>
                         <p className="text-[11px] text-text-sub dark:text-slate-400 leading-snug break-keep opacity-0 group-hover:opacity-100 transition-opacity duration-300 absolute inset-0 p-6 bg-white/95 dark:bg-surface-dark/95 flex items-center rounded-2xl">
-                          {childType.soil.desc}
+                          {parentReport?.analysis || ''}
                         </p>
                       </section>
 
@@ -679,9 +681,9 @@ function ReportContent() {
                           <Icon name="child_care" size="sm" />
                         </div>
                         <span className="text-[9px] font-black text-teal-400 uppercase tracking-widest block mb-1">아이 기질</span>
-                        <h4 className="text-[14px] font-black text-text-main dark:text-white mb-2 leading-tight break-keep">{childType.seed.label}</h4>
+                        <h4 className="text-[14px] font-black text-text-main dark:text-white mb-2 leading-tight break-keep">{childType.label}</h4>
                         <p className="text-[11px] text-text-sub dark:text-slate-400 leading-snug break-keep opacity-0 group-hover:opacity-100 transition-opacity duration-300 absolute inset-0 p-6 bg-white/95 dark:bg-surface-dark/95 flex items-center rounded-2xl">
-                          {childType.seed.desc}
+                          {childType.desc}
                         </p>
                       </section>
                     </div>

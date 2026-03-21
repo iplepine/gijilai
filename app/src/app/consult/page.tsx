@@ -144,8 +144,8 @@ export default function ConsultPage() {
                 const { CHILD_QUESTIONS } = await import('@/data/questions');
 
                 const scores = TemperamentScorer.calculate(CHILD_QUESTIONS, cbqResponses as any);
-                const result = TemperamentClassifier.analyze(scores, { NS: 50, HA: 50, RD: 50, P: 50 });
-                childArchetype = `${result.label} (${result.seed.label})`;
+                const result = TemperamentClassifier.analyzeChild(scores);
+                childArchetype = result.label;
             }
 
             if (Object.keys(atqResponses).length > 0) {

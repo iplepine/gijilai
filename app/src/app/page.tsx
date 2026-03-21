@@ -106,7 +106,7 @@ export default function HomePage() {
       parentScores = TemperamentScorer.calculate(PARENT_QUESTIONS, parentAnswers as any);
     }
 
-    const childResult = TemperamentClassifier.analyze(scores as any, parentScores);
+    const childResult = TemperamentClassifier.analyzeChild(scores as any);
     const parentResult = ParentClassifier.analyze(parentScores);
 
     return {

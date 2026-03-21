@@ -88,7 +88,7 @@ function SharePageContent() {
       parentScores = TemperamentScorer.calculate(CHILD_QUESTIONS, atqResponses as any);
     }
 
-    return TemperamentClassifier.analyze(scores, parentScores);
+    return TemperamentClassifier.analyzeChild(scores);
   })();
 
   const handleCopyCode = async () => {
