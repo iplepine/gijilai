@@ -173,4 +173,3 @@ create policy "Users can insert their own action_items."
 create policy "Users can update their own action_items."
   on public.action_items for update
   using ( auth.uid() = user_id );
-

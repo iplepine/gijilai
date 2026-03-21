@@ -1,5 +1,5 @@
 -- Add image_url column to children table
-ALTER TABLE public.children 
+ALTER TABLE public.children
 ADD COLUMN image_url text;
 
 -- Create avatars bucket if it doesn't exist
