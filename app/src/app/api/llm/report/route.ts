@@ -15,7 +15,7 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json();
-        const { userName, scores, type, systemPrompt, model = 'gpt-4o-mini', answers, parentScores } = body;
+        const { userName, scores, type, systemPrompt, model = 'gpt-4o', answers, parentScores, isPreview = false } = body;
 
         // Basic validation
         if (!userName || !scores || !type) {
@@ -44,7 +44,8 @@ export async function POST(request: Request) {
             systemPrompt,
             model,
             answers,
-            parentScores
+            parentScores,
+            isPreview
         );
 
         return NextResponse.json({ report });

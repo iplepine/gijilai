@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { db } from '@/lib/db'; // Import db
 import { Icon } from '@/components/ui/Icon';
+import { DatePicker } from '@/components/ui/DatePicker';
 
 export default function EditChildPage() {
     const router = useRouter();
@@ -189,14 +190,10 @@ export default function EditChildPage() {
                                 <span>생년월일 및 태어난 시간</span>
                             </label>
                             <div className="grid grid-cols-2 gap-3">
-                                <div className="relative">
-                                    <input
-                                        type="date"
-                                        value={formData.birthdate}
-                                        onChange={(e) => setFormData({ ...formData, birthdate: e.target.value })}
-                                        className="w-full h-14 px-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl focus:ring-2 focus:ring-[#4CAF50] focus:border-[#4CAF50] transition-all text-sm outline-none"
-                                    />
-                                </div>
+                                <DatePicker
+                                    value={formData.birthdate}
+                                    onChange={(date) => setFormData({ ...formData, birthdate: date })}
+                                />
                                 <div className="relative">
                                     <input
                                         type="time"

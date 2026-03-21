@@ -1,14 +1,5 @@
 {
   "permissions": {
-    "allow": [
-      "Bash(npx create-next-app@latest:*)",
-      "Bash(npm install:*)",
-      "Bash(npm run dev:*)",
-      "Bash(pkill:*)",
-      "Bash(curl:*)",
-      "Bash(git init:*)",
-      "Bash(git add:*)",
-      "Bash(git commit -m \"$\\(cat <<''EOF''\nInitial commit: 기질×사주 통합 분석 서비스 MVP\n\n프로젝트 구조:\n- Next.js 14 + TypeScript + Tailwind CSS\n- Zustand 상태관리\n- 모바일 퍼스트 PWA 설계\n\n완성된 화면 \\(6개\\):\n- 홈/랜딩 페이지\n- 접수/기본정보 입력\n- 기질 설문 \\(CBQ/ATQ\\)\n- 결제 및 로딩\n- 통합 리포트\n- 공유 페이지\n\n문서:\n- SPEC.md: 화면별 개발 스펙\n- ANALYSIS_ENGINE.md: 기질/사주 분석 알고리즘\n- DESIGN_GUIDE.md: UI 컴포넌트 가이드\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
-    ]
+    "allow": []
   }
 }

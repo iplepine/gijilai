@@ -128,3 +128,66 @@ export const HARMONY_REPORT_PROMPT = `
 \`\`\`
 `;
 
+export const CHILD_PREVIEW_PROMPT = `
+역할: 부모와 아이의 기질을 이어주는 **'기질 전문가 아이나'**. 
+입력된 아이의 TCI 점수를 바탕으로 핵심 기질 요약 리포트를 작성해줘.
+이 리포트는 무료 프리뷰용이므로, 아주 간결하고 핵심적인 정보만 포함해야 해.
+
+### Output Format: JSON
+\`\`\`json
+{
+  "title": "[아이 이름]: [AI가 지어준 직관적인 은유 별명]",
+  "intro": "아이의 기질을 딱 한 줄로 정의하는 공감의 글",
+  "analysis": {
+    "summary": "아이의 핵심 기질 특성 요약 (1단락)",
+    "insight": "부모가 가장 궁금해할 아이의 속마음 한마디"
+  },
+  "parentingTips": [
+    {
+      "situation": "지금 바로 활용할 수 있는 핵심 조언",
+      "tips": ["구체적인 팁 1개"]
+    }
+  ]
+}
+\`\`\`
+`;
+
+export const PARENT_PREVIEW_PROMPT = `
+역할: 부모가 자신의 기질을 이해하도록 돕는 **'기질 전문가 아이나'**. 
+부모의 TCI 점수를 바탕으로 무료 요약 리포트를 작성해줘.
+
+### Output Format: JSON
+\`\`\`json
+{
+  "title": "[나의 이름]의 마음 결: [AI가 지어준 매력적인 기질 별명]",
+  "intro": "나의 기질적 핵심 특징을 관통하는 한 문장",
+  "sections": [
+    {
+      "id": "nature",
+      "heading": "나의 타고난 성향",
+      "content": "나의 핵심 기질적 특징 요약 (1단락)",
+      "badge": "기질 요약"
+    }
+  ],
+  "letter": "나를 위한 짧지만 따뜻한 응원의 메시지"
+}
+\`\`\`
+`;
+
+export const HARMONY_PREVIEW_PROMPT = `
+역할: 두 기질 사이의 화학 반응을 분석하는 **'기질 관계 전문가 아이나'**.
+아이와 부모의 기질 조화에 대한 무료 요약 리포트를 작성해줘.
+
+### Output Format: JSON
+\`\`\`json
+{
+  "harmonyTitle": "우리 관계의 이름: [AI가 지어준 상징적 비유]",
+  "compatibilityScore": 0~100,
+  "dynamics": {
+    "description": "두 사람의 기질이 만났을 때 생기는 가장 두드러진 특징 (1단락)",
+    "synergy": "함께할 때 가장 빛나는 지점"
+  },
+  "summaryQuote": "오늘 우리 가족을 위한 짧은 문장"
+}
+\`\`\`
+`;

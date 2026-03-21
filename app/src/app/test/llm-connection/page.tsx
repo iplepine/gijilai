@@ -1,9 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { PARENT_REPORT_PROMPT, CHILD_REPORT_PROMPT } from '@/lib/prompts';
 
 export default function LLMConnectionTestPage() {
+    const router = useRouter();
+
+    useEffect(() => {
+        if (process.env.NODE_ENV !== 'development') {
+            router.replace('/');
+        }
+    }, [router]);
+
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);

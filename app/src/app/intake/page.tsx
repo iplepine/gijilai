@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { useAppStore } from '@/store/useAppStore';
 import { Concern, CONCERN_LABELS } from '@/types';
 
@@ -131,14 +132,12 @@ export default function IntakePage() {
 
               {/* 생년월일 */}
               <div id="input-birthDate">
-                <label className="block text-[11px] font-bold text-text-sub mb-2 uppercase tracking-wider">생년월일</label>
-                <input
-                  type="date"
+                <DatePicker
+                  label="생년월일"
                   value={intake.birthDate}
-                  onChange={(e) => setIntake({ birthDate: e.target.value })}
-                  className={`w-full h-14 px-5 rounded-2xl border-2 bg-white dark:bg-surface-dark text-[15px] font-medium transition-all focus:outline-none focus:border-primary ${errors.birthDate ? 'border-red-400' : 'border-beige-main/20 dark:border-surface-dark/50 shadow-sm shadow-primary/5'}`}
+                  onChange={(date) => setIntake({ birthDate: date })}
+                  error={errors.birthDate}
                 />
-                {errors.birthDate && <p className="text-xs text-red-500 mt-1.5 ml-1 font-medium">{errors.birthDate}</p>}
               </div>
             </div>
           </section>
