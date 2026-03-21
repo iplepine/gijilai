@@ -244,7 +244,7 @@ export default function ConsultPage() {
                         <div className="flex flex-col gap-8 w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
                             <div className="space-y-2">
                                 <h2 className="text-2xl font-bold text-text-main dark:text-white leading-tight">
-                                    {intake.childName ? `${intake.childName} 부모님,` : '양육자님,'}<br />오늘 어떤 일이 가장 힘드셨나요?
+                                    {intake.childName ? `${intake.childName} 양육자님,` : '양육자님,'}<br />오늘 어떤 일이 가장 힘드셨나요?
                                 </h2>
                                 <p className="text-sm text-text-sub dark:text-gray-400">아이의 기질에 딱 맞는 솔루션을 찾아드릴게요.</p>
                             </div>

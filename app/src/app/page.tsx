@@ -412,7 +412,7 @@ export default function HomePage() {
                           <h3 className="text-xl font-bold text-white leading-snug tracking-tight">나의 양육 성향 검사</h3>
                         </div>
                       </div>
-                      <p className="text-sm text-white/90 mb-6">부모님의 기질을 알면 양육이 훨씬 쉬워집니다.</p>
+                      <p className="text-sm text-white/90 mb-6">양육자의 기질을 알면 양육이 훨씬 쉬워집니다.</p>
                       <Link href="/survey?type=PARENT">
                         <button className="w-full py-4 rounded-xl bg-white text-secondary font-bold text-sm shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2">
                           <span>{Object.keys(atqResponses).length > 0 ? '검사 이어하기' : '검사 시작하기'}</span>
@@ -456,7 +456,7 @@ export default function HomePage() {
                         </div>
                         <div>
                           <h3 className="text-[15px] font-bold text-text-main dark:text-white">기질 분석 리포트</h3>
-                          <p className="text-[11px] text-text-sub dark:text-gray-400">우리아이&부모님 상세 결과</p>
+                          <p className="text-[11px] text-text-sub dark:text-gray-400">우리아이&양육자 상세 결과</p>
                         </div>
                       </div>
                       <Link href="/report">
@@ -633,7 +633,7 @@ export default function HomePage() {
                         </p>
                         <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/5 rounded-full border border-primary/10">
                           <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-                          <span className="text-[11px] font-black text-primary tracking-tight">오늘도 많은 부모님들이 함께 실천 중</span>
+                          <span className="text-[11px] font-black text-primary tracking-tight">오늘도 많은 양육자분들이 함께 실천 중</span>
                         </div>
                       </div>
                     </div>
@@ -685,7 +685,7 @@ export default function HomePage() {
                   </h3>
                   <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed break-keep px-4">
                     아이의 <strong>타고난 기질</strong>을 이해하고,<br />
-                    부모님의 <strong>따뜻한 시선</strong>으로 아름답게<br />
+                    양육자의 <strong>따뜻한 시선</strong>으로 아름답게<br />
                     성장하는 과정을 함께 도와드릴게요.
                   </p>
                 </div>

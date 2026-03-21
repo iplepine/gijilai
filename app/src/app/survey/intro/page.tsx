@@ -24,7 +24,7 @@ export default function IntroPage() {
         for (let i = 1; i <= 20; i++) {
             setCbqResponse(i.toString(), Math.floor(Math.random() * 5) + 1);
         }
-        // 부모 기질 (21-40)
+        // 양육자 기질 (21-40)
         for (let i = 21; i <= 40; i++) {
             setAtqResponse(i.toString(), Math.floor(Math.random() * 5) + 1);
         }

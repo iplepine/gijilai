@@ -126,7 +126,7 @@ function ReportContent() {
           setHarmonyAiReport(analysis);
           setDbChildId(data.child_id);
           setDbSurveyIds(prev => ({ ...prev, PARENTING_STYLE: data.survey_id }));
-          // 조화 분석 시에는 아이/부모 점수가 모두 필요할 수 있으므로 저장된 데이터가 있다면 복원
+          // 조화 분석 시에는 아이/양육자 점수가 모두 필요할 수 있으므로 저장된 데이터가 있다면 복원
           if (data.is_paid) useAppStore.getState().setIsPaid(true);
           setActiveTab('parenting');
         }
@@ -549,7 +549,7 @@ function ReportContent() {
             </div>
 
             {/* 유형 정보 */}
-            <div className="bg-white dark:bg-surface-dark text-center px-6 py-8 space-y-3 -mt-6 rounded-t-3xl relative z-10">
+            <div className="bg-white dark:bg-surface-dark text-center px-6 pt-8 pb-4 space-y-3 -mt-6 rounded-t-3xl relative z-10">
               <p className="text-text-sub text-sm font-medium">{intake.childName || '아이'}의 기질 유형</p>
               <h1 className="text-3xl font-black text-text-main dark:text-white tracking-tight">
                 {childAiReport?.title?.split(':')[1]?.trim() || childType.label}
@@ -565,7 +565,7 @@ function ReportContent() {
 
           {/* Tab Switcher - 아이 리포트 선공 모드에서는 숨김 */}
           {!isChildOnly && (
-            <div className="max-w-md mx-auto px-6 -mt-14 mb-8 relative z-30">
+            <div className="max-w-md mx-auto px-6 mb-8 relative z-30">
               <div className="bg-white p-1 rounded-2xl flex gap-1 border border-beige-main/20 shadow-lg">
                 <button
                   onClick={() => handleTabChange('child')}

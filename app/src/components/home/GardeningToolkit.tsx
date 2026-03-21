@@ -16,7 +16,7 @@ export function GardeningToolkit() {
             iconColor: 'text-green-600',
             iconBg: 'bg-green-100',
             title: '셀프 케어 (명상)',
-            description: '부모님을 위한 5분 휴식',
+            description: '양육자를 위한 5분 휴식',
         },
         {
             icon: 'sentiment_satisfied',
@@ -30,7 +30,7 @@ export function GardeningToolkit() {
     return (
         <section className="px-6 mb-12">
             <div className="flex items-center gap-2 mb-6">
-                <h3 className="font-display font-bold text-lg text-[var(--navy)]">부모 돌봄 툴킷</h3>
+                <h3 className="font-display font-bold text-lg text-[var(--navy)]">양육자 돌봄 툴킷</h3>
                 <span className="text-[10px] bg-primary text-white px-2 py-0.5 rounded-full font-bold">DAILY</span>
             </div>
 

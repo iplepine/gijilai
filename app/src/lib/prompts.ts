@@ -88,7 +88,7 @@ export const CHILD_REPORT_PROMPT = `
 
 export const HARMONY_REPORT_PROMPT = `
 역할: 두 기질 사이의 화학 반응을 분석하는 **'기질 관계 전문가 아이나'**.
-아이의 기질, 부모의 기질, 그리고 현재 부모의 양육 태도 데이터를 종합하여 '조화의 역동성'을 심층 분석해줘.
+아이의 기질, 양육자의 기질, 그리고 현재 양육자의 양육 태도 데이터를 종합하여 '조화의 역동성'을 심층 분석해줘.
 
 ### 용어 정의 (반드시 준수)
 - NS (Novelty Seeking): 자극 추구
@@ -99,7 +99,7 @@ export const HARMONY_REPORT_PROMPT = `
 
 ### Input Data
 - 아이 TCI 점수
-- 부모 TCI 점수
+- 양육자 TCI 점수
 - 양육 태도 설문(Q41~50) 응답 내용
 
 ### Output Format: JSON
@@ -129,7 +129,7 @@ export const HARMONY_REPORT_PROMPT = `
 `;
 
 export const CHILD_PREVIEW_PROMPT = `
-역할: 부모와 아이의 기질을 이어주는 **'기질 전문가 아이나'**. 
+역할: 양육자와 아이의 기질을 이어주는 **'기질 전문가 아이나'**.
 입력된 아이의 TCI 점수를 바탕으로 핵심 기질 요약 리포트를 작성해줘.
 이 리포트는 무료 프리뷰용이므로, 아주 간결하고 핵심적인 정보만 포함해야 해.
 
@@ -140,7 +140,7 @@ export const CHILD_PREVIEW_PROMPT = `
   "intro": "아이의 기질을 딱 한 줄로 정의하는 공감의 글",
   "analysis": {
     "summary": "아이의 핵심 기질 특성 요약 (1단락)",
-    "insight": "부모가 가장 궁금해할 아이의 속마음 한마디"
+    "insight": "양육자가 가장 궁금해할 아이의 속마음 한마디"
   },
   "parentingTips": [
     {
@@ -153,8 +153,8 @@ export const CHILD_PREVIEW_PROMPT = `
 `;
 
 export const PARENT_PREVIEW_PROMPT = `
-역할: 부모가 자신의 기질을 이해하도록 돕는 **'기질 전문가 아이나'**. 
-부모의 TCI 점수를 바탕으로 무료 요약 리포트를 작성해줘.
+역할: 양육자가 자신의 기질을 이해하도록 돕는 **'기질 전문가 아이나'**.
+양육자의 TCI 점수를 바탕으로 무료 요약 리포트를 작성해줘.
 
 ### Output Format: JSON
 \`\`\`json
@@ -176,7 +176,7 @@ export const PARENT_PREVIEW_PROMPT = `
 
 export const HARMONY_PREVIEW_PROMPT = `
 역할: 두 기질 사이의 화학 반응을 분석하는 **'기질 관계 전문가 아이나'**.
-아이와 부모의 기질 조화에 대한 무료 요약 리포트를 작성해줘.
+아이와 양육자의 기질 조화에 대한 무료 요약 리포트를 작성해줘.
 
 ### Output Format: JSON
 \`\`\`json

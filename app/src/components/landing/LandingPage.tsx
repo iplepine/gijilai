@@ -44,7 +44,7 @@ export default function LandingPage() {
                                     </div>
                                 ))}
                             </div>
-                            <p className="text-[13px] font-medium text-text-sub">현재 <span className="text-text-main dark:text-white font-bold">12,482명</span>의 부모님이 분석 중</p>
+                            <p className="text-[13px] font-medium text-text-sub">현재 <span className="text-text-main dark:text-white font-bold">12,482명</span>의 양육자가 분석 중</p>
                         </div>
                     </div>
 
@@ -67,7 +67,7 @@ export default function LandingPage() {
                     <div className="text-center max-w-3xl mx-auto mb-20 space-y-6">
                         <span className="text-primary font-black tracking-widest text-xs uppercase">Why Gijilai?</span>
                         <h2 className="text-4xl md:text-5xl font-black text-text-main dark:text-white tracking-tight">전문가들이 설계한<br />체계적인 분석 시스템</h2>
-                        <p className="text-text-sub text-lg break-keep">부모의 94%가 아이의 기질을 이해한 후 양육 효능감이 높아졌다고 응답했습니다.</p>
+                        <p className="text-text-sub text-lg break-keep">양육자의 94%가 아이의 기질을 이해한 후 양육 효능감이 높아졌다고 응답했습니다.</p>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
@@ -142,7 +142,7 @@ export default function LandingPage() {
 
                 <div className="container max-w-4xl mx-auto text-center space-y-12 relative z-10">
                     <h2 className="text-3xl md:text-6xl font-black text-white leading-tight tracking-tight break-keep">
-                        부모님의 <span className="text-secondary">작은&nbsp;변화</span>가<br />
+                        양육자의 <span className="text-secondary">작은&nbsp;변화</span>가<br />
                         아이의 인생을 바꿉니다
                     </h2>
                     <p className="text-white/60 text-base md:text-xl max-w-2xl mx-auto break-keep">

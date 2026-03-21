@@ -31,7 +31,7 @@ export function GardenRecords({ reports = [] }: GardenRecordsProps) {
                                 {new Date(report.created_at).toLocaleDateString()}
                             </p>
                             <h4 className="font-bold text-base text-[var(--navy)] mb-3 leading-snug line-clamp-2">
-                                {report.type === 'CHILD' ? '아이 기질 리포트' : '부모 양육 리포트'}
+                                {report.type === 'CHILD' ? '아이 기질 리포트' : '양육자 리포트'}
                             </h4>
                             <div className="flex items-center gap-1.5 text-[11px] font-bold text-green-600 bg-green-50 w-fit px-2 py-1 rounded-md">
                                 <Icon name="check_circle" size="sm" className="text-[14px]" />

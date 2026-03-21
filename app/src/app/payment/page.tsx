@@ -20,7 +20,7 @@ type LoadingStatus = 'idle' | 'paying' | 'analyzing' | 'complete';
 const LOADING_MESSAGES = [
   { icon: 'analytics', text: '기질 데이터 분석 중' },
   { icon: 'auto_awesome', text: '기질아이 유형 세부 대응 중' },
-  { icon: 'favorite', text: '부모-자녀 궁합 계산 중' },
+  { icon: 'favorite', text: '양육자-자녀 궁합 계산 중' },
   { icon: 'lightbulb', text: '맞춤 양육 솔루션 생성 중' },
 ];
 
@@ -221,7 +221,7 @@ export default function PaymentPage() {
                 <p className="text-slate-400 text-sm leading-relaxed break-keep">
                   {loadingIndex === 0 && "아이의 데이터를 꼼꼼하게 읽어보고 있어요."}
                   {loadingIndex === 1 && "아이의 기질 조합을 상세하게 분석합니다."}
-                  {loadingIndex === 2 && "부모님과의 조화로운 교감을 위한 공식을 계산해요."}
+                  {loadingIndex === 2 && "양육자와의 조화로운 교감을 위한 공식을 계산해요."}
                   {loadingIndex === 3 && "오늘 바로 실천할 수 있는 솔루션을 준비 중입니다."}
                 </p>
               </div>

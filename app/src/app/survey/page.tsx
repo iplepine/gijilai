@@ -100,7 +100,7 @@ function SurveyContent() {
         // 아이 기질 완료 → 즉시 아이 리포트 화면으로 이동 (안 A)
         router.replace('/report?child_only=true');
       } else if (currentModule === 'parent') {
-        // 부모 기질 완료 시 양육 태도 안내 다이얼로그 노출
+        // 양육자 기질 완료 시 양육 태도 안내 다이얼로그 노출
         setTransitionType('toParenting');
         setShowTransitionModal(true);
       } else if (currentModule === 'parenting') {

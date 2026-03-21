@@ -115,7 +115,7 @@ export default function LLMConnectionTestPage() {
                         className={`pb-2 px-4 ${activeTab === 'PARENT' ? 'border-b-2 border-blue-600 font-bold' : 'text-gray-500'}`}
                         onClick={() => handleTabChange('PARENT')}
                     >
-                        부모 리포트 (Parent)
+                        양육자 리포트 (Parent)
                     </button>
                     <button
                         className={`pb-2 px-4 ${activeTab === 'CHILD' ? 'border-b-2 border-green-600 font-bold' : 'text-gray-500'}`}
