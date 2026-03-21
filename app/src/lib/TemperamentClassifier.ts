@@ -10,21 +10,21 @@ export class TemperamentClassifier {
         const isRD_H = RD > 60;
 
         if (isNS_H && !isHA_H && !isRD_H) {
-            return { label: "자유로운 탐험가", emoji: "🦁", image: "/child_type/type_hll.jpg", desc: "새로운 것에 거침없이 도전하며 혼자서도 잘 노는 아이" };
+            return { label: "자유로운 탐험가", emoji: "🦁", image: "/child_type/type_hll.jpg", keywords: ["호기심", "독립심", "당당함"], desc: "새로운 것에 거침없이 도전하며 혼자서도 잘 노는 아이" };
         } else if (isNS_H && !isHA_H && isRD_H) {
-            return { label: "인기쟁이 활동가", emoji: "⭐", image: "/child_type/type_hlh.jpg", desc: "사람을 좋아하고 활기차며 어디서나 주목받는 분위기 메이커" };
+            return { label: "인기쟁이 활동가", emoji: "⭐", image: "/child_type/type_hlh.jpg", keywords: ["사교성", "에너지", "표현력"], desc: "사람을 좋아하고 활기차며 어디서나 주목받는 분위기 메이커" };
         } else if (isNS_H && isHA_H && !isRD_H) {
-            return { label: "예민한 완벽주의자", emoji: "🎨", image: "/child_type/type_hhl.jpg", desc: "하고 싶은 건 많지만 겁도 많아 생각이 많고 신중한 아이" };
+            return { label: "예민한 완벽주의자", emoji: "🎨", image: "/child_type/type_hhl.jpg", keywords: ["알뜰살뜰", "조심성", "내적갈등"], desc: "하고 싶은 건 많지만 겁도 많아 생각이 많고 신중한 아이" };
         } else if (isNS_H && isHA_H && isRD_H) {
-            return { label: "감성 풍부한 예술가", emoji: "🦋", image: "/child_type/type_hhh.jpg", desc: "주변 자극과 감정에 민감하며 풍부한 감수성을 지닌 아이" };
+            return { label: "감성 풍부한 예술가", emoji: "🦋", image: "/child_type/type_hhh.jpg", keywords: ["공감각", "섬세함", "반응성"], desc: "주변 자극과 감정에 민감하며 풍부한 감수성을 지닌 아이" };
         } else if (!isNS_H && isHA_H && !isRD_H) {
-            return { label: "조용한 분석가", emoji: "🦉", image: "/child_type/type_lhl.jpg", desc: "낯선 상황을 충분히 관찰한 뒤에 움직이는 내실 있는 아이" };
+            return { label: "조용한 분석가", emoji: "🦉", image: "/child_type/type_lhl.jpg", keywords: ["차분함", "신중함", "관찰력"], desc: "낯선 상황을 충분히 관찰한 뒤에 움직이는 내실 있는 아이" };
         } else if (!isNS_H && isHA_H && isRD_H) {
-            return { label: "다정한 평화주의자", emoji: "🕊️", image: "/child_type/type_lhh.jpg", desc: "갈등을 싫어하며 주변 사람의 기분을 잘 살피는 착한 아이" };
+            return { label: "다정한 평화주의자", emoji: "🕊️", image: "/child_type/type_lhh.jpg", keywords: ["배려", "순응", "따뜻함"], desc: "갈등을 싫어하며 주변 사람의 기분을 잘 살피는 착한 아이" };
         } else if (!isNS_H && !isHA_H && !isRD_H) {
-            return { label: "단단한 마이웨이", emoji: "⛰️", image: "/child_type/type_lll.jpg", desc: "감정 기복이 적고 남의 시선보다 자기 페이스가 중요한 아이" };
+            return { label: "단단한 마이웨이", emoji: "⛰️", image: "/child_type/type_lll.jpg", keywords: ["평온함", "주관", "독립적"], desc: "감정 기복이 적고 남의 시선보다 자기 페이스가 중요한 아이" };
         } else {
-            return { label: "성실한 조력자", emoji: "🌱", image: "/child_type/type_llh.jpg", desc: "정해진 규칙을 잘 지키며 주변을 돕는 것을 좋아하는 아이" };
+            return { label: "성실한 조력자", emoji: "🌱", image: "/child_type/type_llh.jpg", keywords: ["협동", "책임", "다정"], desc: "정해진 규칙을 잘 지키며 주변을 돕는 것을 좋아하는 아이" };
         }
     }
 

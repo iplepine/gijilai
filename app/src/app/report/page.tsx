@@ -549,11 +549,16 @@ function ReportContent() {
             </div>
 
             {/* 유형 정보 */}
-            <div className="bg-white dark:bg-surface-dark text-center px-6 py-8 space-y-2 -mt-6 rounded-t-3xl relative z-10">
+            <div className="bg-white dark:bg-surface-dark text-center px-6 py-8 space-y-3 -mt-6 rounded-t-3xl relative z-10">
               <p className="text-text-sub text-sm font-medium">{intake.childName || '아이'}의 기질 유형</p>
               <h1 className="text-3xl font-black text-text-main dark:text-white tracking-tight">
                 {childAiReport?.title?.split(':')[1]?.trim() || childType.label}
               </h1>
+              <div className="flex items-center justify-center gap-2 flex-wrap">
+                {childType.keywords.map((kw: string) => (
+                  <span key={kw} className="px-3 py-1 rounded-full bg-primary/8 text-primary text-[12px] font-bold">#{kw}</span>
+                ))}
+              </div>
               <p className="text-text-sub text-[13px] break-keep">{childType.desc}</p>
             </div>
           </div>
