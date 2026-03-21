@@ -7,7 +7,7 @@
 
 | 문서 | 내용 |
 |------|------|
-| [scoring.md](scoring.md) | 점수 산출 공식, 분류 임계값, 아동/부모 유형 결정 규칙 |
+| [childtype.md](childtype.md) | 아동 기질 8유형 정의, 채점 로직, 양육자 유형, 조화 분석 |
 | [survey-questions.md](survey-questions.md) | 전체 설문 문항 목록 (아동 20 + 양육태도 10 + 부모 20 = 총 50문항) |
 | [payment.md](payment.md) | 결제, 가격, 쿨다운, 무료/유료 티어 정책 |
 | [referral.md](referral.md) | 추천 코드, 쿠폰 발급/만료 정책 |
