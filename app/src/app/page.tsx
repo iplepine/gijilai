@@ -253,10 +253,10 @@ export default function HomePage() {
   return (
     <div className="bg-background-light dark:bg-background-dark text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center justify-center font-body pb-0">
       <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl overflow-hidden relative">
-        <header className="relative flex items-center justify-between h-16 w-full px-6 pt-12 pb-4 bg-background-light dark:bg-background-dark sticky top-0 z-20 ">
-          <div className="flex items-center gap-2">
-            <img src="/gijilai_icon.png" alt="기질아이" className="w-8 h-8 rounded-lg object-contain" />
-            <span className="text-xl font-logo tracking-wide text-primary dark:text-white pt-0.5">기질아이</span>
+        <header className="sticky top-0 z-40 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-xl pt-12 pb-4 border-b border-gray-100 dark:border-gray-800">
+          <div className="flex items-center gap-2 min-h-[40px] px-4">
+            <img src="/gijilai_icon.png" alt="기질아이" className="w-7 h-7 rounded-lg object-contain" />
+            <span className="text-lg font-logo tracking-wide text-primary dark:text-white pt-0.5">기질아이</span>
           </div>
         </header>
 

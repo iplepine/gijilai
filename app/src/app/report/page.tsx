@@ -473,10 +473,10 @@ function ReportContent() {
             {/* 히어로 이미지 */}
             <div className="relative">
               {/* Top Navigation Bar */}
-              <div className="absolute top-0 left-0 right-0 pt-12 px-6 z-20 flex items-center justify-between">
+              <div className="absolute top-0 left-0 right-0 pt-12 px-4 z-20 flex items-center justify-between">
                 <button
                   onClick={() => router.back()}
-                  className="size-10 flex items-center justify-center rounded-full bg-white/60 text-text-main backdrop-blur-sm border border-white/40 hover:bg-white/80 transition-colors"
+                  className="size-10 flex items-center justify-center text-text-main dark:text-white"
                   aria-label="뒤로 가기"
                 >
                   <span className="material-symbols-outlined">arrow_back_ios</span>
