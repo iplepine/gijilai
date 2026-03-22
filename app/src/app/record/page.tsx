@@ -215,17 +215,24 @@ export default function RecordPage() {
                 <main className="w-full max-w-md p-6 pb-32">
                     {/* 최근 상담 액션 아이템 */}
                     {!isLoading && latestActionItem && children.length > 0 && (
-                        <div className="mb-6 bg-gradient-to-br from-primary/10 to-secondary/10 dark:from-primary/20 dark:to-secondary/20 rounded-[1.5rem] p-5 border border-primary/15 animate-in fade-in slide-in-from-top-2 duration-500">
+                        <div
+                            onClick={() => router.push(`/consult/history?view=${latestActionItem.consultId}`)}
+                            className="mb-6 bg-gradient-to-br from-primary/10 to-secondary/10 dark:from-primary/20 dark:to-secondary/20 rounded-[1.5rem] p-5 border border-primary/15 animate-in fade-in slide-in-from-top-2 duration-500 cursor-pointer active:scale-[0.98] transition-transform"
+                        >
                             <div className="flex items-center gap-1.5 mb-2">
                                 <span className="material-symbols-outlined text-[16px] text-primary">target</span>
                                 <span className="text-[11px] font-bold text-primary tracking-wide">오늘의 실천 과제</span>
-                                <span className="text-[11px] text-slate-400 ml-auto">{formatDate(latestActionItem.date)} 상담</span>
+                                <span className="text-[11px] text-slate-400 ml-auto flex items-center gap-0.5">
+                                    {formatDate(latestActionItem.date)} 상담
+                                    <span className="material-symbols-outlined text-[14px]">chevron_right</span>
+                                </span>
                             </div>
                             <p className="text-[14px] font-bold text-text-main dark:text-white leading-relaxed">
                                 {latestActionItem.actionItem}
                             </p>
                             <button
-                                onClick={async () => {
+                                onClick={async (e) => {
+                                    e.stopPropagation();
                                     await openModal();
                                     setModalConsultId(latestActionItem.consultId);
                                 }}

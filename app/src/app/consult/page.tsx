@@ -87,36 +87,6 @@ export default function ConsultPage() {
         })();
     }, [cbqResponses, atqResponses]);
 
-    // 지난 상담 모달
-    const [showPastConsults, setShowPastConsults] = useState(false);
-    const [pastConsults, setPastConsults] = useState<any[]>([]);
-    const [pastChildren, setPastChildren] = useState<any[]>([]);
-    const [selectedPastConsult, setSelectedPastConsult] = useState<any>(null);
-
-    useEffect(() => {
-        if (user) {
-            loadPastConsults();
-        }
-    }, [user]);
-
-    const loadPastConsults = async () => {
-        if (!user) return;
-        try {
-            const [{ data: consultData }, childData] = await Promise.all([
-                supabase
-                    .from('consultations')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .eq('status', 'COMPLETED')
-                    .order('created_at', { ascending: false }),
-                db.getChildren(user.id),
-            ]);
-            setPastConsults(consultData || []);
-            setPastChildren(childData || []);
-        } catch {
-            // 실패 시 무시
-        }
-    };
 
     const handleStartDiagnostic = async () => {
         if (!problemDesc.trim()) {
@@ -279,20 +249,9 @@ export default function ConsultPage() {
                     {step === 'INPUT' && (
                         <div className="flex flex-col gap-8 w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
                             <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <h2 className="text-2xl font-bold text-text-main dark:text-white leading-tight">
-                                        {intake.childName ? `${intake.childName} 양육자님,` : '양육자님,'}<br />오늘 어떤 일이 가장 힘드셨나요?
-                                    </h2>
-                                    {pastConsults.length > 0 && (
-                                        <button
-                                            onClick={() => setShowPastConsults(true)}
-                                            className="text-[12px] font-bold text-secondary shrink-0 ml-4 flex items-center gap-0.5"
-                                        >
-                                            지난 상담
-                                            <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
-                                        </button>
-                                    )}
-                                </div>
+                                <h2 className="text-2xl font-bold text-text-main dark:text-white leading-tight">
+                                    {intake.childName ? `${intake.childName} 양육자님,` : '양육자님,'}<br />오늘 어떤 일이 가장 힘드셨나요?
+                                </h2>
                                 <p className="text-sm text-text-sub dark:text-gray-400">아이의 기질에 딱 맞는 솔루션을 찾아드릴게요.</p>
                             </div>
 
@@ -499,107 +458,6 @@ export default function ConsultPage() {
                         </div>
                     </div>
                 )}
-                {/* 지난 상담 바텀시트 */}
-                {showPastConsults && (
-                    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-                        <div className="w-full max-w-md bg-background-light dark:bg-background-dark rounded-t-[3rem] max-h-[85vh] overflow-y-auto flex flex-col p-8 animate-in slide-in-from-bottom-10 duration-500 shadow-2xl relative">
-                            <button
-                                onClick={() => { setShowPastConsults(false); setSelectedPastConsult(null); }}
-                                className="absolute top-6 right-6 w-10 h-10 rounded-full bg-black/5 dark:bg-white/5 flex items-center justify-center"
-                            >
-                                <span className="material-symbols-outlined">close</span>
-                            </button>
-
-                            <h2 className="text-xl font-bold text-text-main dark:text-white mb-6 pt-2">지난 상담 기록</h2>
-
-                            {selectedPastConsult ? (
-                                <div className="animate-in fade-in duration-300">
-                                    <button
-                                        onClick={() => setSelectedPastConsult(null)}
-                                        className="flex items-center gap-1 text-[13px] font-bold text-secondary mb-4"
-                                    >
-                                        <span className="material-symbols-outlined text-[16px]">arrow_back</span>
-                                        목록으로
-                                    </button>
-
-                                    <div className="mb-4">
-                                        <span className="text-[12px] font-bold text-[#D08B5B] bg-[#D08B5B]/10 px-3 py-1.5 rounded-lg inline-flex items-center gap-1">
-                                            <span className="material-symbols-outlined text-[14px]">calendar_today</span>
-                                            {new Date(selectedPastConsult.created_at).toLocaleDateString('ko-KR')}
-                                        </span>
-                                    </div>
-
-                                    <div className="bg-[#FFFDF9] dark:bg-surface-dark border border-[#EACCA4]/40 rounded-2xl p-5 mb-4">
-                                        <div className="text-[12px] font-bold text-[#D08B5B] flex items-center gap-1.5 mb-2">
-                                            <span className="material-symbols-outlined text-[16px]">edit_note</span>
-                                            그날의 고민
-                                        </div>
-                                        <p className="text-[14px] text-text-main dark:text-white leading-relaxed">
-                                            &ldquo;{selectedPastConsult.problem_description}&rdquo;
-                                        </p>
-                                    </div>
-
-                                    {selectedPastConsult.ai_prescription && (
-                                        <div className="bg-white dark:bg-surface-dark rounded-2xl p-5 border border-secondary/20 space-y-4">
-                                            <div className="text-[12px] font-bold text-secondary flex items-center gap-1.5">
-                                                <span className="material-symbols-outlined text-[16px] fill-1">vaccines</span>
-                                                마음 처방전
-                                            </div>
-                                            <div>
-                                                <div className="text-[11px] font-bold text-slate-400 mb-1">{intake.childName ? `${intake.childName}의 속마음` : '아이의 속마음'}</div>
-                                                <p className="text-[13px] text-text-main dark:text-gray-200 leading-relaxed">{selectedPastConsult.ai_prescription.interpretation}</p>
-                                            </div>
-                                            <div className="bg-[#519E8A]/10 p-4 rounded-xl border border-[#519E8A]/20">
-                                                <div className="text-[11px] font-bold text-[#3B7A6A] mb-1">마법의 한마디</div>
-                                                <p className="text-[14px] font-black text-[#519E8A]">&ldquo;{selectedPastConsult.ai_prescription.magicWord}&rdquo;</p>
-                                            </div>
-                                            <div>
-                                                <div className="text-[11px] font-bold text-slate-400 mb-1">액션 아이템</div>
-                                                <p className="text-[13px] text-text-main dark:text-gray-200 leading-relaxed">{selectedPastConsult.ai_prescription.actionItem}</p>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            ) : (
-                                <div className="space-y-3">
-                                    {pastConsults.length === 0 ? (
-                                        <p className="text-center text-slate-400 text-sm py-10">아직 상담 기록이 없어요</p>
-                                    ) : (
-                                        pastConsults.map(item => (
-                                            <button
-                                                key={item.id}
-                                                onClick={() => setSelectedPastConsult(item)}
-                                                className="w-full text-left bg-[#FFFDF9] dark:bg-surface-dark rounded-2xl p-5 border border-[#EACCA4]/30 active:scale-[0.99] transition-all"
-                                            >
-                                                <div className="flex justify-between items-center mb-2">
-                                                    <span className="text-[11px] font-bold text-[#D08B5B] flex items-center gap-1">
-                                                        <span className="material-symbols-outlined text-[13px]">calendar_today</span>
-                                                        {new Date(item.created_at).toLocaleDateString('ko-KR')}
-                                                        {pastChildren.find((c: any) => c.id === item.child_id) && (
-                                                            <span className="ml-1 opacity-70">
-                                                                · {pastChildren.find((c: any) => c.id === item.child_id)?.name}
-                                                            </span>
-                                                        )}
-                                                    </span>
-                                                    <span className="material-symbols-outlined text-[16px] text-secondary/50">arrow_forward</span>
-                                                </div>
-                                                <p className="text-[14px] font-bold text-text-main dark:text-white line-clamp-2 leading-snug">
-                                                    &ldquo;{item.problem_description}&rdquo;
-                                                </p>
-                                                {item.ai_prescription?.magicWord && (
-                                                    <p className="text-[12px] text-secondary mt-2 line-clamp-1 font-bold">
-                                                        &ldquo;{item.ai_prescription.magicWord}&rdquo;
-                                                    </p>
-                                                )}
-                                            </button>
-                                        ))
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
-
                 <BottomNav />
             </div>
         </div>
