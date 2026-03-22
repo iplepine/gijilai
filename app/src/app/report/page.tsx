@@ -335,6 +335,21 @@ function ReportContent() {
     return Object.keys(cbqResponses).length > 0 || !!savedChildScores;
   }, [cbqResponses, savedChildScores]);
 
+  // Radar chart loading animation
+  const [animatedRadar, setAnimatedRadar] = useState<number[][]>([[50,50,50,50],[50,50,50,50]]);
+  useEffect(() => {
+    if (harmonyAiReport || activeTab !== 'parenting') return;
+    const interval = setInterval(() => {
+      setAnimatedRadar([
+        Array.from({ length: 4 }, () => 20 + Math.random() * 60),
+        Array.from({ length: 4 }, () => 20 + Math.random() * 60),
+      ]);
+    }, 800);
+    return () => clearInterval(interval);
+  }, [harmonyAiReport, activeTab]);
+
+  const isRadarLoading = activeTab === 'parenting' && !harmonyAiReport;
+
   const radarData = {
     labels: [
       TCI_TERMINOLOGY.DIMENSIONS.NS.name,
@@ -345,20 +360,20 @@ function ReportContent() {
     datasets: [
       {
         label: TCI_TERMINOLOGY.REPORT.CHILD_NAME,
-        data: [childScores.NS, childScores.HA, childScores.RD, childScores.P],
-        backgroundColor: 'rgba(59, 130, 246, 0.15)',
-        borderColor: '#3B82F6',
+        data: isRadarLoading ? animatedRadar[0] : [childScores.NS, childScores.HA, childScores.RD, childScores.P],
+        backgroundColor: isRadarLoading ? 'rgba(59, 130, 246, 0.08)' : 'rgba(59, 130, 246, 0.15)',
+        borderColor: isRadarLoading ? 'rgba(59, 130, 246, 0.3)' : '#3B82F6',
         borderWidth: 2.5,
-        pointBackgroundColor: '#3B82F6',
+        pointBackgroundColor: isRadarLoading ? 'rgba(59, 130, 246, 0.3)' : '#3B82F6',
         pointRadius: 4,
       },
       {
         label: TCI_TERMINOLOGY.REPORT.PARENT_NAME,
-        data: [parentScores.NS, parentScores.HA, parentScores.RD, parentScores.P],
-        backgroundColor: 'rgba(249, 115, 22, 0.12)',
-        borderColor: '#F97316',
+        data: isRadarLoading ? animatedRadar[1] : [parentScores.NS, parentScores.HA, parentScores.RD, parentScores.P],
+        backgroundColor: isRadarLoading ? 'rgba(249, 115, 22, 0.06)' : 'rgba(249, 115, 22, 0.12)',
+        borderColor: isRadarLoading ? 'rgba(249, 115, 22, 0.3)' : '#F97316',
         borderWidth: 2,
-        pointBackgroundColor: '#F97316',
+        pointBackgroundColor: isRadarLoading ? 'rgba(249, 115, 22, 0.3)' : '#F97316',
         pointRadius: 4,
       },
     ],
@@ -380,6 +395,10 @@ function ReportContent() {
     },
     plugins: {
       legend: { display: false }
+    },
+    animation: {
+      duration: 600,
+      easing: 'easeInOutQuad' as const,
     }
   };
 
@@ -543,38 +562,63 @@ function ReportContent() {
             {/* 유형 정보 */}
             <div key={`info-${activeTab}`} className={`dark:bg-surface-dark text-center px-6 ${!isChildOnly ? 'pt-4' : 'pt-8 -mt-6 rounded-t-3xl'} pb-4 space-y-3 relative z-10 animate-in fade-in duration-500`} style={{ backgroundColor: 'var(--background-light)' }}>
               {activeTab === 'child' ? (
-                <>
-                  <p className="text-text-sub text-sm font-medium">{intake.childName || '아이'}의 기질 유형</p>
-                  <h1 className="text-3xl font-black text-text-main dark:text-white tracking-tight">
-                    {childType.label}
-                  </h1>
-                  <div className="flex items-center justify-center gap-2 flex-wrap">
-                    {childType.keywords.map((kw: string) => (
-                      <span key={kw} className="px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-bold">#{kw}</span>
-                    ))}
-                  </div>
-                  <p className="text-text-sub text-[13px] break-keep">{childType.desc}</p>
-                </>
+                isChildSurveyComplete ? (
+                  <>
+                    <p className="text-text-sub text-sm font-medium">{intake.childName || '아이'}의 기질 유형</p>
+                    <h1 className="text-3xl font-black text-text-main dark:text-white tracking-tight">
+                      {childType.label}
+                    </h1>
+                    <div className="flex items-center justify-center gap-2 flex-wrap">
+                      {childType.keywords.map((kw: string) => (
+                        <span key={kw} className="px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-bold">#{kw}</span>
+                      ))}
+                    </div>
+                    <p className="text-text-sub text-[13px] break-keep">{childType.desc}</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-text-sub text-sm font-medium">{intake.childName || '아이'}의 기질 유형</p>
+                    <div className="h-9 w-48 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse mx-auto" />
+                    <div className="h-4 w-64 bg-slate-100 dark:bg-slate-800 rounded animate-pulse mx-auto" />
+                  </>
+                )
               ) : activeTab === 'parent' ? (
-                <>
-                  <p className="text-text-sub text-sm font-medium">양육자의 기질 유형</p>
-                  <h1 className="text-3xl font-black text-text-main dark:text-white tracking-tight">
-                    {parentType.label}
-                  </h1>
-                  <div className="flex items-center justify-center gap-2 flex-wrap">
-                    {parentType.keywords.map((kw: string) => (
-                      <span key={kw} className="px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-bold">#{kw}</span>
-                    ))}
-                  </div>
-                  <p className="text-text-sub text-[13px] break-keep">{parentType.desc}</p>
-                </>
+                isParentSurveyComplete ? (
+                  <>
+                    <p className="text-text-sub text-sm font-medium">양육자의 기질 유형</p>
+                    <h1 className="text-3xl font-black text-text-main dark:text-white tracking-tight">
+                      {parentType.label}
+                    </h1>
+                    <div className="flex items-center justify-center gap-2 flex-wrap">
+                      {parentType.keywords.map((kw: string) => (
+                        <span key={kw} className="px-3 py-1 rounded-full bg-primary/10 text-primary text-[12px] font-bold">#{kw}</span>
+                      ))}
+                    </div>
+                    <p className="text-text-sub text-[13px] break-keep">{parentType.desc}</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-text-sub text-sm font-medium">양육자의 기질 유형</p>
+                    <div className="h-9 w-48 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse mx-auto" />
+                    <div className="h-4 w-64 bg-slate-100 dark:bg-slate-800 rounded animate-pulse mx-auto" />
+                  </>
+                )
               ) : (
                 <>
                   <p className="text-text-sub text-sm font-medium">기질 맞춤 양육 리포트</p>
-                  <h1 className="text-3xl font-black text-text-main dark:text-white tracking-tight">
-                    {intake.childName || '아이'}와 양육자
-                  </h1>
-                  <p className="text-text-sub text-[13px] break-keep">두 사람의 기질 궁합과 맞춤 양육 가이드</p>
+                  {harmonyAiReport ? (
+                    <>
+                      <h1 className="text-3xl font-black text-text-main dark:text-white tracking-tight">
+                        {harmonyAiReport.harmonyTitle}
+                      </h1>
+                      <p className="text-text-sub text-[13px] break-keep">{harmonyAiReport.oneLiner}</p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="h-9 w-48 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse mx-auto" />
+                      <div className="h-4 w-64 bg-slate-100 dark:bg-slate-800 rounded animate-pulse mx-auto" />
+                    </>
+                  )}
                 </>
               )}
             </div>
@@ -755,7 +799,7 @@ function ReportContent() {
                           {childAiReport.scripts.map((s: any, idx: number) => (
                             <div key={idx} className="bg-white dark:bg-surface-dark rounded-2xl px-6 py-5 shadow-card border border-beige-main/10 space-y-2">
                               <p className="text-[12px] font-bold text-text-sub">{s.situation}</p>
-                              <p className="text-[16px] font-black text-primary leading-snug break-keep">&ldquo;{s.script}&rdquo;</p>
+                              <p className="text-[16px] font-black text-primary leading-snug break-keep">&ldquo;{s.script.replace(/^[""\u201C]+|[""\u201D]+$/g, '')}&rdquo;</p>
                               <p className="text-[13px] text-text-sub leading-relaxed break-keep">{s.guide}</p>
                             </div>
                           ))}
@@ -1010,7 +1054,7 @@ function ReportContent() {
                         <span className="text-4xl font-black text-primary">{harmonyAiReport.compatibilityScore}%</span>
                         <p className="text-text-sub text-[13px] leading-relaxed break-keep">{harmonyAiReport.dynamics?.description}</p>
                         <Button
-                          onClick={() => { setHarmonyAiReport(null); }}
+                          onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }); setHarmonyAiReport(null); }}
                           variant="secondary"
                           fullWidth
                           className="h-12 rounded-2xl mt-4"
@@ -1050,6 +1094,32 @@ function ReportContent() {
                             <p className="text-[14px] text-text-sub dark:text-slate-400 leading-[1.85] break-keep">{harmonyAiReport.coreGap.insight}</p>
                             <div className="bg-primary/5 rounded-xl p-4 border border-primary/10">
                               <p className="text-primary text-[13px] font-bold break-keep">{harmonyAiReport.coreGap.reframe}</p>
+                            </div>
+                          </section>
+                        )}
+
+                        {/* 3-2. 가장 잘 맞는 기질 */}
+                        {harmonyAiReport.coreMatch && (
+                          <section className="bg-white dark:bg-surface-dark rounded-2xl px-6 py-5 shadow-card border border-beige-main/10 space-y-4">
+                            <p className="text-[12px] font-black text-text-main dark:text-white flex items-center gap-1.5">
+                              <Icon name="favorite" size="sm" /> 마음이 잘 맞는 부분
+                            </p>
+                            <div className="flex items-center justify-between bg-background-light dark:bg-background-dark rounded-xl p-4">
+                              <div className="text-center flex-1">
+                                <p className="text-[10px] font-bold text-teal-500 mb-1">아이</p>
+                                <span className="text-2xl font-black text-text-main dark:text-white">{harmonyAiReport.coreMatch.childScore}</span>
+                              </div>
+                              <div className="text-center px-4">
+                                <span className="text-[11px] font-black text-text-sub px-3 py-1 rounded-full bg-white dark:bg-slate-700 shadow-sm">{harmonyAiReport.coreMatch.label}</span>
+                              </div>
+                              <div className="text-center flex-1">
+                                <p className="text-[10px] font-bold text-orange-400 mb-1">양육자</p>
+                                <span className="text-2xl font-black text-text-main dark:text-white">{harmonyAiReport.coreMatch.parentScore}</span>
+                              </div>
+                            </div>
+                            <p className="text-[14px] text-text-sub dark:text-slate-400 leading-[1.85] break-keep">{harmonyAiReport.coreMatch.insight}</p>
+                            <div className="bg-teal-50 dark:bg-teal-900/10 rounded-xl p-4 border border-teal-100 dark:border-teal-800">
+                              <p className="text-teal-700 dark:text-teal-300 text-[13px] font-bold break-keep">{harmonyAiReport.coreMatch.strength}</p>
                             </div>
                           </section>
                         )}
@@ -1101,7 +1171,7 @@ function ReportContent() {
                                   <p className="text-[12px] text-green-800 dark:text-green-300 break-keep">{tip.betterResponse}</p>
                                 </div>
                                 <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
-                                  <p className="text-[13px] text-text-main dark:text-white font-bold italic break-keep">&ldquo;{tip.script}&rdquo;</p>
+                                  <p className="text-[13px] text-text-main dark:text-white font-bold italic break-keep">&ldquo;{tip.script.replace(/^[""\u201C]+|[""\u201D]+$/g, '')}&rdquo;</p>
                                 </div>
                               </div>
                             ))}
@@ -1147,7 +1217,7 @@ function ReportContent() {
                           {new Date(reportDates.parenting).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })} 분석
                         </p>
                         <button
-                          onClick={() => { setHarmonyAiReport(null); generateHarmonyAIReport(true); }}
+                          onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }); setHarmonyAiReport(null); generateHarmonyAIReport(true); }}
                           disabled={isGenerating}
                           className="text-[11px] text-text-sub/50 hover:text-primary font-medium transition-colors disabled:opacity-40"
                         >
