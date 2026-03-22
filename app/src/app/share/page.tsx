@@ -75,20 +75,20 @@ function SharePageContent() {
     if (report?.analysis_json) {
       const analysis = report.analysis_json as any;
       if (analysis.label && analysis.desc) {
-        return { label: analysis.label, desc: analysis.desc };
+        // Get image from classifier using scores if available
+        if (analysis.scores) {
+          const classified = TemperamentClassifier.analyzeChild(analysis.scores);
+          return { label: analysis.label, desc: analysis.desc, image: classified.image };
+        }
+        return { label: analysis.label, desc: analysis.desc, image: '' };
       }
     }
 
     // Fallback to local store
     if (!cbqResponses || Object.keys(cbqResponses).length === 0) return null;
     const scores = TemperamentScorer.calculate(CHILD_QUESTIONS, cbqResponses as any);
-
-    let parentScores = { NS: 50, HA: 50, RD: 50, P: 50 };
-    if (atqResponses && Object.keys(atqResponses).length > 0) {
-      parentScores = TemperamentScorer.calculate(CHILD_QUESTIONS, atqResponses as any);
-    }
-
-    return TemperamentClassifier.analyzeChild(scores);
+    const classified = TemperamentClassifier.analyzeChild(scores);
+    return { label: classified.label, desc: classified.desc, image: classified.image };
   })();
 
   const handleCopyCode = async () => {
@@ -108,7 +108,7 @@ function SharePageContent() {
       content: {
         title: `${childName}는 "${temperamentInfo?.label || '열정 탐험가'}"예요!`,
         description: '과학적인 기질 분석으로 우리 아이의 타고난 빛을 발견해보세요.',
-        imageUrl: 'https://images.unsplash.com/photo-1516627145497-ae6968895b74?w=800&auto=format&fit=crop&q=80',
+        imageUrl: `${window.location.origin}${temperamentInfo?.image || '/child_type/type_lhl.jpg'}`,
         link: {
           mobileWebUrl: shareUrl,
           webUrl: shareUrl,
@@ -212,7 +212,7 @@ function SharePageContent() {
             <div
               className="w-full aspect-[4/5] bg-cover bg-center relative"
               style={{
-                backgroundImage: `url("https://images.unsplash.com/photo-1516627145497-ae6968895b74?w=800&auto=format&fit=crop&q=80")`,
+                backgroundImage: `url("${temperamentInfo?.image || '/child_type/type_lhl.jpg'}")`,
               }}
             >
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-8 text-white">
