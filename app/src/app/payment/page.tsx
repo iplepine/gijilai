@@ -83,7 +83,7 @@ export default function PaymentPage() {
             clearInterval(interval);
             setTimeout(() => {
               setStatus('complete');
-              router.replace('/report');
+              router.push('/report');
             }, 1000);
             return prev;
           }

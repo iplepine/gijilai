@@ -533,7 +533,7 @@ function ReportContent() {
                     onClick={() => {
                       if (isParentSurveyComplete) handleTabChange('parent');
                       else if (confirm('양육자 기질 검사를 먼저 완료해야 확인할 수 있어요. 지금 시작할까요?')) {
-                        router.replace('/survey?type=PARENT');
+                        router.push('/survey?type=PARENT');
                       }
                     }}
                     className={`flex-1 py-3 rounded-xl text-[11px] font-bold transition-all ${activeTab === 'parent' ? 'bg-primary text-white shadow-md' : 'text-text-sub hover:text-text-main hover:bg-beige-light/50'}`}
@@ -544,7 +544,7 @@ function ReportContent() {
                     onClick={() => {
                       if (isStyleSurveyComplete) handleTabChange('parenting');
                       else if (confirm('양육 태도 검사를 먼저 완료해야 확인할 수 있어요. 지금 시작할까요?')) {
-                        router.replace('/survey?type=STYLE');
+                        router.push('/survey?type=STYLE');
                       }
                     }}
                     className={`flex-1 py-3 rounded-xl text-[11px] font-bold transition-all ${activeTab === 'parenting' ? 'bg-primary text-white shadow-md' : 'text-text-sub hover:text-text-main hover:bg-beige-light/50'}`}
@@ -647,7 +647,7 @@ function ReportContent() {
                     variant="primary"
                     fullWidth
                     className="h-16 rounded-2xl font-black text-lg shadow-xl shadow-primary/20 active:scale-[0.98] transition-all"
-                    onClick={() => router.replace('/survey')}
+                    onClick={() => router.push('/survey')}
                   >
                     기질 검사 시작하기
                   </Button>
@@ -829,7 +829,7 @@ function ReportContent() {
                   {/* Footer Actions */}
                   {!isChildOnly && childAiReport && (
                     <div className="flex flex-col gap-4 pt-10 pb-10 text-center">
-                      <Button variant="secondary" onClick={() => router.replace('/share')} fullWidth className="h-14 rounded-2xl border-none bg-white shadow-lg">
+                      <Button variant="secondary" onClick={() => router.push('/share')} fullWidth className="h-14 rounded-2xl border-none bg-white shadow-lg">
                         결과 공유하고 할인권 받기
                       </Button>
                       <Link href="/" className="text-slate-400 text-sm font-bold hover:text-primary transition-colors">
@@ -1008,7 +1008,7 @@ function ReportContent() {
                 {/* Footer Actions */}
                 {parentAiReport && (
                   <div className="flex flex-col gap-4 pt-10 pb-10 text-center">
-                    <Button variant="secondary" onClick={() => router.replace('/share')} fullWidth className="h-14 rounded-2xl border-none bg-white shadow-lg">
+                    <Button variant="secondary" onClick={() => router.push('/share')} fullWidth className="h-14 rounded-2xl border-none bg-white shadow-lg">
                       나의 결과 공유하기
                     </Button>
                     <Link href="/" className="text-slate-400 text-sm font-bold hover:text-primary transition-colors">
@@ -1232,7 +1232,7 @@ function ReportContent() {
 
                 {/* Footer Actions */}
                 {harmonyAiReport && <div className="flex flex-col gap-4 pt-10 pb-16 text-center px-4">
-                  <Button variant="secondary" onClick={() => router.replace('/share')} fullWidth className="h-14 rounded-2xl border-none bg-white shadow-lg text-slate-800 font-bold">
+                  <Button variant="secondary" onClick={() => router.push('/share')} fullWidth className="h-14 rounded-2xl border-none bg-white shadow-lg text-slate-800 font-bold">
                     결과 공유하기
                   </Button>
                   <Link href="/" className="text-slate-400 text-sm font-bold hover:text-primary transition-colors">
@@ -1260,7 +1260,7 @@ function ReportContent() {
                   두 기질의 <strong className="text-slate-700">조화 지수(GHI)</strong>와 <strong className="text-slate-700">맞춤 양육 솔루션</strong>을<br />지금 바로 확인해 보세요.
                 </p>
                 <button
-                  onClick={() => router.replace('/survey?type=PARENT')}
+                  onClick={() => router.push('/survey?type=PARENT')}
                   className="w-full py-4 rounded-2xl font-black text-white text-base flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
                   style={{ backgroundColor: 'var(--primary)' }}
                 >

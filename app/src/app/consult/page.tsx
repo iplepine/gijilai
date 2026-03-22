@@ -429,7 +429,7 @@ export default function ConsultPage() {
                                         {prescription.actionItem}
                                     </div>
                                     <button
-                                        onClick={() => router.replace('/')}
+                                        onClick={() => router.push('/')}
                                         className="w-full bg-white text-primary font-bold py-4 rounded-2xl hover:bg-beige-light transition-all shadow-lg active:scale-[0.98] flex items-center justify-center gap-2"
                                     >
                                         <span>홈으로 돌아가기</span>

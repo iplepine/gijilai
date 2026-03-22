@@ -266,7 +266,7 @@ export default function RecordPage() {
                                 </p>
                             </div>
                             <Button
-                                onClick={() => router.replace('/intake')}
+                                onClick={() => router.push('/intake')}
                                 variant="primary"
                                 className="w-full h-16 rounded-2xl font-black text-lg shadow-xl shadow-primary/20 active:scale-[0.98] transition-all"
                             >

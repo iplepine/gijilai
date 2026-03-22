@@ -318,7 +318,7 @@ export default function HomePage() {
 
                     <div className="absolute -bottom-5 left-1/2 transform -translate-x-1/2 z-20 whitespace-nowrap">
                       <div
-                        onClick={(e) => { if (temperamentInfo) { e.stopPropagation(); router.replace('/report?tab=child'); } }}
+                        onClick={(e) => { if (temperamentInfo) { e.stopPropagation(); router.push('/report?tab=child'); } }}
                         className={`bg-white dark:bg-surface-dark text-primary dark:text-white px-3 py-1 rounded-full text-[12px] font-bold shadow-sm inline-flex items-center gap-1 border border-primary/10 ${temperamentInfo ? 'cursor-pointer active:scale-95 transition-transform' : ''}`}
                       >
                         <span className="material-symbols-outlined text-[14px] text-child">child_care</span>
@@ -332,7 +332,7 @@ export default function HomePage() {
                       {childName} ({ageString})
                     </h1>
                     <div
-                      onClick={() => { if (temperamentInfo?.parent?.hasData) router.replace('/report?tab=parent'); }}
+                      onClick={() => { if (temperamentInfo?.parent?.hasData) router.push('/report?tab=parent'); }}
                       className={`mt-2 bg-white/60 dark:bg-surface-dark/60 backdrop-blur-sm text-text-main dark:text-gray-200 px-3.5 py-1.5 rounded-full text-[12px] font-medium shadow-[0_2px_10px_-2px_rgba(0,0,0,0.05)] inline-flex items-center gap-1.5 ring-1 ring-black/5 dark:ring-white/10 ${temperamentInfo?.parent?.hasData ? 'cursor-pointer active:scale-95 transition-transform' : ''}`}
                     >
                       <span className="material-symbols-outlined text-[16px] text-caregiver">volunteer_activism</span>
@@ -383,7 +383,7 @@ export default function HomePage() {
                         onClick={() => {
                           resetSurveyOnly();
                           useSurveyStore.getState().resetSurvey();
-                          router.replace('/survey/intro');
+                          router.push('/survey/intro');
                         }}
                         className="w-full py-4 rounded-xl bg-white text-primary font-bold text-sm shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                       >
@@ -670,7 +670,7 @@ export default function HomePage() {
                   <button
                     onClick={() => {
                       setShowOnboarding(false);
-                      router.replace('/settings/child/new');
+                      router.push('/settings/child/new');
                     }}
                     className="w-full bg-primary text-white font-black py-5 rounded-[2rem] shadow-2xl shadow-primary/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2 group"
                   >
@@ -712,7 +712,7 @@ export default function HomePage() {
                   <button
                     onClick={() => {
                       resetSurveyOnly();
-                      router.replace('/survey');
+                      router.push('/survey');
                     }}
                     className="w-full bg-[#2E7D32] text-white font-bold py-4 rounded-xl shadow-lg shadow-[#2E7D32]/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                   >

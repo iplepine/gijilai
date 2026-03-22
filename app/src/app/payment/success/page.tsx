@@ -22,7 +22,7 @@ function SuccessContent() {
             setStatus('success');
             // Automatically redirect to report after a short delay to show success
             const timer = setTimeout(() => {
-                router.replace('/report');
+                router.push('/report');
             }, 2000);
             return () => clearTimeout(timer);
         } else if (redirectStatus === 'processing') {
@@ -62,7 +62,7 @@ function SuccessContent() {
                         <Button
                             variant="primary"
                             size="lg"
-                            onClick={() => router.replace('/report')}
+                            onClick={() => router.push('/report')}
                             className="h-14 px-10 rounded-2xl font-bold"
                         >
                             분석 결과 보러가기

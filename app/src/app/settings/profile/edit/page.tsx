@@ -66,7 +66,7 @@ export default function ProfileEditPage() {
             });
 
             alert('프로필이 수정되었습니다.');
-            router.replace('/settings/profile');
+            router.push('/settings/profile');
         } catch (error) {
             console.error('Failed to update profile:', error);
             alert('프로필 수정 중 오류가 발생했습니다.');
