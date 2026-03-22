@@ -11,4 +11,5 @@
 | [survey-questions.md](survey-questions.md) | 전체 설문 문항 목록 (아동 20 + 양육태도 10 + 부모 20 = 총 50문항) |
 | [payment.md](payment.md) | 결제, 가격, 쿨다운, 무료/유료 티어 정책 |
 | [referral.md](referral.md) | 추천 코드, 쿠폰 발급/만료 정책 |
+| [home.md](home.md) | 홈 화면 레이아웃, 카드 배치 순서, 신규/기존 사용자 분기 |
 | [navigation.md](navigation.md) | 네비게이션 규칙, 접수 폼, 이미지 업로드, 다자녀 지원 |
