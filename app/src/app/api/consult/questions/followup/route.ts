@@ -23,12 +23,13 @@ export async function POST(request: Request) {
 **[Output Format (JSON Only)]**
 {
   "needsFollowUp": true,
+  "followUpReason": "추가 질문이 필요한 이유를 양육자에게 다정하게 설명 (1~2문장)",
   "followUpQuestions": [
     {
       "id": "f1",
       "text": "심층 질문 내용",
       "type": "CHOICE", // "CHOICE" 또는 "TEXT"
-      "options": [ ... ] 
+      "options": [{ "id": "f1_a", "text": "선택지 텍스트" }, ...]
     }
   ]
 }

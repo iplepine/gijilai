@@ -31,10 +31,10 @@ export async function POST(request: Request) {
 **[기질 프로필]**
 ${childProfile ? `- 아이 기질 유형: ${childProfile.label} (${childProfile.keywords.join(', ')})
   - 설명: ${childProfile.description}
-  - 차원별 점수 (0~100): NS(자극추구)=${childProfile.scores.NS}, HA(위험회피)=${childProfile.scores.HA}, RD(사회적민감성)=${childProfile.scores.RD}, P(지속성)=${childProfile.scores.P}` : '- 아이 기질: 검사 데이터 없음'}
+  - 차원별 점수 (0~100): 자극추구=${childProfile.scores.NS}, 위험회피=${childProfile.scores.HA}, 사회적민감성=${childProfile.scores.RD}, 지속성=${childProfile.scores.P}` : '- 아이 기질: 검사 데이터 없음'}
 ${parentProfile ? `- 양육자 기질 유형: ${parentProfile.label} (${parentProfile.keywords.join(', ')})
   - 설명: ${parentProfile.description}
-  - 차원별 점수 (0~100): NS=${parentProfile.scores.NS}, HA=${parentProfile.scores.HA}, RD=${parentProfile.scores.RD}, P=${parentProfile.scores.P}` : '- 양육자 기질: 검사 데이터 없음'}
+  - 차원별 점수 (0~100): 자극추구=${parentProfile.scores.NS}, 위험회피=${parentProfile.scores.HA}, 사회적민감성=${parentProfile.scores.RD}, 지속성=${parentProfile.scores.P}` : '- 양육자 기질: 검사 데이터 없음'}
 ${harmonyAnalysis ? `- 양육자-아이 기질 조화: 가장 큰 차이 차원 = "${harmonyAnalysis.title}" (차이 ${harmonyAnalysis.score}점)
   - ${harmonyAnalysis.desc}` : ''}
 
@@ -45,7 +45,7 @@ ${formatObservationsForPrompt(recentObservations)}
 ` : ''}**[응답 원칙]**
 1. **공감 우선 (empathy)**: 양육자의 힘든 상황을 충분히 인정하고 공감하세요. 육아의 고단함을 짚어주며 죄책감을 느끼지 않게 격려하세요.
    - 예: "정말 고생 많으셨어요. 아침 시간은 1분 1초가 급한데 아이가 협조해주지 않으면 누구라도 화가 날 수밖에 없어요."
-2. **기질적 인사이트**: 공감 멘트 끝에 아이의 기질(NS, HA, RD, P) 관점에서 왜 이런 행동이 나올 수 있는지 가벼운 힌트를 포함하세요.
+2. **기질적 인사이트**: 공감 멘트 끝에 아이의 기질 관점에서 왜 이런 행동이 나올 수 있는지 가벼운 힌트를 포함하세요. 단, NS/HA/RD/P 같은 영문 약어는 절대 사용하지 말고 한글 용어(자극추구, 위험회피, 사회적민감성, 인내력)를 사용하세요.
 3. **질문 생성 (questions)**: 상황의 맥락(장소, 시간), 아이의 상태, 양육자의 반응 등을 파악하기 위한 질문을 생성하세요.
    - 객관식(CHOICE) 위주로 구성하되, 질문 톤은 상담사가 묻는 것처럼 부드럽게 작성하세요.
 
