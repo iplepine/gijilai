@@ -77,7 +77,7 @@ function RecordsContent() {
                     rightElement={selected ? (
                         <button
                             onClick={() => setSelected(null)}
-                            className="text-[13px] font-bold text-secondary flex items-center gap-0.5"
+                            className="text-[13px] font-bold text-secondary"
                         >
                             목록
                         </button>
@@ -153,6 +153,23 @@ function RecordsContent() {
                                     </div>
                                 </div>
                             )}
+
+                            <button
+                                onClick={async () => {
+                                    if (!confirm('이 상담 기록을 삭제하시겠습니까?\n삭제된 기록은 복구할 수 없습니다.')) return;
+                                    try {
+                                        await supabase.from('consultations').delete().eq('id', selected.id);
+                                        setConsults(prev => prev.filter(c => c.id !== selected.id));
+                                        setSelected(null);
+                                    } catch {
+                                        alert('삭제에 실패했습니다.');
+                                    }
+                                }}
+                                className="mt-6 w-full py-3 text-[13px] font-bold text-red-400 flex items-center justify-center gap-1"
+                            >
+                                <span className="material-symbols-outlined text-[16px]">delete</span>
+                                이 상담 기록 삭제
+                            </button>
                         </div>
                     ) : consults.length === 0 ? (
                         <div className="py-24 flex flex-col items-center text-center space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">

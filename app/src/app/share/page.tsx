@@ -11,6 +11,7 @@ import { db, ReportData, ChildProfile } from '@/lib/db';
 import { TemperamentScorer } from '@/lib/TemperamentScorer';
 import { TemperamentClassifier } from '@/lib/TemperamentClassifier';
 import { CHILD_QUESTIONS } from '@/data/questions';
+import { eunNeun } from '@/lib/koreanUtils';
 import { toPng } from 'html-to-image';
 import saveAs from 'file-saver';
 import { Suspense } from 'react';
@@ -85,9 +86,13 @@ function SharePageContent() {
     return { label: classified.label, desc: classified.desc, image: classified.image };
   })();
 
+  const getShareUrl = () => {
+    if (reportId) return `${window.location.origin}/report?id=${reportId}`;
+    return `${window.location.origin}?ref=${referralCode}`;
+  };
+
   const handleCopyCode = async () => {
-    const shareUrl = window.location.origin + '?ref=' + referralCode;
-    await navigator.clipboard.writeText(shareUrl);
+    await navigator.clipboard.writeText(getShareUrl());
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -95,12 +100,12 @@ function SharePageContent() {
   const handleKakaoShare = () => {
     if (!window.Kakao) return;
 
-    const shareUrl = window.location.origin + '?ref=' + referralCode;
+    const shareUrl = getShareUrl();
 
     window.Kakao.Share.sendDefault({
       objectType: 'feed',
       content: {
-        title: `${childName}는 "${temperamentInfo?.label || '열정 탐험가'}"예요!`,
+        title: `${eunNeun(childName)} "${temperamentInfo?.label || '열정 탐험가'}"예요!`,
         description: '과학적인 기질 분석으로 우리 아이의 타고난 빛을 발견해보세요.',
         imageUrl: `${window.location.origin}${temperamentInfo?.image || '/child_type/type_lhl.jpg'}`,
         link: {
@@ -141,11 +146,10 @@ function SharePageContent() {
     }
 
     try {
-      const shareUrl = window.location.origin + '?ref=' + referralCode;
       await navigator.share({
         title: `${childName}의 기질 분석 결과`,
-        text: `${childName}는 "${temperamentInfo?.label || '열정 탐험가'}" 기질이에요! 과학적 기질 분석으로 우리 아이를 이해해보세요.`,
-        url: shareUrl,
+        text: `${eunNeun(childName)} "${temperamentInfo?.label || '열정 탐험가'}" 기질이에요! 과학적 기질 분석으로 우리 아이를 이해해보세요.`,
+        url: getShareUrl(),
       });
     } catch (err) {
       // User cancelled share - ignore
@@ -168,15 +172,14 @@ function SharePageContent() {
             >
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-7">
                 <h3 className="text-2xl font-bold text-white mb-2 break-keep leading-snug">
-                  {childName}는<br />
+                  {eunNeun(childName)}<br />
                   <span className="text-primary-light">"{temperamentInfo?.label || '열정 탐험가'}"</span>예요!
                 </h3>
                 <p className="text-sm text-white/80 leading-relaxed font-medium break-keep">
                   {temperamentInfo?.desc || '호기심이 많고 에너지가 넘치는 탐험가 기질을 가지고 있어요.'}
                 </p>
-                <div className="mt-5 pt-4 border-t border-white/20 flex items-center gap-2">
-                  <img src="/gijilai_icon.png" alt="" className="w-5 h-5 brightness-0 invert opacity-50" />
-                  <span className="text-[10px] font-bold tracking-widest uppercase opacity-40">Gijilai</span>
+                <div className="mt-5 pt-4 border-t border-white/20">
+                  <span className="text-[10px] font-bold tracking-widest uppercase text-white/40">기질아이</span>
                 </div>
               </div>
             </div>
@@ -188,35 +191,42 @@ function SharePageContent() {
               onClick={handleKakaoShare}
               className="w-full h-14 rounded-2xl flex items-center justify-center gap-2 text-[15px] font-bold bg-[#FEE500] hover:bg-[#FADA0A] text-[#191919] active:scale-[0.98] transition-all"
             >
-              <span className="text-xl">💬</span> 카카오톡으로 공유
+              <svg width="20" height="20" viewBox="0 0 256 256"><path d="M128 36C70.6 36 24 72.4 24 116.8c0 28.9 19.2 54.2 48.1 68.6l-9.8 36.2c-.8 2.9 2.6 5.2 5.1 3.5l42.5-28.4c5.9.8 12 1.3 18.1 1.3 57.4 0 104-36.4 104-80.8S185.4 36 128 36z" fill="#191919"/></svg>
+              카카오톡으로 공유
             </button>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-4">
               <button
                 onClick={handleCopyCode}
-                className={`h-14 rounded-2xl flex flex-col items-center justify-center gap-1 text-[12px] font-bold border transition-all active:scale-95 ${copied ? 'bg-primary/5 text-primary border-primary/20' : 'bg-white dark:bg-surface-dark text-text-sub border-gray-100 dark:border-gray-800'}`}
+                className="flex flex-col items-center gap-2 active:scale-95 transition-all"
               >
-                <Icon name={copied ? "check" : "link"} size="sm" />
-                {copied ? '복사됨' : '링크 복사'}
+                <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-colors ${copied ? 'bg-primary/10' : 'bg-white dark:bg-surface-dark shadow-sm border border-gray-100 dark:border-gray-800'}`}>
+                  <span className={`material-symbols-outlined text-[22px] ${copied ? 'text-primary' : 'text-text-sub'}`}>{copied ? 'check' : 'link'}</span>
+                </div>
+                <span className={`text-[11px] font-bold ${copied ? 'text-primary' : 'text-text-sub'}`}>{copied ? '복사됨!' : '링크 복사'}</span>
               </button>
               <button
                 onClick={handleDownloadImage}
                 disabled={isSharing}
-                className="h-14 rounded-2xl bg-white dark:bg-surface-dark text-text-sub border border-gray-100 dark:border-gray-800 flex flex-col items-center justify-center gap-1 text-[12px] font-bold transition-all active:scale-95 disabled:opacity-50"
+                className="flex flex-col items-center gap-2 active:scale-95 transition-all disabled:opacity-50"
               >
-                {isSharing ? (
-                  <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                ) : (
-                  <Icon name="image" size="sm" />
-                )}
-                {isSharing ? '저장 중' : '이미지 저장'}
+                <div className="w-14 h-14 rounded-full bg-white dark:bg-surface-dark shadow-sm border border-gray-100 dark:border-gray-800 flex items-center justify-center">
+                  {isSharing ? (
+                    <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <span className="material-symbols-outlined text-[22px] text-text-sub">image</span>
+                  )}
+                </div>
+                <span className="text-[11px] font-bold text-text-sub">{isSharing ? '저장 중' : '이미지 저장'}</span>
               </button>
               <button
                 onClick={handleNativeShare}
-                className="h-14 rounded-2xl bg-white dark:bg-surface-dark text-text-sub border border-gray-100 dark:border-gray-800 flex flex-col items-center justify-center gap-1 text-[12px] font-bold transition-all active:scale-95"
+                className="flex flex-col items-center gap-2 active:scale-95 transition-all"
               >
-                <Icon name="share" size="sm" />
-                다른 앱
+                <div className="w-14 h-14 rounded-full bg-white dark:bg-surface-dark shadow-sm border border-gray-100 dark:border-gray-800 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[22px] text-text-sub">share</span>
+                </div>
+                <span className="text-[11px] font-bold text-text-sub">다른 앱</span>
               </button>
             </div>
           </div>
