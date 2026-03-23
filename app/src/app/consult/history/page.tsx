@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/auth/AuthProvider';
@@ -10,6 +10,14 @@ import { Navbar } from '@/components/layout/Navbar';
 import { db } from '@/lib/db';
 
 export default function ConsultHistoryPage() {
+    return (
+        <Suspense>
+            <ConsultHistoryContent />
+        </Suspense>
+    );
+}
+
+function ConsultHistoryContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { user, loading: authLoading } = useAuth();

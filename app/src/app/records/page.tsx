@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/auth/AuthProvider';
@@ -10,6 +10,14 @@ import BottomNav from '@/components/layout/BottomNav';
 import { Navbar } from '@/components/layout/Navbar';
 
 export default function RecordsPage() {
+    return (
+        <Suspense>
+            <RecordsContent />
+        </Suspense>
+    );
+}
+
+function RecordsContent() {
     const searchParams = useSearchParams();
     const { user, loading: authLoading } = useAuth();
     const { intake } = useAppStore();
