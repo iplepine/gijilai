@@ -19,7 +19,7 @@ import { TCI_TERMINOLOGY } from '@/constants/terminology';
 export default function HomePage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const { intake, cbqResponses, atqResponses, parentingResponses, isPaid, resetSurveyOnly, resetAll } = useAppStore();
+  const { intake, cbqResponses, atqResponses, parentingResponses, isPaid, resetSurveyOnly, resetAll, setSelectedChildId } = useAppStore();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [children, setChildren] = useState<ChildProfile[]>([]);
   const [reports, setReports] = useState<ReportData[]>([]);
@@ -88,6 +88,10 @@ export default function HomePage() {
   // Handle Child Selection
   const handleChildSelect = (index: number) => {
     setSelectedChildIndex(index);
+    const child = children[index];
+    if (child) {
+      setSelectedChildId(child.id);
+    }
   };
 
   const childName = mainChild?.name || "우리 아이";
@@ -156,6 +160,19 @@ export default function HomePage() {
         setChildren(data.children);
         setReports(data.reports);
         setSurveys(data.surveys);
+
+        // 선택된 아이 ID를 글로벌 스토어에 동기화
+        if (data.children.length > 0) {
+          const currentSelectedId = useAppStore.getState().selectedChildId;
+          const validChildIndex = data.children.findIndex((c: ChildProfile) => c.id === currentSelectedId);
+          if (validChildIndex >= 0) {
+            // 이전에 선택된 아이가 있으면 해당 인덱스로 복원
+            setSelectedChildIndex(validChildIndex);
+          } else {
+            // 없으면 첫 번째 아이 선택
+            setSelectedChildId(data.children[0].id);
+          }
+        }
 
         // 오늘 관찰일지 작성 여부
         const today = new Date().toISOString().slice(0, 10);

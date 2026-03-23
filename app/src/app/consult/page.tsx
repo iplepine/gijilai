@@ -35,7 +35,7 @@ const CATEGORIES = [
 export default function ConsultPage() {
     const router = useRouter();
     const { user } = useAuth();
-    const { intake, cbqResponses, atqResponses } = useAppStore();
+    const { intake, cbqResponses, atqResponses, selectedChildId } = useAppStore();
 
     const [step, setStep] = useState<Step>('INPUT');
     const [isLoading, setIsLoading] = useState(false);
@@ -215,8 +215,11 @@ export default function ConsultPage() {
 
             // Save history
             if (user) {
-                const { data: children } = await supabase.from('children').select('id').eq('parent_id', user.id).limit(1);
-                const childId = children?.[0]?.id || null;
+                let childId = selectedChildId;
+                if (!childId) {
+                    const { data: children } = await supabase.from('children').select('id').eq('parent_id', user.id).limit(1);
+                    childId = children?.[0]?.id || null;
+                }
 
                 await supabase.from('consultations').insert({
                     user_id: user.id,

@@ -48,7 +48,7 @@ function ReportContent() {
 
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'child' | 'parent' | 'parenting'>('child');
-  const { intake, cbqResponses, atqResponses, parentingResponses, isPaid, setIsPaid } = useAppStore();
+  const { intake, cbqResponses, atqResponses, parentingResponses, isPaid, setIsPaid, selectedChildId } = useAppStore();
   const [isLocalhost, setIsLocalhost] = useState(false);
   useEffect(() => {
     setIsLocalhost(window.location.hostname === 'localhost');
@@ -189,7 +189,7 @@ function ReportContent() {
     const res = await fetch('/api/llm/report', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...payload, intake })
+      body: JSON.stringify({ ...payload, intake, childId: dbChildId || selectedChildId })
     });
     if (!res.ok) {
       const errBody = await res.json().catch(() => ({}));

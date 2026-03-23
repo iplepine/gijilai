@@ -3,6 +3,10 @@ import { persist } from 'zustand/middleware';
 import type { IntakeFormData, SurveyResponse, AnalysisResult } from '@/types';
 
 interface AppState {
+  // Selected Child
+  selectedChildId: string | null;
+  setSelectedChildId: (id: string | null) => void;
+
   // Intake Form
   intake: IntakeFormData;
   setIntake: (data: Partial<IntakeFormData>) => void;
@@ -45,6 +49,10 @@ const initialIntake: IntakeFormData = {
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
+      // Selected Child
+      selectedChildId: null,
+      setSelectedChildId: (id) => set({ selectedChildId: id }),
+
       // Intake
       intake: initialIntake,
       setIntake: (data) =>
@@ -85,6 +93,7 @@ export const useAppStore = create<AppState>()(
       // Reset
       resetAll: () =>
         set({
+          selectedChildId: null,
           intake: initialIntake,
           surveyProgress: 0,
           cbqResponses: {},
