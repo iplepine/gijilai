@@ -8,9 +8,9 @@ export default function BottomNav() {
 
     const navItems = [
         { href: '/', label: '홈', icon: 'home' },
-        { href: '/record', label: '관찰일지', icon: 'edit_note' },
+        { href: '/observations', label: '관찰일지', icon: 'edit_note' },
         { href: '/consult', label: '상담', icon: 'add', isCenter: true },
-        { href: '/records', label: '기록', icon: 'folder_open' },
+        { href: '/consultations', label: '기록', icon: 'folder_open' },
         { href: '/settings/profile', label: '내 정보', icon: 'person' },
     ];
 

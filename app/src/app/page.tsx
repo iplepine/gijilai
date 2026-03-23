@@ -499,7 +499,7 @@ export default function HomePage() {
 
                 {/* 관찰일지 유도 카드 */}
                 {!todayHasObservation && (
-                  <Link href="/record" className="block">
+                  <Link href="/observations" className="block">
                     <div className="bg-white dark:bg-surface-dark/50 rounded-2xl p-5 shadow-soft border border-[#EACCA4]/30 active:scale-[0.99] transition-all">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-[#EACCA4]/15 flex items-center justify-center">

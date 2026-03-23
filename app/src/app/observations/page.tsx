@@ -216,7 +216,7 @@ export default function RecordPage() {
                     {/* 최근 상담 액션 아이템 */}
                     {!isLoading && latestActionItem && children.length > 0 && (
                         <div
-                            onClick={() => router.push(`/consult/history?view=${latestActionItem.consultId}`)}
+                            onClick={() => router.push(`/consultations/${latestActionItem.consultId}`)}
                             className="mb-6 bg-gradient-to-br from-primary/10 to-secondary/10 dark:from-primary/20 dark:to-secondary/20 rounded-[1.5rem] p-5 border border-primary/15 animate-in fade-in slide-in-from-top-2 duration-500 cursor-pointer active:scale-[0.98] transition-transform"
                         >
                             <div className="flex items-center gap-1.5 mb-2">
