@@ -14,7 +14,7 @@ function formatObservationsForPrompt(observations: any[]): string {
 
 export async function POST(request: Request) {
     try {
-        const { problem, questions, answers, childProfile, parentProfile, harmonyAnalysis, childName, recentObservations } = await request.json();
+        const { problem, questions, answers, childProfile, parentProfile, childName, recentObservations } = await request.json();
 
         if (!problem || !answers) {
             return NextResponse.json(
@@ -36,8 +36,6 @@ ${childProfile ? `- 아이 기질 유형: ${childProfile.label} (${childProfile.
 ${parentProfile ? `- 양육자 기질 유형: ${parentProfile.label} (${parentProfile.keywords.join(', ')})
   - 설명: ${parentProfile.description}
   - 차원별 점수 (0~100): 자극추구=${parentProfile.scores.NS}, 위험회피=${parentProfile.scores.HA}, 사회적민감성=${parentProfile.scores.RD}, 지속성=${parentProfile.scores.P}` : '- 양육자 기질: 검사 데이터 없음 (보편적 양육자 기질로 분석)'}
-${harmonyAnalysis ? `- 양육자-아이 기질 조화: 가장 큰 차이 차원 = "${harmonyAnalysis.title}" (차이 ${harmonyAnalysis.score}점)
-  - ${harmonyAnalysis.desc}` : ''}
 - 고민 상황: ${problem}
 - 문진 질문과 답변:
 ${questions && questions.length > 0 ? questions.map((q: any) => `  Q: ${q.text}\n  A: ${answers[q.id] || '(미응답)'}`).join('\n') : JSON.stringify(answers)}${recentObservations && recentObservations.length > 0 ? `

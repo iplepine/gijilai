@@ -82,7 +82,6 @@ export default function ConsultPage() {
     // 기질 프로필 (초기 로드 시 1회 계산)
     const [childProfile, setChildProfile] = useState<any>(null);
     const [parentProfile, setParentProfile] = useState<any>(null);
-    const [harmonyAnalysis, setHarmonyAnalysis] = useState<any>(null);
 
     useEffect(() => {
         (async () => {
@@ -106,9 +105,6 @@ export default function ConsultPage() {
                 setParentProfile({ label: result.label, keywords: result.keywords, description: result.desc, scores: parentScores });
             }
 
-            if (childScores && parentScores) {
-                setHarmonyAnalysis(TemperamentClassifier.analyzeHarmony(childScores, parentScores));
-            }
         })();
     }, [cbqResponses, atqResponses]);
 
@@ -140,7 +136,6 @@ export default function ConsultPage() {
                     childName: childName || intake.childName,
                     childProfile,
                     parentProfile,
-                    harmonyAnalysis,
                     recentObservations
                 }),
             });
@@ -229,7 +224,6 @@ export default function ConsultPage() {
                     answers: allAnswers,
                     childProfile,
                     parentProfile,
-                    harmonyAnalysis,
                     recentObservations
                 }),
             });

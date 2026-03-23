@@ -14,7 +14,7 @@ function formatObservationsForPrompt(observations: any[]): string {
 
 export async function POST(request: Request) {
   try {
-    const { problem, childName, childProfile, parentProfile, harmonyAnalysis, recentObservations } = await request.json();
+    const { problem, childName, childProfile, parentProfile, recentObservations } = await request.json();
 
     if (!problem) {
       return NextResponse.json(
@@ -35,8 +35,6 @@ ${childProfile ? `- 아이 기질 유형: ${childProfile.label} (${childProfile.
 ${parentProfile ? `- 양육자 기질 유형: ${parentProfile.label} (${parentProfile.keywords.join(', ')})
   - 설명: ${parentProfile.description}
   - 차원별 점수 (0~100): 자극추구=${parentProfile.scores.NS}, 위험회피=${parentProfile.scores.HA}, 사회적민감성=${parentProfile.scores.RD}, 지속성=${parentProfile.scores.P}` : '- 양육자 기질: 검사 데이터 없음'}
-${harmonyAnalysis ? `- 양육자-아이 기질 조화: 가장 큰 차이 차원 = "${harmonyAnalysis.title}" (차이 ${harmonyAnalysis.score}점)
-  - ${harmonyAnalysis.desc}` : ''}
 
 ${recentObservations && recentObservations.length > 0 ? `**[최근 양육 관찰 기록]**
 양육자가 최근 기록한 아이와의 상호작용입니다. 이 맥락을 참고하여 질문을 생성하세요.
