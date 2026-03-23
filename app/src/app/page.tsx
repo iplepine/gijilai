@@ -23,8 +23,7 @@ export default function HomePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [children, setChildren] = useState<ChildProfile[]>([]);
   const [reports, setReports] = useState<ReportData[]>([]);
-  const [latestSurvey, setLatestSurvey] = useState<SurveyData | null>(null);
-  const [parentSurvey, setParentSurvey] = useState<SurveyData | null>(null);
+  const [surveys, setSurveys] = useState<SurveyData[]>([]);
 
   const [uploading, setUploading] = useState(false);
   const [showSurveyIntro, setShowSurveyIntro] = useState(false);
@@ -76,6 +75,16 @@ export default function HomePage() {
     return null;
   }, [children, selectedChildIndex, intake]);
 
+  // Derived per-child surveys
+  const latestSurvey = useMemo(() => {
+    if (!mainChild) return null;
+    return surveys.find(s => s.type === 'CHILD' && s.child_id === mainChild.id) || null;
+  }, [surveys, mainChild]);
+
+  const parentSurvey = useMemo(() => {
+    return surveys.find(s => s.type === 'PARENT') || null;
+  }, [surveys]);
+
   // Handle Child Selection
   const handleChildSelect = (index: number) => {
     setSelectedChildIndex(index);
@@ -88,10 +97,10 @@ export default function HomePage() {
     // 해당 아이의 리포트나 설문 데이터 찾기
     const childSurvey = reports.find(r => r.child_id === mainChild?.id && r.type === 'CHILD');
     
-    // Check local store responses first for immediate feedback (if it's the current session child)
-    const childAnswers = (mainChild?.id === 'temporary-intake-id' || (children.length > 0 && selectedChildIndex === 0)) && Object.keys(cbqResponses).length > 0
-      ? cbqResponses
-      : (childSurvey?.analysis_json as any)?.scores || (latestSurvey?.answers as Record<string, number>);
+    // Check DB report/survey first, then fall back to local store for temporary intake
+    const childAnswers = (childSurvey?.analysis_json as any)?.scores
+      || (latestSurvey?.answers as Record<string, number>)
+      || (mainChild?.id === 'temporary-intake-id' && Object.keys(cbqResponses).length > 0 ? cbqResponses : null);
 
     if (!childAnswers) return null;
     
@@ -146,8 +155,7 @@ export default function HomePage() {
         setProfile(data.profile);
         setChildren(data.children);
         setReports(data.reports);
-        setLatestSurvey(data.latestSurvey);
-        setParentSurvey(data.parentSurvey);
+        setSurveys(data.surveys);
 
         // 오늘 관찰일지 작성 여부
         const today = new Date().toISOString().slice(0, 10);
@@ -252,7 +260,7 @@ export default function HomePage() {
   })() : "생일 정보 없음";
 
   // TODO: Implement actual db-backed isReportViewed and hasActiveCoaching
-  const hasReport = reports.length > 0;
+  const hasReport = mainChild ? reports.some(r => r.child_id === mainChild.id) : false;
   const hasActiveCoaching = false; // DB Schema does not have it yet
 
   return (
