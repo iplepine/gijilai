@@ -49,7 +49,7 @@
 
 ### 데이터베이스 레이어
 - **위치**: `app/src/lib/db.ts`
-- **역할**: Supabase 클라이언트를 통한 프로필, 아이, 설문, 리포트, 관찰 기록, 추천, 쿠폰 CRUD 작업
+- **역할**: Supabase 클라이언트를 통한 프로필, 아이, 설문, 리포트, 실천 기록, 추천, 쿠폰 CRUD 작업
 - **의존**: Supabase 클라이언트 (`supabase.ts`, `supabaseServer.ts`)
 - **사용처**: API 라우트, 설정 페이지, 리포트 페이지
 
@@ -69,13 +69,13 @@
 - **위치**: `app/src/app/consult/page.tsx`, `app/src/app/api/consult/`
 - **역할**: AI 기반 육아 상담 — 고민 입력 → 상황 문진 → 기질 맞춤 처방전 생성. 처방전은 `consultations` 테이블에 저장
 - **의존**: OpenAI API, TemperamentScorer, TemperamentClassifier, 관찰 기록 (컨텍스트 주입)
-- **사용처**: 상담 페이지, 관찰일지 (연결된 처방전 표시)
+- **사용처**: 상담 페이지, 실천 탭 (연결된 처방전 표시)
 
-### 육아 관찰 일지
-- **위치**: `app/src/app/record/page.tsx`
-- **역할**: ABC Recording 기반 관찰 기록 (상황 → 내 행동 → 아이 반응). `observations` 테이블에 저장. 상담 처방전과 선택적 연결 가능
-- **의존**: Supabase 클라이언트, consultations (선택적 연결)
-- **사용처**: 관찰일지 탭, 상담 시 LLM 컨텍스트 주입 (최근 5건)
+### 실천 시스템
+- **위치**: `app/src/app/practices/page.tsx` (예정)
+- **역할**: 상담 처방전의 액션 아이템을 일정 기간(1일~2주) 반복 실천하고 기록. 매일 실천 체크 + 한줄 메모, 기간 완료 시 종합 회고
+- **의존**: Supabase 클라이언트, consultations (필수 연결)
+- **사용처**: 실천 탭, 상담 시 LLM 컨텍스트 주입
 
 ### 결제
 - **위치**: `app/src/app/api/payment/create-intent/route.ts`, `app/src/components/payment/CheckoutForm.tsx`
@@ -124,15 +124,15 @@
       ↓
 [공유/PDF] → 내보내기 및 소셜 공유
 
-[상담 페이지] → 고민 입력 + 최근 관찰 기록 5건 자동 첨부
+[상담 페이지] → 고민 입력 + 최근 실천 기록 자동 첨부
       ↓
 [OpenAI API] → 공감 + 문진 질문 → 기질 맞춤 처방전 (JSON)
       ↓
 [Supabase DB] → consultations 테이블에 저장
       ↓
-[관찰일지] → 처방전 실천 후 관찰 기록 (상황→행동→반응)
+[실천 탭] → 액션 아이템 매일 실천 체크 + 기간 완료 시 회고
       ↓
-[다음 상담] → 축적된 관찰 기록이 LLM 컨텍스트로 주입 (피드백 루프)
+[다음 상담] → 축적된 실천 기록이 LLM 컨텍스트로 주입 (피드백 루프)
 ```
 
 ## 데이터베이스 테이블
@@ -144,6 +144,6 @@
 | surveys | 설문 응답 + 계산된 점수 (JSON), 상태 |
 | reports | 분석 결과 (analysis_json), 결제 여부 |
 | consultations | 상담 이력 (고민, 문진, 처방전) |
-| observations | 육아 관찰 기록 (상황, 행동, 반응) |
+| practices | 실천 기록 (액션 아이템별 일일 체크 + 회고) |
 | referrals | 코드 기반 추천 시스템 |
 | coupons | 할인 쿠폰 (만료일 포함) |

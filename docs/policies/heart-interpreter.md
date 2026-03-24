@@ -102,7 +102,7 @@ AI가 공감 멘트와 함께 상황 분석 질문 3~5개를 순차적으로 제
 | 양육자 기질 프로필 (parentProfile) | initial, prescription | 아래 상세 참조 |
 | 조화 분석 (harmonyAnalysis) | initial, prescription | 아래 상세 참조 |
 | 문진 답변 (answers) | prescription | 전체 질문-답변 매핑 |
-| 최근 관찰 기록 (recentObservations) | initial, prescription | 최근 5건, 조회 실패 시 빈 배열로 진행 |
+| 최근 실천 기록 (recentPractices) | initial, prescription | 최근 실천 기록, 조회 실패 시 빈 배열로 진행 |
 
 ### 기질 프로필 구조
 
