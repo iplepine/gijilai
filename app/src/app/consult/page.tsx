@@ -13,11 +13,17 @@ import { getRandomExamples } from '@/data/consultExamples';
 
 type Step = 'INPUT' | 'DIAGNOSTIC' | 'RESULT';
 
+interface QuestionOption {
+    id: string;
+    text: string;
+    freeText?: boolean;
+}
+
 interface Question {
     id: string;
     text: string;
     type: 'CHOICE' | 'TEXT';
-    options?: { id: string; text: string }[];
+    options?: QuestionOption[];
 }
 
 interface QuestionAnalysisItem {
@@ -68,6 +74,7 @@ export default function ConsultPage() {
     // INPUT STATE
     const [problemDesc, setProblemDesc] = useState('');
     const [currentTextAnswer, setCurrentTextAnswer] = useState('');
+    const [freeTextOptionId, setFreeTextOptionId] = useState<string | null>(null);
 
     // DIAGNOSTIC STATE
     const [empathy, setEmpathy] = useState('');
@@ -158,6 +165,7 @@ export default function ConsultPage() {
     const handleAnswer = async (questionId: string, answer: string) => {
         const newAnswers = { ...answers, [questionId]: answer };
         setAnswers(newAnswers);
+        setFreeTextOptionId(null);
 
         if (currentQuestionIndex < questions.length - 1) {
             setCurrentQuestionIndex(prev => prev + 1);
@@ -342,15 +350,53 @@ export default function ConsultPage() {
                             {currentQuestion.type === 'CHOICE' ? (
                                 <div className="flex flex-col gap-3">
                                     {currentQuestion.options?.map((opt, i) => (
-                                        <button
-                                            key={opt.id || `${currentQuestion.id}-opt-${i}`}
-                                            onClick={() => handleAnswer(currentQuestion.id, opt.text)}
-                                            className="w-full text-left p-5 rounded-[1.5rem] border-2 border-primary/5 bg-white dark:bg-surface-dark hover:border-secondary hover:bg-secondary/5 transition-all active:scale-[0.98] group"
-                                        >
-                                            <div className="font-bold leading-relaxed text-[15px] text-text-main dark:text-white group-hover:text-secondary">
-                                                {opt.text}
-                                            </div>
-                                        </button>
+                                        <div key={opt.id || `${currentQuestion.id}-opt-${i}`}>
+                                            <button
+                                                onClick={() => {
+                                                    if (opt.freeText) {
+                                                        setFreeTextOptionId(freeTextOptionId === opt.id ? null : opt.id);
+                                                        setCurrentTextAnswer('');
+                                                    } else {
+                                                        setFreeTextOptionId(null);
+                                                        handleAnswer(currentQuestion.id, opt.text);
+                                                    }
+                                                }}
+                                                className={`w-full text-left p-5 rounded-[1.5rem] border-2 transition-all active:scale-[0.98] group ${
+                                                    freeTextOptionId === opt.id
+                                                        ? 'border-secondary bg-secondary/5'
+                                                        : 'border-primary/5 bg-white dark:bg-surface-dark hover:border-secondary hover:bg-secondary/5'
+                                                }`}
+                                            >
+                                                <div className="font-bold leading-relaxed text-[15px] text-text-main dark:text-white group-hover:text-secondary">
+                                                    {opt.text}
+                                                </div>
+                                            </button>
+                                            {opt.freeText && freeTextOptionId === opt.id && (
+                                                <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                                                    <textarea
+                                                        className="w-full h-32 p-5 text-[15px] rounded-3xl border border-secondary/30 focus:outline-none focus:ring-4 focus:ring-secondary/10 resize-none bg-white dark:bg-surface-dark dark:text-white transition-all"
+                                                        placeholder="자유롭게 적어주세요."
+                                                        value={currentTextAnswer}
+                                                        onChange={(e) => setCurrentTextAnswer(e.target.value)}
+                                                        autoFocus
+                                                    />
+                                                    <button
+                                                        onClick={() => {
+                                                            if (currentTextAnswer.trim()) {
+                                                                handleAnswer(currentQuestion.id, currentTextAnswer);
+                                                                setCurrentTextAnswer('');
+                                                                setFreeTextOptionId(null);
+                                                            } else {
+                                                                alert('답변을 입력해주세요.');
+                                                            }
+                                                        }}
+                                                        className="w-full py-4 rounded-2xl bg-primary text-white font-bold transition-all active:scale-95"
+                                                    >
+                                                        다음으로
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
                                     ))}
                                 </div>
                             ) : (
@@ -461,14 +507,23 @@ export default function ConsultPage() {
                                 </div>
                             )}
 
-                            {/* 홈으로 돌아가기 */}
-                            <button
-                                onClick={() => router.push('/')}
-                                className="w-full py-4 rounded-2xl bg-primary text-white font-bold transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-2"
-                            >
-                                <span>홈으로 돌아가기</span>
-                                <span className="material-symbols-outlined text-[20px]">home</span>
-                            </button>
+                            {/* 다음 행동 유도 */}
+                            <div className="space-y-3 mt-2">
+                                <button
+                                    onClick={() => router.push('/observations')}
+                                    className="w-full py-4 rounded-2xl bg-primary text-white font-bold transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                                >
+                                    <span>바로 실천하기</span>
+                                    <span className="material-symbols-outlined text-[20px]">edit_note</span>
+                                </button>
+                                <button
+                                    onClick={() => router.push('/')}
+                                    className="w-full py-4 rounded-2xl bg-white dark:bg-surface-dark border-2 border-primary/20 text-primary font-bold transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                                >
+                                    <span>내일 꼭 해볼게요</span>
+                                    <span className="material-symbols-outlined text-[20px]">wb_sunny</span>
+                                </button>
+                            </div>
                         </div>
                     )}
                     {isLoading && (
