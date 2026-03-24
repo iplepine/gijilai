@@ -10,4 +10,6 @@
 | [ARCHITECTURE.md](ARCHITECTURE.md) | 시스템 구조, 컴포넌트 책임, 외부 의존성, 데이터 흐름 |
 | [policies/](policies/index.md) | 비즈니스 룰 및 정책 (점수, 설문 문항, 결제, 추천, 네비게이션) |
 | [CONVENTIONS.md](CONVENTIONS.md) | 코드 규칙 및 패턴 |
+| [ADR.md](ADR.md) | 주요 의사결정 기록 (Architecture Decision Records) |
+| [TODO.md](TODO.md) | 향후 작업 목록 |
 | [migrations/](migrations/) | Supabase DB 마이그레이션 SQL |
