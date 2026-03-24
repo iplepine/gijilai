@@ -48,7 +48,7 @@ function ReportContent() {
 
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'child' | 'parent' | 'parenting'>('child');
-  const { intake, cbqResponses, atqResponses, parentingResponses, isPaid, setIsPaid } = useAppStore();
+  const { intake, cbqResponses, atqResponses, parentingResponses, isPaid, setIsPaid, selectedChildId } = useAppStore();
   const [isLocalhost, setIsLocalhost] = useState(false);
   useEffect(() => {
     setIsLocalhost(window.location.hostname === 'localhost');
@@ -147,6 +147,17 @@ function ReportContent() {
     }
   };
 
+  // 선택된 아이가 바뀌면 리포트 초기화 (다자녀 전환 시)
+  const prevChildIdRef = useRef(selectedChildId);
+  useEffect(() => {
+    if (prevChildIdRef.current !== selectedChildId) {
+      prevChildIdRef.current = selectedChildId;
+      setChildAiReport(null);
+      setParentAiReport(null);
+      setHarmonyAiReport(null);
+    }
+  }, [selectedChildId]);
+
   // 아이 진단 탭: 리포트 없으면 자동 생성 (서버가 캐시/생성 분기)
   useEffect(() => {
     const hasCbq = Object.keys(cbqResponses).length > 0 || !!savedChildScores;
@@ -190,7 +201,7 @@ function ReportContent() {
     const res = await fetch('/api/llm/report', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...payload, intake })
+      body: JSON.stringify({ ...payload, intake, childId: selectedChildId })
     });
     if (!res.ok) {
       const errBody = await res.json().catch(() => ({}));

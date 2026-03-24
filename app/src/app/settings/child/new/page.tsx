@@ -4,12 +4,14 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { db } from '@/lib/db';
+import { useAppStore } from '@/store/useAppStore';
 import { Icon } from '@/components/ui/Icon';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Navbar } from '@/components/layout/Navbar';
 
 export default function RegisterChildPage() {
     const router = useRouter();
+    const setSelectedChildId = useAppStore((s) => s.setSelectedChildId);
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
@@ -44,7 +46,7 @@ export default function RegisterChildPage() {
                 }
             }
 
-            const { error } = await supabase
+            const { data: newChild, error } = await supabase
                 .from('children')
                 .insert({
                     parent_id: user.id,
@@ -53,11 +55,17 @@ export default function RegisterChildPage() {
                     birth_date: formData.birthdate,
                     birth_time: null,
                     image_url: imageUrl
-                });
+                })
+                .select('id')
+                .single();
 
             if (error) {
                 console.error('Supabase Insert Error:', error);
                 throw error;
+            }
+
+            if (newChild) {
+                setSelectedChildId(newChild.id);
             }
 
             router.refresh();

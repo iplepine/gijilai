@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
 import { useAppStore } from '@/store/useAppStore';
 import { useSurveySync } from '@/hooks/useSurveySync';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { db } from '@/lib/db';
 import { CHILD_QUESTIONS, PARENT_QUESTIONS, PARENTING_STYLE_QUESTIONS } from '@/data/questions';
 
 type SurveyModule = 'child' | 'parent' | 'parenting';
@@ -16,6 +18,7 @@ function SurveyContent() {
   const searchParams = useSearchParams();
   const typeParam = searchParams.get('type'); // 'CHILD' | 'PARENT' | 'STYLE'
 
+  const { user } = useAuth();
   const {
     intake,
     cbqResponses,
@@ -23,7 +26,8 @@ function SurveyContent() {
     parentingResponses,
     setCbqResponse,
     setAtqResponse,
-    setParentingResponse
+    setParentingResponse,
+    restoreSurveyFromDB
   } = useAppStore();
 
   // 설문 응답을 Supabase에 자동 동기화
@@ -40,6 +44,69 @@ function SurveyContent() {
   const [showExitModal, setShowExitModal] = useState(false);
   const [isCalculating, setIsCalculating] = useState(false);
   const [isAdvancing, setIsAdvancing] = useState(false);
+
+  // 양육자 기질 검사가 이미 DB에 완료되어 있으면 복원 후 스킵
+  const parentSkipCheckedRef = useRef(false);
+  useEffect(() => {
+    if (currentModule !== 'parent' || !user || parentSkipCheckedRef.current) return;
+    // 이미 스토어에 완료된 응답이 있으면 체크 불필요
+    if (Object.keys(atqResponses).length >= PARENT_QUESTIONS.length) {
+      parentSkipCheckedRef.current = true;
+      // 바로 양육태도로 스킵
+      setCurrentModule('parenting');
+      setCurrentIndex(0);
+      return;
+    }
+    parentSkipCheckedRef.current = true;
+
+    (async () => {
+      try {
+        const latest = await db.getLatestSurveyResponses(user.id);
+        const dbParent = latest['PARENT'];
+        if (dbParent?.answers && dbParent.status === 'COMPLETED') {
+          const dbAnswers = dbParent.answers as Record<string, number>;
+          if (Object.keys(dbAnswers).length >= PARENT_QUESTIONS.length) {
+            // DB에서 복원하고 양육태도로 스킵
+            restoreSurveyFromDB({ atqResponses: dbAnswers });
+            setCurrentModule('parenting');
+            setCurrentIndex(0);
+          }
+        }
+      } catch (e) {
+        console.warn('Parent survey skip check failed:', e);
+      }
+    })();
+  }, [currentModule, user]);
+
+  // 양육태도 검사도 이미 DB에 완료되어 있으면 복원 후 스킵
+  const styleSkipCheckedRef = useRef(false);
+  useEffect(() => {
+    if (currentModule !== 'parenting' || !user || styleSkipCheckedRef.current) return;
+    if (Object.keys(parentingResponses).length >= PARENTING_STYLE_QUESTIONS.length) {
+      styleSkipCheckedRef.current = true;
+      setIsCalculating(true);
+      setTimeout(() => router.replace('/report'), 2000);
+      return;
+    }
+    styleSkipCheckedRef.current = true;
+
+    (async () => {
+      try {
+        const latest = await db.getLatestSurveyResponses(user.id);
+        const dbStyle = latest['PARENTING_STYLE'];
+        if (dbStyle?.answers && dbStyle.status === 'COMPLETED') {
+          const dbAnswers = dbStyle.answers as Record<string, number>;
+          if (Object.keys(dbAnswers).length >= PARENTING_STYLE_QUESTIONS.length) {
+            restoreSurveyFromDB({ parentingResponses: dbAnswers });
+            setIsCalculating(true);
+            setTimeout(() => router.replace('/report'), 2000);
+          }
+        }
+      } catch (e) {
+        console.warn('Parenting style skip check failed:', e);
+      }
+    })();
+  }, [currentModule, user]);
 
   // 현재 모듈에 따른 질문 목록과 응답 상태 가져오기
   const getModuleData = useCallback(() => {
