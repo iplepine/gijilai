@@ -15,7 +15,6 @@ export default function RegisterChildPage() {
         name: '',
         gender: '',
         birthdate: '',
-        birthtime: '',
     });
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -52,7 +51,7 @@ export default function RegisterChildPage() {
                     name: formData.name,
                     gender: formData.gender.toLowerCase(),
                     birth_date: formData.birthdate,
-                    birth_time: formData.birthtime || null,
+                    birth_time: null,
                     image_url: imageUrl
                 });
 
@@ -109,23 +108,13 @@ export default function RegisterChildPage() {
                             />
                         </div>
 
-                        {/* Birthdate & Time */}
+                        {/* Birthdate */}
                         <div className="space-y-2">
-                            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 ml-1">생년월일 및 태어난 시간</label>
-                            <div className="grid grid-cols-2 gap-3">
-                                <DatePicker
-                                    value={formData.birthdate}
-                                    onChange={(date) => setFormData({ ...formData, birthdate: date })}
-                                />
-                                <div className="relative">
-                                    <input
-                                        type="time"
-                                        value={formData.birthtime}
-                                        onChange={(e) => setFormData({ ...formData, birthtime: e.target.value })}
-                                        className="w-full h-14 px-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl focus:ring-2 focus:ring-[#4CAF50] focus:border-[#4CAF50] transition-all text-sm outline-none"
-                                    />
-                                </div>
-                            </div>
+                            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 ml-1">생년월일</label>
+                            <DatePicker
+                                value={formData.birthdate}
+                                onChange={(date) => setFormData({ ...formData, birthdate: date })}
+                            />
                         </div>
 
                         {/* Gender Selection */}

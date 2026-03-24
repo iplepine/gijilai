@@ -31,7 +31,7 @@ export default function IntakePage() {
     if (!intake.childName.trim()) newErrors.childName = '이름을 입력해주세요';
     if (!intake.gender) newErrors.gender = '성별을 선택해주세요';
     if (!intake.birthDate) newErrors.birthDate = '생년월일을 입력해주세요';
-    // birthTime and birthPlace can be optional for the simple test flow to reduce hurdle
+    // birthPlace can be optional for the simple test flow to reduce hurdle
     if (!intake.privacyAgreed) newErrors.privacy = '개인정보 처리 방침에 동의해주세요';
     if (!intake.disclaimerAgreed) newErrors.disclaimer = '면책 고지에 동의해주세요';
 

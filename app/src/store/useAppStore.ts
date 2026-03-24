@@ -48,7 +48,7 @@ const initialIntake: IntakeFormData = {
   childName: '',
   gender: '',
   birthDate: '',
-  birthTime: '',
+
   birthPlace: '',
   concerns: [],
 };

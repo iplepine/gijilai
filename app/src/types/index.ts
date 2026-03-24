@@ -139,7 +139,7 @@ export interface IntakeFormData {
   childName: string;
   gender: 'male' | 'female' | '';
   birthDate: string;
-  birthTime: string;
+
   birthPlace: string;
   concerns: Concern[];
 }

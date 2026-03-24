@@ -83,7 +83,7 @@ export async function POST(request: Request) {
                     name: intake.childName || '아이',
                     gender: intake.gender || 'male',
                     birth_date: intake.birthDate || new Date().toISOString().split('T')[0],
-                    birth_time: intake.birthTime || null,
+                    birth_time: null,
                     image_url: null,
                 })
                 .select('id')
