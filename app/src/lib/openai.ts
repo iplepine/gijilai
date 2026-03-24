@@ -24,7 +24,6 @@ export const generateReport = async (
     scores: any,
     type: ReportType,
     systemPrompt?: string,
-    model: string = 'gpt-4o',
     answers?: { questionId: string; score: number }[],
     parentScores?: { NS: number; HA: number; RD: number; P: number },
     isPreview: boolean = false,
@@ -34,12 +33,6 @@ export const generateReport = async (
     let defaultPrompt = CHILD_REPORT_PROMPT;
     if (type === 'PARENT') defaultPrompt = PARENT_REPORT_PROMPT;
     if (type === 'HARMONY') defaultPrompt = HARMONY_REPORT_PROMPT;
-
-    // 프리뷰(무료)는 싼 모델, 유료는 비싼 모델 — 프롬프트는 동일
-    let activeModel = model;
-    if (isPreview) {
-        activeModel = 'gpt-4o-mini';
-    }
 
     const promptToUse = systemPrompt || defaultPrompt;
 
@@ -78,7 +71,7 @@ export const generateReport = async (
     const userMessage = JSON.stringify(payload);
 
     const response = await openai.chat.completions.create({
-        model: activeModel,
+        model: 'gpt-4o-mini',
         messages: [
             { role: 'system', content: promptToUse },
             { role: 'user', content: userMessage },

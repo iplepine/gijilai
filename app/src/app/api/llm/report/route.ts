@@ -17,10 +17,11 @@ export async function POST(request: Request) {
         const userId = session.user.id;
         const body = await request.json();
         const {
-            userName, scores, type, model = 'gpt-4o', answers,
+            userName, scores, type, answers,
             parentScores, isPreview = false, childType, parentType,
             refresh = false,
-            intake, styleScores
+            intake, styleScores,
+            childId: clientChildId
         } = body;
 
         if (!userName || !scores || !type) {
@@ -39,11 +40,17 @@ export async function POST(request: Request) {
 
         // 1. 캐시 확인 (refresh가 아닐 때)
         if (!refresh) {
-            const { data: cachedRows, error: cacheError } = await supabase
+            let cacheQuery = supabase
                 .from('reports')
                 .select('analysis_json, created_at, is_paid')
                 .eq('user_id', userId)
-                .eq('type', type)
+                .eq('type', type);
+
+            if (clientChildId) {
+                cacheQuery = cacheQuery.eq('child_id', clientChildId);
+            }
+
+            const { data: cachedRows, error: cacheError } = await cacheQuery
                 .order('created_at', { ascending: false })
                 .limit(1);
 
@@ -52,7 +59,7 @@ export async function POST(request: Request) {
             }
 
             if (cachedRows && cachedRows.length > 0) {
-                console.log(`[Report API] Returning cached ${type} report`);
+                console.log(`[Report API] Returning cached ${type} report (childId=${clientChildId})`);
                 return NextResponse.json({
                     report: cachedRows[0].analysis_json,
                     createdAt: cachedRows[0].created_at,
@@ -62,20 +69,23 @@ export async function POST(request: Request) {
         }
 
         // 2. Child 프로필 조회/생성
-        let childId: string | null = null;
-        const { data: existingChildren, error: childQueryError } = await supabase
-            .from('children')
-            .select('id')
-            .eq('parent_id', userId)
-            .limit(1);
+        let childId: string | null = clientChildId || null;
+        if (!childId) {
+            const { data: existingChildren, error: childQueryError } = await supabase
+                .from('children')
+                .select('id')
+                .eq('parent_id', userId)
+                .limit(1);
 
-        if (childQueryError) {
-            console.error('[Report API] Child query error:', childQueryError);
+            if (childQueryError) {
+                console.error('[Report API] Child query error:', childQueryError);
+            }
+
+            if (existingChildren && existingChildren.length > 0) {
+                childId = existingChildren[0].id;
+            }
         }
-
-        if (existingChildren && existingChildren.length > 0) {
-            childId = existingChildren[0].id;
-        } else if (intake) {
+        if (!childId && intake) {
             const { data: newChild, error: childInsertError } = await supabase
                 .from('children')
                 .insert({
@@ -130,18 +140,22 @@ export async function POST(request: Request) {
         // 4. LLM 호출
         console.log(`[Report API] Generating ${type} report via LLM (refresh=${refresh})`);
         const report = await generateReport(
-            userName, scores, type as any, undefined, model,
+            userName, scores, type as any, undefined,
             answers, parentScores, isPreview, childType, parentType
         );
 
         // 5. DB 저장 (childId/surveyId 없어도 캐시를 위해 저장)
         // refresh 시 기존 리포트 삭제
         if (refresh) {
-            const { error: deleteError } = await supabase
+            let deleteQuery = supabase
                 .from('reports')
                 .delete()
                 .eq('user_id', userId)
                 .eq('type', type);
+            if (childId) {
+                deleteQuery = deleteQuery.eq('child_id', childId);
+            }
+            const { error: deleteError } = await deleteQuery;
             if (deleteError) console.error('[Report API] Delete error:', deleteError);
         }
 
@@ -153,7 +167,7 @@ export async function POST(request: Request) {
                 survey_id: surveyId,
                 type,
                 analysis_json: report as any,
-                model_used: model,
+                model_used: 'gpt-4o-mini',
                 is_paid: !isPreview,
             });
 
