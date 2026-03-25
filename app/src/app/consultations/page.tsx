@@ -1,53 +1,38 @@
 'use client';
 
-import { Suspense, useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { useAppStore } from '@/store/useAppStore';
-import { db } from '@/lib/db';
+import { db, SessionData } from '@/lib/db';
 import BottomNav from '@/components/layout/BottomNav';
 import { Navbar } from '@/components/layout/Navbar';
 
-export default function RecordsPage() {
-    return (
-        <Suspense>
-            <RecordsContent />
-        </Suspense>
-    );
+interface SessionWithMeta extends SessionData {
+    consultCount: number;
+    latestDate: string;
+    latestMagicWord?: string;
+    childName?: string;
 }
 
-function RecordsContent() {
-    const searchParams = useSearchParams();
+export default function RecordsPage() {
+    const router = useRouter();
     const { user, loading: authLoading } = useAuth();
-    const { intake } = useAppStore();
 
-    const [children, setChildren] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [consults, setConsults] = useState<any[]>([]);
-    const [selected, setSelected] = useState<any>(null);
+    const [sessions, setSessions] = useState<SessionWithMeta[]>([]);
 
     useEffect(() => {
-        if (!authLoading && user) {
-            loadData();
-        } else if (!authLoading) {
-            setIsLoading(false);
-        }
+        if (!authLoading && user) loadData();
+        else if (!authLoading) setIsLoading(false);
     }, [user, authLoading]);
-
-    useEffect(() => {
-        const viewId = searchParams.get('view');
-        if (viewId && consults.length > 0) {
-            const target = consults.find((c: any) => c.id === viewId);
-            if (target) setSelected(target);
-        }
-    }, [consults, searchParams]);
 
     const loadData = async () => {
         if (!user) return;
         try {
-            const [childData, { data: consultData }] = await Promise.all([
+            const [childData, sessionData, { data: consultData }] = await Promise.all([
                 db.getChildren(user.id),
+                db.getSessions(user.id),
                 supabase
                     .from('consultations')
                     .select('*')
@@ -55,34 +40,59 @@ function RecordsContent() {
                     .eq('status', 'COMPLETED')
                     .order('created_at', { ascending: false }),
             ]);
-            setChildren(childData || []);
-            setConsults(consultData || []);
-        } catch {
-            // 실패 시 무시
+
+            const consults = consultData || [];
+            const sessionsWithMeta: SessionWithMeta[] = (sessionData || []).map(s => {
+                const sessionConsults = consults.filter((c: any) => c.session_id === s.id);
+                const latest = sessionConsults[0];
+                return {
+                    ...s,
+                    consultCount: sessionConsults.length,
+                    latestDate: latest?.created_at || s.created_at,
+                    latestMagicWord: latest?.ai_prescription?.magicWord,
+                    childName: (childData || []).find((c: any) => c.id === s.child_id)?.name,
+                };
+            });
+
+            // 세션 없는 상담도 표시 (하위 호환)
+            const orphanConsults = consults.filter((c: any) => !c.session_id);
+            for (const c of orphanConsults) {
+                sessionsWithMeta.push({
+                    id: c.id,
+                    user_id: user.id,
+                    child_id: c.child_id,
+                    title: '과거 상담',
+                    status: 'ARCHIVED',
+                    created_at: c.created_at,
+                    updated_at: c.created_at,
+                    consultCount: 1,
+                    latestDate: c.created_at,
+                    latestMagicWord: c.ai_prescription?.magicWord,
+                    childName: (childData || []).find((ch: any) => ch.id === c.child_id)?.name,
+                });
+            }
+
+            setSessions(sessionsWithMeta);
+        } catch (e) {
+            console.error('Failed to load records:', e);
         } finally {
             setIsLoading(false);
         }
     };
 
-    const childName = (childId: string | null) =>
-        children.find((c: any) => c.id === childId)?.name;
+    const statusLabel = (status: string) => {
+        if (status === 'ACTIVE') return { text: '진행 중', color: 'text-primary bg-primary/10' };
+        if (status === 'RESOLVED') return { text: '해결됨', color: 'text-secondary bg-secondary/10' };
+        return { text: '지난 상담', color: 'text-text-sub bg-gray-100 dark:bg-white/10' };
+    };
+
+    const activeSessions = sessions.filter(s => s.status === 'ACTIVE');
+    const resolvedSessions = sessions.filter(s => s.status !== 'ACTIVE');
 
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center font-body">
             <div className="w-full max-w-md bg-background-light dark:bg-background-dark min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
-                <Navbar
-                    title="상담 기록"
-                    showBack={!!selected}
-                    onBackClick={selected ? () => setSelected(null) : undefined}
-                    rightElement={selected ? (
-                        <button
-                            onClick={() => setSelected(null)}
-                            className="text-[13px] font-bold text-secondary"
-                        >
-                            목록
-                        </button>
-                    ) : undefined}
-                />
+                <Navbar title="상담 기록" showBack={true} />
 
                 <main className="w-full max-w-md p-6 pb-32 flex-1">
                     {isLoading ? (
@@ -90,88 +100,7 @@ function RecordsContent() {
                             <span className="w-10 h-10 border-4 border-primary/10 border-t-primary rounded-full animate-spin" />
                             <p className="text-sm font-medium text-text-sub">기록을 불러오고 있어요</p>
                         </div>
-                    ) : selected ? (
-                        <div className="animate-in fade-in duration-300 space-y-4">
-                            <span className="text-[12px] font-bold text-[#D08B5B] bg-[#D08B5B]/10 px-3 py-1.5 rounded-lg inline-flex items-center gap-1">
-                                <span className="material-symbols-outlined text-[14px]">calendar_today</span>
-                                {new Date(selected.created_at).toLocaleDateString('ko-KR')}
-                                {childName(selected.child_id) && (
-                                    <span className="ml-1 opacity-70">· {childName(selected.child_id)}</span>
-                                )}
-                            </span>
-
-                            <div className="bg-[#FFFDF9] dark:bg-surface-dark border border-[#EACCA4]/40 rounded-2xl p-5">
-                                <div className="text-[12px] font-bold text-[#D08B5B] flex items-center gap-1.5 mb-2">
-                                    <span className="material-symbols-outlined text-[16px]">edit_note</span>
-                                    그날의 고민
-                                </div>
-                                <p className="text-[14px] text-text-main dark:text-white leading-relaxed">
-                                    &ldquo;{selected.problem_description}&rdquo;
-                                </p>
-                            </div>
-
-                            {selected.ai_prescription && (
-                                <div className="bg-white dark:bg-surface-dark rounded-2xl p-5 border border-secondary/20 space-y-4">
-                                    <div className="text-[12px] font-bold text-secondary flex items-center gap-1.5">
-                                        <span className="material-symbols-outlined text-[16px] fill-1">vaccines</span>
-                                        마음 처방전
-                                    </div>
-                                    <div>
-                                        <div className="text-[11px] font-bold text-slate-400 mb-1">
-                                            {intake.childName ? `${intake.childName}의 속마음` : '아이의 속마음'}
-                                        </div>
-                                        <p className="text-[13px] text-text-main dark:text-gray-200 leading-relaxed">
-                                            {selected.ai_prescription.interpretation}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <div className="text-[11px] font-bold text-slate-400 mb-1">아이와 나</div>
-                                        <p className="text-[13px] text-text-main dark:text-gray-200 leading-relaxed">
-                                            {selected.ai_prescription.chemistry}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <div className="text-[11px] font-bold text-slate-400 mb-1">실천 과제</div>
-                                        <p className="text-[13px] text-text-main dark:text-gray-200 leading-relaxed">
-                                            {selected.ai_prescription.actionItem}
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-
-                            {selected.ai_prescription?.magicWord && (
-                                <div className="bg-[#519E8A] rounded-2xl p-5 text-white relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10" />
-                                    <div className="relative z-10">
-                                        <div className="flex items-center gap-1.5 mb-3">
-                                            <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
-                                            <span className="text-[14px] font-black">마법의 한마디</span>
-                                        </div>
-                                        <p className="text-[16px] font-medium leading-relaxed">
-                                            &ldquo;{selected.ai_prescription.magicWord}&rdquo;
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-
-                            <button
-                                onClick={async () => {
-                                    if (!confirm('이 상담 기록을 삭제하시겠습니까?\n삭제된 기록은 복구할 수 없습니다.')) return;
-                                    try {
-                                        await supabase.from('consultations').delete().eq('id', selected.id);
-                                        setConsults(prev => prev.filter(c => c.id !== selected.id));
-                                        setSelected(null);
-                                    } catch {
-                                        alert('삭제에 실패했습니다.');
-                                    }
-                                }}
-                                className="mt-6 w-full py-3 text-[13px] font-bold text-red-400 flex items-center justify-center gap-1"
-                            >
-                                <span className="material-symbols-outlined text-[16px]">delete</span>
-                                이 상담 기록 삭제
-                            </button>
-                        </div>
-                    ) : consults.length === 0 ? (
+                    ) : sessions.length === 0 ? (
                         <div className="py-24 flex flex-col items-center text-center space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                             <div className="w-24 h-24 bg-secondary/5 dark:bg-secondary/10 rounded-full flex items-center justify-center mb-2">
                                 <span className="material-symbols-outlined text-5xl text-secondary/30">chat_bubble</span>
@@ -184,33 +113,29 @@ function RecordsContent() {
                             </div>
                         </div>
                     ) : (
-                        <div className="space-y-3 animate-in fade-in duration-300">
-                            {consults.map(item => (
-                                <button
-                                    key={item.id}
-                                    onClick={() => setSelected(item)}
-                                    className="w-full text-left bg-[#FFFDF9] dark:bg-surface-dark rounded-2xl p-5 border border-[#EACCA4]/30 active:scale-[0.99] transition-all"
-                                >
-                                    <div className="flex justify-between items-center mb-2">
-                                        <span className="text-[11px] font-bold text-[#D08B5B] flex items-center gap-1">
-                                            <span className="material-symbols-outlined text-[13px]">calendar_today</span>
-                                            {new Date(item.created_at).toLocaleDateString('ko-KR')}
-                                            {childName(item.child_id) && (
-                                                <span className="ml-1 opacity-70">· {childName(item.child_id)}</span>
-                                            )}
-                                        </span>
-                                        <span className="material-symbols-outlined text-[16px] text-secondary/50">arrow_forward</span>
+                        <div className="space-y-6 animate-in fade-in duration-300">
+                            {activeSessions.length > 0 && (
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-1 h-4 bg-primary rounded-full" />
+                                        <h3 className="text-[13px] font-bold text-text-main dark:text-white">진행 중인 고민</h3>
                                     </div>
-                                    <p className="text-[14px] font-bold text-text-main dark:text-white line-clamp-2 leading-snug">
-                                        &ldquo;{item.problem_description}&rdquo;
-                                    </p>
-                                    {item.ai_prescription?.magicWord && (
-                                        <p className="text-[12px] text-secondary mt-2 line-clamp-1 font-bold">
-                                            &ldquo;{item.ai_prescription.magicWord}&rdquo;
-                                        </p>
-                                    )}
-                                </button>
-                            ))}
+                                    {activeSessions.map(session => (
+                                        <SessionCard key={session.id} session={session} statusLabel={statusLabel} onSelect={() => router.push(`/consultations/${session.id}`)} />
+                                    ))}
+                                </div>
+                            )}
+                            {resolvedSessions.length > 0 && (
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-1 h-4 bg-gray-300 rounded-full" />
+                                        <h3 className="text-[13px] font-bold text-text-sub">지난 기록</h3>
+                                    </div>
+                                    {resolvedSessions.map(session => (
+                                        <SessionCard key={session.id} session={session} statusLabel={statusLabel} onSelect={() => router.push(`/consultations/${session.id}`)} />
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     )}
                 </main>
@@ -218,5 +143,44 @@ function RecordsContent() {
                 <BottomNav />
             </div>
         </div>
+    );
+}
+
+function SessionCard({ session, statusLabel, onSelect }: {
+    session: SessionWithMeta;
+    statusLabel: (s: string) => { text: string; color: string };
+    onSelect: () => void;
+}) {
+    const label = statusLabel(session.status);
+    return (
+        <button
+            onClick={onSelect}
+            className="w-full text-left bg-white dark:bg-surface-dark rounded-2xl p-5 border border-primary/10 active:scale-[0.99] transition-all"
+        >
+            <div className="flex justify-between items-start mb-2">
+                <div className="flex-1">
+                    <h4 className="text-[15px] font-bold text-text-main dark:text-white">{session.title}</h4>
+                    <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[11px] text-text-sub">
+                            {new Date(session.latestDate).toLocaleDateString('ko-KR')}
+                        </span>
+                        {session.childName && (
+                            <span className="text-[11px] text-text-sub">· {session.childName}</span>
+                        )}
+                        {session.consultCount > 1 && (
+                            <span className="text-[11px] text-primary font-bold">상담 {session.consultCount}회</span>
+                        )}
+                    </div>
+                </div>
+                <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${label.color}`}>
+                    {label.text}
+                </span>
+            </div>
+            {session.latestMagicWord && (
+                <p className="text-[12px] text-secondary mt-2 line-clamp-1 font-bold">
+                    &ldquo;{session.latestMagicWord}&rdquo;
+                </p>
+            )}
+        </button>
     );
 }
