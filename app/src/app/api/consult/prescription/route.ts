@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { openai } from '@/lib/openai';
+import { createClient } from '@/lib/supabaseServer';
 
 function formatObservationsForPrompt(observations: any[]): string {
     return observations.map((obs: any) => {
@@ -61,6 +62,12 @@ function formatSessionContextForPrompt(sessionContext: any): string {
 
 export async function POST(request: Request) {
     try {
+        const supabase = await createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { problem, questions, answers, childProfile, parentProfile, childName, recentObservations, sessionContext } = await request.json();
 
         if (!problem || !answers) {

@@ -244,7 +244,7 @@ export default function HomePage() {
 
     try {
       setUploading(true);
-      const imageUrl = await db.uploadChildAvatar(file);
+      const imageUrl = await db.uploadChildAvatar(file, user!.id);
       await db.updateChildProfile(mainChild.id, { image_url: imageUrl });
 
       // Update local state immediately

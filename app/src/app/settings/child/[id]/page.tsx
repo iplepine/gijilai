@@ -76,7 +76,7 @@ export default function EditChildPage() {
             if (avatarFile) {
                 try {
                     // Force upload new file
-                    imageUrl = await db.uploadChildAvatar(avatarFile);
+                    imageUrl = await db.uploadChildAvatar(avatarFile, user.id);
                 } catch (uploadError: any) {
                     console.error('Avatar upload failed:', uploadError);
                     alert(`사진 업로드 실패: ${uploadError.message || '알 수 없는 오류'}`);

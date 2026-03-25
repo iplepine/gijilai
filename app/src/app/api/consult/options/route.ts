@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server';
 import { openai } from '@/lib/openai';
+import { createClient } from '@/lib/supabaseServer';
 
 export async function POST(request: Request) {
     try {
+        const supabase = await createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { problem } = await request.json();
 
         if (!problem) {

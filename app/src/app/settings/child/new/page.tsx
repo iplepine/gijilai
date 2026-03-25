@@ -39,7 +39,7 @@ export default function RegisterChildPage() {
             let imageUrl = null;
             if (avatarFile) {
                 try {
-                    imageUrl = await db.uploadChildAvatar(avatarFile);
+                    imageUrl = await db.uploadChildAvatar(avatarFile, user.id);
                 } catch (uploadError) {
                     console.error('Avatar upload failed:', uploadError);
                     alert('사진 업로드에 실패했지만, 나머지 정보는 계속 저장합니다.');

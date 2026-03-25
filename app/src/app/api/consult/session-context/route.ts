@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { createClient } from '@/lib/supabaseServer';
 
 export async function POST(request: Request) {
     try {
+        const supabase = await createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { sessionId } = await request.json();
 
         if (!sessionId) {
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
         }
 
         const [sessionRes, consultsRes, practicesRes] = await Promise.all([
-            supabase.from('consultation_sessions').select('*').eq('id', sessionId).single(),
+            supabase.from('consultation_sessions').select('*').eq('id', sessionId).eq('user_id', session.user.id).single(),
             supabase.from('consultations').select('*').eq('session_id', sessionId).order('created_at', { ascending: true }),
             supabase.from('practice_items').select('*').eq('session_id', sessionId).order('created_at', { ascending: true }),
         ]);

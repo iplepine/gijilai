@@ -81,6 +81,25 @@ export default function ConsultationDetailPage() {
         setSession(prev => prev ? { ...prev, status: 'RESOLVED' } : prev);
     };
 
+    const handleDeleteSession = async () => {
+        if (!session) return;
+        if (!window.confirm('이 고민과 관련된 모든 상담·실천 기록이 삭제돼요.\n정말 삭제할까요?')) return;
+        await db.deleteSession(session.id);
+        router.replace('/consultations');
+    };
+
+    const handleDeleteConsultation = async (consultationId: string) => {
+        if (!window.confirm('이 상담 기록을 삭제할까요?')) return;
+        await db.deleteConsultation(consultationId);
+        const remaining = consults.filter(c => c.id !== consultationId);
+        if (remaining.length === 0) {
+            await db.deleteSession(session!.id);
+            router.replace('/consultations');
+        } else {
+            setConsults(remaining);
+        }
+    };
+
     const statusLabel = (status: string) => {
         if (status === 'ACTIVE') return { text: '진행 중', color: 'text-primary bg-primary/10' };
         if (status === 'RESOLVED') return { text: '해결됨', color: 'text-secondary bg-secondary/10' };
@@ -125,11 +144,21 @@ export default function ConsultationDetailPage() {
                                     return (
                                         <div key={item.id} className="space-y-3">
                                             {/* 날짜 뱃지 */}
-                                            <span className="text-[12px] font-bold text-[#D08B5B] bg-[#D08B5B]/10 px-3 py-1.5 rounded-lg inline-flex items-center gap-1">
-                                                <span className="material-symbols-outlined text-[14px]">calendar_today</span>
-                                                {new Date(item.created_at).toLocaleDateString('ko-KR')}
-                                                {i > 0 && <span className="ml-1 text-secondary">(추가 상담)</span>}
-                                            </span>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[12px] font-bold text-[#D08B5B] bg-[#D08B5B]/10 px-3 py-1.5 rounded-lg inline-flex items-center gap-1">
+                                                    <span className="material-symbols-outlined text-[14px]">calendar_today</span>
+                                                    {new Date(item.created_at).toLocaleDateString('ko-KR')}
+                                                    {i > 0 && <span className="ml-1 text-secondary">(추가 상담)</span>}
+                                                </span>
+                                                {consults.length > 1 && (
+                                                    <button
+                                                        onClick={() => handleDeleteConsultation(item.id)}
+                                                        className="text-[11px] text-text-sub/50 hover:text-red-400 transition-colors flex items-center gap-0.5"
+                                                    >
+                                                        <span className="material-symbols-outlined text-[14px]">delete</span>
+                                                    </button>
+                                                )}
+                                            </div>
 
                                             {/* 고민 */}
                                             <div className="bg-[#FFFDF9] dark:bg-surface-dark border border-[#EACCA4]/40 rounded-2xl p-5">
@@ -240,6 +269,13 @@ export default function ConsultationDetailPage() {
                                         </button>
                                     </>
                                 )}
+                                <button
+                                    onClick={handleDeleteSession}
+                                    className="w-full py-3 text-[13px] font-medium text-text-sub/50 flex items-center justify-center gap-1 hover:text-red-400 transition-colors"
+                                >
+                                    <span className="material-symbols-outlined text-[16px]">delete</span>
+                                    기록 삭제
+                                </button>
                             </div>
                         </div>
                     )}
