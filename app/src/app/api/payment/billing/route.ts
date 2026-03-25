@@ -4,12 +4,14 @@ import { payWithBillingKey } from '@/lib/portone';
 import { computePeriodEnd } from '@/lib/subscription';
 import type { Currency } from '@/lib/portone';
 
-const supabaseAdmin = createAdminClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 const MAX_RETRY_COUNT = 3;
+
+function getSupabaseAdmin() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 export async function POST(req: Request) {
   // Cron 인증
@@ -21,7 +23,7 @@ export async function POST(req: Request) {
 
   try {
     // 갱신 대상 구독 조회
-    const { data: subscriptions, error } = await supabaseAdmin
+    const { data: subscriptions, error } = await getSupabaseAdmin()
       .from('subscriptions')
       .select('*')
       .in('status', ['ACTIVE', 'PAST_DUE'])
@@ -39,7 +41,7 @@ export async function POST(req: Request) {
     for (const sub of subscriptions) {
       // 해지 예약된 구독은 만료 처리
       if (sub.cancelled_at) {
-        await supabaseAdmin
+        await getSupabaseAdmin()
           .from('subscriptions')
           .update({ status: 'EXPIRED', updated_at: new Date().toISOString() })
           .eq('id', sub.id);
@@ -63,7 +65,7 @@ export async function POST(req: Request) {
         if (result?.payment?.paidAt) {
           // 갱신 성공
           const newPeriodEnd = computePeriodEnd(sub.plan as 'MONTHLY' | 'YEARLY');
-          await supabaseAdmin
+          await getSupabaseAdmin()
             .from('subscriptions')
             .update({
               status: 'ACTIVE',
@@ -73,7 +75,7 @@ export async function POST(req: Request) {
             })
             .eq('id', sub.id);
 
-          await supabaseAdmin.from('payments').insert({
+          await getSupabaseAdmin().from('payments').insert({
             user_id: sub.user_id,
             subscription_id: sub.id,
             type: 'RENEWAL',
@@ -90,7 +92,7 @@ export async function POST(req: Request) {
         }
       } catch (payError: any) {
         // 갱신 실패
-        await supabaseAdmin.from('payments').insert({
+        await getSupabaseAdmin().from('payments').insert({
           user_id: sub.user_id,
           subscription_id: sub.id,
           type: 'RENEWAL',
@@ -102,7 +104,7 @@ export async function POST(req: Request) {
         });
 
         // 최근 연속 실패 횟수 확인
-        const { count } = await supabaseAdmin
+        const { count } = await getSupabaseAdmin()
           .from('payments')
           .select('*', { count: 'exact', head: true })
           .eq('subscription_id', sub.id)
@@ -113,12 +115,12 @@ export async function POST(req: Request) {
         const retryCount = count || 0;
 
         if (retryCount >= MAX_RETRY_COUNT) {
-          await supabaseAdmin
+          await getSupabaseAdmin()
             .from('subscriptions')
             .update({ status: 'EXPIRED', updated_at: new Date().toISOString() })
             .eq('id', sub.id);
         } else {
-          await supabaseAdmin
+          await getSupabaseAdmin()
             .from('subscriptions')
             .update({ status: 'PAST_DUE', updated_at: new Date().toISOString() })
             .eq('id', sub.id);

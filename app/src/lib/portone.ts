@@ -1,6 +1,12 @@
-import { PortOneClient } from '@portone/server-sdk';
+import { PortOneClient, type PortOneClient as PortOneClientType } from '@portone/server-sdk';
 
-const portone = PortOneClient({ secret: process.env.PORTONE_API_SECRET as string });
+let _portone: PortOneClientType | null = null;
+function getPortone() {
+  if (!_portone) {
+    _portone = PortOneClient({ secret: process.env.PORTONE_API_SECRET as string });
+  }
+  return _portone;
+}
 
 export const PRICE_TABLE = {
   report_single: { KRW: 990, USD: 499 },
@@ -23,7 +29,7 @@ export function getChannelKey(locale: string): string {
 }
 
 export async function verifyPayment(paymentId: string) {
-  const payment = await portone.payment.getPayment({ paymentId });
+  const payment = await getPortone().payment.getPayment({ paymentId });
   return payment;
 }
 
@@ -35,7 +41,7 @@ export async function payWithBillingKey(params: {
   currency: Currency;
   customerId: string;
 }) {
-  const result = await portone.payment.payWithBillingKey({
+  const result = await getPortone().payment.payWithBillingKey({
     billingKey: params.billingKey,
     paymentId: params.paymentId,
     orderName: params.orderName,
@@ -46,4 +52,4 @@ export async function payWithBillingKey(params: {
   return result;
 }
 
-export { portone };
+export { getPortone };
