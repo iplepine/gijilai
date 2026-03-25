@@ -7,7 +7,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { useAppStore } from '@/store/useAppStore';
 import BottomNav from '@/components/layout/BottomNav';
 import LandingPage from '@/components/landing/LandingPage';
-import { db, UserProfile, ChildProfile, ReportData, SurveyData, ObservationData } from '@/lib/db';
+import { db, UserProfile, ChildProfile, ReportData, SurveyData } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import { GardenState } from '@/types/gardening';
 import { TemperamentScorer } from '@/lib/TemperamentScorer';
@@ -28,7 +28,7 @@ export default function HomePage() {
   const [uploading, setUploading] = useState(false);
   const [showSurveyIntro, setShowSurveyIntro] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [todayHasObservation, setTodayHasObservation] = useState(false);
+  const [practices, setPractices] = useState<{ uncheckedCount: number }>({ uncheckedCount: 0 });
   const [allMagicWords, setAllMagicWords] = useState<{ word: string; date: string; childId?: string; childName?: string }[]>([]);
   const [magicWordIndex, setMagicWordIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -157,9 +157,10 @@ export default function HomePage() {
       }
 
       try {
-        const [data, observations, { data: recentConsult }] = await Promise.all([
+        const [data, activePractices, todayLogs, { data: recentConsult }] = await Promise.all([
           db.getDashboardData(user.id),
-          db.getRecentObservations(user.id, 1),
+          db.getActivePracticeCount(user.id).catch(() => 0),
+          db.getTodayPracticeLogs(user.id).catch(() => []),
           supabase
             .from('consultations')
             .select('ai_prescription, created_at, child_id')
@@ -173,10 +174,9 @@ export default function HomePage() {
         setReports(data.reports);
         setSurveys(data.surveys);
 
-        // 오늘 관찰일지 작성 여부
-        const today = new Date().toISOString().slice(0, 10);
-        const hasToday = observations.some((o: ObservationData) => o.created_at.slice(0, 10) === today);
-        setTodayHasObservation(hasToday);
+        // 오늘 미체크 실천 항목 수
+        const checkedToday = todayLogs.length;
+        setPractices({ uncheckedCount: Math.max(0, activePractices - checkedToday) });
 
         // 최근 상담 마법의 한마디들
         const words = (recentConsult || [])
@@ -518,19 +518,19 @@ export default function HomePage() {
                   </div>
                 )}
 
-                {/* 관찰일지 유도 카드 */}
-                {!todayHasObservation && (
-                  <Link href="/observations" className="block">
-                    <div className="bg-white dark:bg-surface-dark/50 rounded-2xl p-5 shadow-soft border border-[#EACCA4]/30 active:scale-[0.99] transition-all">
+                {/* 오늘의 실천 카드 */}
+                {practices.uncheckedCount > 0 && (
+                  <Link href="/practices" className="block">
+                    <div className="bg-white dark:bg-surface-dark/50 rounded-2xl p-5 shadow-soft border border-primary/20 active:scale-[0.99] transition-all">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-[#EACCA4]/15 flex items-center justify-center">
-                          <span className="material-symbols-outlined text-[20px] text-[#D08B5B]">edit_note</span>
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <span className="material-symbols-outlined text-[20px] text-primary">checklist</span>
                         </div>
                         <div className="flex-1">
-                          <h3 className="text-[14px] font-bold text-text-main dark:text-white">오늘의 관찰일지</h3>
-                          <p className="text-[11px] text-text-sub dark:text-gray-400">오늘 아이와 있었던 순간을 기록해보세요</p>
+                          <h3 className="text-[14px] font-bold text-text-main dark:text-white">오늘의 실천</h3>
+                          <p className="text-[11px] text-text-sub dark:text-gray-400">체크할 실천 항목이 {practices.uncheckedCount}개 있어요</p>
                         </div>
-                        <span className="material-symbols-outlined text-[18px] text-[#D08B5B]/50">arrow_forward</span>
+                        <span className="material-symbols-outlined text-[18px] text-primary/50">arrow_forward</span>
                       </div>
                     </div>
                   </Link>

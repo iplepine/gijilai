@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useAppStore } from '@/store/useAppStore';
@@ -32,27 +32,52 @@ interface QuestionAnalysisItem {
     analysis: string;
 }
 
+interface ActionItem {
+    title: string;
+    description: string;
+    duration: number;
+    encouragement: string;
+}
+
 interface Prescription {
     interpretation: string;
     chemistry: string;
     questionAnalysis?: QuestionAnalysisItem[];
     magicWord: string;
-    actionItem: string;
+    actionItem?: string;
+    actionItems?: ActionItem[];
+    sessionTitle?: string;
 }
 
 export default function ConsultPage() {
+    return (
+        <Suspense>
+            <ConsultContent />
+        </Suspense>
+    );
+}
+
+function ConsultContent() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const sessionIdParam = searchParams.get('sessionId');
     const { user } = useAuth();
     const { intake, cbqResponses, atqResponses, selectedChildId } = useAppStore();
     const [childName, setChildName] = useState<string | null>(intake.childName || null);
     const [childBirthDate, setChildBirthDate] = useState<string | undefined>(intake.birthDate || undefined);
     const [childGender, setChildGender] = useState<string | undefined>(intake.gender || undefined);
 
+    // 세션 상태
+    const [sessionContext, setSessionContext] = useState<any>(null);
+    const [sessionId, setSessionId] = useState<string | null>(sessionIdParam);
+    const [validChildId, setValidChildId] = useState<string | null>(null);
+
     useEffect(() => {
         if (!user) return;
         supabase.from('children').select('id, name, birth_date, gender').eq('parent_id', user.id).then(({ data }) => {
             if (!data || data.length === 0) {
                 setChildName(intake.childName || null);
+                setValidChildId(null);
                 return;
             }
             const selected = selectedChildId ? data.find(c => c.id === selectedChildId) : data[0];
@@ -60,11 +85,13 @@ export default function ConsultPage() {
             setChildName(child.name);
             setChildBirthDate(child.birth_date);
             setChildGender(child.gender);
+            setValidChildId(child.id);
         });
     }, [user, selectedChildId, intake.childName]);
 
-    const examples = useMemo(
-        () => getRandomExamples(childBirthDate, childGender, 5),
+    const [examples, setExamples] = useState<ReturnType<typeof getRandomExamples>>([]);
+    useEffect(
+        () => setExamples(getRandomExamples(childBirthDate, childGender, 5)),
         [childBirthDate, childGender]
     );
 
@@ -85,10 +112,26 @@ export default function ConsultPage() {
 
     // RESULT STATE
     const [prescription, setPrescription] = useState<Prescription | null>(null);
+    const [selectedActionIndex, setSelectedActionIndex] = useState<number | null>(null);
+    const [savedConsultId, setSavedConsultId] = useState<string | null>(null);
 
     // 기질 프로필 (초기 로드 시 1회 계산)
     const [childProfile, setChildProfile] = useState<any>(null);
     const [parentProfile, setParentProfile] = useState<any>(null);
+
+    // 추가 상담: 세션 컨텍스트 로드
+    useEffect(() => {
+        if (!sessionIdParam) return;
+        (async () => {
+            try {
+                const ctx = await db.getSessionWithConsultations(sessionIdParam);
+                setSessionContext(ctx);
+                setSessionId(sessionIdParam);
+            } catch (e) {
+                console.error('Failed to load session context:', e);
+            }
+        })();
+    }, [sessionIdParam]);
 
     useEffect(() => {
         (async () => {
@@ -143,7 +186,8 @@ export default function ConsultPage() {
                     childName: childName || intake.childName,
                     childProfile,
                     parentProfile,
-                    recentObservations
+                    recentObservations,
+                    sessionContext: sessionContext || undefined
                 }),
             });
 
@@ -232,7 +276,9 @@ export default function ConsultPage() {
                     answers: allAnswers,
                     childProfile,
                     parentProfile,
-                    recentObservations
+                    childName: childName || intake.childName,
+                    recentObservations,
+                    sessionContext: sessionContext || undefined
                 }),
             });
 
@@ -242,11 +288,40 @@ export default function ConsultPage() {
             setPrescription(data);
             setStep('RESULT');
 
-            // Save history
+            // 모든 실천 항목 기본 선택
+            if (data.actionItems?.length > 0) {
+                setSelectedActionIndex(null);
+            }
+
+            // 세션 + 상담 저장 (실천 항목은 CTA에서 저장)
             if (user) {
-                await supabase.from('consultations').insert({
+                let currentSessionId = sessionId;
+
+                if (!currentSessionId) {
+                    const { data: newSession } = await supabase
+                        .from('consultation_sessions')
+                        .insert({
+                            user_id: user.id,
+                            child_id: validChildId,
+                            title: data.sessionTitle || problemDesc.substring(0, 30),
+                        })
+                        .select('id')
+                        .single();
+                    if (newSession) {
+                        currentSessionId = newSession.id;
+                        setSessionId(currentSessionId);
+                    }
+                } else {
+                    await supabase
+                        .from('consultation_sessions')
+                        .update({ updated_at: new Date().toISOString() })
+                        .eq('id', currentSessionId);
+                }
+
+                const { data: savedConsult } = await supabase.from('consultations').insert({
                     user_id: user.id,
-                    child_id: selectedChildId || null,
+                    child_id: validChildId,
+                    session_id: currentSessionId,
                     category: '자유 입력',
                     problem_description: problemDesc,
                     ai_options: questions,
@@ -254,7 +329,9 @@ export default function ConsultPage() {
                     selected_reaction_id: 'DYNAMIC_FLOW',
                     ai_prescription: data,
                     status: 'COMPLETED'
-                });
+                }).select('id').single();
+
+                if (savedConsult) setSavedConsultId(savedConsult.id);
             }
         } catch (error) {
             console.error(error);
@@ -274,43 +351,87 @@ export default function ConsultPage() {
                 <main className="w-full max-w-md flex flex-col flex-1 p-6 pb-36">
                     {step === 'INPUT' && (
                         <div className="flex flex-col gap-8 w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            {/* 추가 상담: 이전 상담 요약 + 실천 현황 */}
+                            {sessionContext && (
+                                <div className="bg-secondary/5 border border-secondary/15 rounded-2xl p-5 space-y-3">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="material-symbols-outlined text-[16px] text-secondary">replay</span>
+                                        <span className="text-[13px] font-bold text-secondary">이어서 상담 · {sessionContext.session?.title}</span>
+                                    </div>
+                                    {/* 지난 상담 요약 */}
+                                    {sessionContext.consultations?.length > 0 && (() => {
+                                        const lastConsult = sessionContext.consultations[sessionContext.consultations.length - 1];
+                                        return (
+                                            <div className="text-[12px] text-text-sub leading-relaxed">
+                                                <span className="font-bold text-text-main dark:text-white">지난 상담:</span> {lastConsult.problem_description?.substring(0, 60)}{lastConsult.problem_description?.length > 60 ? '...' : ''}
+                                            </div>
+                                        );
+                                    })()}
+                                    {/* 실천 현황 */}
+                                    {sessionContext.practices?.length > 0 && (
+                                        <div className="space-y-1.5">
+                                            {sessionContext.practices.map((p: any) => {
+                                                const doneDays = (sessionContext.logs || []).filter((l: any) => l.practice_id === p.id && l.done).length;
+                                                return (
+                                                    <div key={p.id} className="flex items-center gap-2">
+                                                        <div className="flex-1 h-1.5 bg-secondary/10 rounded-full overflow-hidden">
+                                                            <div className="h-full bg-secondary rounded-full" style={{ width: `${Math.round((doneDays / p.duration) * 100)}%` }} />
+                                                        </div>
+                                                        <span className="text-[11px] font-bold text-secondary shrink-0">{p.title} {doneDays}/{p.duration}일</span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             <div className="space-y-2">
                                 <h2 className="text-2xl font-bold text-text-main dark:text-white leading-tight">
-                                    {childName ? `${childName} 양육자님,` : '양육자님,'}<br />오늘 어떤 일이 가장 힘드셨나요?
+                                    {childName ? `${childName} 양육자님,` : '양육자님,'}<br />{sessionContext ? '이번에는 어떤 일이 있으셨나요?' : '오늘 어떤 일이 가장 힘드셨나요?'}
                                 </h2>
-                                <p className="text-sm text-text-sub dark:text-gray-400">아이의 기질에 딱 맞는 솔루션을 찾아드릴게요.</p>
+                                <p className="text-sm text-text-sub dark:text-gray-400">{sessionContext ? '이전 상담 내용을 참고해서 더 깊은 솔루션을 드릴게요.' : '아이의 기질에 딱 맞는 솔루션을 찾아드릴게요.'}</p>
                             </div>
 
                             <div>
-                                <p className="text-[12px] text-text-sub dark:text-gray-500 mb-2">비슷한 고민을 눌러보세요</p>
-                                <div className="flex flex-wrap gap-2 mb-4">
-                                    {examples.map(ex => (
-                                        <button
-                                            key={ex.label}
-                                            onClick={() => setProblemDesc(ex.text)}
-                                            className={`px-3 py-2 rounded-xl text-[13px] transition-all border active:scale-95 shadow-sm ${
-                                                problemDesc === ex.text
-                                                    ? 'bg-primary/10 text-primary border-primary/30 font-bold'
-                                                    : 'bg-white dark:bg-surface-dark text-text-sub border-primary/10 hover:border-primary/30 hover:bg-primary/5'
-                                            }`}
-                                        >
-                                            {ex.label}
-                                        </button>
-                                    ))}
-                                </div>
+                                {!sessionContext && (
+                                    <>
+                                        <p className="text-[12px] text-text-sub dark:text-gray-500 mb-2">비슷한 고민을 눌러보세요</p>
+                                        <div className="flex flex-wrap gap-2 mb-4">
+                                            {examples.map(ex => (
+                                                <button
+                                                    key={ex.label}
+                                                    onClick={() => setProblemDesc(ex.text)}
+                                                    className={`px-3 py-2 rounded-xl text-[13px] transition-all border active:scale-95 shadow-sm ${
+                                                        problemDesc === ex.text
+                                                            ? 'bg-primary/10 text-primary border-primary/30 font-bold'
+                                                            : 'bg-white dark:bg-surface-dark text-text-sub border-primary/10 hover:border-primary/30 hover:bg-primary/5'
+                                                    }`}
+                                                >
+                                                    {ex.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
 
                                 <textarea
                                     value={problemDesc}
-                                    onChange={(e) => setProblemDesc(e.target.value)}
-                                    placeholder={"아침에 어린이집에 가야 하는데\n옷을 안 입겠다며 30분째 울었어요.\n결국 화를 내고 말았네요..."}
+                                    onChange={(e) => setProblemDesc(e.target.value.slice(0, 500))}
+                                    maxLength={500}
+                                    placeholder={sessionContext ? "실천하면서 느낀 점이나\n새로운 고민을 적어주세요..." : "아침에 어린이집에 가야 하는데\n옷을 안 입겠다며 30분째 울었어요.\n결국 화를 내고 말았네요..."}
                                     className="w-full h-48 p-5 text-[15px] leading-relaxed rounded-3xl border border-primary/10 focus:outline-none focus:ring-4 focus:ring-primary/5 resize-none bg-white dark:bg-surface-dark dark:text-white transition-all shadow-inner"
                                 />
                             </div>
+                        </div>
+                    )}
 
+                    {step === 'INPUT' && (
+                        <div className="absolute bottom-0 left-0 right-0 p-6 bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl border-t border-beige-main/20 z-30">
                             <button
                                 onClick={handleStartDiagnostic}
                                 disabled={!problemDesc.trim() || isLoading}
-                                className={`w-full py-5 rounded-2xl text-white font-bold text-lg mt-4 transition-all flex items-center justify-center gap-2 active:scale-[0.98] ${!problemDesc.trim() || isLoading
+                                className={`w-full py-5 rounded-2xl text-white font-bold text-lg transition-all flex items-center justify-center gap-2 active:scale-[0.98] ${!problemDesc.trim() || isLoading
                                     ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                                     : 'bg-primary hover:bg-primary-dark shadow-xl shadow-primary/20'
                                     }`}
@@ -335,7 +456,21 @@ export default function ConsultPage() {
 
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-[11px] font-black text-primary uppercase tracking-widest">Question {currentQuestionIndex + 1} / {questions.length}</span>
+                                    <div className="flex items-center gap-2">
+                                        {currentQuestionIndex > 0 && (
+                                            <button
+                                                onClick={() => {
+                                                    setCurrentQuestionIndex(prev => prev - 1);
+                                                    setFreeTextOptionId(null);
+                                                    setCurrentTextAnswer('');
+                                                }}
+                                                className="p-1.5 -ml-1.5 rounded-full hover:bg-primary/10 transition-colors"
+                                            >
+                                                <span className="material-symbols-outlined text-[18px] text-primary">arrow_back</span>
+                                            </button>
+                                        )}
+                                        <span className="text-[11px] font-black text-primary uppercase tracking-widest">Question {currentQuestionIndex + 1} / {questions.length}</span>
+                                    </div>
                                     <div className="flex gap-1">
                                         {questions.map((_, i) => (
                                             <div key={i} className={`w-4 h-1 rounded-full transition-all ${i <= currentQuestionIndex ? 'bg-primary' : 'bg-primary/10'}`}></div>
@@ -374,11 +509,16 @@ export default function ConsultPage() {
                                             {opt.freeText && freeTextOptionId === opt.id && (
                                                 <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
                                                     <textarea
+                                                        ref={(el) => {
+                                                            if (el) {
+                                                                el.focus();
+                                                                setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+                                                            }
+                                                        }}
                                                         className="w-full h-32 p-5 text-[15px] rounded-3xl border border-secondary/30 focus:outline-none focus:ring-4 focus:ring-secondary/10 resize-none bg-white dark:bg-surface-dark dark:text-white transition-all"
                                                         placeholder="자유롭게 적어주세요."
                                                         value={currentTextAnswer}
-                                                        onChange={(e) => setCurrentTextAnswer(e.target.value)}
-                                                        autoFocus
+                                                        onChange={(e) => setCurrentTextAnswer(e.target.value.slice(0, 300))}
                                                     />
                                                     <button
                                                         onClick={() => {
@@ -405,7 +545,7 @@ export default function ConsultPage() {
                                         className="w-full h-40 p-5 text-[15px] rounded-3xl border border-primary/10 focus:outline-none focus:ring-4 focus:ring-primary/5 resize-none bg-white dark:bg-surface-dark dark:text-white transition-all shadow-inner"
                                         placeholder="자유롭게 적어주세요."
                                         value={currentTextAnswer}
-                                        onChange={(e) => setCurrentTextAnswer(e.target.value)}
+                                        onChange={(e) => setCurrentTextAnswer(e.target.value.slice(0, 300))}
                                     />
                                     <button
                                         onClick={() => {
@@ -483,45 +623,86 @@ export default function ConsultPage() {
                                         {prescription.chemistry}
                                     </p>
                                 </div>
-                                <div>
-                                    <div className="text-[11px] font-bold text-slate-400 mb-1">실천 과제</div>
-                                    <p className="text-[13px] text-text-main dark:text-gray-200 leading-relaxed">
-                                        {prescription.actionItem}
-                                    </p>
-                                </div>
                             </div>
 
-                            {/* 마법의 한마디 */}
+                            {/* 오늘의 한마디 (고정, 선택 아님) */}
                             {prescription.magicWord && (
                                 <div className="bg-[#519E8A] rounded-2xl p-5 text-white relative overflow-hidden">
                                     <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10" />
                                     <div className="relative z-10">
                                         <div className="flex items-center gap-1.5 mb-3">
                                             <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
-                                            <span className="text-[14px] font-black">마법의 한마디</span>
+                                            <span className="text-[14px] font-black">오늘의 한마디</span>
                                         </div>
-                                        <p className="text-[16px] font-medium leading-relaxed">
+                                        <p className="text-[16px] font-bold leading-relaxed">
                                             &ldquo;{prescription.magicWord}&rdquo;
                                         </p>
                                     </div>
                                 </div>
                             )}
 
+                            {/* 실천 항목 선택 */}
+                            {prescription.actionItems && prescription.actionItems.length > 0 && (
+                                <div className="space-y-4 mt-10 pt-8 border-t border-beige-main/30">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                            <span className="material-symbols-outlined text-[18px] text-primary">checklist</span>
+                                        </div>
+                                        <div>
+                                            <p className="text-[16px] font-black text-text-main dark:text-white">아이나가 제안하는 실천 항목</p>
+                                            <p className="text-[12px] text-text-sub">실천할 항목을 골라보세요</p>
+                                        </div>
+                                    </div>
+                                    {prescription.actionItems.map((item, i) => {
+                                        const isSelected = selectedActionIndex === i;
+                                        return (
+                                            <button key={i} type="button" onClick={() => setSelectedActionIndex(isSelected ? null : i)} className={`w-full text-left rounded-2xl p-5 border-2 transition-all active:scale-[0.98] ${isSelected ? 'border-primary bg-primary/5' : 'border-beige-main/20 bg-white dark:bg-surface-dark'}`}>
+                                                <div className="flex items-start gap-3">
+                                                    <span className={`material-symbols-outlined text-[22px] shrink-0 mt-0.5 transition-colors ${isSelected ? 'text-primary fill-1' : 'text-gray-300'}`}>
+                                                        {isSelected ? 'check_circle' : 'radio_button_unchecked'}
+                                                    </span>
+                                                    <div className="flex-1 space-y-2">
+                                                        <div className="flex items-center justify-between">
+                                                            <p className="text-[15px] font-bold text-text-main dark:text-white">{item.title}</p>
+                                                            <span className="text-[11px] font-bold text-text-sub bg-beige-main/15 px-2 py-0.5 rounded-full shrink-0">{item.duration}일</span>
+                                                        </div>
+                                                        <p className="text-[13px] text-text-sub leading-relaxed">{item.description}</p>
+                                                        <p className="text-[12px] text-secondary font-medium">{item.encouragement || `${item.duration}일 동안 해보세요`}</p>
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
                             {/* 다음 행동 유도 */}
                             <div className="space-y-3 mt-2">
                                 <button
-                                    onClick={() => router.push('/observations')}
-                                    className="w-full py-4 rounded-2xl bg-primary text-white font-bold transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                                    onClick={async () => {
+                                        if (user && sessionId && savedConsultId && prescription?.actionItems && selectedActionIndex !== null) {
+                                            const item = prescription.actionItems[selectedActionIndex];
+                                            await supabase.from('practice_items').insert({
+                                                session_id: sessionId,
+                                                consultation_id: savedConsultId,
+                                                title: item.title,
+                                                description: item.description,
+                                                duration: item.duration,
+                                                encouragement: item.encouragement || null,
+                                            });
+                                        }
+                                        router.push('/practices');
+                                    }}
+                                    disabled={selectedActionIndex === null}
+                                    className={`w-full py-4 rounded-2xl font-bold text-[15px] transition-all active:scale-[0.98] ${selectedActionIndex !== null ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
                                 >
-                                    <span>바로 실천하기</span>
-                                    <span className="material-symbols-outlined text-[20px]">edit_note</span>
+                                    {selectedActionIndex !== null ? '실천 시작하기' : '실천 항목을 선택해주세요'}
                                 </button>
                                 <button
                                     onClick={() => router.push('/')}
-                                    className="w-full py-4 rounded-2xl bg-white dark:bg-surface-dark border-2 border-primary/20 text-primary font-bold transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                                    className="w-full py-3 text-[14px] font-bold text-text-sub transition-all active:scale-[0.98]"
                                 >
-                                    <span>내일 꼭 해볼게요</span>
-                                    <span className="material-symbols-outlined text-[20px]">wb_sunny</span>
+                                    다음에 할게요
                                 </button>
                             </div>
                         </div>
@@ -570,7 +751,6 @@ export default function ConsultPage() {
                         </div>
                     </div>
                 )}
-                <BottomNav />
             </div>
         </div>
     );

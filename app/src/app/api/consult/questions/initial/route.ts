@@ -14,7 +14,7 @@ function formatObservationsForPrompt(observations: any[]): string {
 
 export async function POST(request: Request) {
   try {
-    const { problem, childName, childProfile, parentProfile, recentObservations } = await request.json();
+    const { problem, childName, childProfile, parentProfile, recentObservations, sessionContext } = await request.json();
 
     if (!problem) {
       return NextResponse.json(
@@ -39,6 +39,18 @@ ${parentProfile ? `- 양육자 기질 유형: ${parentProfile.label} (${parentPr
 ${recentObservations && recentObservations.length > 0 ? `**[최근 양육 관찰 기록]**
 양육자가 최근 기록한 아이와의 상호작용입니다. 이 맥락을 참고하여 질문을 생성하세요.
 ${formatObservationsForPrompt(recentObservations)}
+
+` : ''}${sessionContext ? `**[이전 상담 맥락 — 추가 상담]**
+이 상담은 기존 세션 "${sessionContext.session?.title}"의 추가 상담입니다. 이전 상담 내용과 실천 기록을 참고하여 질문을 생성하세요.
+${(sessionContext.consultations || []).slice(-2).map((c: any) => {
+    const date = new Date(c.created_at).toLocaleDateString('ko-KR');
+    return `[${date}] 고민: ${c.problem_description}${c.ai_prescription?.magicWord ? ` → 마법의 한마디: ${c.ai_prescription.magicWord}` : ''}`;
+}).join('\n')}
+${(sessionContext.practices || []).map((p: any) => {
+    const logs = (sessionContext.logs || []).filter((l: any) => l.practice_id === p.id);
+    const doneDays = logs.filter((l: any) => l.done).length;
+    return `실천: ${p.title} | ${doneDays}/${p.duration}일 실천 (${p.status})`;
+}).join('\n')}
 
 ` : ''}**[응답 원칙]**
 1. **공감 우선 (empathy)**: 양육자의 힘든 상황을 충분히 인정하고 공감하세요. 육아의 고단함을 짚어주며 죄책감을 느끼지 않게 격려하세요.

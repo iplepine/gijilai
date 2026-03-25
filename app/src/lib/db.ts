@@ -7,6 +7,10 @@ export type ChildProfile = Database['public']['Tables']['children']['Row'];
 export type SurveyData = Database['public']['Tables']['surveys']['Row'];
 export type ReportData = Database['public']['Tables']['reports']['Row'];
 export type ObservationData = Database['public']['Tables']['observations']['Row'];
+export type SessionData = Database['public']['Tables']['consultation_sessions']['Row'];
+export type PracticeItemData = Database['public']['Tables']['practice_items']['Row'];
+export type PracticeLogData = Database['public']['Tables']['practice_logs']['Row'];
+export type PracticeReviewData = Database['public']['Tables']['practice_reviews']['Row'];
 
 
 export const db = {
@@ -379,6 +383,177 @@ export const db = {
             .limit(limit);
         if (error) throw error;
         return data as ObservationData[];
+    },
+
+    // --- Consultation Sessions ---
+    createSession: async (session: { user_id: string; child_id: string | null; title: string }) => {
+        const { data, error } = await supabase
+            .from('consultation_sessions')
+            .insert(session)
+            .select()
+            .single();
+        if (error) throw error;
+        return data as SessionData;
+    },
+
+    getSessions: async (userId: string, childId?: string, status?: string) => {
+        let query = supabase
+            .from('consultation_sessions')
+            .select('*')
+            .eq('user_id', userId)
+            .order('updated_at', { ascending: false });
+        if (childId) query = query.eq('child_id', childId);
+        if (status) query = query.eq('status', status);
+        const { data, error } = await query;
+        if (error) throw error;
+        return data as SessionData[];
+    },
+
+    getActiveSessionCount: async (userId: string) => {
+        const { count, error } = await supabase
+            .from('consultation_sessions')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', userId)
+            .eq('status', 'ACTIVE');
+        if (error) throw error;
+        return count || 0;
+    },
+
+    updateSession: async (sessionId: string, updates: Partial<SessionData>) => {
+        const { data, error } = await supabase
+            .from('consultation_sessions')
+            .update({ ...updates, updated_at: new Date().toISOString() })
+            .eq('id', sessionId)
+            .select()
+            .single();
+        if (error) throw error;
+        return data as SessionData;
+    },
+
+    getSessionWithConsultations: async (sessionId: string) => {
+        const [sessionRes, consultsRes, practicesRes] = await Promise.all([
+            supabase.from('consultation_sessions').select('*').eq('id', sessionId).single(),
+            supabase.from('consultations').select('*').eq('session_id', sessionId).order('created_at', { ascending: true }),
+            supabase.from('practice_items').select('*').eq('session_id', sessionId).order('created_at', { ascending: true }),
+        ]);
+        if (sessionRes.error) throw sessionRes.error;
+
+        // 실천 로그도 가져오기
+        const practiceIds = (practicesRes.data || []).map(p => p.id);
+        let logs: PracticeLogData[] = [];
+        let reviews: PracticeReviewData[] = [];
+        if (practiceIds.length > 0) {
+            const [logsRes, reviewsRes] = await Promise.all([
+                supabase.from('practice_logs').select('*').in('practice_id', practiceIds).order('date', { ascending: true }),
+                supabase.from('practice_reviews').select('*').in('practice_id', practiceIds),
+            ]);
+            logs = (logsRes.data || []) as PracticeLogData[];
+            reviews = (reviewsRes.data || []) as PracticeReviewData[];
+        }
+
+        return {
+            session: sessionRes.data as SessionData,
+            consultations: (consultsRes.data || []),
+            practices: (practicesRes.data || []) as PracticeItemData[],
+            logs,
+            reviews,
+        };
+    },
+
+    // --- Practice Items ---
+    createPracticeItem: async (item: Omit<PracticeItemData, 'id' | 'created_at' | 'status'>) => {
+        const { data, error } = await supabase
+            .from('practice_items')
+            .insert(item)
+            .select()
+            .single();
+        if (error) throw error;
+        return data as PracticeItemData;
+    },
+
+    getActivePracticeItems: async (userId: string, childId?: string) => {
+        let query = supabase
+            .from('practice_items')
+            .select('*, consultation_sessions!inner(id, user_id, child_id, title, status)')
+            .eq('consultation_sessions.user_id', userId)
+            .eq('status', 'ACTIVE');
+        if (childId) query = query.eq('consultation_sessions.child_id', childId);
+        const { data, error } = await query;
+        if (error) throw error;
+        return data as (PracticeItemData & { consultation_sessions: SessionData })[];
+    },
+
+    getActivePracticeCount: async (userId: string) => {
+        const { count, error } = await supabase
+            .from('practice_items')
+            .select('*, consultation_sessions!inner(user_id)', { count: 'exact', head: true })
+            .eq('consultation_sessions.user_id', userId)
+            .eq('status', 'ACTIVE');
+        if (error) throw error;
+        return count || 0;
+    },
+
+    updatePracticeItem: async (itemId: string, updates: Partial<PracticeItemData>) => {
+        const { data, error } = await supabase
+            .from('practice_items')
+            .update(updates)
+            .eq('id', itemId)
+            .select()
+            .single();
+        if (error) throw error;
+        return data as PracticeItemData;
+    },
+
+    // --- Practice Logs ---
+    createPracticeLog: async (log: Omit<PracticeLogData, 'id' | 'created_at'>) => {
+        const { data, error } = await supabase
+            .from('practice_logs')
+            .upsert(log, { onConflict: 'practice_id,date' })
+            .select()
+            .single();
+        if (error) throw error;
+        return data as PracticeLogData;
+    },
+
+    getPracticeLogs: async (practiceId: string) => {
+        const { data, error } = await supabase
+            .from('practice_logs')
+            .select('*')
+            .eq('practice_id', practiceId)
+            .order('date', { ascending: true });
+        if (error) throw error;
+        return data as PracticeLogData[];
+    },
+
+    getTodayPracticeLogs: async (userId: string) => {
+        const today = new Date().toISOString().split('T')[0];
+        const { data, error } = await supabase
+            .from('practice_logs')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('date', today);
+        if (error) throw error;
+        return data as PracticeLogData[];
+    },
+
+    // --- Practice Reviews ---
+    createPracticeReview: async (review: Omit<PracticeReviewData, 'id' | 'created_at'>) => {
+        const { data, error } = await supabase
+            .from('practice_reviews')
+            .insert(review)
+            .select()
+            .single();
+        if (error) throw error;
+        return data as PracticeReviewData;
+    },
+
+    getPracticeReview: async (practiceId: string) => {
+        const { data } = await supabase
+            .from('practice_reviews')
+            .select('*')
+            .eq('practice_id', practiceId)
+            .single();
+        return data as PracticeReviewData | null;
     },
 
     resetUserData: async (userId: string) => {
