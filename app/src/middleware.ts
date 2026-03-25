@@ -2,6 +2,13 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+const publicSettingsRoutes = [
+    '/settings/terms',
+    '/settings/privacy',
+    '/settings/refund',
+    '/settings/support',
+];
+
 const protectedRoutes = [
     '/consult',
     '/consultations',
@@ -16,6 +23,9 @@ const protectedRoutes = [
 
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
+
+    const isPublicSettings = publicSettingsRoutes.some(route => pathname.startsWith(route));
+    if (isPublicSettings) return NextResponse.next();
 
     const isProtected = protectedRoutes.some(route => pathname.startsWith(route));
     if (!isProtected) return NextResponse.next();
