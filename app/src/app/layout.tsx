@@ -42,6 +42,8 @@ export default function RootLayout({
         />
         {/* Kakao SDK */}
         <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.0/kakao.min.js" async></script>
+        {/* PortOne V2 SDK */}
+        <script src="https://cdn.portone.io/v2/browser-sdk.js" async></script>
       </head>
       <body className="antialiased min-h-screen relative font-sans text-slate-800" suppressHydrationWarning>
         {/* Background handled by globals.css body style */}

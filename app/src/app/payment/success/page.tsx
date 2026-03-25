@@ -14,19 +14,25 @@ function SuccessContent() {
     const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
 
     useEffect(() => {
-        const paymentIntent = searchParams.get('payment_intent');
-        const redirectStatus = searchParams.get('redirect_status');
+        const paymentId = searchParams.get('paymentId');
 
-        if (redirectStatus === 'succeeded') {
-            setIsPaid(true);
-            setStatus('success');
-            // Automatically redirect to report after a short delay to show success
-            const timer = setTimeout(() => {
-                router.push('/report');
-            }, 2000);
-            return () => clearTimeout(timer);
-        } else if (redirectStatus === 'processing') {
-            setStatus('loading');
+        if (paymentId) {
+            // 포트원 리다이렉트 결제 완료 — 서버에서 검증
+            fetch('/api/payment/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ paymentId }),
+            })
+                .then(res => {
+                    if (res.ok) {
+                        setIsPaid(true);
+                        setStatus('success');
+                        setTimeout(() => router.push('/report'), 2000);
+                    } else {
+                        setStatus('error');
+                    }
+                })
+                .catch(() => setStatus('error'));
         } else {
             setStatus('error');
         }
@@ -40,7 +46,7 @@ function SuccessContent() {
                         <Icon name="sync" className="text-primary animate-spin" size="lg" />
                     </div>
                     <h2 className="text-2xl font-bold text-slate-800 dark:text-white">결제 확인 중...</h2>
-                    <p className="text-slate-500 text-sm">잠시만 기다려주세요. 결제 상태를 확인하고 있습니다.</p>
+                    <p className="text-slate-500 text-sm">잠시만 기다려주세요.</p>
                 </div>
             )}
 
@@ -55,19 +61,12 @@ function SuccessContent() {
                     <div className="space-y-3">
                         <h2 className="text-3xl font-black text-slate-900 dark:text-white">결제 완료!</h2>
                         <p className="text-slate-500 text-base leading-relaxed break-keep">
-                            우리 아이를 위한 첫 번째 처방전이<br />성공적으로 준비되었습니다.
+                            분석 결과 페이지로 이동합니다.
                         </p>
                     </div>
-                    <div className="pt-4">
-                        <Button
-                            variant="primary"
-                            size="lg"
-                            onClick={() => router.push('/report')}
-                            className="h-14 px-10 rounded-2xl font-bold"
-                        >
-                            분석 결과 보러가기
-                        </Button>
-                    </div>
+                    <Button variant="primary" size="lg" onClick={() => router.push('/report')} className="h-14 px-10 rounded-2xl font-bold">
+                        분석 결과 보러가기
+                    </Button>
                 </div>
             )}
 
@@ -77,7 +76,7 @@ function SuccessContent() {
                         <Icon name="error" className="text-red-500" size="lg" />
                     </div>
                     <h2 className="text-2xl font-bold text-slate-800 dark:text-white">결제 오류</h2>
-                    <p className="text-slate-500 text-sm">결제 처리 중 문제가 발생했습니다. 다시 시도해주세요.</p>
+                    <p className="text-slate-500 text-sm">결제 처리 중 문제가 발생했습니다.</p>
                     <Button variant="secondary" onClick={() => router.replace('/payment')}>
                         결제 페이지로 돌아가기
                     </Button>

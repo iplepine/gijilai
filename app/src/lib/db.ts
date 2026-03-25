@@ -11,6 +11,8 @@ export type SessionData = Database['public']['Tables']['consultation_sessions'][
 export type PracticeItemData = Database['public']['Tables']['practice_items']['Row'];
 export type PracticeLogData = Database['public']['Tables']['practice_logs']['Row'];
 export type PracticeReviewData = Database['public']['Tables']['practice_reviews']['Row'];
+export type SubscriptionData = Database['public']['Tables']['subscriptions']['Row'];
+export type PaymentData = Database['public']['Tables']['payments']['Row'];
 
 
 export const db = {
@@ -430,6 +432,22 @@ export const db = {
         return data as SessionData;
     },
 
+    deleteSession: async (sessionId: string) => {
+        const { error } = await supabase
+            .from('consultation_sessions')
+            .delete()
+            .eq('id', sessionId);
+        if (error) throw error;
+    },
+
+    deleteConsultation: async (consultationId: string) => {
+        const { error } = await supabase
+            .from('consultations')
+            .delete()
+            .eq('id', consultationId);
+        if (error) throw error;
+    },
+
     getSessionWithConsultations: async (sessionId: string) => {
         const [sessionRes, consultsRes, practicesRes] = await Promise.all([
             supabase.from('consultation_sessions').select('*').eq('id', sessionId).single(),
@@ -556,14 +574,64 @@ export const db = {
         return data as PracticeReviewData | null;
     },
 
+    // --- Subscriptions ---
+    getActiveSubscription: async (userId: string) => {
+        const { data } = await supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', userId)
+            .in('status', ['ACTIVE', 'PAST_DUE'])
+            .gte('current_period_end', new Date().toISOString())
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+        return data as SubscriptionData | null;
+    },
+
+    getSubscriptionHistory: async (userId: string) => {
+        const { data, error } = await supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        return data as SubscriptionData[];
+    },
+
+    // --- Payments ---
+    getPaymentHistory: async (userId: string, limit: number = 20) => {
+        const { data, error } = await supabase
+            .from('payments')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(limit);
+        if (error) throw error;
+        return data as PaymentData[];
+    },
+
+    getMonthlyConsultCount: async (userId: string) => {
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        const { count, error } = await supabase
+            .from('consultations')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', userId)
+            .eq('status', 'COMPLETED')
+            .gte('created_at', startOfMonth);
+        if (error) throw error;
+        return count || 0;
+    },
+
     resetUserData: async (userId: string) => {
         // 개발용 데이터 초기화 - profiles는 삭제하지 않음 (로그인 상태 유지)
+        // consultation_sessions 삭제 시 CASCADE로 consultations, practice_items, practice_logs, practice_reviews 자동 삭제
         const results = await Promise.allSettled([
             supabase.from('children').delete().eq('parent_id', userId),
             supabase.from('surveys').delete().eq('user_id', userId),
             supabase.from('reports').delete().eq('user_id', userId),
-
-            supabase.from('consultations').delete().eq('user_id', userId), // 테이블 없으면 무시
+            supabase.from('consultation_sessions').delete().eq('user_id', userId),
+            supabase.from('consultations').delete().eq('user_id', userId),
         ]);
 
         results.forEach((result) => {

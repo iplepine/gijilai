@@ -393,6 +393,103 @@ export interface Database {
                     created_at?: string
                 }
             }
+            subscriptions: {
+                Row: {
+                    id: string
+                    user_id: string
+                    plan: 'MONTHLY' | 'YEARLY'
+                    status: 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'EXPIRED'
+                    billing_key: string | null
+                    portone_customer_id: string | null
+                    currency: string
+                    amount: number
+                    current_period_start: string
+                    current_period_end: string
+                    cancelled_at: string | null
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    user_id: string
+                    plan: 'MONTHLY' | 'YEARLY'
+                    status?: 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'EXPIRED'
+                    billing_key?: string | null
+                    portone_customer_id?: string | null
+                    currency?: string
+                    amount: number
+                    current_period_start: string
+                    current_period_end: string
+                    cancelled_at?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    user_id?: string
+                    plan?: 'MONTHLY' | 'YEARLY'
+                    status?: 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'EXPIRED'
+                    billing_key?: string | null
+                    portone_customer_id?: string | null
+                    currency?: string
+                    amount?: number
+                    current_period_start?: string
+                    current_period_end?: string
+                    cancelled_at?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+            }
+            payments: {
+                Row: {
+                    id: string
+                    user_id: string
+                    subscription_id: string | null
+                    type: 'ONE_TIME' | 'SUBSCRIPTION' | 'RENEWAL'
+                    portone_payment_id: string | null
+                    status: 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED' | 'REFUNDED'
+                    currency: string
+                    amount: number
+                    pg_provider: string | null
+                    pay_method: string | null
+                    paid_at: string | null
+                    failed_reason: string | null
+                    metadata: Json | null
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    user_id: string
+                    subscription_id?: string | null
+                    type: 'ONE_TIME' | 'SUBSCRIPTION' | 'RENEWAL'
+                    portone_payment_id?: string | null
+                    status?: 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED' | 'REFUNDED'
+                    currency?: string
+                    amount: number
+                    pg_provider?: string | null
+                    pay_method?: string | null
+                    paid_at?: string | null
+                    failed_reason?: string | null
+                    metadata?: Json | null
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    user_id?: string
+                    subscription_id?: string | null
+                    type?: 'ONE_TIME' | 'SUBSCRIPTION' | 'RENEWAL'
+                    portone_payment_id?: string | null
+                    status?: 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED' | 'REFUNDED'
+                    currency?: string
+                    amount?: number
+                    pg_provider?: string | null
+                    pay_method?: string | null
+                    paid_at?: string | null
+                    failed_reason?: string | null
+                    metadata?: Json | null
+                    created_at?: string
+                }
+            }
         }
     }
 }

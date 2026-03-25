@@ -78,10 +78,10 @@
 - **사용처**: 실천 탭, 상담 시 LLM 컨텍스트 주입
 
 ### 결제
-- **위치**: `app/src/app/api/payment/create-intent/route.ts`, `app/src/components/payment/CheckoutForm.tsx`
-- **역할**: 프리미엄 리포트 구매를 위한 Stripe PaymentIntent 생성 (990원)
-- **의존**: Stripe SDK
-- **사용처**: 결제 페이지, 리포트 접근 제어
+- **위치**: `app/src/lib/portone.ts`, `app/src/lib/subscription.ts`, `app/src/app/api/payment/`
+- **역할**: 포트원 V2 기반 결제 처리. 건별 결제(990원) + 구독제(월/연). 빌링키 기반 정기결제, 웹훅 검증, 구독 라이프사이클 관리
+- **의존**: @portone/server-sdk, Supabase (subscriptions/payments 테이블)
+- **사용처**: 결제 페이지, 요금제 페이지, 구독 관리, 리포트/상담 접근 제어
 
 ## 외부 의존성
 
@@ -95,10 +95,11 @@
 - **프로토콜**: REST (openai SDK)
 - **인증**: API Key (서버 전용)
 
-### Stripe
-- **용도**: 프리미엄 리포트 결제 처리
-- **프로토콜**: REST (stripe SDK)
-- **인증**: Secret Key (서버 전용)
+### PortOne (포트원 V2)
+- **용도**: 결제 통합 플랫폼 (건별 + 구독 정기결제)
+- **프로토콜**: REST (@portone/server-sdk) + 브라우저 SDK (CDN)
+- **인증**: API Secret (서버), Store ID (클라이언트)
+- **PG사**: 토스페이먼츠 (한국), Stripe (글로벌)
 
 ### Kakao SDK
 - **용도**: 소셜 로그인 (OAuth), 공유 기능
@@ -147,3 +148,5 @@
 | practices | 실천 기록 (액션 아이템별 일일 체크 + 회고) |
 | referrals | 코드 기반 추천 시스템 |
 | coupons | 할인 쿠폰 (만료일 포함) |
+| subscriptions | 구독 정보 (플랜, 빌링키, 기간, 상태) |
+| payments | 결제 이력 (건별/구독/갱신, 포트원 ID) |
