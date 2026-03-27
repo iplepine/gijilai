@@ -83,7 +83,48 @@ export const generateReport = async (
     if (!content) return null;
 
     try {
-        return JSON.parse(content);
+        const parsed = JSON.parse(content);
+        console.log('[generateReport] Parsed keys:', JSON.stringify(Object.keys(parsed)));
+
+        // CHILD 리포트: dimensions가 analysis 밖에 있으면 안으로 이동
+        if (type === 'CHILD' && parsed.analysis) {
+            if (!parsed.analysis.dimensions && parsed.dimensions) {
+                parsed.analysis.dimensions = parsed.dimensions;
+                delete parsed.dimensions;
+                console.log('[generateReport] Moved top-level dimensions into analysis');
+            }
+            // insight가 analysis 밖에 있으면 안으로 이동
+            if (!parsed.analysis.insight && parsed.insight) {
+                parsed.analysis.insight = parsed.insight;
+                delete parsed.insight;
+            }
+            // strengths가 analysis 밖에 있으면 안으로 이동
+            if (!parsed.analysis.strengths && parsed.strengths) {
+                parsed.analysis.strengths = parsed.strengths;
+                delete parsed.strengths;
+            }
+        }
+
+        // CHILD 리포트: analysis가 없지만 dimensions가 top-level에 있으면 analysis 구성
+        if (type === 'CHILD' && !parsed.analysis && parsed.dimensions) {
+            parsed.analysis = {
+                dimensions: parsed.dimensions,
+                insight: parsed.insight || [],
+                strengths: parsed.strengths || '',
+            };
+            delete parsed.dimensions;
+            delete parsed.insight;
+            delete parsed.strengths;
+            console.log('[generateReport] Constructed analysis from top-level fields');
+        }
+
+        if (parsed.analysis?.dimensions) {
+            console.log('[generateReport] dimensions keys:', JSON.stringify(Object.keys(parsed.analysis.dimensions)));
+        } else {
+            console.warn('[generateReport] WARNING: analysis.dimensions is missing after normalization!');
+        }
+
+        return parsed;
     } catch (e) {
         console.error("JSON Parsing failed for AI report", e);
         return content; // Fallback to raw string if parsing fails

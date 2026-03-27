@@ -230,6 +230,9 @@ function ReportContent() {
         childType: { label: childType.label, keywords: childType.keywords, desc: childType.desc }
       });
       if (result) {
+        console.log('[ChildReport] report keys:', Object.keys(result.report));
+        console.log('[ChildReport] analysis:', result.report.analysis ? Object.keys(result.report.analysis) : 'NO ANALYSIS');
+        console.log('[ChildReport] dimensions:', result.report.analysis?.dimensions ? Object.keys(result.report.analysis.dimensions) : 'NO DIMENSIONS');
         setChildAiReport(result.report);
         setReportDates(prev => ({ ...prev, child: result.createdAt }));
       }
@@ -702,7 +705,7 @@ function ReportContent() {
                       </section>
 
                       {/* 3. 기질 요소별 해석 */}
-                      {childAiReport.analysis?.dimensions && (
+                      {childAiReport.analysis?.dimensions && Object.values(childAiReport.analysis.dimensions).some(Boolean) && (
                         <section className="bg-white dark:bg-surface-dark rounded-2xl px-6 py-5 shadow-card border border-beige-main/10 space-y-4">
                           <p className="text-[12px] font-black text-text-main dark:text-white flex items-center gap-1.5">
                             <Icon name="psychology" size="sm" /> 기질 요소별 해석
