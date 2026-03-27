@@ -18,7 +18,9 @@ export function DatePicker({ value, onChange, label, error }: DatePickerProps) {
   const [step, setStep] = useState<Step>('year');
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+  const [showAllYears, setShowAllYears] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   const currentYear = new Date().getFullYear();
   // 연도 범위: 올해부터 100년 전까지
@@ -40,6 +42,7 @@ export function DatePicker({ value, onChange, label, error }: DatePickerProps) {
       setSelectedMonth(null);
       setStep('year');
     }
+    setShowAllYears(false);
     setIsOpen(true);
   };
 
@@ -173,26 +176,37 @@ export function DatePicker({ value, onChange, label, error }: DatePickerProps) {
             </div>
 
             {/* Content */}
-            <div className="p-6">
+            <div ref={contentRef} className="p-6 overflow-y-auto max-h-[60vh]">
               {/* 연도 선택 */}
               {step === 'year' && (
-                <div className="grid grid-cols-3 gap-2">
-                  {years.map((year) => {
-                    const isSelected = selectedDate?.getFullYear() === year;
-                    return (
-                      <button
-                        key={year}
-                        type="button"
-                        onClick={() => handleYearSelect(year)}
-                        className={`h-12 rounded-xl text-[15px] font-bold transition-all
-                          ${isSelected ? 'bg-primary text-white shadow-md shadow-primary/20' :
-                            year === currentYear ? 'bg-primary/10 text-primary' : 'text-text-main dark:text-gray-200 hover:bg-beige-main/10'}
-                        `}
-                      >
-                        {year}
-                      </button>
-                    );
-                  })}
+                <div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(showAllYears ? years : years.slice(0, 21)).map((year) => {
+                      const isSelected = selectedDate?.getFullYear() === year;
+                      return (
+                        <button
+                          key={year}
+                          type="button"
+                          onClick={() => handleYearSelect(year)}
+                          className={`h-12 rounded-xl text-[15px] font-bold transition-all
+                            ${isSelected ? 'bg-primary text-white shadow-md shadow-primary/20' :
+                              year === currentYear ? 'bg-primary/10 text-primary' : 'text-text-main dark:text-gray-200 hover:bg-beige-main/10'}
+                          `}
+                        >
+                          {year}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {!showAllYears && years.length > 21 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllYears(true)}
+                      className="w-full mt-3 py-3 rounded-xl text-sm font-bold text-primary hover:bg-primary/10 transition-all border border-primary/20"
+                    >
+                      더보기
+                    </button>
+                  )}
                 </div>
               )}
 
