@@ -61,7 +61,7 @@ function SharePageContent() {
   useEffect(() => {
     if (typeof window !== 'undefined' && window.Kakao) {
       if (!window.Kakao.isInitialized()) {
-        const key = process.env.NEXT_PUBLIC_KAKAO_JS_KEY || '86e2d8a4369a47468132e08e67f08c5c';
+        const key = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
         window.Kakao.init(key);
       }
     }
@@ -107,7 +107,7 @@ function SharePageContent() {
       content: {
         title: `${eunNeun(childName)} "${temperamentInfo?.label || '열정 탐험가'}"예요!`,
         description: '과학적인 기질 분석으로 우리 아이의 타고난 빛을 발견해보세요.',
-        imageUrl: `${window.location.origin}${temperamentInfo?.image || '/child_type/type_lhl.jpg'}`,
+        imageUrl: `https://gijilai.com${temperamentInfo?.image || '/child_type/type_lhl.jpg'}`,
         link: {
           mobileWebUrl: shareUrl,
           webUrl: shareUrl,
