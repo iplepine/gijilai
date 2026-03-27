@@ -74,16 +74,16 @@ function SharePageContent() {
       if (analysis.label && analysis.desc) {
         if (analysis.scores) {
           const classified = TemperamentClassifier.analyzeChild(analysis.scores);
-          return { label: analysis.label, desc: analysis.desc, image: classified.image };
+          return { label: analysis.label, desc: analysis.desc, image: classified.image, intro: analysis.intro, strengths: analysis.analysis?.strengths };
         }
-        return { label: analysis.label, desc: analysis.desc, image: '' };
+        return { label: analysis.label, desc: analysis.desc, image: '', intro: analysis.intro, strengths: analysis.analysis?.strengths };
       }
     }
 
     if (!cbqResponses || Object.keys(cbqResponses).length === 0) return null;
     const scores = TemperamentScorer.calculate(CHILD_QUESTIONS, cbqResponses as any);
     const classified = TemperamentClassifier.analyzeChild(scores);
-    return { label: classified.label, desc: classified.desc, image: classified.image };
+    return { label: classified.label, desc: classified.desc, image: classified.image, intro: undefined, strengths: undefined };
   })();
 
   const getShareUrl = () => {
@@ -106,7 +106,9 @@ function SharePageContent() {
       objectType: 'feed',
       content: {
         title: `${eunNeun(childName)} "${temperamentInfo?.label || '열정 탐험가'}"`,
-        description: '과학적인 기질 분석으로 우리 아이의 타고난 빛을 발견해보세요.',
+        description: temperamentInfo?.intro
+          ? `${temperamentInfo.desc}\n\n${temperamentInfo.intro}`.slice(0, 200)
+          : temperamentInfo?.desc || '과학적인 기질 분석으로 우리 아이의 타고난 빛을 발견해보세요.',
         imageUrl: `https://gijilai.com${temperamentInfo?.image || '/child_type/type_lhl.jpg'}`,
         link: {
           mobileWebUrl: shareUrl,
@@ -148,7 +150,12 @@ function SharePageContent() {
     try {
       await navigator.share({
         title: `${childName}의 기질 분석 결과`,
-        text: `${eunNeun(childName)} "${temperamentInfo?.label || '열정 탐험가'}" 기질이에요! 과학적 기질 분석으로 우리 아이를 이해해보세요.`,
+        text: [
+          `${eunNeun(childName)} "${temperamentInfo?.label || '열정 탐험가'}"`,
+          temperamentInfo?.desc,
+          temperamentInfo?.intro,
+          temperamentInfo?.strengths,
+        ].filter(Boolean).join('\n\n'),
         url: getShareUrl(),
       });
     } catch (err) {
