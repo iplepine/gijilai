@@ -29,6 +29,7 @@ export default function HomePage() {
   const [showSurveyIntro, setShowSurveyIntro] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [practices, setPractices] = useState<{ uncheckedCount: number; uncheckedItems: PracticeItemData[] }>({ uncheckedCount: 0, uncheckedItems: [] });
+  const [showConsultCTA, setShowConsultCTA] = useState(false);
   const [allMagicWords, setAllMagicWords] = useState<{ word: string; date: string; childId?: string; childName?: string }[]>([]);
   const [magicWordIndex, setMagicWordIndex] = useState(0);
   const [magicWordPhase, setMagicWordPhase] = useState<'visible' | 'exit' | 'enter'>('visible');
@@ -200,6 +201,18 @@ export default function HomePage() {
         const checkedPracticeIds = new Set((todayLogs as PracticeLogData[]).map(l => l.practice_id));
         const uncheckedItems = (activePractices as PracticeItemData[]).filter(p => !checkedPracticeIds.has(p.id));
         setPractices({ uncheckedCount: uncheckedItems.length, uncheckedItems });
+
+        // 상담 이력 없거나 진행 중인 실천이 없으면 상담 유도 표시
+        const hasActivePractices = (activePractices as PracticeItemData[]).length > 0;
+        if (!hasActivePractices) {
+          const { count } = await supabase
+            .from('consultation_sessions')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', user.id);
+          setShowConsultCTA(!count || count === 0);
+        } else {
+          setShowConsultCTA(false);
+        }
 
         // 실천 중인 상담의 마법의 한마디만 표시
         const activeConsultationIds = [...new Set((activePractices as any[]).map(p => p.consultation_id).filter(Boolean))];
@@ -594,6 +607,27 @@ export default function HomePage() {
                           )}
                         </div>
                       )}
+                    </div>
+                  </Link>
+                )}
+
+                {/* 상담 유도 카드 — 상담 이력이 없거나 진행 중 실천이 없을 때 */}
+                {showConsultCTA && temperamentInfo?.child && (
+                  <Link href="/consult" className="block">
+                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-surface-dark dark:to-surface-dark rounded-2xl p-5 shadow-soft border border-amber-200/60 dark:border-amber-500/30 active:scale-[0.99] transition-all relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-28 h-28 bg-amber-200/30 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
+                      <div className="relative z-10">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center">
+                            <span className="material-symbols-outlined text-[20px] text-amber-600 dark:text-amber-400">chat_bubble</span>
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="text-[14px] font-bold text-text-main dark:text-white">육아 고민, 기질로 풀어볼까요?</h3>
+                            <p className="text-[11px] text-text-sub dark:text-gray-400">{childName}의 기질에 맞는 대화법을 처방받아보세요</p>
+                          </div>
+                          <span className="material-symbols-outlined text-[18px] text-amber-400">arrow_forward</span>
+                        </div>
+                      </div>
                     </div>
                   </Link>
                 )}

@@ -624,21 +624,29 @@ export const db = {
     },
 
     resetUserData: async (userId: string) => {
-        // 개발용 데이터 초기화 - profiles는 삭제하지 않음 (로그인 상태 유지)
-        // consultation_sessions 삭제 시 CASCADE로 consultations, practice_items, practice_logs, practice_reviews 자동 삭제
-        const results = await Promise.allSettled([
-            supabase.from('children').delete().eq('parent_id', userId),
-            supabase.from('surveys').delete().eq('user_id', userId),
-            supabase.from('reports').delete().eq('user_id', userId),
-            supabase.from('consultation_sessions').delete().eq('user_id', userId),
-            supabase.from('consultations').delete().eq('user_id', userId),
-        ]);
+        // 회원 탈퇴 시 모든 사용자 데이터 삭제
+        // consultation_sessions 삭제 시 CASCADE로 practice_items, practice_logs, practice_reviews 자동 삭제
+        // 순서 중요: FK 의존성 있는 테이블 먼저 삭제
+        const deletions = [
+            { name: 'observations', query: supabase.from('observations').delete().eq('user_id', userId) },
+            { name: 'consultations', query: supabase.from('consultations').delete().eq('user_id', userId) },
+            { name: 'consultation_sessions', query: supabase.from('consultation_sessions').delete().eq('user_id', userId) },
+            { name: 'reports', query: supabase.from('reports').delete().eq('user_id', userId) },
+            { name: 'surveys', query: supabase.from('surveys').delete().eq('user_id', userId) },
+            { name: 'children', query: supabase.from('children').delete().eq('parent_id', userId) },
+        ];
 
-        results.forEach((result) => {
-            if (result.status === 'fulfilled' && result.value.error) {
-                // consultations 테이블이 없는 경우 등 무시
-                console.warn('Reset partial error (ignored):', result.value.error.message);
+        const errors: string[] = [];
+        for (const { name, query } of deletions) {
+            const { error } = await query;
+            if (error) {
+                console.error(`Failed to delete ${name}:`, error.message);
+                errors.push(name);
             }
-        });
+        }
+
+        if (errors.length > 0) {
+            throw new Error(`데이터 삭제 실패: ${errors.join(', ')}`);
+        }
     }
 };
