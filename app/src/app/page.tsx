@@ -7,7 +7,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { useAppStore } from '@/store/useAppStore';
 import BottomNav from '@/components/layout/BottomNav';
 import LandingPage from '@/components/landing/LandingPage';
-import { db, UserProfile, ChildProfile, ReportData, SurveyData } from '@/lib/db';
+import { db, UserProfile, ChildProfile, ReportData, SurveyData, PracticeItemData, PracticeLogData } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import { GardenState } from '@/types/gardening';
 import { TemperamentScorer } from '@/lib/TemperamentScorer';
@@ -28,7 +28,7 @@ export default function HomePage() {
   const [uploading, setUploading] = useState(false);
   const [showSurveyIntro, setShowSurveyIntro] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [practices, setPractices] = useState<{ uncheckedCount: number }>({ uncheckedCount: 0 });
+  const [practices, setPractices] = useState<{ uncheckedCount: number; uncheckedItems: PracticeItemData[] }>({ uncheckedCount: 0, uncheckedItems: [] });
   const [allMagicWords, setAllMagicWords] = useState<{ word: string; date: string; childId?: string; childName?: string }[]>([]);
   const [magicWordIndex, setMagicWordIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -159,8 +159,8 @@ export default function HomePage() {
       try {
         const [data, activePractices, todayLogs, { data: recentConsult }] = await Promise.all([
           db.getDashboardData(user.id),
-          db.getActivePracticeCount(user.id).catch(() => 0),
-          db.getTodayPracticeLogs(user.id).catch(() => []),
+          db.getActivePracticeItems(user.id).catch(() => [] as PracticeItemData[]),
+          db.getTodayPracticeLogs(user.id).catch(() => [] as PracticeLogData[]),
           supabase
             .from('consultations')
             .select('ai_prescription, created_at, child_id')
@@ -174,9 +174,10 @@ export default function HomePage() {
         setReports(data.reports);
         setSurveys(data.surveys);
 
-        // 오늘 미체크 실천 항목 수
-        const checkedToday = todayLogs.length;
-        setPractices({ uncheckedCount: Math.max(0, activePractices - checkedToday) });
+        // 오늘 미체크 실천 항목 필터링
+        const checkedPracticeIds = new Set((todayLogs as PracticeLogData[]).map(l => l.practice_id));
+        const uncheckedItems = (activePractices as PracticeItemData[]).filter(p => !checkedPracticeIds.has(p.id));
+        setPractices({ uncheckedCount: uncheckedItems.length, uncheckedItems });
 
         // 최근 상담 마법의 한마디들
         const words = (recentConsult || [])
@@ -532,6 +533,19 @@ export default function HomePage() {
                         </div>
                         <span className="material-symbols-outlined text-[18px] text-primary/50">arrow_forward</span>
                       </div>
+                      {practices.uncheckedItems.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/50 space-y-2">
+                          {practices.uncheckedItems.slice(0, 3).map((item) => (
+                            <div key={item.id} className="flex items-center gap-2.5">
+                              <div className="w-4 h-4 rounded border-2 border-gray-300 dark:border-gray-600 flex-shrink-0" />
+                              <span className="text-[13px] text-text-main dark:text-gray-300 truncate flex-1">{item.title}</span>
+                            </div>
+                          ))}
+                          {practices.uncheckedItems.length > 3 && (
+                            <p className="text-[11px] text-text-sub dark:text-gray-500 pl-6.5">+{practices.uncheckedItems.length - 3}개 더</p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </Link>
                 )}

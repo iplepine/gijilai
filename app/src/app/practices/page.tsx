@@ -88,6 +88,15 @@ export default function PracticesPage() {
         }
     }
 
+    // 미기록 항목이 있는 세션이 위로 오도록 세션 그룹 정렬
+    grouped.sort((a, b) => {
+        const aHasUnchecked = a.practices.some(p => !todayLogs.find(l => l.practice_id === p.id));
+        const bHasUnchecked = b.practices.some(p => !todayLogs.find(l => l.practice_id === p.id));
+        if (aHasUnchecked && !bHasUnchecked) return -1;
+        if (!aHasUnchecked && bHasUnchecked) return 1;
+        return 0;
+    });
+
     const getTodayLog = (practiceId: string) => todayLogs.find(l => l.practice_id === practiceId);
 
     const getDoneDays = (practiceId: string) => allLogs.filter(l => l.practice_id === practiceId).length;
@@ -187,11 +196,14 @@ export default function PracticesPage() {
                                     <span className="material-symbols-outlined text-[14px] text-text-sub/50">chevron_right</span>
                                 </button>
 
-                                {/* 실천 카드들 — 오늘 미완료 우선 */}
+                                {/* 실천 카드들 — 오늘 미기록 우선, 그 다음 못했어요, 마지막 완료 */}
                                 {[...sessionPractices].sort((a, b) => {
-                                    const aDone = getTodayLog(a.id)?.done ? 1 : 0;
-                                    const bDone = getTodayLog(b.id)?.done ? 1 : 0;
-                                    return aDone - bDone;
+                                    const aLog = getTodayLog(a.id);
+                                    const bLog = getTodayLog(b.id);
+                                    // 로그 없음(0) < done:false(1) < done:true(2)
+                                    const aOrder = !aLog ? 0 : aLog.done ? 2 : 1;
+                                    const bOrder = !bLog ? 0 : bLog.done ? 2 : 1;
+                                    return aOrder - bOrder;
                                 }).map(practice => {
                                     const todayLog = getTodayLog(practice.id);
                                     const doneDays = getDoneDays(practice.id);
