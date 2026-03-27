@@ -3,11 +3,18 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 
 export async function GET(request: NextRequest) {
-    const { searchParams, origin } = new URL(request.url)
+    const { searchParams } = new URL(request.url)
     const code = searchParams.get('code')
     const next = searchParams.get('next') ?? '/'
     const errorParam = searchParams.get('error')
     const errorDescription = searchParams.get('error_description')
+
+    // request.url의 origin은 서버리스 환경에서 localhost로 잡힐 수 있으므로
+    // 요청 헤더의 실제 호스트 정보를 사용
+    const forwardedHost = request.headers.get('x-forwarded-host')
+    const forwardedProto = request.headers.get('x-forwarded-proto') ?? 'https'
+    const host = forwardedHost ?? request.headers.get('host') ?? 'localhost:3000'
+    const origin = `${forwardedProto}://${host}`
 
     if (errorParam) {
         console.error('Auth callback error parameter:', errorParam, errorDescription)
