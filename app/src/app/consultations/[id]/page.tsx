@@ -15,6 +15,7 @@ export default function ConsultationDetailPage() {
 
     const [session, setSession] = useState<(SessionData & { childName?: string }) | null>(null);
     const [consults, setConsults] = useState<any[]>([]);
+    const [otherSessions, setOtherSessions] = useState<{ id: string; title: string; status: string; childName?: string; latestDate: string; latestMagicWord?: string; consultCount: number }[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -25,7 +26,7 @@ export default function ConsultationDetailPage() {
     const loadData = async () => {
         if (!user || !id) return;
         try {
-            const [{ data: sessionData }, { data: consultsData }, children] = await Promise.all([
+            const [{ data: sessionData }, { data: consultsData }, children, allSessions, { data: allConsults }] = await Promise.all([
                 supabase
                     .from('consultation_sessions')
                     .select('*')
@@ -38,6 +39,13 @@ export default function ConsultationDetailPage() {
                     .eq('session_id', id)
                     .order('created_at', { ascending: true }),
                 db.getChildren(user.id),
+                db.getSessions(user.id),
+                supabase
+                    .from('consultations')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .eq('status', 'COMPLETED')
+                    .order('created_at', { ascending: false }),
             ]);
 
             if (sessionData) {
@@ -45,6 +53,24 @@ export default function ConsultationDetailPage() {
                 setSession({ ...sessionData, childName } as SessionData & { childName?: string });
             }
             setConsults(consultsData || []);
+
+            // 지난 상담 목록 (현재 세션 제외)
+            const others = (allSessions || [])
+                .filter((s: any) => s.id !== id)
+                .map((s: any) => {
+                    const sc = (allConsults || []).filter((c: any) => c.session_id === s.id);
+                    const latest = sc[0];
+                    return {
+                        id: s.id,
+                        title: s.title,
+                        status: s.status,
+                        childName: children.find((c: any) => c.id === s.child_id)?.name,
+                        latestDate: latest?.created_at || s.created_at,
+                        latestMagicWord: latest?.ai_prescription?.magicWord,
+                        consultCount: sc.length,
+                    };
+                });
+            setOtherSessions(others);
         } catch (e) {
             console.error('Failed to load consultation detail:', e);
         } finally {
@@ -277,6 +303,51 @@ export default function ConsultationDetailPage() {
                                     기록 삭제
                                 </button>
                             </div>
+
+                            {/* 지난 상담 */}
+                            {otherSessions.length > 0 && (
+                                <div className="space-y-3 pt-4 border-t border-primary/10">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-1 h-4 bg-gray-300 rounded-full" />
+                                        <h3 className="text-[13px] font-bold text-text-sub">지난 상담</h3>
+                                    </div>
+                                    {otherSessions.map(s => {
+                                        const label = statusLabel(s.status);
+                                        return (
+                                            <button
+                                                key={s.id}
+                                                onClick={() => router.push(`/consultations/${s.id}`)}
+                                                className="w-full text-left bg-white dark:bg-surface-dark rounded-2xl p-5 border border-primary/10 active:scale-[0.99] transition-all"
+                                            >
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div className="flex-1">
+                                                        <h4 className="text-[15px] font-bold text-text-main dark:text-white">{s.title}</h4>
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            <span className="text-[11px] text-text-sub">
+                                                                {new Date(s.latestDate).toLocaleDateString('ko-KR')}
+                                                            </span>
+                                                            {s.childName && (
+                                                                <span className="text-[11px] text-text-sub">· {s.childName}</span>
+                                                            )}
+                                                            {s.consultCount > 1 && (
+                                                                <span className="text-[11px] text-primary font-bold">상담 {s.consultCount}회</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${label.color}`}>
+                                                        {label.text}
+                                                    </span>
+                                                </div>
+                                                {s.latestMagicWord && (
+                                                    <p className="text-[12px] text-secondary mt-2 line-clamp-1 font-bold">
+                                                        &ldquo;{s.latestMagicWord}&rdquo;
+                                                    </p>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
                     )}
                 </main>

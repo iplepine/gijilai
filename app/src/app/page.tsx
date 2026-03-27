@@ -31,6 +31,9 @@ export default function HomePage() {
   const [practices, setPractices] = useState<{ uncheckedCount: number; uncheckedItems: PracticeItemData[] }>({ uncheckedCount: 0, uncheckedItems: [] });
   const [allMagicWords, setAllMagicWords] = useState<{ word: string; date: string; childId?: string; childName?: string }[]>([]);
   const [magicWordIndex, setMagicWordIndex] = useState(0);
+  const [magicWordPhase, setMagicWordPhase] = useState<'visible' | 'exit' | 'enter'>('visible');
+  const [magicWordDir, setMagicWordDir] = useState<'next' | 'prev'>('next');
+  const magicWordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Gardening State
@@ -104,6 +107,32 @@ export default function HomePage() {
     return allMagicWords.filter(w => w.childId === mainChild.id);
   }, [allMagicWords, mainChild]);
 
+  // 마법의 한마디 전환 (exit → index 변경 → enter → visible)
+  const magicWordIndexRef = useRef(magicWordIndex);
+  magicWordIndexRef.current = magicWordIndex;
+  const magicWordPhaseRef = useRef(magicWordPhase);
+  magicWordPhaseRef.current = magicWordPhase;
+
+  const transitionMagicWord = (getNext: (cur: number) => number, dir: 'next' | 'prev') => {
+    if (magicWordPhaseRef.current !== 'visible') return;
+    setMagicWordDir(dir);
+    setMagicWordPhase('exit');
+    setTimeout(() => {
+      setMagicWordIndex(getNext(magicWordIndexRef.current));
+      setMagicWordPhase('enter');
+      requestAnimationFrame(() => setMagicWordPhase('visible'));
+    }, 300);
+  };
+
+  // 마법의 한마디 자동 롤링 (5초 간격)
+  useEffect(() => {
+    if (magicWords.length <= 1) return;
+    const timer = setInterval(() => {
+      transitionMagicWord(cur => (cur + 1) % magicWords.length, 'next');
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [magicWords.length]);
+
   const childName = mainChild?.name || "우리 아이";
 
   // Derived Temperament (Parent = Soil, Child = Seed + Plant)
@@ -157,17 +186,10 @@ export default function HomePage() {
       }
 
       try {
-        const [data, activePractices, todayLogs, { data: recentConsult }] = await Promise.all([
+        const [data, activePractices, todayLogs] = await Promise.all([
           db.getDashboardData(user.id),
           db.getActivePracticeItems(user.id).catch(() => [] as PracticeItemData[]),
           db.getTodayPracticeLogs(user.id).catch(() => [] as PracticeLogData[]),
-          supabase
-            .from('consultations')
-            .select('ai_prescription, created_at, child_id')
-            .eq('user_id', user.id)
-            .eq('status', 'COMPLETED')
-            .order('created_at', { ascending: false })
-            .limit(10),
         ]);
         setProfile(data.profile);
         setChildren(data.children);
@@ -179,16 +201,26 @@ export default function HomePage() {
         const uncheckedItems = (activePractices as PracticeItemData[]).filter(p => !checkedPracticeIds.has(p.id));
         setPractices({ uncheckedCount: uncheckedItems.length, uncheckedItems });
 
-        // 최근 상담 마법의 한마디들
-        const words = (recentConsult || [])
-          .filter((c: any) => c.ai_prescription?.magicWord)
-          .map((c: any) => ({
-            word: c.ai_prescription.magicWord,
-            date: c.created_at,
-            childId: c.child_id,
-            childName: data.children.find((ch: ChildProfile) => ch.id === c.child_id)?.name,
-          }));
-        setAllMagicWords(words);
+        // 실천 중인 상담의 마법의 한마디만 표시
+        const activeConsultationIds = [...new Set((activePractices as any[]).map(p => p.consultation_id).filter(Boolean))];
+        if (activeConsultationIds.length > 0) {
+          const { data: activeConsults } = await supabase
+            .from('consultations')
+            .select('ai_prescription, created_at, child_id')
+            .in('id', activeConsultationIds)
+            .eq('status', 'COMPLETED');
+          const words = (activeConsults || [])
+            .filter((c: any) => c.ai_prescription?.magicWord)
+            .map((c: any) => ({
+              word: c.ai_prescription.magicWord,
+              date: c.created_at,
+              childId: c.child_id,
+              childName: data.children.find((ch: ChildProfile) => ch.id === c.child_id)?.name,
+            }));
+          setAllMagicWords(words);
+        } else {
+          setAllMagicWords([]);
+        }
 
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
@@ -483,9 +515,9 @@ export default function HomePage() {
                       const diff = startX - endX;
                       if (Math.abs(diff) > 40) {
                         if (diff > 0 && magicWordIndex < magicWords.length - 1) {
-                          setMagicWordIndex(i => i + 1);
+                          transitionMagicWord(cur => cur + 1, 'next');
                         } else if (diff < 0 && magicWordIndex > 0) {
-                          setMagicWordIndex(i => i - 1);
+                          transitionMagicWord(cur => cur - 1, 'prev');
                         }
                       }
                     }}
@@ -501,10 +533,26 @@ export default function HomePage() {
                           <span className="text-[11px] text-white/60 font-medium">{magicWordIndex + 1} / {magicWords.length}</span>
                         )}
                       </div>
-                      <p key={magicWordIndex} className="text-[16px] font-medium leading-relaxed mb-2 animate-in fade-in duration-300">
-                        &ldquo;{magicWords[magicWordIndex].word}&rdquo;
-                      </p>
-                      <p className="text-[11px] text-white/60">
+                      <div className="overflow-hidden">
+                        <p
+                          key={magicWordIndex}
+                          className="text-[16px] font-medium leading-relaxed mb-2 transition-all duration-300 ease-in-out"
+                          style={{
+                            opacity: magicWordPhase === 'exit' ? 0 : 1,
+                            transform: magicWordPhase === 'exit'
+                              ? `translateX(${magicWordDir === 'next' ? '-20px' : '20px'})`
+                              : magicWordPhase === 'enter'
+                              ? `translateX(${magicWordDir === 'next' ? '20px' : '-20px'})`
+                              : 'translateX(0)',
+                          }}
+                        >
+                          &ldquo;{magicWords[magicWordIndex].word}&rdquo;
+                        </p>
+                      </div>
+                      <p
+                        className="text-[11px] text-white/60 transition-opacity duration-300"
+                        style={{ opacity: magicWordPhase === 'exit' ? 0 : 1 }}
+                      >
                         {new Date(magicWords[magicWordIndex].date).toLocaleDateString('ko-KR')}
                         {magicWords[magicWordIndex].childName && ` · ${magicWords[magicWordIndex].childName}`}
                       </p>
