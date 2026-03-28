@@ -72,14 +72,16 @@ function ConsultContent() {
     const [sessionId, setSessionId] = useState<string | null>(sessionIdParam);
     const [validChildId, setValidChildId] = useState<string | null>(null);
     const [childLoading, setChildLoading] = useState(true);
+    const [hasChildReport, setHasChildReport] = useState(true);
 
     useEffect(() => {
         if (!user) { setChildLoading(false); return; }
         setChildLoading(true);
-        supabase.from('children').select('id, name, birth_date, gender').eq('parent_id', user.id).then(({ data }) => {
+        supabase.from('children').select('id, name, birth_date, gender').eq('parent_id', user.id).then(async ({ data }) => {
             if (!data || data.length === 0) {
                 setChildName(intake.childName || null);
                 setValidChildId(null);
+                setChildLoading(false);
             } else {
                 const selected = selectedChildId ? data.find(c => c.id === selectedChildId) : data[0];
                 const child = selected || data[0];
@@ -87,8 +89,15 @@ function ConsultContent() {
                 setChildBirthDate(child.birth_date);
                 setChildGender(child.gender);
                 setValidChildId(child.id);
+
+                const { count } = await supabase
+                    .from('reports')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('child_id', child.id)
+                    .eq('type', 'CHILD');
+                setHasChildReport((count || 0) > 0);
+                setChildLoading(false);
             }
-            setChildLoading(false);
         });
     }, [user, selectedChildId, intake.childName]);
 
@@ -379,7 +388,28 @@ function ConsultContent() {
                         </div>
                     )}
 
-                    {step === 'INPUT' && !childLoading && validChildId && (
+                    {step === 'INPUT' && !childLoading && validChildId && !hasChildReport && (
+                        <div className="flex flex-col items-center justify-center flex-1 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <div className="w-20 h-20 rounded-full bg-secondary/10 flex items-center justify-center">
+                                <span className="material-symbols-outlined text-[40px] text-secondary">psychology</span>
+                            </div>
+                            <div className="text-center space-y-2">
+                                <h2 className="text-xl font-bold text-text-main dark:text-white">기질 검사를 먼저 해주세요</h2>
+                                <p className="text-sm text-text-sub dark:text-gray-400 leading-relaxed break-keep">
+                                    {childName}의 기질을 파악해야<br />맞춤 상담을 받을 수 있어요.
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => router.push('/survey/intro')}
+                                className="px-8 py-4 rounded-2xl bg-secondary text-white font-bold text-base shadow-xl shadow-secondary/20 active:scale-[0.98] transition-all flex items-center gap-2"
+                            >
+                                <span className="material-symbols-outlined text-[20px]">quiz</span>
+                                <span>기질 검사 시작하기</span>
+                            </button>
+                        </div>
+                    )}
+
+                    {step === 'INPUT' && !childLoading && validChildId && hasChildReport && (
                         <div className="flex flex-col gap-8 w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
                             {/* 추가 상담: 이전 상담 요약 + 실천 현황 */}
                             {sessionContext && (
@@ -456,7 +486,7 @@ function ConsultContent() {
                         </div>
                     )}
 
-                    {step === 'INPUT' && !childLoading && validChildId && (
+                    {step === 'INPUT' && !childLoading && validChildId && hasChildReport && (
                         <div className="absolute bottom-0 left-0 right-0 p-6 bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl border-t border-beige-main/20 z-30">
                             <button
                                 onClick={handleStartDiagnostic}
