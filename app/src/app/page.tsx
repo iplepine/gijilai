@@ -54,11 +54,6 @@ export default function HomePage() {
     praise: false,
     skinship: false
   });
-  const [previewActions, setPreviewActions] = useState([
-    { id: 1, title: "🧩 장난감 정리 시간", before: "정리해!", after: "장난감 친구들이 이제 집에 가고 싶대", checked: true },
-    { id: 2, title: "🪥 양치질 거부할 때", before: "치카하자~", after: "치아 나라 세균을 물리치는 용사가 되어볼까?", checked: false },
-    { id: 3, title: "🌟 잠들기 전 인사", before: "잘 자~", after: "오늘 민준이가 인사를 잘해서 엄마는 정말 행복했어", checked: false }
-  ]);
   const [loading, setLoading] = useState(true);
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
 
@@ -277,11 +272,6 @@ export default function HomePage() {
     setDailyActions(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const togglePreviewAction = (id: number) => {
-    setPreviewActions(prev => prev.map(action =>
-      action.id === id ? { ...action, checked: !action.checked } : action
-    ));
-  };
 
   const handleProfileClick = () => {
     fileInputRef.current?.click();
@@ -768,64 +758,6 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  {/* Preview 2: Daily Action Item Card */}
-                  <div className="bg-white/80 dark:bg-surface-dark/50 rounded-[2rem] p-7 border border-primary/10 shadow-soft relative overflow-hidden">
-                    <div className="flex items-center gap-3 mb-5">
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                        <span className="material-symbols-outlined text-[24px]">task_alt</span>
-                      </div>
-                      <h4 className="text-[17px] font-bold text-text-main dark:text-white">우리 아이를 위한 오늘의 액션 아이템!</h4>
-                    </div>
-
-                    <div className="space-y-4">
-                      {previewActions.map((item) => (
-                        <div
-                          key={item.id}
-                          onClick={() => togglePreviewAction(item.id)}
-                          className={`flex gap-4 p-5 rounded-[1.5rem] border transition-all duration-300 cursor-pointer active:scale-[0.98] ${item.checked
-                            ? 'bg-primary/5 border-primary/20 shadow-sm'
-                            : 'bg-white dark:bg-surface-dark/30 border-gray-100 dark:border-gray-800 hover:border-primary/10'
-                            }`}
-                        >
-                          <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 mt-1 transition-colors ${item.checked
-                            ? 'bg-primary border-primary text-white shadow-md'
-                            : 'border-gray-200 dark:border-gray-700'
-                            }`}>
-                            {item.checked && <span className="material-symbols-outlined text-[18px] font-bold">check</span>}
-                          </div>
-
-                          <div className="flex flex-col gap-3 overflow-hidden">
-                            <span className={`text-[15px] font-black tracking-tight ${item.checked ? 'text-primary' : 'text-text-main dark:text-gray-100'}`}>
-                              {item.title}
-                            </span>
-
-                            <div className="flex flex-col gap-2">
-                              <div className="flex items-center gap-2 opacity-40">
-                                <span className="text-[10px] font-bold px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-gray-500">기존</span>
-                                <span className="text-[13px] line-through decoration-1 decoration-gray-400">"{item.before}"</span>
-                              </div>
-                              <div className="flex items-start gap-2">
-                                <span className="text-[10px] font-bold px-1.5 py-0.5 bg-primary/20 text-primary rounded shrink-0">추천</span>
-                                <p className={`text-[14.5px] font-bold leading-snug break-keep ${item.checked ? 'text-primary' : 'text-text-main dark:text-gray-200'}`}>
-                                  "{item.after}"
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-
-                      <div className="pt-4 text-center">
-                        <p className="text-[12px] font-medium text-text-sub opacity-50 mb-4">
-                          기질 검사 후 우리 아이만을 위한 매일의 액션을 받아보세요.
-                        </p>
-                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/5 rounded-full border border-primary/10">
-                          <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-                          <span className="text-[11px] font-black text-primary tracking-tight">오늘도 많은 양육자분들이 함께 실천 중</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
