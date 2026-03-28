@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { db, UserProfile, ChildProfile } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
+import { useAppStore } from '@/store/useAppStore';
+import { useSurveyStore } from '@/store/surveyStore';
 import BottomNav from '@/components/layout/BottomNav';
 import { Navbar } from '@/components/layout/Navbar';
 import Link from 'next/link';
@@ -12,6 +14,8 @@ import Link from 'next/link';
 export default function ProfilePage() {
     const router = useRouter();
     const { user, loading: authLoading, signOut } = useAuth();
+    const resetAppStore = useAppStore((s) => s.resetAll);
+    const resetSurveyStore = useSurveyStore((s) => s.resetSurvey);
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [children, setChildren] = useState<ChildProfile[]>([]);
     const [loading, setLoading] = useState(true);
@@ -54,6 +58,9 @@ export default function ProfilePage() {
                         const data = await res.json();
                         throw new Error(data.error || '회원 탈퇴 실패');
                     }
+                    // 로컬 스토어 초기화 (persist된 설문 데이터 제거)
+                    resetAppStore();
+                    resetSurveyStore();
                     // auth 유저가 이미 삭제된 상태이므로 signOut 에러 무시
                     await signOut().catch(() => {});
                     router.replace('/login');
