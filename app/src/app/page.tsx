@@ -592,10 +592,10 @@ export default function HomePage() {
                           <span className="text-[11px] text-white/60 font-medium">{magicWordIndex + 1} / {magicWords.length}</span>
                         )}
                       </div>
-                      <div className="overflow-hidden">
+                      <div className="overflow-hidden h-[72px]">
                         <p
                           key={magicWordIndex}
-                          className="text-[16px] font-medium leading-relaxed mb-2 transition-all duration-300 ease-in-out"
+                          className="text-[16px] font-medium leading-relaxed mb-2 transition-all duration-300 ease-in-out line-clamp-3"
                           style={{
                             opacity: magicWordPhase === 'exit' ? 0 : 1,
                             transform: magicWordPhase === 'exit'
