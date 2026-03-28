@@ -387,8 +387,8 @@ export default function HomePage() {
                   onClick={() => router.push('/pricing')}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-primary/10 dark:bg-primary/20 text-primary"
                 >
-                  <span className="material-symbols-outlined text-sm">spa</span>
-                  <span>무료이용중</span>
+                  <span className="material-symbols-outlined text-sm">auto_awesome</span>
+                  <span>프리미엄 시작하기</span>
                 </button>
               );
             })()}

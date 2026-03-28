@@ -30,7 +30,7 @@
 
 | 사용자 상태 | 뱃지 표시 | 탭 시 이동 |
 |------------|----------|-----------|
-| 무료 | 🌿 무료이용중 | `/pricing` |
+| 체험 만료 | ✨ 프리미엄 시작하기 | `/pricing` |
 | 구독자 (ACTIVE) | 👑 구독중 | `/settings/subscription` |
 | 구독자 (CANCELLED) | 👑 구독중 · ~MM/DD | `/settings/subscription` |
 
