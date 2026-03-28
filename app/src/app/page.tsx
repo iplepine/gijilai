@@ -720,46 +720,6 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Browse/Preview Section */}
-              <div className="space-y-6">
-                <div className="flex items-center justify-between mb-2 px-1">
-                  <h3 className="text-lg font-bold text-text-main dark:text-white flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary">explore</span>
-                    미리 경험하기
-                  </h3>
-                </div>
-
-                {/* Preview Items */}
-                <div className="grid grid-cols-1 gap-4">
-                  {/* Preview 1: Temperament Types Banner */}
-                  {/* Preview 1: Temperament Types Card (Premium & Balanced) */}
-                  <div className="bg-white/80 dark:bg-surface-dark/50 rounded-[2rem] p-7 border border-secondary/20 shadow-soft relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-secondary/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
-
-                    <div className="relative z-10">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 rounded-xl bg-secondary/10 flex items-center justify-center text-secondary">
-                          <span className="material-symbols-outlined text-[24px]">psychology</span>
-                        </div>
-                        <h4 className="text-[17px] font-bold text-text-main dark:text-white">우리 아이의 기질은?</h4>
-                      </div>
-
-                      <p className="text-[14px] text-text-sub dark:text-gray-400 mb-6 leading-relaxed break-keep">
-                        순한 아이? 신중한 아이? 열정적인 아이??<br />
-                        아이의 기질을 이해하면 육아가 훨씬 즐거워집니다.
-                      </p>
-
-                      <Link href="/settings/child/new">
-                        <button className="w-full bg-secondary/10 hover:bg-secondary/20 py-4 rounded-2xl text-secondary font-bold text-[15px] transition-all flex items-center justify-center gap-2">
-                          <span>아이 등록하고 알아보기</span>
-                          <span className="material-symbols-outlined text-[18px]">chevron_right</span>
-                        </button>
-                      </Link>
-                    </div>
-                  </div>
-
-                </div>
-              </div>
             </div>
           )}
 
