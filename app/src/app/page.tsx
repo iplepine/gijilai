@@ -443,11 +443,16 @@ export default function HomePage() {
                   </div>
 
                   <div className="relative -mt-5 z-20 whitespace-nowrap">
-                    <div className="bg-white dark:bg-surface-dark text-primary dark:text-white px-3 py-1 rounded-full text-[12px] font-bold shadow-sm inline-flex items-center gap-1 border border-primary/10">
-                      <span className="material-symbols-outlined text-[14px]" style={{ color: mainChild?.gender?.toUpperCase() === 'FEMALE' ? '#F48FB1' : '#64B5F6' }}>
-                        {mainChild?.gender?.toUpperCase() === 'FEMALE' ? 'female' : 'male'}
-                      </span>
-                      {mainChild?.gender?.toUpperCase() === 'FEMALE' ? '여아' : '남아'}
+                    <div
+                      onClick={() => router.push(temperamentInfo ? '/report?tab=child' : '/survey/intro')}
+                      className="bg-white dark:bg-surface-dark text-primary dark:text-white px-3 py-1 rounded-full text-[12px] font-bold shadow-sm inline-flex items-center gap-1 border border-primary/10 cursor-pointer active:scale-95 transition-transform"
+                    >
+                      {temperamentInfo ? (
+                        <span className="text-[14px]">{temperamentInfo.child.emoji}</span>
+                      ) : (
+                        <span className="material-symbols-outlined text-[14px] text-child">child_care</span>
+                      )}
+                      {temperamentInfo ? temperamentInfo.child.label : '기질 검사하기'}
                     </div>
                   </div>
 
