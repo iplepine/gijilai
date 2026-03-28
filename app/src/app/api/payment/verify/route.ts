@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabaseServer';
-import { verifyPayment, getAmount } from '@/lib/portone';
+import { verifyPayment } from '@/lib/portone';
 
 export async function POST(req: Request) {
   try {
@@ -24,9 +24,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'PAYMENT_NOT_PAID' }, { status: 400 });
     }
 
-    // 금액 검증
+    // 금액 검증 (건별 구매 폐지됨 — 기존 결제 건 호환용으로 유지)
     const currency = (payment.currency || 'KRW') as 'KRW' | 'USD';
-    const expectedAmount = getAmount('report_single', currency);
+    const legacyPrices = { KRW: 1980, USD: 499 } as const;
+    const expectedAmount = legacyPrices[currency];
     if (payment.amount?.total !== expectedAmount) {
       return NextResponse.json({ error: 'INVALID_AMOUNT' }, { status: 400 });
     }

@@ -9,7 +9,6 @@ function getPortone() {
 }
 
 export const PRICE_TABLE = {
-  report_single: { KRW: 1980, USD: 499 },
   subscription_monthly: { KRW: 12000, USD: 1199 },
   subscription_yearly: { KRW: 89000, USD: 8999 },
 } as const;

@@ -20,7 +20,6 @@ type Plan = 'MONTHLY' | 'YEARLY';
 const PRICES = {
   MONTHLY: { KRW: 12000, USD: 1199 },
   YEARLY: { KRW: 89000, USD: 8999 },
-  SINGLE: { KRW: 1980, USD: 499 },
 };
 
 function formatPrice(amount: number, locale: Locale): string {
@@ -235,18 +234,6 @@ export default function PricingPage() {
             ))}
           </section>
 
-          {/* Single purchase option (Korea only) */}
-          {locale === 'ko' && (
-            <section className="text-center space-y-2 pt-2">
-              <p className="text-xs text-text-sub">리포트 1회만 필요하신가요?</p>
-              <button
-                onClick={() => router.push('/payment')}
-                className="text-sm font-bold text-primary underline underline-offset-2"
-              >
-                1,980원으로 리포트 열기
-              </button>
-            </section>
-          )}
         </div>
 
         {/* CTA */}
