@@ -1,6 +1,5 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 import { type NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 
 export async function GET(request: NextRequest) {
     const { searchParams, origin } = new URL(request.url)
@@ -14,18 +13,22 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(`${origin}/auth/auth-code-error?error=${errorParam}&description=${errorDescription}`)
     }
 
-    const cookieStore = await cookies()
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    let response = NextResponse.redirect(`${origin}${next}`)
 
     const supabase = createServerClient(
-        supabaseUrl,
-        supabaseAnonKey,
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {
             cookies: {
-                get(name: string) { return cookieStore.get(name)?.value },
-                set(name: string, value: string, options: CookieOptions) { cookieStore.set({ name, value, ...options }) },
-                remove(name: string, options: CookieOptions) { cookieStore.delete({ name, ...options }) },
+                getAll() {
+                    return request.cookies.getAll()
+                },
+                setAll(cookiesToSet) {
+                    cookiesToSet.forEach(({ name, value, options }) => {
+                        request.cookies.set(name, value)
+                        response.cookies.set(name, value, options)
+                    })
+                },
             },
         }
     )
@@ -34,14 +37,14 @@ export async function GET(request: NextRequest) {
         const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
         if (!error && data.session) {
-            return NextResponse.redirect(`${origin}${next}`)
+            return response
         }
 
         if (error) {
             console.error('Supabase exchange error:', error.message, error.status)
             // Fallback: If code exchange failed but session already exists, just redirect
             const { data: { session } } = await supabase.auth.getSession()
-            if (session) return NextResponse.redirect(`${origin}${next}`)
+            if (session) return response
 
             return NextResponse.redirect(`${origin}/auth/auth-code-error?error=exchange_error&message=${encodeURIComponent(error.message)}`)
         }
@@ -49,7 +52,7 @@ export async function GET(request: NextRequest) {
         // No code found - check if we are already logged in before erroring
         const { data: { session } } = await supabase.auth.getSession()
         if (session) {
-            return NextResponse.redirect(`${origin}${next}`)
+            return response
         }
         console.warn('No code or session found in auth callback')
     }
