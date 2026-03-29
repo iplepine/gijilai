@@ -87,6 +87,7 @@ export default function PricingPage() {
       });
 
       if (issueResult.code) {
+        if (issueResult.code === 'PAY_PROCESS_CANCELED') return;
         throw new Error(issueResult.message || '빌링키 발급 실패');
       }
 
