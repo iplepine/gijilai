@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabaseServer';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
-import { payWithBillingKey, getAmount } from '@/lib/portone';
+import { payWithBillingKey, getAmount, cancelPayment } from '@/lib/portone';
 import { computePeriodEnd } from '@/lib/subscription';
 import type { Currency } from '@/lib/portone';
 
@@ -58,49 +58,60 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'BILLING_FAILED' }, { status: 400 });
     }
 
-    // 구독 생성 (service_role로 RLS 우회)
-    const admin = getSupabaseAdmin();
-    const now = new Date();
-    const periodEnd = computePeriodEnd(plan, now);
+    // 결제 성공 후 구독 생성 — 실패 시 자동 환불
+    try {
+      const admin = getSupabaseAdmin();
+      const now = new Date();
+      const periodEnd = computePeriodEnd(plan, now);
 
-    const { data: subscription, error: subError } = await admin
-      .from('subscriptions')
-      .insert({
+      const { data: subscription, error: subError } = await admin
+        .from('subscriptions')
+        .insert({
+          user_id: session.user.id,
+          plan,
+          status: 'ACTIVE',
+          billing_key: billingKey,
+          portone_customer_id: session.user.id,
+          currency,
+          amount,
+          current_period_start: now.toISOString(),
+          current_period_end: periodEnd.toISOString(),
+        })
+        .select()
+        .single();
+
+      if (subError) throw subError;
+
+      // 결제 기록
+      await admin.from('payments').insert({
         user_id: session.user.id,
-        plan,
-        status: 'ACTIVE',
-        billing_key: billingKey,
-        portone_customer_id: session.user.id,
+        subscription_id: subscription.id,
+        type: 'SUBSCRIPTION',
+        portone_payment_id: paymentId,
+        status: 'PAID',
         currency,
         amount,
-        current_period_start: now.toISOString(),
-        current_period_end: periodEnd.toISOString(),
-      })
-      .select()
-      .single();
+        paid_at: now.toISOString(),
+      });
 
-    if (subError) throw subError;
-
-    // 결제 기록
-    await admin.from('payments').insert({
-      user_id: session.user.id,
-      subscription_id: subscription.id,
-      type: 'SUBSCRIPTION',
-      portone_payment_id: paymentId,
-      status: 'PAID',
-      currency,
-      amount,
-      paid_at: now.toISOString(),
-    });
-
-    return NextResponse.json({
-      success: true,
-      subscription: {
-        id: subscription.id,
-        plan: subscription.plan,
-        currentPeriodEnd: subscription.current_period_end,
-      },
-    });
+      return NextResponse.json({
+        success: true,
+        subscription: {
+          id: subscription.id,
+          plan: subscription.plan,
+          currentPeriodEnd: subscription.current_period_end,
+        },
+      });
+    } catch (dbError: any) {
+      // 구독/결제기록 생성 실패 → 결제 취소(환불)
+      console.error('Subscribe DB error, cancelling payment:', dbError);
+      try {
+        await cancelPayment(paymentId, '구독 생성 실패로 인한 자동 환불');
+      } catch (cancelError) {
+        console.error('Auto-cancel also failed:', cancelError);
+      }
+      return NextResponse.json({ error: '구독 생성 실패' }, { status: 500 });
+    }
   } catch (error: any) {
     console.error('Subscribe error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

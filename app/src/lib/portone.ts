@@ -51,4 +51,12 @@ export async function payWithBillingKey(params: {
   return result;
 }
 
+export async function cancelPayment(paymentId: string, reason: string) {
+  const result = await getPortone().payment.cancelPayment({
+    paymentId,
+    reason,
+  });
+  return result;
+}
+
 export { getPortone };
