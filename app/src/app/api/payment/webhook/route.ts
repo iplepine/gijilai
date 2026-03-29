@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { Webhook } from '@portone/server-sdk';
 
 function getSupabaseAdmin() {
   return createAdminClient(
@@ -10,19 +11,24 @@ function getSupabaseAdmin() {
 
 export async function POST(req: Request) {
   try {
+    const body = await req.text();
+
     // 웹훅 시그니처 검증
     const webhookSecret = process.env.PORTONE_WEBHOOK_SECRET;
     if (webhookSecret) {
-      const signature = req.headers.get('x-portone-signature');
-      if (!signature) {
-        return NextResponse.json({ error: 'Missing signature' }, { status: 401 });
+      try {
+        await Webhook.verify(webhookSecret, body, {
+          'webhook-id': req.headers.get('webhook-id') ?? '',
+          'webhook-signature': req.headers.get('webhook-signature') ?? '',
+          'webhook-timestamp': req.headers.get('webhook-timestamp') ?? '',
+        });
+      } catch {
+        console.error('Webhook signature verification failed');
+        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
       }
-      // TODO: 포트원 V2 웹훅 시그니처 검증 구현
-      // 현재는 시크릿 존재 여부만 확인
     }
 
-    const body = await req.json();
-    const { type, data } = body;
+    const { type, data } = JSON.parse(body);
 
     switch (type) {
       case 'Transaction.Paid': {
