@@ -1,8 +1,16 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabaseServer';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { payWithBillingKey, getAmount } from '@/lib/portone';
 import { computePeriodEnd } from '@/lib/subscription';
 import type { Currency } from '@/lib/portone';
+
+function getSupabaseAdmin() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 export async function POST(req: Request) {
   try {
@@ -50,11 +58,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'BILLING_FAILED' }, { status: 400 });
     }
 
-    // 구독 생성
+    // 구독 생성 (service_role로 RLS 우회)
+    const admin = getSupabaseAdmin();
     const now = new Date();
     const periodEnd = computePeriodEnd(plan, now);
 
-    const { data: subscription, error: subError } = await supabase
+    const { data: subscription, error: subError } = await admin
       .from('subscriptions')
       .insert({
         user_id: session.user.id,
@@ -73,7 +82,7 @@ export async function POST(req: Request) {
     if (subError) throw subError;
 
     // 결제 기록
-    await supabase.from('payments').insert({
+    await admin.from('payments').insert({
       user_id: session.user.id,
       subscription_id: subscription.id,
       type: 'SUBSCRIPTION',
