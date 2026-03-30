@@ -19,9 +19,7 @@ export default function LoginPage() {
         <div className="min-h-screen flex flex-col items-center justify-center bg-white p-6">
             <div className="w-full max-w-sm text-center">
                 <div className="mb-8 flex justify-center">
-                    <div className="w-16 h-16 bg-[var(--primary)] rounded-2xl flex items-center justify-center text-white">
-                        <Icon name="child_care" size="lg" className="text-4xl" />
-                    </div>
+                    <img src="/gijilai_icon.png" alt="기질아이" className="w-16 h-16 rounded-2xl object-contain" />
                 </div>
 
                 <h1 className="text-2xl font-bold text-[var(--text-main)] mb-2">
