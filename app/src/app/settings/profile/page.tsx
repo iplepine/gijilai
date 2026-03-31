@@ -175,6 +175,7 @@ export default function ProfilePage() {
                                 { icon: 'privacy_tip', label: '개인정보 처리방침', href: '/legal/privacy' },
                                 { icon: 'receipt_long', label: '환불 정책', href: '/legal/refund' },
                                 { icon: 'support_agent', label: '고객센터', href: '/legal/support' },
+                                { icon: 'apartment', label: '회사 소개', href: '/legal/about' },
                             ].map((item, idx, arr) => (
                                 <Link key={idx} href={item.href} className={`flex items-center gap-4 p-5 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${idx !== arr.length - 1 ? 'border-b border-gray-50 dark:border-gray-800' : ''}`}>
                                     <div className="size-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 dark:text-gray-400">
