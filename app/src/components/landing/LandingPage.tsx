@@ -270,8 +270,8 @@ export default function LandingPage() {
                     <div className="border-t border-gray-100 dark:border-gray-800 pt-6">
                         <p className="text-[10px] text-text-sub/60 text-center leading-relaxed">
                             데브호하우스 | 대표: 박정호 | 사업자등록번호: 898-35-01596<br />
-                            통신판매업 신고번호: 제2025-서울중랑-1770호 (1770-7692-0459-9882)<br />
-                            서울특별시 중랑구 신내로 155 | 문의: devhohouse@gmail.com
+                            통신판매업신고번호: 2026-서울중랑-0133<br />
+                            서울특별시 중랑구 신내로 155, 804동 1501호(신내동, 두산위브, 화성아파트) | 전화: 010-3830-8960 | 문의: devhohouse@gmail.com
                         </p>
                     </div>
                 </div>
