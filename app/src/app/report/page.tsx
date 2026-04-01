@@ -27,7 +27,6 @@ import { TCI_TERMINOLOGY } from '@/constants/terminology';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { db } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
-import { ChildSwitcher } from '@/components/ui/ChildSwitcher';
 
 ChartJS.register(
   RadialLinearScale,
@@ -503,7 +502,6 @@ function ReportContent() {
                 >
                   <span className="material-symbols-outlined">arrow_back_ios</span>
                 </button>
-                <ChildSwitcher />
               </div>
 
               <div key={activeTab} className="animate-in fade-in duration-500">

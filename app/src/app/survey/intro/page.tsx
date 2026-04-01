@@ -1,55 +1,22 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppStore } from '@/store/useAppStore';
 import { useSurveyStore } from '@/store/surveyStore';
-import { useAuth } from '@/components/auth/AuthProvider';
-import { supabase } from '@/lib/supabase';
 import { Navbar } from '@/components/layout/Navbar';
-
-interface Child {
-    id: string;
-    name: string;
-}
 
 export default function IntroPage() {
     const router = useRouter();
-    const { user } = useAuth();
-    const { resetAll, setCbqResponse, setAtqResponse, setParentingResponse, setSurveyProgress, selectedChildId, setSelectedChildId } = useAppStore();
-    const [children, setChildren] = useState<Child[]>([]);
-    const [selectedId, setSelectedId] = useState<string | null>(selectedChildId);
-
-    useEffect(() => {
-        if (!user) return;
-        supabase
-            .from('children')
-            .select('id, name')
-            .eq('parent_id', user.id)
-            .order('created_at')
-            .then(({ data }) => {
-                if (data && data.length > 0) {
-                    setChildren(data);
-                    if (!selectedId || !data.find(c => c.id === selectedId)) {
-                        setSelectedId(data[0].id);
-                    }
-                }
-            });
-    }, [user]);
+    const { resetAll, setCbqResponse, setAtqResponse, setParentingResponse, setSurveyProgress } = useAppStore();
 
     const startSurvey = () => {
-        if (children.length > 1 && selectedId) {
-            setSelectedChildId(selectedId);
-        }
         resetAll();
         useSurveyStore.getState().resetSurvey();
         router.replace('/survey');
     };
 
     const startWithRandomData = () => {
-        if (children.length > 1 && selectedId) {
-            setSelectedChildId(selectedId);
-        }
         resetAll();
         useSurveyStore.getState().resetSurvey();
 
@@ -91,35 +58,12 @@ export default function IntroPage() {
                             나의 양육 태도를 점검해보세요.
                         </p>
 
-                        {children.length > 1 && (
-                            <div className="space-y-2">
-                                <p className="text-sm font-bold text-text-main dark:text-white">검사할 아이를 선택하세요</p>
-                                <div className="flex justify-center gap-2">
-                                    {children.map(child => (
-                                        <button
-                                            key={child.id}
-                                            onClick={() => setSelectedId(child.id)}
-                                            className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
-                                                selectedId === child.id
-                                                    ? 'bg-primary text-white shadow-md'
-                                                    : 'bg-white dark:bg-surface-dark text-text-sub border border-gray-200 dark:border-gray-700'
-                                            }`}
-                                        >
-                                            {child.name}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
                         <div className="pt-8">
                             <button
                                 onClick={startSurvey}
                                 className="w-full font-black py-4 px-8 rounded-2xl bg-primary text-white shadow-card transform transition hover:scale-105 active:scale-95 text-lg"
                             >
-                                {children.length > 1 && selectedId
-                                    ? `${children.find(c => c.id === selectedId)?.name} 검사 시작하기`
-                                    : '지금 바로 시작하기'}
+                                지금 바로 시작하기
                             </button>
                             {process.env.NODE_ENV === 'development' && (
                                 <button
