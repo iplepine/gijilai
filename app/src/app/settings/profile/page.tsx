@@ -41,7 +41,7 @@ export default function ProfilePage() {
             }
         }
         fetchData();
-    }, [user, authLoading, router]);
+    }, [user, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleLogout = async () => {
         if (confirm('로그아웃 하시겠습니까?')) {

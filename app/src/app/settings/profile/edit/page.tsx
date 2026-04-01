@@ -30,7 +30,7 @@ export default function ProfileEditPage() {
                 setAvatarUrl(user.user_metadata?.avatar_url || null);
             });
         }
-    }, [user, authLoading, router]);
+    }, [user, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || e.target.files.length === 0 || !user) return;

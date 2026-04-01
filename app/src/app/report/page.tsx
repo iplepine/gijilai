@@ -1286,12 +1286,12 @@ function ReportContent() {
               <div className="m-3 bg-white rounded-[2rem] shadow-2xl border border-slate-100 overflow-hidden">
                 <div className="bg-gradient-to-r from-primary/10 to-slate-50 px-5 py-3 border-b border-slate-100">
                   <p className="text-[11px] font-bold text-primary text-center">
-                    🔬 양육자 기질까지 추가하면 더 정밀해져요
+                    🔬 나와 아이, 얼마나 잘 맞을까요?
                   </p>
                 </div>
                 <div className="px-5 py-4">
                   <p className="text-[12px] text-slate-500 text-center mb-3 leading-relaxed">
-                    두 기질의 <strong className="text-slate-700">조화 지수(GHI)</strong>와 <strong className="text-slate-700">맞춤 양육 솔루션</strong>을<br />지금 바로 확인해 보세요.
+                    양육자 기질 검사를 추가하면<br /><strong className="text-slate-700">부모-아이 궁합 분석</strong>과 <strong className="text-slate-700">맞춤 양육법</strong>을 알려드려요.
                   </p>
                   <button
                     onClick={() => router.push('/survey?type=PARENT')}
