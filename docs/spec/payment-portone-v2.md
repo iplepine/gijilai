@@ -1,20 +1,21 @@
-# 결제 시스템 전환: 포트원 V2 하이브리드 모델
+# 결제 시스템 전환: 포트원 V2 구독 모델
 
 Status: Draft v1
 Date: 2026-03-25
 
 ## 1. 문제 정의
 
-현재 결제 시스템은 Stripe 직접 연동(카드)과 포트원 V1(카카오/네이버/토스페이)이 혼재되어 있으며, 건별 결제(990원)만 지원한다. 구독 모델이 없어 반복 수익 구조가 불가능하고, 글로벌 사용자를 위한 통화/가격 분기가 없다. 포트원 V1 가맹점 ID도 플레이스홀더(`imp00000000`) 상태다.
+현재 결제 시스템은 Stripe 직접 연동(카드)과 포트원 V1(카카오/네이버/토스페이)이 혼재되어 있으며, 구독 모델이 없어 반복 수익 구조가 불가능하고, 글로벌 사용자를 위한 통화/가격 분기가 없다. 포트원 V1 가맹점 ID도 플레이스홀더(`imp00000000`) 상태다.
 
-이 스펙은 결제 인프라를 포트원 V2로 통합하고, 건별 결제 + 구독제 하이브리드 모델을 구현하며, 한국/글로벌 가격·통화·결제수단을 locale 기반으로 자동 분기하는 시스템을 정의한다.
+이 스펙은 결제 인프라를 포트원 V2로 통합하고, 구독제 전용 모델을 구현하며, 한국/글로벌 가격·통화·결제수단을 locale 기반으로 자동 분기하는 시스템을 정의한다.
+
+> **Note (2026-04-01)**: 건별 결제(990원)는 폐지됨. 구독제만 운영.
 
 ## 2. 목표 및 비목표
 
 ### 2.1 목표
 - 포트원 V2 SDK로 결제 인프라 통합 (Stripe 직접 연동 + 포트원 V1 제거)
-- 건별 결제 (프리미엄 리포트 1회) 유지
-- 월/연 구독제 도입 (빌링키 기반 정기결제)
+- 월/연 구독제 도입 (빌링키 기반 정기결제) — 건별 결제는 폐지
 - 한국/글로벌 가격·통화·결제수단 자동 분기
 - 구독 상태에 따른 기능 접근 제어 (리포트, 상담, 실천)
 - 구독 라이프사이클 관리 (생성, 갱신, 해지, 만료)
@@ -43,7 +44,7 @@ Date: 2026-03-25
 
 ### 3.2 수정 컴포넌트
 
-- `app/src/app/payment/page.tsx` — Stripe Elements 제거, 포트원 V2 SDK 호출로 교체. 건별 결제 전용으로 단순화. locale 기반 가격/통화 표시
+- `app/src/app/payment/page.tsx` — Stripe Elements 제거, 포트원 V2 SDK 호출로 교체. 구독 결제 전용. locale 기반 가격/통화 표시
 - `app/src/components/payment/CheckoutForm.tsx` — 삭제 (Stripe Elements 컴포넌트, 더 이상 불필요)
 - `app/src/app/api/payment/create-intent/route.ts` — 삭제 (Stripe PaymentIntent → 포트원 결제 검증으로 대체)
 - `app/src/app/payment/success/page.tsx` — Stripe redirect_status 파라미터 대신 포트원 paymentId로 검증
@@ -116,7 +117,7 @@ create table public.payments (
 
 ### 4.3 기존 테이블 수정
 
-**reports 테이블**: `is_paid` 컬럼 유지. 기존 로직과의 호환을 위해 삭제하지 않음. 건별 결제 시 `is_paid = true`로 설정하는 기존 동작 유지. 추가로 구독자는 `is_paid` 값과 무관하게 모든 리포트 열람 가능 (조회 시 subscription 상태 조인).
+**reports 테이블**: `is_paid` 컬럼 유지. 기존 로직과의 호환을 위해 삭제하지 않음. 구독자는 `is_paid` 값과 무관하게 모든 리포트 열람 가능 (조회 시 subscription 상태 조인).
 
 **profiles 테이블**: 변경 없음. 구독 상태는 subscriptions 테이블에서 조회.
 
@@ -144,22 +145,17 @@ create policy "Service role can manage payments."
 
 | 상품 | 한국 (KRW) | 글로벌 (USD) | 상품 코드 |
 |------|-----------|-------------|----------|
-| 프리미엄 리포트 1회 | 990원 | $4.99 (499센트) | `report_single` |
 | 월 구독 | 9,900원 | $9.99 (999센트) | `subscription_monthly` |
 | 연 구독 | 79,000원 | $79.99 (7999센트) | `subscription_yearly` |
 
-### 5.2 건별 결제 제한
+### 5.2 무료/유료 기능 매트릭스
 
-건별 990원 결제는 **국내 결제수단(토스페이먼츠 PG)으로만** 허용한다. Stripe 경유 시 고정 수수료($0.30 ≈ ₩400)로 인해 수수료율이 44%에 달하므로 비경제적이다. 글로벌 사용자에게는 건별 옵션을 노출하지 않고 구독만 제안한다.
-
-### 5.3 무료/유료 기능 매트릭스
-
-| 기능 | 무료 | 건별 구매 (₩990) | 구독 (MONTHLY/YEARLY) |
-|------|------|-----------------|----------------------|
-| 기질 리포트 | O (전체 동일) | O | O |
-| AI 상담 | 총 5회 (소진 시 종료) | +3회 (리포트별) | 무제한 |
-| 실천 기록 | 최근 1개만 | 최근 1개만 | 전체 이력 |
-| 리포트 재검사 쿨다운 | 7일 | 24시간 | 24시간 |
+| 기능 | 무료 | 구독 (MONTHLY/YEARLY) |
+|------|------|----------------------|
+| 기질 리포트 | O (전체 동일) | O |
+| AI 상담 | 총 5회 (소진 시 종료) | 무제한 |
+| 실천 기록 | 최근 1개만 | 전체 이력 |
+| 리포트 재검사 쿨다운 | 7일 | 24시간 |
 
 ## 6. Locale 분기
 
@@ -180,43 +176,13 @@ locale 결정 순서:
 |------|----------|------------|
 | PG사 | `tosspayments` | `stripe` |
 | 통화 | KRW | USD |
-| 건별 결제 | 노출 | 숨김 |
 | 간편결제 | 카카오페이, 토스페이, 네이버페이 | Google Pay, Apple Pay |
 | 카드 결제 | O | O |
 | 포트원 채널 키 | `PORTONE_CHANNEL_KEY_TOSS` | `PORTONE_CHANNEL_KEY_STRIPE` |
 
 ## 7. 결제 플로우
 
-### 7.1 건별 결제 (한국 전용)
-
-```
-[사용자] 리포트 결제 버튼 클릭
-  ↓
-[클라이언트] PortOne.requestPayment({
-  storeId: PORTONE_STORE_ID,
-  channelKey: PORTONE_CHANNEL_KEY_TOSS,
-  paymentId: 클라이언트에서 생성한 UUID,
-  orderName: "기질아이 프리미엄 리포트",
-  totalAmount: 990,
-  currency: "KRW",
-  payMethod: selectedMethod  // CARD | EASY_PAY
-})
-  ↓
-[포트원 결제창] 사용자가 결제 진행
-  ↓
-[클라이언트] requestPayment 응답 수신 (paymentId)
-  ↓
-[클라이언트] POST /api/payment/verify { paymentId }
-  ↓
-[서버] 포트원 서버 SDK로 결제 조회 → 금액/상태 검증
-  ↓ 검증 성공
-[서버] payments 테이블 INSERT (type: ONE_TIME, status: PAID)
-[서버] reports 테이블 UPDATE (is_paid: true)
-  ↓
-[클라이언트] 리포트 페이지로 이동
-```
-
-### 7.2 구독 생성 (빌링키 방식)
+### 7.1 구독 생성 (빌링키 방식)
 
 ```
 [사용자] 구독 플랜 선택 (월/연)
@@ -430,7 +396,7 @@ async function getActiveSubscription(userId: string): Promise<Subscription | nul
 
 ### 12.1 `POST /api/payment/verify`
 
-건별 결제 검증. 기존 `/api/payment/create-intent`를 대체.
+결제 검증. 기존 `/api/payment/create-intent`를 대체. (건별 결제 폐지 후 레거시 호환용으로 유지)
 
 **요청:**
 ```json
@@ -522,10 +488,6 @@ async function getActiveSubscription(userId: string): Promise<Subscription | nul
 │  - 실천 기록 전체                            │
 │  - 재검사 쿨다운 없음                        │
 │                                             │
-│  ─── 또는 ───  (locale === 'ko'일 때만)      │
-│                                             │
-│  리포트 1회만 필요하신가요?                    │
-│  [990원으로 리포트 열기]                      │
 │                                             │
 └─────────────────────────────────────────────┘
 ```
@@ -537,11 +499,10 @@ async function getActiveSubscription(userId: string): Promise<Subscription | nul
 
 ### 13.2 결제 페이지 수정 (`/payment`)
 
-기존 결제 페이지는 **건별 결제 전용**으로 단순화:
+기존 결제 페이지는 구독 결제 전용으로 변경:
 - Stripe Elements (CheckoutForm) 제거
-- 포트원 `PortOne.requestPayment()` 직접 호출
+- 포트원 `PortOne.requestIssueBillingKey()` 호출로 교체
 - 결제수단 선택 UI는 포트원 결제창이 대체 (커스텀 UI 불필요)
-- locale이 'en'이면 이 페이지에 접근 불가 → `/pricing`으로 리다이렉트
 
 ### 13.3 구독 관리 페이지 (`/settings/subscription`)
 
@@ -604,7 +565,6 @@ CRON_SECRET 환경 변수.
 
 | 실패 유형 | 감지 방법 | 복구 액션 |
 |----------|----------|----------|
-| 건별 결제 금액 불일치 | 서버 검증 시 amount !== 예상값 | payments(FAILED) 기록, 클라이언트에 에러 표시, 재시도 유도 |
 | 빌링키 발급 실패 | PortOne.requestIssueBillingKey 에러 반환 | 클라이언트에서 에러 표시, 재시도 유도 |
 | 구독 첫 결제 실패 | 포트원 빌링키 결제 API 에러 | subscription 생성하지 않음, 클라이언트에 에러 표시 |
 | 정기 갱신 실패 | cron에서 결제 API 에러 | PAST_DUE, 3일간 재시도 (총 3회) |
@@ -627,15 +587,14 @@ CRON_SECRET 환경 변수.
 - 구독 플랜: MONTHLY (₩9,900/$9.99), YEARLY (₩79,000/$79.99)
 - 구독 해지: 즉시 해지 아닌 기간 만료 해지 (cancelled_at 방식)
 - 갱신 실패 유예: 3일간 재시도, 3회 실패 시 만료
-- 건별 결제 글로벌 제한: 국내(KRW)만 허용
 - 무료 상담 제한: 월 2회
 - 구독자 재검사 쿨다운: 없음
 
 ### 수정 정책 (기존 → 변경)
 - 결제 방식: Stripe PaymentIntent → 포트원 V2
-- 건별 가격: 990원 (유지) + $4.99 (신규, 국내 전용이므로 글로벌 가격은 노출만 안 함)
+- 건별 결제: 폐지 (구독 전용으로 전환)
 - 무료 사용자 쿨다운: 7일 (유지)
-- 유료 사용자 쿨다운: 24시간 → 건별 구매자 24시간, 구독자 없음
+- 구독 사용자 쿨다운: 없음
 
 ## 18. 패키지 변경
 

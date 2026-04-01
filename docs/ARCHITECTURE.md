@@ -79,7 +79,7 @@
 
 ### 결제
 - **위치**: `app/src/lib/portone.ts`, `app/src/lib/subscription.ts`, `app/src/app/api/payment/`
-- **역할**: 포트원 V2 기반 결제 처리. 건별 결제(990원) + 구독제(월/연). 빌링키 기반 정기결제, 웹훅 검증, 구독 라이프사이클 관리
+- **역할**: 포트원 V2 기반 결제 처리. 구독제(월/연) 전용. 빌링키 기반 정기결제, 웹훅 검증, 구독 라이프사이클 관리
 - **의존**: @portone/server-sdk, Supabase (subscriptions/payments 테이블)
 - **사용처**: 결제 페이지, 요금제 페이지, 구독 관리, 리포트/상담 접근 제어
 
@@ -96,7 +96,7 @@
 - **인증**: API Key (서버 전용)
 
 ### PortOne (포트원 V2)
-- **용도**: 결제 통합 플랫폼 (건별 + 구독 정기결제)
+- **용도**: 결제 통합 플랫폼 (구독 정기결제)
 - **프로토콜**: REST (@portone/server-sdk) + 브라우저 SDK (CDN)
 - **인증**: API Secret (서버), Store ID (클라이언트)
 - **PG사**: 토스페이먼츠 (한국), Stripe (글로벌)

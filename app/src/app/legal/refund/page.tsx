@@ -14,14 +14,12 @@ export default function RefundPolicyPage() {
                         <div className="space-y-6 text-sm text-gray-600 dark:text-gray-300 leading-relaxed font-medium">
                             <section>
                                 <h3 className="font-bold text-navy dark:text-white text-base mb-2">제1조 (적용 범위)</h3>
-                                <p>본 환불 정책은 데브호하우스(이하 &quot;회사&quot;)가 운영하는 기질아이 서비스에서 제공하는 모든 유료 상품(건별 결제, 구독 서비스)에 적용됩니다.</p>
+                                <p>본 환불 정책은 데브호하우스(이하 &quot;회사&quot;)가 운영하는 기질아이 서비스에서 제공하는 모든 유료 상품(구독 서비스)에 적용됩니다.</p>
                             </section>
 
                             <section>
-                                <h3 className="font-bold text-navy dark:text-white text-base mb-2">제2조 (건별 결제 환불)</h3>
-                                <p>1. 프리미엄 리포트 등 건별 결제 상품은 디지털 콘텐츠의 특성상, 콘텐츠가 제공(열람)된 이후에는 환불이 불가합니다.<br />
-                                2. 결제 후 콘텐츠를 열람하지 않은 경우, 결제일로부터 7일 이내에 환불을 요청하실 수 있습니다.<br />
-                                3. 결제 오류, 중복 결제 등 회사 귀책 사유로 인한 경우에는 전액 환불합니다.</p>
+                                <h3 className="font-bold text-navy dark:text-white text-base mb-2">제2조 (결제 오류 환불)</h3>
+                                <p>1. 결제 오류, 중복 결제 등 회사 귀책 사유로 인한 경우에는 전액 환불합니다.</p>
                             </section>
 
                             <section>
