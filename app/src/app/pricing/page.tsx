@@ -15,12 +15,12 @@ declare global {
 }
 
 type Locale = 'ko' | 'en';
-type Plan = 'MONTHLY' | 'YEARLY';
-type PayMethodOption = 'CARD' | 'NAVERPAY';
+type PayMethodOption = 'CARD' | 'TOSSPAY' | 'NAVERPAY';
 
 const PRICES = {
   MONTHLY: { KRW: 12000, USD: 1199 },
-  YEARLY: { KRW: 89000, USD: 8999 },
+  // [연 구독] 신뢰 확보 후 재활성화 예정 — 환불 산식/갱신 알림 구현 필요
+  // YEARLY: { KRW: 89000, USD: 8999 },
 };
 
 const FIRST_MONTH_DISCOUNT = 0.3;
@@ -34,21 +34,12 @@ function formatPrice(amount: number, locale: Locale): string {
   return `$${(amount / 100).toFixed(2)}`;
 }
 
-function getMonthlyEquivalent(plan: Plan, locale: Locale): string {
-  if (plan === 'MONTHLY') return '';
-  const yearly = locale === 'ko' ? PRICES.YEARLY.KRW : PRICES.YEARLY.USD;
-  const monthly = Math.round(yearly / 12);
-  return formatPrice(monthly, locale);
-}
-
 export default function PricingPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const [selectedPlan, setSelectedPlan] = useState<Plan>('MONTHLY');
   const [locale, setLocale] = useState<Locale>('ko');
   const [loading, setLoading] = useState(false);
   const [payMethod, setPayMethod] = useState<PayMethodOption>('CARD');
-  const [phoneNumber, setPhoneNumber] = useState('');
   const [existingSubscription, setExistingSubscription] = useState<any>(null);
   const [isFirstSubscription, setIsFirstSubscription] = useState(true);
 
@@ -88,23 +79,16 @@ export default function PricingPage() {
         if (payMethod === 'NAVERPAY') {
           channelKey = process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_NAVERPAY;
           billingKeyMethod = 'EASY_PAY';
+        } else if (payMethod === 'TOSSPAY') {
+          channelKey = process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_TOSSPAY;
+          billingKeyMethod = 'EASY_PAY';
         } else {
-          channelKey = process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_INICIS;
+          channelKey = process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_KCP;
           billingKeyMethod = 'CARD';
         }
       } else {
         channelKey = process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_STRIPE;
         billingKeyMethod = 'CARD';
-      }
-
-      // 이니시스 카드결제 시 휴대폰 번호 필수
-      if (locale === 'ko' && payMethod === 'CARD') {
-        const digits = phoneNumber.replace(/\D/g, '');
-        if (!digits.match(/^01\d{8,9}$/)) {
-          alert('휴대폰 번호를 입력해주세요.');
-          setLoading(false);
-          return;
-        }
       }
 
       // 빌링키 발급
@@ -113,16 +97,19 @@ export default function PricingPage() {
         channelKey,
         billingKeyMethod,
         issueId: `issue_${user.id.substring(0, 8)}_${Date.now()}`,
-        issueName: selectedPlan === 'MONTHLY' ? '기질아이 월 구독' : '기질아이 연 구독',
+        issueName: '기질아이 월 구독',
         customer: {
           customerId: user.id,
           ...(user.email ? { email: user.email } : {}),
-          ...(locale === 'ko' && payMethod === 'CARD' ? { phoneNumber: phoneNumber.replace(/\D/g, '') } : {}),
         },
       };
 
-      if (locale === 'ko' && payMethod === 'NAVERPAY') {
-        issueParams.easyPay = { provider: 'NAVERPAY' };
+      if (locale === 'ko') {
+        if (payMethod === 'NAVERPAY') {
+          issueParams.easyPay = { provider: 'NAVERPAY' };
+        } else if (payMethod === 'TOSSPAY') {
+          issueParams.easyPay = { provider: 'TOSSPAY' };
+        }
       }
 
       const issueResult = await window.PortOne.requestIssueBillingKey(issueParams);
@@ -138,7 +125,7 @@ export default function PricingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           billingKey: issueResult.billingKey,
-          plan: selectedPlan,
+          plan: 'MONTHLY',
           locale,
         }),
       });
@@ -161,8 +148,6 @@ export default function PricingPage() {
 
   const currency = locale === 'ko' ? 'KRW' : 'USD';
   const monthlyPrice = formatPrice(PRICES.MONTHLY[currency], locale);
-  const yearlyPrice = formatPrice(PRICES.YEARLY[currency], locale);
-  const yearlyMonthly = getMonthlyEquivalent('YEARLY', locale);
 
   if (existingSubscription) {
     return (
@@ -175,9 +160,7 @@ export default function PricingPage() {
               {locale === 'ko' ? '이미 구독 중입니다' : 'Already Subscribed'}
             </h2>
             <p className="text-text-sub text-sm">
-              {locale === 'ko'
-                ? `${existingSubscription.plan === 'MONTHLY' ? '월' : '연'} 구독 이용 중`
-                : `${existingSubscription.plan === 'MONTHLY' ? 'Monthly' : 'Yearly'} plan active`}
+              {locale === 'ko' ? '월 구독 이용 중' : 'Monthly plan active'}
             </p>
             <Button variant="secondary" onClick={() => router.replace('/settings/subscription')}>
               {locale === 'ko' ? '구독 관리' : 'Manage Subscription'}
@@ -208,19 +191,11 @@ export default function PricingPage() {
             </p>
           </section>
 
-          {/* Plan Cards */}
-          <section className="grid grid-cols-2 gap-3">
-            {/* Monthly */}
-            <button
-              onClick={() => setSelectedPlan('MONTHLY')}
-              className={`p-5 rounded-2xl border-2 transition-all text-left relative ${
-                selectedPlan === 'MONTHLY'
-                  ? 'border-primary bg-primary/5'
-                  : 'border-gray-100 bg-white dark:bg-surface-dark dark:border-gray-700'
-              }`}
-            >
+          {/* Plan Card — [연 구독] 재활성화 시: grid grid-cols-2 gap-3으로 변경, YEARLY 카드 추가 */}
+          <section>
+            <div className="p-6 rounded-2xl border-2 border-primary bg-primary/5 text-center relative">
               {isFirstSubscription && (
-                <span className="absolute -top-2 left-3 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-red-500 text-white text-[10px] font-bold px-3 py-0.5 rounded-full">
                   {locale === 'ko' ? '첫 달 30% OFF' : '30% OFF 1st mo'}
                 </span>
               )}
@@ -229,48 +204,25 @@ export default function PricingPage() {
               </p>
               {isFirstSubscription ? (
                 <>
-                  <p className="text-xl font-black text-text-main dark:text-white">
+                  <p className="text-3xl font-black text-text-main dark:text-white">
                     {formatPrice(FIRST_MONTH_PRICES[currency], locale)}
                   </p>
-                  <p className="text-[11px] text-text-sub mt-1">
+                  <p className="text-sm text-text-sub mt-1">
                     <span className="line-through">{monthlyPrice}</span>
                     {locale === 'ko' ? ' /첫 달' : ' /1st month'}
                   </p>
                 </>
               ) : (
                 <>
-                  <p className="text-xl font-black text-text-main dark:text-white">
+                  <p className="text-3xl font-black text-text-main dark:text-white">
                     {monthlyPrice}
                   </p>
-                  <p className="text-[11px] text-text-sub mt-1">
+                  <p className="text-sm text-text-sub mt-1">
                     {locale === 'ko' ? '/월' : '/month'}
                   </p>
                 </>
               )}
-            </button>
-
-            {/* Yearly */}
-            <button
-              onClick={() => setSelectedPlan('YEARLY')}
-              className={`p-5 rounded-2xl border-2 transition-all text-left relative ${
-                selectedPlan === 'YEARLY'
-                  ? 'border-primary bg-primary/5'
-                  : 'border-gray-100 bg-white dark:bg-surface-dark dark:border-gray-700'
-              }`}
-            >
-              <span className="absolute -top-2 right-3 bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                38% OFF
-              </span>
-              <p className="text-xs font-bold text-text-sub mb-2">
-                {locale === 'ko' ? '연 구독' : 'Yearly'}
-              </p>
-              <p className="text-xl font-black text-text-main dark:text-white">
-                {yearlyPrice}
-              </p>
-              <p className="text-[11px] text-text-sub mt-1">
-                {locale === 'ko' ? `/년 (${yearlyMonthly}/월)` : `/year (${yearlyMonthly}/mo)`}
-              </p>
-            </button>
+            </div>
           </section>
 
           {/* Benefits */}
@@ -299,22 +251,34 @@ export default function PricingPage() {
           {locale === 'ko' && (
             <section className="space-y-3">
               <h3 className="text-sm font-bold text-text-main dark:text-white">결제수단</h3>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-2">
                 <button
                   onClick={() => setPayMethod('CARD')}
-                  className={`p-4 rounded-2xl border-2 transition-all text-center ${
+                  className={`p-3 rounded-2xl border-2 transition-all text-center ${
                     payMethod === 'CARD'
                       ? 'border-primary bg-primary/5'
                       : 'border-gray-100 bg-white dark:bg-surface-dark dark:border-gray-700'
                   }`}
                 >
                   <Icon name="credit_card" size="sm" className={`text-2xl mb-1 ${payMethod === 'CARD' ? 'text-primary' : 'text-text-sub'}`} />
-                  <p className={`text-sm font-bold ${payMethod === 'CARD' ? 'text-primary' : 'text-text-main dark:text-white'}`}>카드 결제</p>
-                  <p className="text-[11px] text-text-sub mt-0.5">KG 이니시스</p>
+                  <p className={`text-sm font-bold ${payMethod === 'CARD' ? 'text-primary' : 'text-text-main dark:text-white'}`}>카드</p>
+                  <p className="text-[11px] text-text-sub mt-0.5">NHN KCP</p>
+                </button>
+                <button
+                  onClick={() => setPayMethod('TOSSPAY')}
+                  className={`p-3 rounded-2xl border-2 transition-all text-center ${
+                    payMethod === 'TOSSPAY'
+                      ? 'border-[#0064FF] bg-[#0064FF]/5'
+                      : 'border-gray-100 bg-white dark:bg-surface-dark dark:border-gray-700'
+                  }`}
+                >
+                  <span className={`text-2xl mb-1 inline-block font-black ${payMethod === 'TOSSPAY' ? 'text-[#0064FF]' : 'text-text-sub'}`}>T</span>
+                  <p className={`text-sm font-bold ${payMethod === 'TOSSPAY' ? 'text-[#0064FF]' : 'text-text-main dark:text-white'}`}>토스페이</p>
+                  <p className="text-[11px] text-text-sub mt-0.5">간편결제</p>
                 </button>
                 <button
                   onClick={() => setPayMethod('NAVERPAY')}
-                  className={`p-4 rounded-2xl border-2 transition-all text-center ${
+                  className={`p-3 rounded-2xl border-2 transition-all text-center ${
                     payMethod === 'NAVERPAY'
                       ? 'border-[#03C75A] bg-[#03C75A]/5'
                       : 'border-gray-100 bg-white dark:bg-surface-dark dark:border-gray-700'
@@ -325,19 +289,6 @@ export default function PricingPage() {
                   <p className="text-[11px] text-text-sub mt-0.5">간편결제</p>
                 </button>
               </div>
-
-              {/* 카드결제 시 휴대폰 번호 입력 (이니시스 필수) */}
-              {payMethod === 'CARD' && (
-                <div className="mt-3">
-                  <input
-                    type="tel"
-                    placeholder="휴대폰 번호 (예: 01012345678)"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    className="w-full px-4 py-3 rounded-2xl border-2 border-gray-100 dark:border-gray-700 bg-white dark:bg-surface-dark text-sm text-text-main dark:text-white placeholder:text-text-sub focus:border-primary focus:outline-none transition-colors"
-                  />
-                </div>
-              )}
             </section>
           )}
 
@@ -361,15 +312,11 @@ export default function PricingPage() {
             ) : (
               locale === 'ko'
                 ? `${formatPrice(
-                    selectedPlan === 'MONTHLY'
-                      ? (isFirstSubscription ? FIRST_MONTH_PRICES.KRW : PRICES.MONTHLY.KRW)
-                      : PRICES.YEARLY.KRW,
+                    isFirstSubscription ? FIRST_MONTH_PRICES.KRW : PRICES.MONTHLY.KRW,
                     'ko'
                   )} 구독 시작하기`
                 : `Start for ${formatPrice(
-                    selectedPlan === 'MONTHLY'
-                      ? (isFirstSubscription ? FIRST_MONTH_PRICES.USD : PRICES.MONTHLY.USD)
-                      : PRICES.YEARLY.USD,
+                    isFirstSubscription ? FIRST_MONTH_PRICES.USD : PRICES.MONTHLY.USD,
                     'en'
                   )}`
             )}

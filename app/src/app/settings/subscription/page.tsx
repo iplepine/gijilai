@@ -61,7 +61,8 @@ export default function SubscriptionPage() {
     );
   }
 
-  const planLabel = subscription?.plan === 'MONTHLY' ? '월 구독' : subscription?.plan === 'YEARLY' ? '연 구독' : '';
+  // [연 구독] 재활성화 시: subscription?.plan === 'YEARLY' ? '연 구독' : ... 분기 추가
+  const planLabel = subscription?.plan === 'MONTHLY' ? '월 구독' : '';
   const periodEnd = subscription?.current_period_end ? new Date(subscription.current_period_end).toLocaleDateString('ko-KR') : '';
   const isCancelled = !!subscription?.cancelled_at;
 

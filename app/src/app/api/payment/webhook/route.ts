@@ -75,8 +75,10 @@ export async function POST(req: Request) {
             const amount = portonePayment.amount?.total ?? 0;
             const currency = portonePayment.currency === 'KRW' ? 'KRW' : 'USD';
             const billingKey = ('billingKey' in portonePayment) ? (portonePayment as any).billingKey : null;
-            const orderName = portonePayment.orderName ?? '';
-            const plan = orderName.includes('연') || orderName.includes('Yearly') ? 'YEARLY' : 'MONTHLY';
+            // [연 구독] 재활성화 시: orderName 기반 판별 복원
+            // const orderName = portonePayment.orderName ?? '';
+            // const plan = orderName.includes('연') || orderName.includes('Yearly') ? 'YEARLY' : 'MONTHLY';
+            const plan = 'MONTHLY';
 
             // 이미 활성 구독이 있으면 환불
             const { data: activeSub } = await admin

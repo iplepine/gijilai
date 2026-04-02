@@ -23,7 +23,8 @@ export async function POST(req: Request) {
 
     const { billingKey, plan, locale } = await req.json();
 
-    if (!billingKey || !plan || !['MONTHLY', 'YEARLY'].includes(plan)) {
+    // [연 구독] 재활성화 시: plan !== 'MONTHLY' → !['MONTHLY', 'YEARLY'].includes(plan)
+    if (!billingKey || !plan || plan !== 'MONTHLY') {
       return NextResponse.json({ error: 'INVALID_PLAN' }, { status: 400 });
     }
 
@@ -40,8 +41,8 @@ export async function POST(req: Request) {
     }
 
     const currency: Currency = locale === 'ko' ? 'KRW' : 'USD';
-    const productCode = plan === 'MONTHLY' ? 'subscription_monthly' : 'subscription_yearly';
-    const regularAmount = getAmount(productCode, currency);
+    // [연 구독] 재활성화 시: const productCode = plan === 'MONTHLY' ? 'subscription_monthly' : 'subscription_yearly';
+    const regularAmount = getAmount('subscription_monthly', currency);
 
     // 최초 구독 여부 확인 (과거 구독 이력이 없으면 첫 달 할인)
     const { count: pastSubCount } = await getSupabaseAdmin()
@@ -50,7 +51,7 @@ export async function POST(req: Request) {
       .eq('user_id', session.user.id);
 
     const isFirstSubscription = (pastSubCount ?? 0) === 0;
-    const firstPayAmount = (plan === 'MONTHLY' && isFirstSubscription)
+    const firstPayAmount = isFirstSubscription
       ? getFirstMonthAmount(currency)
       : regularAmount;
     const paymentId = `sub_${session.user.id.substring(0, 8)}_${Date.now()}`;
@@ -59,9 +60,8 @@ export async function POST(req: Request) {
     const payResult = await payWithBillingKey({
       billingKey,
       paymentId,
-      orderName: plan === 'MONTHLY'
-        ? (isFirstSubscription ? '기질아이 월 구독 (첫 달 할인)' : '기질아이 월 구독')
-        : '기질아이 연 구독',
+      // [연 구독] 재활성화 시: plan === 'YEARLY' ? '기질아이 연 구독' : ...
+      orderName: isFirstSubscription ? '기질아이 월 구독 (첫 달 할인)' : '기질아이 월 구독',
       amount: firstPayAmount,
       currency,
       customerId: session.user.id,

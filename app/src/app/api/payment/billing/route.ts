@@ -56,7 +56,8 @@ export async function POST(req: Request) {
         const result = await payWithBillingKey({
           billingKey: sub.billing_key!,
           paymentId,
-          orderName: sub.plan === 'MONTHLY' ? '기질아이 월 구독 갱신' : '기질아이 연 구독 갱신',
+          // [연 구독] 재활성화 시: sub.plan === 'YEARLY' ? '기질아이 연 구독 갱신' : '기질아이 월 구독 갱신'
+          orderName: '기질아이 월 구독 갱신',
           amount: sub.amount,
           currency,
           customerId: sub.user_id,
@@ -64,7 +65,8 @@ export async function POST(req: Request) {
 
         if (result?.payment?.paidAt) {
           // 갱신 성공
-          const newPeriodEnd = computePeriodEnd(sub.plan as 'MONTHLY' | 'YEARLY');
+          // [연 구독] 재활성화 시: computePeriodEnd(sub.plan as 'MONTHLY' | 'YEARLY')
+          const newPeriodEnd = computePeriodEnd('MONTHLY');
           await getSupabaseAdmin()
             .from('subscriptions')
             .update({
