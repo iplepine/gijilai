@@ -81,7 +81,7 @@ export default function PricingPage() {
           billingKeyMethod = 'EASY_PAY';
         } else if (payMethod === 'TOSSPAY') {
           channelKey = process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_TOSS;
-          billingKeyMethod = 'CARD';
+          billingKeyMethod = 'EASY_PAY';
         } else {
           channelKey = process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_KCP;
           billingKeyMethod = 'CARD';
@@ -107,6 +107,8 @@ export default function PricingPage() {
       if (locale === 'ko') {
         if (payMethod === 'NAVERPAY') {
           issueParams.easyPay = { provider: 'NAVERPAY' };
+        } else if (payMethod === 'TOSSPAY') {
+          issueParams.easyPay = { provider: 'TOSSPAY' };
         }
       }
 
