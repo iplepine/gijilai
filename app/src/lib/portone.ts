@@ -13,12 +13,21 @@ export const PRICE_TABLE = {
   subscription_yearly: { KRW: 89000, USD: 8999 },
 } as const;
 
+/** 월 구독 첫 달 할인율 (30%) */
+export const FIRST_MONTH_DISCOUNT = 0.3;
+
 export type ProductCode = keyof typeof PRICE_TABLE;
 export type Currency = 'KRW' | 'USD';
 export type PayMethod = 'CARD' | 'NAVERPAY';
 
 export function getAmount(product: ProductCode, currency: Currency): number {
   return PRICE_TABLE[product][currency];
+}
+
+/** 월 구독 첫 달 할인가 */
+export function getFirstMonthAmount(currency: Currency): number {
+  const regular = PRICE_TABLE.subscription_monthly[currency];
+  return Math.round(regular * (1 - FIRST_MONTH_DISCOUNT));
 }
 
 /** 한국 결제수단별 채널키 반환 */

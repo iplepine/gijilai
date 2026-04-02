@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabaseServer';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
-import { payWithBillingKey, getAmount, cancelPayment } from '@/lib/portone';
+import { payWithBillingKey, getAmount, getFirstMonthAmount, cancelPayment } from '@/lib/portone';
 import { computePeriodEnd } from '@/lib/subscription';
 import type { Currency } from '@/lib/portone';
 
@@ -41,15 +41,28 @@ export async function POST(req: Request) {
 
     const currency: Currency = locale === 'ko' ? 'KRW' : 'USD';
     const productCode = plan === 'MONTHLY' ? 'subscription_monthly' : 'subscription_yearly';
-    const amount = getAmount(productCode, currency);
+    const regularAmount = getAmount(productCode, currency);
+
+    // 최초 구독 여부 확인 (과거 구독 이력이 없으면 첫 달 할인)
+    const { count: pastSubCount } = await getSupabaseAdmin()
+      .from('subscriptions')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', session.user.id);
+
+    const isFirstSubscription = (pastSubCount ?? 0) === 0;
+    const firstPayAmount = (plan === 'MONTHLY' && isFirstSubscription)
+      ? getFirstMonthAmount(currency)
+      : regularAmount;
     const paymentId = `sub_${session.user.id.substring(0, 8)}_${Date.now()}`;
 
     // 빌링키로 첫 결제 실행
     const payResult = await payWithBillingKey({
       billingKey,
       paymentId,
-      orderName: plan === 'MONTHLY' ? '기질아이 월 구독' : '기질아이 연 구독',
-      amount,
+      orderName: plan === 'MONTHLY'
+        ? (isFirstSubscription ? '기질아이 월 구독 (첫 달 할인)' : '기질아이 월 구독')
+        : '기질아이 연 구독',
+      amount: firstPayAmount,
       currency,
       customerId: session.user.id,
     });
@@ -73,7 +86,7 @@ export async function POST(req: Request) {
           billing_key: billingKey,
           portone_customer_id: session.user.id,
           currency,
-          amount,
+          amount: regularAmount,
           current_period_start: now.toISOString(),
           current_period_end: periodEnd.toISOString(),
         })
@@ -82,7 +95,7 @@ export async function POST(req: Request) {
 
       if (subError) throw subError;
 
-      // 결제 기록
+      // 결제 기록 (실제 결제 금액)
       await admin.from('payments').insert({
         user_id: session.user.id,
         subscription_id: subscription.id,
@@ -90,7 +103,7 @@ export async function POST(req: Request) {
         portone_payment_id: paymentId,
         status: 'PAID',
         currency,
-        amount,
+        amount: firstPayAmount,
         paid_at: now.toISOString(),
       });
 

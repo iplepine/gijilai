@@ -23,6 +23,12 @@ const PRICES = {
   YEARLY: { KRW: 89000, USD: 8999 },
 };
 
+const FIRST_MONTH_DISCOUNT = 0.3;
+const FIRST_MONTH_PRICES = {
+  KRW: Math.round(PRICES.MONTHLY.KRW * (1 - FIRST_MONTH_DISCOUNT)),
+  USD: Math.round(PRICES.MONTHLY.USD * (1 - FIRST_MONTH_DISCOUNT)),
+};
+
 function formatPrice(amount: number, locale: Locale): string {
   if (locale === 'ko') return `${amount.toLocaleString()}원`;
   return `$${(amount / 100).toFixed(2)}`;
@@ -42,7 +48,9 @@ export default function PricingPage() {
   const [locale, setLocale] = useState<Locale>('ko');
   const [loading, setLoading] = useState(false);
   const [payMethod, setPayMethod] = useState<PayMethodOption>('CARD');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [existingSubscription, setExistingSubscription] = useState<any>(null);
+  const [isFirstSubscription, setIsFirstSubscription] = useState(true);
 
   useEffect(() => {
     // locale 감지
@@ -61,6 +69,7 @@ export default function PricingPage() {
       .then(res => res.json())
       .then(data => {
         if (data.subscription) setExistingSubscription(data.subscription);
+        if (data.isFirstSubscription !== undefined) setIsFirstSubscription(data.isFirstSubscription);
       })
       .catch(() => {});
   }, [user]);
@@ -88,6 +97,16 @@ export default function PricingPage() {
         billingKeyMethod = 'CARD';
       }
 
+      // 이니시스 카드결제 시 휴대폰 번호 필수
+      if (locale === 'ko' && payMethod === 'CARD') {
+        const digits = phoneNumber.replace(/\D/g, '');
+        if (!digits.match(/^01\d{8,9}$/)) {
+          alert('휴대폰 번호를 입력해주세요.');
+          setLoading(false);
+          return;
+        }
+      }
+
       // 빌링키 발급
       const issueParams: Record<string, any> = {
         storeId,
@@ -98,6 +117,7 @@ export default function PricingPage() {
         customer: {
           customerId: user.id,
           ...(user.email ? { email: user.email } : {}),
+          ...(locale === 'ko' && payMethod === 'CARD' ? { phoneNumber: phoneNumber.replace(/\D/g, '') } : {}),
         },
       };
 
@@ -193,21 +213,40 @@ export default function PricingPage() {
             {/* Monthly */}
             <button
               onClick={() => setSelectedPlan('MONTHLY')}
-              className={`p-5 rounded-2xl border-2 transition-all text-left ${
+              className={`p-5 rounded-2xl border-2 transition-all text-left relative ${
                 selectedPlan === 'MONTHLY'
                   ? 'border-primary bg-primary/5'
                   : 'border-gray-100 bg-white dark:bg-surface-dark dark:border-gray-700'
               }`}
             >
+              {isFirstSubscription && (
+                <span className="absolute -top-2 left-3 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  {locale === 'ko' ? '첫 달 30% OFF' : '30% OFF 1st mo'}
+                </span>
+              )}
               <p className="text-xs font-bold text-text-sub mb-2">
                 {locale === 'ko' ? '월 구독' : 'Monthly'}
               </p>
-              <p className="text-xl font-black text-text-main dark:text-white">
-                {monthlyPrice}
-              </p>
-              <p className="text-[11px] text-text-sub mt-1">
-                {locale === 'ko' ? '/월' : '/month'}
-              </p>
+              {isFirstSubscription ? (
+                <>
+                  <p className="text-xl font-black text-text-main dark:text-white">
+                    {formatPrice(FIRST_MONTH_PRICES[currency], locale)}
+                  </p>
+                  <p className="text-[11px] text-text-sub mt-1">
+                    <span className="line-through">{monthlyPrice}</span>
+                    {locale === 'ko' ? ' /첫 달' : ' /1st month'}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-xl font-black text-text-main dark:text-white">
+                    {monthlyPrice}
+                  </p>
+                  <p className="text-[11px] text-text-sub mt-1">
+                    {locale === 'ko' ? '/월' : '/month'}
+                  </p>
+                </>
+              )}
             </button>
 
             {/* Yearly */}
@@ -286,6 +325,19 @@ export default function PricingPage() {
                   <p className="text-[11px] text-text-sub mt-0.5">간편결제</p>
                 </button>
               </div>
+
+              {/* 카드결제 시 휴대폰 번호 입력 (이니시스 필수) */}
+              {payMethod === 'CARD' && (
+                <div className="mt-3">
+                  <input
+                    type="tel"
+                    placeholder="휴대폰 번호 (예: 01012345678)"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    className="w-full px-4 py-3 rounded-2xl border-2 border-gray-100 dark:border-gray-700 bg-white dark:bg-surface-dark text-sm text-text-main dark:text-white placeholder:text-text-sub focus:border-primary focus:outline-none transition-colors"
+                  />
+                </div>
+              )}
             </section>
           )}
 
@@ -308,8 +360,18 @@ export default function PricingPage() {
               </div>
             ) : (
               locale === 'ko'
-                ? `${formatPrice(selectedPlan === 'MONTHLY' ? PRICES.MONTHLY.KRW : PRICES.YEARLY.KRW, 'ko')} 구독 시작하기`
-                : `Start for ${formatPrice(selectedPlan === 'MONTHLY' ? PRICES.MONTHLY.USD : PRICES.YEARLY.USD, 'en')}`
+                ? `${formatPrice(
+                    selectedPlan === 'MONTHLY'
+                      ? (isFirstSubscription ? FIRST_MONTH_PRICES.KRW : PRICES.MONTHLY.KRW)
+                      : PRICES.YEARLY.KRW,
+                    'ko'
+                  )} 구독 시작하기`
+                : `Start for ${formatPrice(
+                    selectedPlan === 'MONTHLY'
+                      ? (isFirstSubscription ? FIRST_MONTH_PRICES.USD : PRICES.MONTHLY.USD)
+                      : PRICES.YEARLY.USD,
+                    'en'
+                  )}`
             )}
           </Button>
         </div>
