@@ -146,17 +146,12 @@ body {
 }
 @media (min-width: 768px) {
   .app-shell-width {
-    max-width: 48rem; /* 768px — tablet */
+    max-width: 42rem; /* 672px — tablet */
   }
 }
 @media (min-width: 1024px) {
   .app-shell-width {
-    max-width: 64rem; /* 1024px — desktop */
-  }
-}
-@media (min-width: 1280px) {
-  .app-shell-width {
-    max-width: 80rem; /* 1280px — wide desktop */
+    max-width: 48rem; /* 768px — desktop */
   }
 }
 
