@@ -1,5 +1,8 @@
+'use client';
+
 import React from 'react';
 import { Question } from '../../types/survey';
+import { useLocale } from '@/i18n/LocaleProvider';
 
 interface QuestionCardProps {
     question: Question;
@@ -8,6 +11,8 @@ interface QuestionCardProps {
 }
 
 export const QuestionCard: React.FC<QuestionCardProps> = ({ question, currentAnswer, onAnswer }) => {
+    const { t } = useLocale();
+
     // BARS-specific rendering logic
     const isBARS = !!question.context;
 
@@ -47,11 +52,11 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({ question, currentAns
     };
 
     const options = [
-        { value: 1, label: '매우 그렇지 않다' }, // Or specific label if needed
-        { value: 2, label: '그렇지 않다' },
-        { value: 3, label: '보통이다' },
-        { value: 4, label: '그렇다' },
-        { value: 5, label: '매우 그렇다' },
+        { value: 1, label: t('survey.option1') },
+        { value: 2, label: t('survey.option2') },
+        { value: 3, label: t('survey.option3') },
+        { value: 4, label: t('survey.option4') },
+        { value: 5, label: t('survey.option5') },
     ];
 
     // Using inline style for dynamic hex colors since Tailwind arbitrary values can't be computed fully dynamically this simply in standard strings without safelists
@@ -65,10 +70,10 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({ question, currentAns
                 {isBARS && (
                     <p className="text-sm text-gray-400 mt-2">
                         {question.type === 'CHILD'
-                            ? "다음 상황에서 아이는 어떻게 행동하나요?"
+                            ? t('survey.questionCardChildPrompt')
                             : question.type === 'PARENT'
-                                ? "다음 상황에서 나는 어떻게 행동하나요?"
-                                : "다음 상황에서 양육자로서 어떻게 대처하나요?"
+                                ? t('survey.questionCardParentPrompt')
+                                : t('survey.questionCardParentingPrompt')
                         }
                     </p>
                 )}

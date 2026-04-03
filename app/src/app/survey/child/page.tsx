@@ -6,9 +6,11 @@ import { useSurveyStore } from '../../../store/surveyStore';
 import { CHILD_QUESTIONS } from '../../../data/questions';
 import { SurveyLayout } from '../../../components/survey/SurveyLayout';
 import { QuestionCard } from '../../../components/survey/QuestionCard';
+import { useLocale } from '@/i18n/LocaleProvider';
 
 export default function ChildSurveyPage() {
     const router = useRouter();
+    const { t } = useLocale();
     const {
         currentStep,
         answers,
@@ -49,11 +51,11 @@ export default function ChildSurveyPage() {
         }
     }
 
-    if (!currentQuestion) return <div>Loading...</div>;
+    if (!currentQuestion) return <div>{t('common.loading')}</div>;
 
     return (
         <SurveyLayout
-            title="아동 기질 검사"
+            title={t('survey.childSurvey')}
             progress={progress}
             themeColor="#FFD700"
             onBack={handleBack}
@@ -61,7 +63,7 @@ export default function ChildSurveyPage() {
             <div className="w-full max-w-md py-6">
                 <div className="mb-4 text-center">
                     <span className="inline-block px-3 py-1 text-sm font-bold mb-2 rounded-full" style={{ backgroundColor: '#FFD70033', color: '#B29600' }}>
-                        Part 1. 아이 편
+                        {t('survey.childPartLabel')}
                     </span>
                 </div>
                 <QuestionCard

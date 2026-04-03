@@ -6,6 +6,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
 import { useAuth } from '@/components/auth/AuthProvider';
+import { useLocale } from '@/i18n/LocaleProvider';
 
 
 declare global {
@@ -16,7 +17,6 @@ declare global {
   }
 }
 
-type Locale = 'ko' | 'en';
 type PayMethodOption = 'CARD' | 'TOSSPAY' | 'NAVERPAY';
 
 const PRICES = {
@@ -31,15 +31,15 @@ const FIRST_MONTH_PRICES = {
   USD: Math.round(PRICES.MONTHLY.USD * (1 - FIRST_MONTH_DISCOUNT)),
 };
 
-function formatPrice(amount: number, locale: Locale): string {
-  if (locale === 'ko') return `${amount.toLocaleString()}원`;
+function formatPrice(amount: number, curr: 'KRW' | 'USD'): string {
+  if (curr === 'KRW') return `${amount.toLocaleString()}원`;
   return `$${(amount / 100).toFixed(2)}`;
 }
 
 export default function PricingPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const [locale, setLocale] = useState<Locale>('ko');
+  const { locale, t, currency } = useLocale();
   const [loading, setLoading] = useState(false);
   const [payMethod, setPayMethod] = useState<PayMethodOption>('CARD');
   const [existingSubscription, setExistingSubscription] = useState<any>(null);
@@ -51,15 +51,6 @@ export default function PricingPage() {
     const ua = navigator.userAgent.toLowerCase();
     const inApp = ua.includes('gijilai_app') || !!window.PaymentBridge;
     setIsApp(inApp);
-
-    // locale 감지
-    const saved = document.cookie.match(/gijilai_locale=(\w+)/)?.[1];
-    if (saved === 'en' || saved === 'ko') {
-      setLocale(saved as Locale);
-    } else {
-      const browserLang = navigator.language.toLowerCase();
-      setLocale(browserLang.startsWith('ko') ? 'ko' : 'en');
-    }
   }, []);
 
   useEffect(() => {
@@ -168,32 +159,29 @@ export default function PricingPage() {
       router.replace('/');
     } catch (error: any) {
       console.error('Subscribe error:', error);
-      alert(locale === 'ko'
-        ? `구독 처리 중 오류가 발생했습니다: ${error.message}`
-        : `Subscription error: ${error.message}`);
+      alert(t('pricing.subscribeError', { message: error.message }));
     } finally {
       setLoading(false);
     }
   };
 
-  const currency = locale === 'ko' ? 'KRW' : 'USD';
-  const monthlyPrice = formatPrice(PRICES.MONTHLY[currency], locale);
+  const monthlyPrice = formatPrice(PRICES.MONTHLY[currency], currency);
 
   if (existingSubscription) {
     return (
       <div className="bg-background-light dark:bg-background-dark text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center font-body">
         <div className="w-full max-w-md min-h-screen flex flex-col shadow-2xl">
-          <Navbar title={locale === 'ko' ? '요금제' : 'Pricing'} showBack />
+          <Navbar title={t('pricing.title')} showBack />
           <div className="flex-1 flex flex-col items-center justify-center px-6 text-center space-y-4">
             <Icon name="check_circle" className="text-primary text-5xl" size="lg" />
             <h2 className="text-2xl font-bold">
-              {locale === 'ko' ? '이미 구독 중입니다' : 'Already Subscribed'}
+              {t('pricing.alreadySubscribed')}
             </h2>
             <p className="text-text-sub text-sm">
-              {locale === 'ko' ? '월 구독 이용 중' : 'Monthly plan active'}
+              {t('pricing.monthlyActive')}
             </p>
             <Button variant="secondary" onClick={() => router.replace('/settings/subscription')}>
-              {locale === 'ko' ? '구독 관리' : 'Manage Subscription'}
+              {t('pricing.manageSubscription')}
             </Button>
           </div>
         </div>
@@ -204,20 +192,16 @@ export default function PricingPage() {
   return (
     <div className="bg-background-light dark:bg-background-dark text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center font-body">
       <div className="w-full max-w-md min-h-screen flex flex-col shadow-2xl">
-        <Navbar title={locale === 'ko' ? '요금제' : 'Pricing'} showBack />
+        <Navbar title={t('pricing.title')} showBack />
 
         <div className="flex-1 overflow-y-auto px-6 pt-8 pb-32 space-y-8">
           {/* Header */}
           <section className="text-center space-y-2">
             <h2 className="text-2xl font-bold break-keep">
-              {locale === 'ko'
-                ? '우리 아이를 더 깊이 이해하는 시간'
-                : 'Understand Your Child Deeply'}
+              {t('pricing.headline')}
             </h2>
             <p className="text-text-sub text-sm">
-              {locale === 'ko'
-                ? '프리미엄 구독으로 모든 기능을 무제한 이용하세요'
-                : 'Unlock all features with a premium subscription'}
+              {t('pricing.subtitle')}
             </p>
           </section>
 
@@ -226,20 +210,20 @@ export default function PricingPage() {
             <div className="p-6 rounded-2xl border-2 border-primary bg-primary/5 text-center relative">
               {isFirstSubscription && (
                 <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-red-500 text-white text-[10px] font-bold px-3 py-0.5 rounded-full">
-                  {locale === 'ko' ? '첫 달 30% OFF' : '30% OFF 1st mo'}
+                  {t('pricing.firstMonthOff')}
                 </span>
               )}
               <p className="text-xs font-bold text-text-sub mb-2">
-                {locale === 'ko' ? '월 구독' : 'Monthly'}
+                {t('pricing.monthly')}
               </p>
               {isFirstSubscription ? (
                 <>
                   <p className="text-3xl font-black text-text-main dark:text-white">
-                    {formatPrice(FIRST_MONTH_PRICES[currency], locale)}
+                    {formatPrice(FIRST_MONTH_PRICES[currency], currency)}
                   </p>
                   <p className="text-sm text-text-sub mt-1">
                     <span className="line-through">{monthlyPrice}</span>
-                    {locale === 'ko' ? ' /첫 달' : ' /1st month'}
+                    {t('pricing.perFirstMonth')}
                   </p>
                 </>
               ) : (
@@ -248,7 +232,7 @@ export default function PricingPage() {
                     {monthlyPrice}
                   </p>
                   <p className="text-sm text-text-sub mt-1">
-                    {locale === 'ko' ? '/월' : '/month'}
+                    {t('pricing.perMonth')}
                   </p>
                 </>
               )}
@@ -258,20 +242,20 @@ export default function PricingPage() {
           {/* Benefits */}
           <section className="bg-white dark:bg-surface-dark rounded-2xl p-6 space-y-4 border border-beige-main/20">
             <h3 className="text-sm font-bold text-text-main dark:text-white">
-              {locale === 'ko' ? '구독 혜택' : 'What you get'}
+              {t('pricing.benefits')}
             </h3>
             {[
-              { icon: 'analytics', ko: '프리미엄 리포트 무제한', en: 'Unlimited premium reports' },
-              { icon: 'chat', ko: 'AI 상담 무제한', en: 'Unlimited AI consultations' },
-              { icon: 'task_alt', ko: '실천 기록 전체 이력', en: 'Full practice history' },
-              { icon: 'speed', ko: '재검사 쿨다운 없음', en: 'No reassessment cooldown' },
+              { icon: 'analytics', key: 'pricing.unlimitedReports' },
+              { icon: 'chat', key: 'pricing.unlimitedConsult' },
+              { icon: 'task_alt', key: 'pricing.fullHistory' },
+              { icon: 'speed', key: 'pricing.noCooldown' },
             ].map((item, i) => (
               <div key={i} className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
                   <Icon name={item.icon} size="sm" className="text-primary text-[18px]" />
                 </div>
                 <span className="text-sm text-text-main dark:text-white">
-                  {locale === 'ko' ? item.ko : item.en}
+                  {t(item.key)}
                 </span>
               </div>
             ))}
@@ -280,7 +264,7 @@ export default function PricingPage() {
           {/* 결제수단 선택 (한국 웹만 — 앱에서는 Apple/Google이 처리) */}
           {locale === 'ko' && !isApp && (
             <section className="space-y-3">
-              <h3 className="text-sm font-bold text-text-main dark:text-white">결제수단</h3>
+              <h3 className="text-sm font-bold text-text-main dark:text-white">{t('pricing.payMethod')}</h3>
               <div className="grid grid-cols-3 gap-2">
                 <button
                   onClick={() => setPayMethod('CARD')}
@@ -291,7 +275,7 @@ export default function PricingPage() {
                   }`}
                 >
                   <Icon name="credit_card" size="sm" className={`text-2xl mb-1 ${payMethod === 'CARD' ? 'text-primary' : 'text-text-sub'}`} />
-                  <p className={`text-sm font-bold ${payMethod === 'CARD' ? 'text-primary' : 'text-text-main dark:text-white'}`}>카드</p>
+                  <p className={`text-sm font-bold ${payMethod === 'CARD' ? 'text-primary' : 'text-text-main dark:text-white'}`}>{t('pricing.card')}</p>
                   <p className="text-[11px] text-text-sub mt-0.5">NHN KCP</p>
                 </button>
                 <button
@@ -304,7 +288,7 @@ export default function PricingPage() {
                 >
                   <span className={`text-2xl mb-1 inline-block font-black ${payMethod === 'TOSSPAY' ? 'text-[#0064FF]' : 'text-text-sub'}`}>T</span>
                   <p className={`text-sm font-bold ${payMethod === 'TOSSPAY' ? 'text-[#0064FF]' : 'text-text-main dark:text-white'}`}>토스페이</p>
-                  <p className="text-[11px] text-text-sub mt-0.5">간편결제</p>
+                  <p className="text-[11px] text-text-sub mt-0.5">{t('pricing.easyPay')}</p>
                 </button>
                 <button
                   onClick={() => setPayMethod('NAVERPAY')}
@@ -316,7 +300,7 @@ export default function PricingPage() {
                 >
                   <span className={`text-2xl mb-1 inline-block font-black ${payMethod === 'NAVERPAY' ? 'text-[#03C75A]' : 'text-text-sub'}`}>N</span>
                   <p className={`text-sm font-bold ${payMethod === 'NAVERPAY' ? 'text-[#03C75A]' : 'text-text-main dark:text-white'}`}>네이버페이</p>
-                  <p className="text-[11px] text-text-sub mt-0.5">간편결제</p>
+                  <p className="text-[11px] text-text-sub mt-0.5">{t('pricing.easyPay')}</p>
                 </button>
               </div>
             </section>
@@ -337,18 +321,15 @@ export default function PricingPage() {
             {loading ? (
               <div className="flex items-center gap-2">
                 <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                <span>{locale === 'ko' ? '처리 중...' : 'Processing...'}</span>
+                <span>{t('pricing.processing')}</span>
               </div>
             ) : (
-              locale === 'ko'
-                ? `${formatPrice(
-                    isFirstSubscription ? FIRST_MONTH_PRICES.KRW : PRICES.MONTHLY.KRW,
-                    'ko'
-                  )} 구독 시작하기`
-                : `Start for ${formatPrice(
-                    isFirstSubscription ? FIRST_MONTH_PRICES.USD : PRICES.MONTHLY.USD,
-                    'en'
-                  )}`
+              t('pricing.subscribeWithPrice', {
+                price: formatPrice(
+                  isFirstSubscription ? FIRST_MONTH_PRICES[currency] : PRICES.MONTHLY[currency],
+                  currency
+                ),
+              })
             )}
           </Button>
         </div>

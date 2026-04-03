@@ -6,9 +6,11 @@ import { useSurveyStore } from '../../../store/surveyStore';
 import { PARENT_QUESTIONS } from '../../../data/questions';
 import { SurveyLayout } from '../../../components/survey/SurveyLayout';
 import { QuestionCard } from '../../../components/survey/QuestionCard';
+import { useLocale } from '@/i18n/LocaleProvider';
 
 export default function ParentSurveyPage() {
     const router = useRouter();
+    const { t } = useLocale();
     const {
         currentStep,
         answers,
@@ -25,7 +27,7 @@ export default function ParentSurveyPage() {
     const questions = PARENT_QUESTIONS;
     const currentQuestion = questions[currentStep - 1];
     const totalQuestions = questions.length;
-    // Progress needs to be calculated relative to THIS survey or global? 
+    // Progress needs to be calculated relative to THIS survey or global?
     // UX spec says bridge page separates them, so relative progress is fine.
     const progress = Math.round((currentStep / totalQuestions) * 100);
 
@@ -68,29 +70,28 @@ export default function ParentSurveyPage() {
                 <div className="max-w-md w-full bg-white p-8 rounded-2xl shadow-xl">
                     <div className="text-5xl mb-6">🧬</div>
                     <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                        아이 성향 파악 완료!
+                        {t('survey.childBridgeTitle')}
                     </h2>
-                    <p className="text-gray-600 mb-8 leading-relaxed">
-                        수고하셨습니다.<br />
-                        이제 <strong>양육자 본인의 기질</strong>을 알아볼 차례입니다.<br />
-                        <span className="text-sm text-gray-500 mt-2 block">(총 20문항)</span>
+                    <p className="text-gray-600 mb-8 leading-relaxed whitespace-pre-line">
+                        {t('survey.childBridgeDesc')}
+                        <span className="text-sm text-gray-500 mt-2 block">{t('survey.childBridgeQuestionCount')}</span>
                     </p>
                     <button
                         onClick={startParentSurvey}
                         className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-xl transition-colors"
                     >
-                        나의 기질 알아보기
+                        {t('survey.childBridgeButton')}
                     </button>
                 </div>
             </div>
         );
     }
 
-    if (!currentQuestion) return <div>Loading...</div>;
+    if (!currentQuestion) return <div>{t('common.loading')}</div>;
 
     return (
         <SurveyLayout
-            title="양육자 기질 검사"
+            title={t('survey.parentSurvey')}
             progress={progress}
             themeColor="#4A90E2"
             onBack={handleBack}
@@ -98,7 +99,7 @@ export default function ParentSurveyPage() {
             <div className="w-full max-w-md py-6">
                 <div className="mb-4 text-center">
                     <span className="inline-block px-3 py-1 text-sm font-bold mb-2 rounded-full" style={{ backgroundColor: '#4A90E233', color: '#2C5E9E' }}>
-                        Part 2. 나(양육자) 편
+                        {t('survey.parentPartLabel')}
                     </span>
                 </div>
                 <QuestionCard

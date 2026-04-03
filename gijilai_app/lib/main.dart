@@ -62,7 +62,7 @@ class _MainWebViewState extends State<MainWebView> {
   static const _targetUrl = 'https://gijilai.com/';
   static const _subscriptionProductId = 'monthly_premium';
 
-  late final WebViewController _controller;
+  WebViewController? _controller;
   late final StreamSubscription<List<PurchaseDetails>> _purchaseSubscription;
   final InAppPurchase _iap = InAppPurchase.instance;
 
@@ -70,10 +70,19 @@ class _MainWebViewState extends State<MainWebView> {
   void initState() {
     super.initState();
     _initIAP();
-    _controller = WebViewController()
+    _initWebView();
+  }
+
+  Future<void> _initWebView() async {
+    final controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(const Color(0x00000000))
-      ..setUserAgent('gijilai_app')
+      ..setBackgroundColor(const Color(0x00000000));
+
+    // 기본 UA를 유지하면서 gijilai_app 식별자 추가 (navigator.language 등 보존)
+    final defaultUA = await controller.getUserAgent() ?? '';
+    await controller.setUserAgent('$defaultUA gijilai_app');
+
+    controller
       ..setNavigationDelegate(
         NavigationDelegate(
           onWebResourceError: (WebResourceError error) {
@@ -86,6 +95,10 @@ class _MainWebViewState extends State<MainWebView> {
         onMessageReceived: _onPaymentMessage,
       )
       ..loadRequest(Uri.parse(_targetUrl));
+
+    setState(() {
+      _controller = controller;
+    });
   }
 
   Future<void> _initIAP() async {
@@ -210,22 +223,22 @@ class _MainWebViewState extends State<MainWebView> {
         })();
       ''';
 
-      await _controller.runJavaScript(jsCode);
+      await _controller!.runJavaScript(jsCode);
 
       // 결과 폴링 (fetch 완료 대기)
       String? resultJson;
       for (int i = 0; i < 30; i++) {
         await Future.delayed(const Duration(milliseconds: 500));
-        final raw = await _controller.runJavaScriptReturningResult(
+        final raw = await _controller!.runJavaScriptReturningResult(
           'window.__iapResult || ""',
         );
         final cleaned = raw.toString().replaceAll('"', '').replaceAll("'", '');
         if (cleaned.isNotEmpty && cleaned != 'null') {
           // runJavaScriptReturningResult는 JSON 문자열을 이스케이프해서 반환하므로 복원
-          resultJson = await _controller.runJavaScriptReturningResult(
+          resultJson = await _controller!.runJavaScriptReturningResult(
             'window.__iapResult',
           ) as String?;
-          await _controller.runJavaScript('delete window.__iapResult;');
+          await _controller!.runJavaScript('delete window.__iapResult;');
           break;
         }
       }
@@ -246,7 +259,7 @@ class _MainWebViewState extends State<MainWebView> {
       if (data['success'] == true) {
         _showSnackBar('구독이 시작되었습니다!');
         // WebView 새로고침으로 구독 상태 반영
-        await _controller.loadRequest(Uri.parse(_targetUrl));
+        await _controller!.loadRequest(Uri.parse(_targetUrl));
       } else {
         _showSnackBar(data['error']?.toString() ?? '검증 실패', isError: true);
         _notifyWebLoadingDone();
@@ -279,7 +292,7 @@ class _MainWebViewState extends State<MainWebView> {
 
   /// 웹의 loading 상태를 해제
   void _notifyWebLoadingDone() {
-    _controller.runJavaScript(
+    _controller?.runJavaScript(
       'window.__iapLoadingDone && window.__iapLoadingDone();',
     );
   }
@@ -299,18 +312,26 @@ class _MainWebViewState extends State<MainWebView> {
 
   @override
   Widget build(BuildContext context) {
+    final controller = _controller;
+    if (controller == null) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (bool didPop, dynamic result) async {
         if (didPop) return;
-        if (await _controller.canGoBack()) {
-          _controller.goBack();
+        if (await controller.canGoBack()) {
+          controller.goBack();
         }
       },
       child: Scaffold(
         backgroundColor: Colors.white,
         body: SafeArea(
-          child: WebViewWidget(controller: _controller),
+          child: WebViewWidget(controller: controller),
         ),
       ),
     );

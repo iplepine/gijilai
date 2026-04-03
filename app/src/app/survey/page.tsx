@@ -10,6 +10,7 @@ import { useSurveySync } from '@/hooks/useSurveySync';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { db } from '@/lib/db';
 import { CHILD_QUESTIONS, PARENT_QUESTIONS, PARENTING_STYLE_QUESTIONS } from '@/data/questions';
+import { useLocale } from '@/i18n/LocaleProvider';
 
 type SurveyModule = 'child' | 'parent' | 'parenting';
 
@@ -17,6 +18,7 @@ function SurveyContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const typeParam = searchParams.get('type'); // 'CHILD' | 'PARENT' | 'STYLE'
+  const { t } = useLocale();
 
   const { user } = useAuth();
   const {
@@ -116,7 +118,7 @@ function SurveyContent() {
           questions: CHILD_QUESTIONS,
           responses: cbqResponses,
           setResponse: setCbqResponse,
-          title: '아이 기질',
+          title: t('survey.childTemperament'),
           accent: '#E5A150',        // Warm Amber
           accentBg: '#FFF8F0',      // Warm tinted background
           accentLight: '#E5A15020',  // Badge bg
@@ -128,7 +130,7 @@ function SurveyContent() {
           questions: PARENT_QUESTIONS,
           responses: atqResponses,
           setResponse: setAtqResponse,
-          title: '양육자 기질',
+          title: t('survey.parentTemperament'),
           accent: '#2F4F3E',        // Forest Green (primary)
           accentBg: '#F5F9F7',      // Cool green tinted background
           accentLight: '#2F4F3E18',  // Badge bg
@@ -140,7 +142,7 @@ function SurveyContent() {
           questions: PARENTING_STYLE_QUESTIONS,
           responses: parentingResponses,
           setResponse: setParentingResponse,
-          title: '양육 태도',
+          title: t('survey.parentingAttitude'),
           accent: '#7B8CDE',        // Soft Lavender-Blue
           accentBg: '#F5F5FC',      // Lavender tinted background
           accentLight: '#7B8CDE20',  // Badge bg
@@ -148,7 +150,7 @@ function SurveyContent() {
           nextModule: null
         };
     }
-  }, [currentModule, cbqResponses, atqResponses, parentingResponses, setCbqResponse, setAtqResponse, setParentingResponse]);
+  }, [currentModule, cbqResponses, atqResponses, parentingResponses, setCbqResponse, setAtqResponse, setParentingResponse, t]);
 
   const { questions, responses, setResponse, title, accent, accentBg, accentLight, accentText } = getModuleData();
   const currentQuestion = questions[currentIndex];
@@ -263,12 +265,14 @@ function SurveyContent() {
             </div>
           </div>
           <h2 className="text-2xl font-bold text-text-main dark:text-white mb-4 animate-pulse">
-            {currentModule === 'child' ? '아이 기질 분석 중...' : '우리 가족 기질 분석 중...'}
+            {currentModule === 'child' ? t('survey.analyzingChild') : t('survey.analyzingFamily')}
           </h2>
           <p className="text-text-sub dark:text-slate-400 leading-relaxed break-keep">
             {currentModule === 'child'
-              ? <>{intake.childName || '아이'}의 소중한 답변을 바탕으로<br />딱 맞는 <strong>맞춤형 기질 리포트</strong>를 작성하고 있습니다.</>
-              : <>아이와 양육자의 기질이 만나는<br /><strong>아름다운 하모니</strong>를 분석 리포트에 담아내고 있습니다.</>
+              ? (intake.childName
+                  ? t('survey.analyzingChildDesc', { name: intake.childName })
+                  : t('survey.analyzingChildDescDefault'))
+              : t('survey.analyzingFamilyDesc')
             }
           </p>
         </div>
@@ -295,7 +299,7 @@ function SurveyContent() {
           <div className="px-4 py-3">
             <div className="flex items-center justify-between mb-1.5 px-1">
               <span className="text-xs font-semibold text-text-sub">
-                문항 {currentIndex + 1} <span className="text-text-sub/30">/</span> {questions.length}
+                {t('survey.questionCount', { current: currentIndex + 1, total: questions.length })}
               </span>
               <span className="text-xs font-bold" style={{ color: accent }}>{Math.round(((currentIndex + 1) / questions.length) * 100)}%</span>
             </div>
@@ -317,8 +321,9 @@ function SurveyContent() {
           <div className="mb-4 animate-fade-in-up">
             <div className="flex items-center justify-between mb-3">
               <div className="inline-block px-3 py-1.5 rounded-full text-[12px] font-bold transition-colors duration-500" style={{ backgroundColor: accentLight, color: accentText }}>
-                {currentModule === 'child' ? `${intake.childName || '아이'}의 행동` :
-                  currentModule === 'parent' ? '나(양육자)의 성향' : '양육 상황'}
+                {currentModule === 'child'
+                  ? (intake.childName ? t('survey.childBehavior', { name: intake.childName }) : t('survey.childBehaviorDefault'))
+                  : currentModule === 'parent' ? t('survey.parentTendency') : t('survey.parentingSituation')}
               </div>
             </div>
 
@@ -329,8 +334,8 @@ function SurveyContent() {
 
             <div className="p-3.5 bg-beige-light dark:bg-surface-dark rounded-2xl border border-beige-main/20">
               <p className="text-[13px] text-text-sub dark:text-slate-400 leading-relaxed break-keep">
-                <span className="font-bold text-text-main dark:text-slate-300 mr-1">Tip.</span>
-                상황이 완벽히 똑같지 않더라도, <strong>평소 모습이나 가장 가까운 느낌</strong>을 골라주세요.
+                <span className="font-bold text-text-main dark:text-slate-300 mr-1">{t('survey.tipLabel')}</span>
+                {t('survey.tipText')}
               </p>
             </div>
           </div>
@@ -375,7 +380,7 @@ function SurveyContent() {
         <div className="absolute bottom-0 left-0 right-0 bg-white/80 dark:bg-surface-dark/80 backdrop-blur-md border-t border-beige-main/20 px-4 py-3 pb-6 sm:pb-3 z-20">
           <div className="max-w-2xl mx-auto flex justify-between items-center">
             <Button variant="ghost" size="sm" onClick={handlePrev} className="text-text-sub hover:text-text-main" icon={<Icon name="arrow_back" size="sm" />}>
-              이전
+              {t('common.previous')}
             </Button>
 
             <div className="text-[10px] uppercase tracking-widest" style={{ color: `${accent}80` }}>
@@ -397,22 +402,21 @@ function SurveyContent() {
                 </div>
 
                 <h3 className="text-2xl font-bold text-text-main dark:text-white mb-3">
-                  {transitionType === 'toParent' ? '아이 기질 검사 완료!' :
-                    transitionType === 'toParenting' ? '양육자 기질 검사 완료!' : '모든 검사가 끝났어요!'}
+                  {transitionType === 'toParent' ? t('survey.childComplete') :
+                    transitionType === 'toParenting' ? t('survey.parentComplete') : t('survey.allComplete')}
                 </h3>
 
-                <p className="text-text-sub dark:text-slate-300 mb-8 leading-relaxed break-keep">
-                  {transitionType === 'toParent' ? (
-                    <>이제 <strong>양육자(본인)</strong>의 기질을 알아볼까요?<br />아이와 얼마나 잘 맞는지 분석해드려요.</>
-                  ) : transitionType === 'toParenting' ? (
-                    <>마지막으로 <strong>평소 양육 스타일</strong>을 체크할게요.<br />구체적인 육아 솔루션이 제공됩니다.</>
-                  ) : (
-                    <>수고하셨습니다!<br />이제 우리 가족만의 <strong>특별한 기질 분석 리포트</strong>를 확인하러 가볼까요?</>
-                  )}
+                <p className="text-text-sub dark:text-slate-300 mb-8 leading-relaxed break-keep whitespace-pre-line">
+                  {transitionType === 'toParent'
+                    ? t('survey.toParentDesc')
+                    : transitionType === 'toParenting'
+                    ? t('survey.toParentingDesc')
+                    : t('survey.finishDesc')
+                  }
                 </p>
 
                 <Button size="lg" fullWidth onClick={handleTransitionConfirm} className="rounded-2xl h-16 text-lg font-bold shadow-glow">
-                  {transitionType === 'finish' ? '결과 보러 가기' : '다음 단계로'}
+                  {transitionType === 'finish' ? t('survey.viewResults') : t('survey.nextStep')}
                 </Button>
               </div>
             </div>
@@ -423,11 +427,11 @@ function SurveyContent() {
         {showExitModal && (
           <div className="absolute inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
             <div className="bg-white dark:bg-surface-dark rounded-[2rem] p-8 max-w-xs w-full shadow-card">
-              <h3 className="text-lg font-bold text-text-main dark:text-white text-center mb-2">잠깐! 나가시겠어요?</h3>
-              <p className="text-sm text-center text-text-sub mb-6">진행 중인 내용은 저장되지만,<br />완료하지 않으면 결과를 볼 수 없어요.</p>
+              <h3 className="text-lg font-bold text-text-main dark:text-white text-center mb-2">{t('survey.exitTitle')}</h3>
+              <p className="text-sm text-center text-text-sub mb-6 whitespace-pre-line">{t('survey.exitDescription')}</p>
               <div className="flex gap-3">
-                <Button variant="secondary" fullWidth onClick={() => setShowExitModal(false)}>계속 하기</Button>
-                <Button variant="ghost" fullWidth onClick={handleExit} className="text-red-500 bg-red-50 hover:bg-red-100">그만두기</Button>
+                <Button variant="secondary" fullWidth onClick={() => setShowExitModal(false)}>{t('survey.continueBtn')}</Button>
+                <Button variant="ghost" fullWidth onClick={handleExit} className="text-red-500 bg-red-50 hover:bg-red-100">{t('survey.quitBtn')}</Button>
               </div>
             </div>
           </div>

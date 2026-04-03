@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { Navbar } from '@/components/layout/Navbar';
 import { db } from '@/lib/db';
 import { getRandomExamples } from '@/data/consultExamples';
+import { useLocale } from '@/i18n/LocaleProvider';
 
 type Step = 'INPUT' | 'DIAGNOSTIC' | 'RESULT';
 
@@ -64,6 +65,7 @@ function ConsultContent() {
     const searchParams = useSearchParams();
     const sessionIdParam = searchParams.get('sessionId');
     const { user } = useAuth();
+    const { t, locale } = useLocale();
     const { intake, cbqResponses, atqResponses, selectedChildId } = useAppStore();
     const [childName, setChildName] = useState<string | null>(intake.childName || null);
     const [childBirthDate, setChildBirthDate] = useState<string | undefined>(intake.birthDate || undefined);
@@ -186,7 +188,7 @@ function ConsultContent() {
 
     const handleStartDiagnostic = async () => {
         if (!problemDesc.trim()) {
-            alert('어떤 부분에서 가장 힘드셨는지 자유롭게 적어주세요.');
+            alert(t('consult.pleaseDescribeProblem'));
             return;
         }
 
@@ -227,7 +229,7 @@ function ConsultContent() {
             setCurrentQuestionIndex(0);
         } catch (error) {
             console.error(error);
-            alert('오류가 발생했습니다. 다시 시도해주세요.');
+            alert(t('consult.errorRetry'));
         } finally {
             setIsLoading(false);
         }
@@ -265,7 +267,7 @@ function ConsultContent() {
 
             const data = await res.json();
             if (data.needsFollowUp && data.followUpQuestions && data.followUpQuestions.length > 0) {
-                setEmpathy(data.followUpReason || '조금 더 정확한 솔루션을 드리기 위해 몇 가지만 더 여쭤볼게요.');
+                setEmpathy(data.followUpReason || t('consult.followUpDefault'));
                 setQuestions(prev => [...prev, ...data.followUpQuestions]);
                 setIsFollowUpDone(true);
                 setCurrentQuestionIndex(prev => prev + 1);
@@ -364,7 +366,7 @@ function ConsultContent() {
             }
         } catch (error) {
             console.error(error);
-            alert('처방전을 생성하는 중 오류가 발생했습니다.');
+            alert(t('consult.prescriptionError'));
         } finally {
             setIsLoading(false);
         }
@@ -375,7 +377,7 @@ function ConsultContent() {
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center justify-center font-body pb-0">
             <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
-                <Navbar title={step === 'RESULT' ? '마음 처방전' : '마음 통역소'} />
+                <Navbar title={step === 'RESULT' ? t('consult.heartPrescription') : t('consult.heartInterpreterStation')} />
 
                 <main className="w-full max-w-md flex flex-col flex-1 p-6 pb-36">
                     {step === 'INPUT' && childLoading && (
@@ -390,9 +392,9 @@ function ConsultContent() {
                                 <span className="material-symbols-outlined text-[40px] text-primary">child_care</span>
                             </div>
                             <div className="text-center space-y-2">
-                                <h2 className="text-xl font-bold text-text-main dark:text-white">아이를 먼저 등록해주세요</h2>
-                                <p className="text-sm text-text-sub dark:text-gray-400 leading-relaxed break-keep">
-                                    아이의 기질에 맞는 맞춤 상담을 위해<br />아이 정보가 필요해요.
+                                <h2 className="text-xl font-bold text-text-main dark:text-white">{t('consult.registerChildFirst')}</h2>
+                                <p className="text-sm text-text-sub dark:text-gray-400 leading-relaxed break-keep whitespace-pre-line">
+                                    {t('consult.registerChildDesc')}
                                 </p>
                             </div>
                             <button
@@ -400,7 +402,7 @@ function ConsultContent() {
                                 className="px-8 py-4 rounded-2xl bg-primary text-white font-bold text-base shadow-xl shadow-primary/20 active:scale-[0.98] transition-all flex items-center gap-2"
                             >
                                 <span className="material-symbols-outlined text-[20px]">person_add</span>
-                                <span>아이 등록하기</span>
+                                <span>{t('consult.registerChildBtn')}</span>
                             </button>
                         </div>
                     )}
@@ -411,9 +413,9 @@ function ConsultContent() {
                                 <span className="material-symbols-outlined text-[40px] text-secondary">psychology</span>
                             </div>
                             <div className="text-center space-y-2">
-                                <h2 className="text-xl font-bold text-text-main dark:text-white">기질 검사를 먼저 해주세요</h2>
-                                <p className="text-sm text-text-sub dark:text-gray-400 leading-relaxed break-keep">
-                                    {childName}의 기질을 파악해야<br />맞춤 상담을 받을 수 있어요.
+                                <h2 className="text-xl font-bold text-text-main dark:text-white">{t('consult.doSurveyFirst')}</h2>
+                                <p className="text-sm text-text-sub dark:text-gray-400 leading-relaxed break-keep whitespace-pre-line">
+                                    {t('consult.doSurveyDesc', { name: childName || '' })}
                                 </p>
                             </div>
                             <button
@@ -421,7 +423,7 @@ function ConsultContent() {
                                 className="px-8 py-4 rounded-2xl bg-secondary text-white font-bold text-base shadow-xl shadow-secondary/20 active:scale-[0.98] transition-all flex items-center gap-2"
                             >
                                 <span className="material-symbols-outlined text-[20px]">quiz</span>
-                                <span>기질 검사 시작하기</span>
+                                <span>{t('consult.startSurveyBtn')}</span>
                             </button>
                         </div>
                     )}
@@ -433,14 +435,14 @@ function ConsultContent() {
                                 <div className="bg-secondary/5 border border-secondary/15 rounded-2xl p-5 space-y-3">
                                     <div className="flex items-center gap-1.5">
                                         <span className="material-symbols-outlined text-[16px] text-secondary">replay</span>
-                                        <span className="text-[13px] font-bold text-secondary">이어서 상담 · {sessionContext.session?.title}</span>
+                                        <span className="text-[13px] font-bold text-secondary">{t('consult.continueConsult', { title: sessionContext.session?.title || '' })}</span>
                                     </div>
                                     {/* 지난 상담 요약 */}
                                     {sessionContext.consultations?.length > 0 && (() => {
                                         const lastConsult = sessionContext.consultations[sessionContext.consultations.length - 1];
                                         return (
                                             <div className="text-[12px] text-text-sub leading-relaxed">
-                                                <span className="font-bold text-text-main dark:text-white">지난 상담:</span> {lastConsult.problem_description?.substring(0, 60)}{lastConsult.problem_description?.length > 60 ? '...' : ''}
+                                                <span className="font-bold text-text-main dark:text-white">{t('consult.lastConsult')}</span> {lastConsult.problem_description?.substring(0, 60)}{lastConsult.problem_description?.length > 60 ? '...' : ''}
                                             </div>
                                         );
                                     })()}
@@ -454,7 +456,7 @@ function ConsultContent() {
                                                         <div className="flex-1 h-1.5 bg-secondary/10 rounded-full overflow-hidden">
                                                             <div className="h-full bg-secondary rounded-full" style={{ width: `${Math.round((doneDays / p.duration) * 100)}%` }} />
                                                         </div>
-                                                        <span className="text-[11px] font-bold text-secondary shrink-0">{p.title} {doneDays}/{p.duration}일</span>
+                                                        <span className="text-[11px] font-bold text-secondary shrink-0">{p.title} {doneDays}/{p.duration}{t('common.days')}</span>
                                                     </div>
                                                 );
                                             })}
@@ -465,15 +467,15 @@ function ConsultContent() {
 
                             <div className="space-y-2">
                                 <h2 className="text-2xl font-bold text-text-main dark:text-white leading-tight">
-                                    {childName ? `${childName} 양육자님,` : '양육자님,'}<br />{sessionContext ? '이번에는 어떤 일이 있으셨나요?' : '오늘 어떤 일이 가장 힘드셨나요?'}
+                                    {childName ? t('consult.greetingWithName', { name: childName }) : t('consult.greetingDefault')}<br />{sessionContext ? t('consult.questionContinue') : t('consult.questionFirst')}
                                 </h2>
-                                <p className="text-sm text-text-sub dark:text-gray-400">{sessionContext ? '이전 상담 내용을 참고해서 더 깊은 솔루션을 드릴게요.' : '아이의 기질에 딱 맞는 솔루션을 찾아드릴게요.'}</p>
+                                <p className="text-sm text-text-sub dark:text-gray-400">{sessionContext ? t('consult.subtitleContinue') : t('consult.subtitleFirst')}</p>
                             </div>
 
                             <div>
                                 {!sessionContext && (
                                     <>
-                                        <p className="text-[12px] text-text-sub dark:text-gray-500 mb-2">비슷한 고민이 있다면 눌러보세요</p>
+                                        <p className="text-[12px] text-text-sub dark:text-gray-500 mb-2">{t('consult.exampleHint')}</p>
                                         <div className="flex flex-wrap gap-2 mb-4">
                                             {examples.map(ex => (
                                                 <button
@@ -496,7 +498,7 @@ function ConsultContent() {
                                     value={problemDesc}
                                     onChange={(e) => setProblemDesc(e.target.value.slice(0, 500))}
                                     maxLength={500}
-                                    placeholder={sessionContext ? "실천하면서 느낀 점이나\n새로운 고민을 적어주세요..." : "아침에 어린이집에 가야 하는데\n옷을 안 입겠다며 30분째 울었어요.\n결국 화를 내고 말았네요..."}
+                                    placeholder={sessionContext ? t('consult.textareaPlaceholderContinue') : t('consult.textareaPlaceholderFirst')}
                                     className="w-full h-48 p-5 text-[15px] leading-relaxed rounded-3xl border border-primary/10 focus:outline-none focus:ring-4 focus:ring-primary/5 resize-none bg-white dark:bg-surface-dark dark:text-white transition-all shadow-inner"
                                 />
                                 <div className="flex items-center justify-between mt-2 px-1">
@@ -505,7 +507,7 @@ function ConsultContent() {
                                             ? 'text-text-sub dark:text-gray-500 opacity-100'
                                             : 'opacity-0'
                                     }`}>
-                                        조금만 더 구체적으로 써주시면 정확한 분석이 가능해요
+                                        {t('consult.moreDetailHint')}
                                     </p>
                                     <span className={`text-[11px] tabular-nums ${
                                         problemDesc.length >= 500 ? 'text-red-400' : 'text-text-muted dark:text-gray-500'
@@ -521,12 +523,12 @@ function ConsultContent() {
                         <div className="absolute bottom-0 left-0 right-0 p-6 bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl border-t border-beige-main/20 z-30">
                             {!hasFullAccess && (
                                 <p className="text-center text-xs font-medium mb-3 text-text-sub dark:text-gray-400">
-                                    체험 기간이 종료되었어요. <button onClick={() => router.push('/pricing')} className="text-primary font-bold underline underline-offset-2">구독하기</button>
+                                    {t('consult.trialExpired')} <button onClick={() => router.push('/pricing')} className="text-primary font-bold underline underline-offset-2">{t('consult.subscribeCta')}</button>
                                 </p>
                             )}
                             {trial?.isActive && !hasSubscription && trial.daysRemaining <= 2 && (
                                 <p className="text-center text-xs font-medium mb-3 text-secondary">
-                                    체험 기간이 {trial.daysRemaining}일 남았어요
+                                    {t('consult.trialDaysRemaining', { days: trial.daysRemaining })}
                                 </p>
                             )}
                             <button
@@ -537,7 +539,7 @@ function ConsultContent() {
                                     : 'bg-primary hover:bg-primary-dark shadow-xl shadow-primary/20'
                                     }`}
                             >
-                                <span>상담 시작하기</span>
+                                <span>{t('consult.startConsult')}</span>
                                 <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
                             </button>
                         </div>
@@ -548,7 +550,7 @@ function ConsultContent() {
                             {/* Empathy Box */}
                             {empathy && (
                                 <div className="bg-secondary/10 rounded-3xl p-6 border border-secondary/20 relative animate-in zoom-in-95 duration-700">
-                                    <div className="absolute -top-3 left-6 bg-secondary text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-tighter">상담사 아이나</div>
+                                    <div className="absolute -top-3 left-6 bg-secondary text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-tighter">{t('consult.consultantName')}</div>
                                     <p className="text-[14px] text-text-main dark:text-white leading-relaxed font-medium">
                                         {empathy}
                                     </p>
@@ -579,7 +581,7 @@ function ConsultContent() {
                                             ))}
                                         </div>
                                         {currentQuestionIndex >= questions.length - 2 && (
-                                            <span className="text-[10px] text-primary/60 font-medium">거의 다 왔어요</span>
+                                            <span className="text-[10px] text-primary/60 font-medium">{t('survey.almostDone')}</span>
                                         )}
                                     </div>
                                 </div>
@@ -622,7 +624,7 @@ function ConsultContent() {
                                                             }
                                                         }}
                                                         className="w-full h-32 p-5 text-[15px] rounded-3xl border border-secondary/30 focus:outline-none focus:ring-4 focus:ring-secondary/10 resize-none bg-white dark:bg-surface-dark dark:text-white transition-all"
-                                                        placeholder="자유롭게 적어주세요."
+                                                        placeholder={t('consult.freeTextPlaceholder')}
                                                         value={currentTextAnswer}
                                                         onChange={(e) => setCurrentTextAnswer(e.target.value.slice(0, 300))}
                                                     />
@@ -633,12 +635,12 @@ function ConsultContent() {
                                                                 setCurrentTextAnswer('');
                                                                 setFreeTextOptionId(null);
                                                             } else {
-                                                                alert('답변을 입력해주세요.');
+                                                                alert(t('consult.pleaseEnterAnswer'));
                                                             }
                                                         }}
                                                         className="w-full py-4 rounded-2xl bg-primary text-white font-bold transition-all active:scale-95"
                                                     >
-                                                        다음으로
+                                                        {t('consult.nextButton')}
                                                     </button>
                                                 </div>
                                             )}
@@ -649,7 +651,7 @@ function ConsultContent() {
                                 <div className="space-y-4">
                                     <textarea
                                         className="w-full h-40 p-5 text-[15px] rounded-3xl border border-primary/10 focus:outline-none focus:ring-4 focus:ring-primary/5 resize-none bg-white dark:bg-surface-dark dark:text-white transition-all shadow-inner"
-                                        placeholder="자유롭게 적어주세요."
+                                        placeholder={t('consult.freeTextPlaceholder')}
                                         value={currentTextAnswer}
                                         onChange={(e) => setCurrentTextAnswer(e.target.value.slice(0, 300))}
                                     />
@@ -659,12 +661,12 @@ function ConsultContent() {
                                                 handleAnswer(currentQuestion.id, currentTextAnswer);
                                                 setCurrentTextAnswer('');
                                             } else {
-                                                alert('답변을 입력해주세요.');
+                                                alert(t('consult.pleaseEnterAnswer'));
                                             }
                                         }}
                                         className="w-full py-4 rounded-2xl bg-primary text-white font-bold transition-all active:scale-95"
                                     >
-                                        다음으로
+                                        {t('consult.nextButton')}
                                     </button>
                                 </div>
                             )}
@@ -677,7 +679,7 @@ function ConsultContent() {
                             {/* 날짜 · 이름 뱃지 */}
                             <span className="text-[12px] font-bold text-[#D08B5B] bg-[#D08B5B]/10 px-3 py-1.5 rounded-lg inline-flex items-center gap-1">
                                 <span className="material-symbols-outlined text-[14px]">calendar_today</span>
-                                {new Date().toLocaleDateString('ko-KR')}
+                                {new Date().toLocaleDateString(locale === 'ko' ? 'ko-KR' : 'en-US')}
                                 {childName && <span className="ml-1 opacity-70">· {childName}</span>}
                             </span>
 
@@ -685,7 +687,7 @@ function ConsultContent() {
                             <div className="bg-white dark:bg-surface-dark rounded-2xl p-5 border border-secondary/20 space-y-4">
                                 <div className="text-[12px] font-bold text-secondary flex items-center gap-1.5">
                                     <span className="material-symbols-outlined text-[16px] fill-1">favorite</span>
-                                    {childName ? `${childName}의 마음 지도` : '아이의 마음 지도'}
+                                    {childName ? t('consult.heartMapTitle', { name: childName }) : t('consult.heartMapTitleDefault')}
                                 </div>
                                 <div className="bg-[#FFFDF9] dark:bg-background-dark rounded-xl p-4">
                                     <p className="text-[13px] text-text-sub dark:text-gray-400 leading-relaxed italic mb-2">
@@ -702,7 +704,7 @@ function ConsultContent() {
                                 <div className="bg-white dark:bg-surface-dark rounded-2xl p-5 border border-[#EACCA4]/30 space-y-3">
                                     <div className="text-[12px] font-bold text-[#D08B5B] flex items-center gap-1.5">
                                         <span className="material-symbols-outlined text-[16px]">quiz</span>
-                                        문진 해설
+                                        {t('consult.questionAnalysis')}
                                     </div>
                                     {prescription.questionAnalysis.map((item, i) => (
                                         <div key={i} className="space-y-1">
@@ -718,7 +720,7 @@ function ConsultContent() {
                             <div className="bg-white dark:bg-surface-dark rounded-2xl p-5 border border-secondary/20 space-y-3">
                                 <div className="text-[12px] font-bold text-secondary flex items-center gap-1.5">
                                     <span className="material-symbols-outlined text-[16px] fill-1">vaccines</span>
-                                    우리가 몰랐던 마음의 신호
+                                    {t('consult.heartSignal')}
                                 </div>
                                 <p className="text-[13px] text-text-main dark:text-gray-200 leading-relaxed">
                                     {prescription.chemistry}
@@ -732,7 +734,7 @@ function ConsultContent() {
                                     <div className="relative z-10">
                                         <div className="flex items-center gap-1.5 mb-3">
                                             <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
-                                            <span className="text-[14px] font-black">오늘의 한마디</span>
+                                            <span className="text-[14px] font-black">{t('consult.magicWord')}</span>
                                         </div>
                                         <p className="text-[16px] font-bold leading-relaxed">
                                             &ldquo;{prescription.magicWord}&rdquo;
@@ -749,8 +751,8 @@ function ConsultContent() {
                                             <span className="material-symbols-outlined text-[18px] text-primary">checklist</span>
                                         </div>
                                         <div>
-                                            <p className="text-[16px] font-black text-text-main dark:text-white">오늘 당장 해볼 수 있는 것</p>
-                                            <p className="text-[12px] text-text-sub">하나만 골라서 시작해보세요</p>
+                                            <p className="text-[16px] font-black text-text-main dark:text-white">{t('consult.actionItemsTitle')}</p>
+                                            <p className="text-[12px] text-text-sub">{t('consult.actionItemsHint')}</p>
                                         </div>
                                     </div>
                                     {prescription.actionItems.map((item, i) => {
@@ -764,7 +766,7 @@ function ConsultContent() {
                                                     <div className="flex-1 space-y-2">
                                                         <div className="flex items-center justify-between">
                                                             <p className="text-[15px] font-bold text-text-main dark:text-white">{item.title}</p>
-                                                            <span className="text-[11px] font-bold text-text-sub bg-beige-main/15 px-2 py-0.5 rounded-full shrink-0">{item.duration}일</span>
+                                                            <span className="text-[11px] font-bold text-text-sub bg-beige-main/15 px-2 py-0.5 rounded-full shrink-0">{item.duration}{t('common.days')}</span>
                                                         </div>
                                                         {item.trigger && item.action && (
                                                             <div className="flex flex-col gap-1 text-[12px]">
@@ -773,7 +775,7 @@ function ConsultContent() {
                                                             </div>
                                                         )}
                                                         <p className="text-[13px] text-text-sub leading-relaxed">{item.description}</p>
-                                                        <p className="text-[12px] text-secondary font-medium">{item.encouragement || `${item.duration}일 동안 해보세요`}</p>
+                                                        <p className="text-[12px] text-secondary font-medium">{item.encouragement || t('consult.tryDaysDefault', { days: item.duration })}</p>
                                                     </div>
                                                 </div>
                                             </button>
@@ -805,24 +807,23 @@ function ConsultContent() {
                                     disabled={selectedActionIndex === null}
                                     className={`w-full py-4 rounded-2xl font-bold text-[15px] transition-all active:scale-[0.98] ${selectedActionIndex !== null ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
                                 >
-                                    {selectedActionIndex !== null ? '실천 시작하기' : '실천 항목을 선택해주세요'}
+                                    {selectedActionIndex !== null ? t('consult.startPractice') : t('consult.selectActionItem')}
                                 </button>
                                 <button
                                     onClick={() => router.push('/')}
                                     className="w-full py-3 text-[14px] font-bold text-text-sub transition-all active:scale-[0.98]"
                                 >
-                                    다음에 할게요
+                                    {t('consult.doLater')}
                                 </button>
                             </div>
 
                             {/* 6. 엔드 — 따뜻한 격려 */}
                             <div className="text-center py-6 space-y-2">
                                 <p className="text-[14px] text-text-main dark:text-gray-200 font-medium leading-relaxed">
-                                    {childName ? `${childName}의 마음을 이해하려는 것만으로도` : '아이의 마음을 이해하려는 것만으로도'}<br />
-                                    이미 충분히 좋은 부모예요.
+                                    {childName ? t('consult.encouragementWithName', { name: childName }) : t('consult.encouragementDefault')}
                                 </p>
                                 <p className="text-[12px] text-text-sub dark:text-gray-500">
-                                    이 분석은 기질 심리학 이론과 AI 분석을 바탕으로 생성되었습니다.
+                                    {t('consult.aiDisclaimer')}
                                 </p>
                             </div>
                         </div>
@@ -833,16 +834,16 @@ function ConsultContent() {
 
                             <div className="text-center space-y-2">
                                 <p className="text-lg font-bold text-text-main dark:text-white">
-                                    {step === 'INPUT' ? `${childName || '아이'}의 기질을 분석하고 있어요` : '마음을 번역하고 있어요'}
+                                    {step === 'INPUT' ? (childName ? t('consult.analyzingTemperament', { name: childName }) : t('consult.analyzingTemperamentDefault')) : t('consult.translatingHeart')}
                                 </p>
                                 <p className="text-sm text-text-sub dark:text-gray-400">
-                                    {step === 'INPUT' ? '입력하신 내용을 바탕으로 맞춤 질문을 준비 중입니다' : '아이의 마음에 맞는 처방전을 만들고 있어요'}
+                                    {step === 'INPUT' ? t('consult.preparingQuestions') : t('consult.creatingPrescription')}
                                 </p>
                             </div>
 
                             {problemDesc && (
                                 <div className="w-full max-w-sm bg-white/60 dark:bg-surface-dark/60 rounded-2xl p-5 border border-primary/10 mt-2">
-                                    <p className="text-[11px] font-bold text-text-sub dark:text-gray-500 mb-2 uppercase tracking-wider">상담 내용</p>
+                                    <p className="text-[11px] font-bold text-text-sub dark:text-gray-500 mb-2 uppercase tracking-wider">{t('consult.consultContent')}</p>
                                     <p className="text-[14px] text-text-main dark:text-gray-200 leading-relaxed line-clamp-4">{problemDesc}</p>
                                 </div>
                             )}
@@ -859,14 +860,14 @@ function ConsultContent() {
                     <div className="px-6 pb-36">
                         <div className="bg-secondary/10 dark:bg-secondary/20 rounded-[2.5rem] p-8 text-center relative overflow-hidden border border-secondary/20">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-secondary/10 blur-3xl rounded-full"></div>
-                            <p className="text-text-main dark:text-white font-bold text-sm mb-4 relative z-10">아이나의 알림과 함께라면<br />실천이 더 쉬워져요</p>
+                            <p className="text-text-main dark:text-white font-bold text-sm mb-4 relative z-10 whitespace-pre-line">{t('consult.appDownloadHint')}</p>
                             <Button
                                 size="sm"
                                 variant="primary"
                                 className="w-full rounded-xl bg-secondary text-white h-12 font-black shadow-lg shadow-secondary/20 relative z-10"
                                 onClick={() => window.open('https://aina.garden/app', '_blank')}
                             >
-                                앱 설치하고 푸시 알림 받기
+                                {t('consult.appInstallPush')}
                             </Button>
                         </div>
                     </div>

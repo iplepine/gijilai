@@ -7,6 +7,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { db, SessionData } from '@/lib/db';
 import BottomNav from '@/components/layout/BottomNav';
 import { Navbar } from '@/components/layout/Navbar';
+import { useLocale } from '@/i18n/LocaleProvider';
 
 interface SessionWithMeta extends SessionData {
     consultCount: number;
@@ -18,6 +19,7 @@ interface SessionWithMeta extends SessionData {
 export default function RecordsPage() {
     const router = useRouter();
     const { user, loading: authLoading } = useAuth();
+    const { t, locale } = useLocale();
 
     const [isLoading, setIsLoading] = useState(true);
     const [sessions, setSessions] = useState<SessionWithMeta[]>([]);
@@ -61,7 +63,7 @@ export default function RecordsPage() {
                     id: c.id,
                     user_id: user.id,
                     child_id: c.child_id,
-                    title: '과거 상담',
+                    title: t('consult.pastConsult'),
                     status: 'ARCHIVED',
                     created_at: c.created_at,
                     updated_at: c.created_at,
@@ -81,9 +83,9 @@ export default function RecordsPage() {
     };
 
     const statusLabel = (status: string) => {
-        if (status === 'ACTIVE') return { text: '진행 중', color: 'text-primary bg-primary/10' };
-        if (status === 'RESOLVED') return { text: '해결됨', color: 'text-secondary bg-secondary/10' };
-        return { text: '지난 상담', color: 'text-text-sub bg-gray-100 dark:bg-white/10' };
+        if (status === 'ACTIVE') return { text: t('consult.statusActive'), color: 'text-primary bg-primary/10' };
+        if (status === 'RESOLVED') return { text: t('consult.statusResolved'), color: 'text-secondary bg-secondary/10' };
+        return { text: t('consult.statusArchived'), color: 'text-text-sub bg-gray-100 dark:bg-white/10' };
     };
 
     const activeSessions = sessions.filter(s => s.status === 'ACTIVE');
@@ -92,13 +94,13 @@ export default function RecordsPage() {
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center font-body">
             <div className="w-full max-w-md bg-background-light dark:bg-background-dark min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
-                <Navbar title="상담 기록" showBack={true} />
+                <Navbar title={t('consult.consultHistory')} showBack={true} />
 
                 <main className="w-full max-w-md p-6 pb-32 flex-1">
                     {isLoading ? (
                         <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-50">
                             <span className="w-10 h-10 border-4 border-primary/10 border-t-primary rounded-full animate-spin" />
-                            <p className="text-sm font-medium text-text-sub">기록을 불러오고 있어요</p>
+                            <p className="text-sm font-medium text-text-sub">{t('consult.loadingRecords')}</p>
                         </div>
                     ) : sessions.length === 0 ? (
                         <div className="py-24 flex flex-col items-center text-center space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -106,9 +108,9 @@ export default function RecordsPage() {
                                 <span className="material-symbols-outlined text-5xl text-secondary/30">chat_bubble</span>
                             </div>
                             <div className="space-y-2">
-                                <p className="font-bold text-slate-800 dark:text-white">아직 상담 기록이 없어요</p>
+                                <p className="font-bold text-slate-800 dark:text-white">{t('consult.noRecords')}</p>
                                 <p className="text-slate-400 text-sm leading-relaxed break-keep px-10">
-                                    마음 통역소에서 첫 상담을 받아보세요.
+                                    {t('consult.noRecordsHint')}
                                 </p>
                             </div>
                         </div>
@@ -118,7 +120,7 @@ export default function RecordsPage() {
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-2">
                                         <div className="w-1 h-4 bg-primary rounded-full" />
-                                        <h3 className="text-[13px] font-bold text-text-main dark:text-white">진행 중인 고민</h3>
+                                        <h3 className="text-[13px] font-bold text-text-main dark:text-white">{t('consult.activeConsults')}</h3>
                                     </div>
                                     {activeSessions.map(session => (
                                         <SessionCard key={session.id} session={session} statusLabel={statusLabel} onSelect={() => router.push(`/consultations/${session.id}`)} />
@@ -129,7 +131,7 @@ export default function RecordsPage() {
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-2">
                                         <div className="w-1 h-4 bg-gray-300 rounded-full" />
-                                        <h3 className="text-[13px] font-bold text-text-sub">지난 기록</h3>
+                                        <h3 className="text-[13px] font-bold text-text-sub">{t('consult.pastRecords')}</h3>
                                     </div>
                                     {resolvedSessions.map(session => (
                                         <SessionCard key={session.id} session={session} statusLabel={statusLabel} onSelect={() => router.push(`/consultations/${session.id}`)} />
@@ -151,6 +153,7 @@ function SessionCard({ session, statusLabel, onSelect }: {
     statusLabel: (s: string) => { text: string; color: string };
     onSelect: () => void;
 }) {
+    const { t, locale } = useLocale();
     const label = statusLabel(session.status);
     return (
         <button
@@ -162,13 +165,13 @@ function SessionCard({ session, statusLabel, onSelect }: {
                     <h4 className="text-[15px] font-bold text-text-main dark:text-white">{session.title}</h4>
                     <div className="flex items-center gap-2 mt-1">
                         <span className="text-[11px] text-text-sub">
-                            {new Date(session.latestDate).toLocaleDateString('ko-KR')}
+                            {new Date(session.latestDate).toLocaleDateString(locale === 'ko' ? 'ko-KR' : 'en-US')}
                         </span>
                         {session.childName && (
                             <span className="text-[11px] text-text-sub">· {session.childName}</span>
                         )}
                         {session.consultCount > 1 && (
-                            <span className="text-[11px] text-primary font-bold">상담 {session.consultCount}회</span>
+                            <span className="text-[11px] text-primary font-bold">{t('consult.consultCount', { count: session.consultCount })}</span>
                         )}
                     </div>
                 </div>
