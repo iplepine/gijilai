@@ -1,0 +1,7 @@
+json_key_file(ENV["GOOGLE_PLAY_JSON_KEY_PATH"] || "")
+package_name("com.devho.gijilai")
+
+# iOS
+app_identifier("com.devho.gijilai")
+# apple_id("your-apple-id@email.com")  # Apple ID 설정 후 주석 해제
+# team_id("XXXXXXXXXX")                # Apple Developer Team ID 설정 후 주석 해제

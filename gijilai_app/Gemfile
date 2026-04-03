@@ -1,0 +1,4 @@
+source "https://rubygems.org"
+
+gem "fastlane"
+gem "screengrab"  # Android 스크린샷 자동 캡처

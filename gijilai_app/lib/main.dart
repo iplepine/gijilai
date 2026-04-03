@@ -9,6 +9,7 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import 'firebase_options.dart';
@@ -138,9 +139,20 @@ class _MainWebViewState extends State<MainWebView> {
       return;
     }
 
+    // Android 구독: queryProductDetails가 offer별로 별도 ProductDetails 반환
+    // 첫 번째 항목 사용 (Google Play가 적격 offer를 우선 반환)
     final product = response.productDetails.first;
-    final purchaseParam = PurchaseParam(productDetails: product);
-    await _iap.buyNonConsumable(purchaseParam: purchaseParam);
+
+    if (Platform.isAndroid && product is GooglePlayProductDetails) {
+      final purchaseParam = GooglePlayPurchaseParam(
+        productDetails: product,
+        offerToken: product.offerToken,
+      );
+      await _iap.buyNonConsumable(purchaseParam: purchaseParam);
+    } else {
+      final purchaseParam = PurchaseParam(productDetails: product);
+      await _iap.buyNonConsumable(purchaseParam: purchaseParam);
+    }
   }
 
   void _onPurchaseUpdated(List<PurchaseDetails> purchases) {

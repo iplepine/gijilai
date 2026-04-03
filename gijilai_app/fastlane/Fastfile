@@ -1,0 +1,256 @@
+default_platform(:android)
+
+# ─────────────────────────────────────────────
+# 공통 설정
+# ─────────────────────────────────────────────
+APP_NAME = "기질아이"
+PACKAGE_NAME = "com.devho.gijilai"
+FLUTTER_DIR = File.expand_path("..", __dir__)
+
+# ─────────────────────────────────────────────
+# Android
+# ─────────────────────────────────────────────
+platform :android do
+
+  desc "Flutter 빌드 → AAB (App Bundle)"
+  lane :build do
+    Dir.chdir(FLUTTER_DIR) do
+      sh("flutter build appbundle --release")
+    end
+  end
+
+  desc "에뮬레이터에서 스크린샷 캡처"
+  lane :screenshots do
+    # 에뮬레이터 실행 확인
+    devices = sh("adb devices | grep -v 'List' | grep -v '^$'", log: false).strip
+    UI.user_error!("에뮬레이터를 먼저 실행하세요: emulator -avd <AVD_NAME>") if devices.empty?
+
+    # 앱 실행
+    sh("adb shell am start -n #{PACKAGE_NAME}/.MainActivity")
+    sleep(5)
+
+    output_dir = File.join(__dir__, "screenshots", "android")
+    FileUtils.mkdir_p(output_dir)
+
+    screens = {
+      "01_home" => "앱이 홈 화면에 있는지 확인",
+      "02_report" => "리포트 화면으로 이동",
+      "03_consult" => "AI 상담 화면으로 이동",
+      "04_pricing" => "요금제 화면으로 이동",
+      "05_settings" => "설정 화면으로 이동",
+    }
+
+    screens.each do |filename, instruction|
+      UI.important("📸 #{instruction}해주세요. 준비되면 Enter를 누르세요.")
+      STDIN.gets
+      sh("adb exec-out screencap -p > #{output_dir}/#{filename}.png")
+      UI.success("✅ #{filename}.png 저장 완료")
+    end
+
+    UI.success("🎉 Android 스크린샷 #{screens.size}장 캡처 완료: #{output_dir}")
+  end
+
+  desc "스토어 메타데이터 생성"
+  lane :metadata do
+    # 한국어
+    ko_dir = File.join(__dir__, "metadata", "android", "ko")
+    FileUtils.mkdir_p(ko_dir)
+
+    File.write("#{ko_dir}/title.txt", "기질아이 - 과학적 기질 분석 맞춤 육아")
+    File.write("#{ko_dir}/short_description.txt", "우리 아이 타고난 기질을 과학적으로 분석하고, AI 맞춤 육아 가이드를 받아보세요.")
+    File.write("#{ko_dir}/full_description.txt", <<~DESC)
+      🧒 우리 아이, 정말 잘 알고 계신가요?
+
+      기질아이는 과학적 기질 분석을 기반으로 아이의 타고난 성향을 이해하고,
+      맞춤형 육아 가이드를 제공하는 서비스입니다.
+
+      ✨ 주요 기능
+
+      📊 과학적 기질 분석
+      검증된 기질 검사를 통해 아이의 활동성, 규칙성, 접근성, 적응성,
+      반응강도, 기분, 주의집중, 지속성, 민감성을 분석합니다.
+
+      📋 프리미엄 리포트
+      아이의 기질 유형에 맞는 상세 분석 리포트를 제공합니다.
+      강점, 주의점, 양육 팁을 한눈에 확인하세요.
+
+      💬 AI 마음통역기
+      아이의 기질을 이해한 AI가 일상 육아 고민에 맞춤 상담을 제공합니다.
+      "왜 우리 아이는 이럴까?" 궁금할 때 언제든 물어보세요.
+
+      📝 실천 기록
+      상담에서 받은 조언을 실천하고 기록할 수 있습니다.
+      작은 변화가 큰 성장으로 이어집니다.
+
+      🔒 프리미엄 구독
+      • 프리미엄 리포트 무제한
+      • AI 상담 무제한
+      • 실천 기록 전체 이력
+      • 재검사 쿨다운 없음
+      • 첫 달 30% 할인
+
+      👨‍👩‍👧‍👦 이런 부모님께 추천합니다
+      • 아이의 행동이 이해되지 않을 때
+      • 형제자매 사이 양육법이 달라야 할 때
+      • 과학적 근거 있는 육아 정보가 필요할 때
+      • 전문 상담은 부담스럽지만 도움이 필요할 때
+
+      문의: devhohouse@gmail.com
+    DESC
+
+    # 영어
+    en_dir = File.join(__dir__, "metadata", "android", "en-US")
+    FileUtils.mkdir_p(en_dir)
+
+    File.write("#{en_dir}/title.txt", "Gijilai - Child Temperament Guide")
+    File.write("#{en_dir}/short_description.txt", "Scientifically analyze your child's temperament and get AI-powered parenting guidance.")
+    File.write("#{en_dir}/full_description.txt", <<~DESC)
+      🧒 Do you truly understand your child?
+
+      Gijilai uses scientific temperament analysis to help parents understand
+      their child's innate traits and provides personalized parenting guidance.
+
+      ✨ Key Features
+
+      📊 Scientific Temperament Analysis
+      Analyze your child's activity level, regularity, approach, adaptability,
+      intensity, mood, attention, persistence, and sensitivity.
+
+      📋 Premium Reports
+      Get detailed analysis reports tailored to your child's temperament type,
+      including strengths, areas of attention, and parenting tips.
+
+      💬 AI Heart Interpreter
+      An AI that understands your child's temperament provides personalized
+      consultations for everyday parenting concerns.
+
+      📝 Practice Tracking
+      Record and track your progress on advice from consultations.
+
+      🔒 Premium Subscription
+      • Unlimited premium reports
+      • Unlimited AI consultations
+      • Full practice history
+      • No reassessment cooldown
+      • 30% off first month
+
+      Contact: devhohouse@gmail.com
+    DESC
+
+    UI.success("🎉 메타데이터 생성 완료")
+  end
+
+  desc "Google Play 내부 테스트 트랙에 업로드"
+  lane :deploy_internal do
+    build
+    upload_to_play_store(
+      package_name: PACKAGE_NAME,
+      track: "internal",
+      aab: "#{FLUTTER_DIR}/build/app/outputs/bundle/release/app-release.aab",
+      json_key: ENV["GOOGLE_PLAY_JSON_KEY_PATH"],
+      skip_upload_metadata: false,
+      skip_upload_images: false,
+      skip_upload_screenshots: false,
+    )
+  end
+
+  desc "Google Play 프로덕션 배포"
+  lane :deploy_production do
+    build
+    upload_to_play_store(
+      package_name: PACKAGE_NAME,
+      track: "production",
+      aab: "#{FLUTTER_DIR}/build/app/outputs/bundle/release/app-release.aab",
+      json_key: ENV["GOOGLE_PLAY_JSON_KEY_PATH"],
+    )
+  end
+
+  desc "스크린샷 + 메타데이터 + 빌드 + 업로드 한번에"
+  lane :release do
+    screenshots
+    metadata
+    deploy_internal
+  end
+end
+
+# ─────────────────────────────────────────────
+# iOS
+# ─────────────────────────────────────────────
+platform :ios do
+
+  desc "Flutter 빌드 → IPA"
+  lane :build do
+    Dir.chdir(FLUTTER_DIR) do
+      sh("flutter build ipa --release --export-options-plist=ios/ExportOptions.plist")
+    end
+  end
+
+  desc "iOS 시뮬레이터에서 스크린샷 캡처"
+  lane :screenshots do
+    # 부팅된 시뮬레이터 찾기
+    booted = sh("xcrun simctl list devices booted | grep 'Booted'", log: false).strip rescue ""
+    UI.user_error!("iOS 시뮬레이터를 먼저 실행하세요") if booted.empty?
+
+    device_id = sh("xcrun simctl list devices booted -j | ruby -rjson -e 'JSON.parse(STDIN.read)[\"devices\"].each{|_,ds| ds.each{|d| puts d[\"udid\"] if d[\"state\"]==\"Booted\"}}'", log: false).strip
+
+    # 앱 빌드 & 설치
+    Dir.chdir(FLUTTER_DIR) do
+      sh("flutter build ios --simulator")
+    end
+    sh("xcrun simctl install #{device_id} #{FLUTTER_DIR}/build/ios/iphonesimulator/Runner.app")
+    sh("xcrun simctl launch #{device_id} #{PACKAGE_NAME}")
+    sleep(5)
+
+    output_dir = File.join(__dir__, "screenshots", "ios")
+    FileUtils.mkdir_p(output_dir)
+
+    screens = {
+      "01_home" => "앱이 홈 화면에 있는지 확인",
+      "02_report" => "리포트 화면으로 이동",
+      "03_consult" => "AI 상담 화면으로 이동",
+      "04_pricing" => "요금제 화면으로 이동",
+      "05_settings" => "설정 화면으로 이동",
+    }
+
+    screens.each do |filename, instruction|
+      UI.important("📸 #{instruction}해주세요. 준비되면 Enter를 누르세요.")
+      STDIN.gets
+      sh("xcrun simctl io #{device_id} screenshot #{output_dir}/#{filename}.png")
+      UI.success("✅ #{filename}.png 저장 완료")
+    end
+
+    UI.success("🎉 iOS 스크린샷 #{screens.size}장 캡처 완료: #{output_dir}")
+  end
+
+  desc "App Store Connect에 업로드 (TestFlight)"
+  lane :deploy_testflight do
+    build
+    upload_to_testflight(
+      ipa: "#{FLUTTER_DIR}/build/ios/ipa/gijilai_app.ipa",
+      skip_waiting_for_build_processing: true,
+    )
+  end
+
+  desc "App Store 프로덕션 제출"
+  lane :deploy_appstore do
+    build
+    deliver(
+      ipa: "#{FLUTTER_DIR}/build/ios/ipa/gijilai_app.ipa",
+      submit_for_review: true,
+      automatic_release: false,
+      force: true,
+      metadata_path: "./fastlane/metadata/ios",
+      screenshots_path: "./fastlane/screenshots/ios",
+      app_identifier: PACKAGE_NAME,
+      privacy_url: "https://gijilai.com/legal/privacy",
+      support_url: "https://gijilai.com/legal/support",
+      marketing_url: "https://gijilai.com",
+    )
+  end
+
+  desc "스크린샷 + 빌드 + TestFlight 한번에"
+  lane :release do
+    screenshots
+    deploy_testflight
+  end
+end
