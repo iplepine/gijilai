@@ -286,8 +286,8 @@ function SurveyContent() {
   );
 
   return (
-    <div className="text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center font-body transition-colors duration-500" style={{ backgroundColor: accentBg }}>
-      <div className="w-full max-w-md h-full min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative" style={{ backgroundColor: accentBg }}>
+    <div className="text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center font-body transition-colors duration-500 dark:!bg-background-dark" style={{ backgroundColor: accentBg }}>
+      <div className="w-full max-w-md h-full min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative dark:!bg-background-dark" style={{ backgroundColor: accentBg }}>
         <Navbar title={title} showBack onBackClick={handlePrev} />
 
         {/* Progress Bar & Module Tabs */}
@@ -440,7 +440,7 @@ function SurveyContent() {
 export default function SurveyPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-background-dark">
         <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
       </div>
     }>

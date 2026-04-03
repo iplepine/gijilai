@@ -158,7 +158,7 @@ export default function RegisterChildPage() {
                 </main>
 
                 {/* Submit Button */}
-                <div className="fixed bottom-0 left-0 right-0 p-6 flex justify-center z-40 bg-gradient-to-t from-[#F9F8F6] via-[#F9F8F6]/90 to-transparent dark:from-[#192210] dark:via-[#192210]/90 pointer-events-none">
+                <div className="fixed bottom-0 left-0 right-0 p-6 flex justify-center z-40 bg-gradient-to-t from-[#F9F8F6] via-[#F9F8F6]/90 to-transparent dark:from-[#161311] dark:via-[#161311]/90 pointer-events-none">
                     <div className="max-w-md w-full pointer-events-auto">
                         <button
                             onClick={handleSubmit}

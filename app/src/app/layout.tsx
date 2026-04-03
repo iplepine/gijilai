@@ -45,7 +45,7 @@ export default function RootLayout({
         {/* PortOne V2 SDK */}
         <script src="https://cdn.portone.io/v2/browser-sdk.js" async></script>
       </head>
-      <body className="antialiased min-h-screen relative font-sans text-slate-800" suppressHydrationWarning>
+      <body className="antialiased min-h-screen relative font-sans text-slate-800 dark:text-[#E8E2D6]" suppressHydrationWarning>
         {/* Background handled by globals.css body style */}
 
         {/* 다크모드 초기화 스크립트 */}

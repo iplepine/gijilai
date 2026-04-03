@@ -509,16 +509,16 @@ function ReportContent() {
                   isChildSurveyComplete ? (
                     <img src={childType.image} alt={childType.label} className="w-full aspect-[4/3] object-cover" />
                   ) : (
-                    <div className="w-full aspect-[4/3] bg-gradient-to-b from-[#FFF8F0] to-[#FFF3E4]" />
+                    <div className="w-full aspect-[4/3] bg-gradient-to-b from-[#FFF8F0] to-[#FFF3E4] dark:from-surface-dark dark:to-background-dark" />
                   )
                 ) : activeTab === 'parent' ? (
                   isParentSurveyComplete ? (
                     <img src={parentType.image} alt={parentType.label} className="w-full aspect-[4/3] object-cover" />
                   ) : (
-                    <div className="w-full aspect-[4/3] bg-gradient-to-b from-[#E8F5E9] to-[#C8E6C9]" />
+                    <div className="w-full aspect-[4/3] bg-gradient-to-b from-[#E8F5E9] to-[#C8E6C9] dark:from-surface-dark dark:to-background-dark" />
                   )
                 ) : (
-                  <div className="w-full aspect-[4/3] relative overflow-hidden bg-gradient-to-br from-[#F5EDE4] to-[#E8DDD3] flex items-center justify-center">
+                  <div className="w-full aspect-[4/3] relative overflow-hidden bg-gradient-to-br from-[#F5EDE4] to-[#E8DDD3] dark:from-surface-dark dark:to-background-dark flex items-center justify-center">
                     <div className="relative w-full h-full flex items-center justify-center">
                       <div className="w-[57%] h-[90%] rounded-2xl overflow-hidden border-4 border-white shadow-xl rotate-[-3deg] z-10 -mt-8">
                         <img src={childType.image} alt={childType.label} className="w-full h-full object-cover" />
@@ -534,11 +534,11 @@ function ReportContent() {
 
             {/* Tab Switcher - 아이 리포트 선공 모드에서는 숨김 */}
             {!isChildOnly && (
-              <div className="dark:bg-surface-dark px-6 pt-6 pb-2 -mt-6 rounded-t-3xl relative z-10" style={{ backgroundColor: 'var(--background-light)' }}>
-                <div className="p-1 rounded-2xl flex gap-1 border border-beige-main/20 shadow-sm" style={{ backgroundColor: 'var(--background-light)' }}>
+              <div className="bg-background-light dark:bg-background-dark px-6 pt-6 pb-2 -mt-6 rounded-t-3xl relative z-10">
+                <div className="p-1 rounded-2xl flex gap-1 border border-beige-main/20 dark:border-gray-700 shadow-sm bg-background-light dark:bg-surface-dark">
                   <button
                     onClick={() => handleTabChange('child')}
-                    className={`flex-1 py-3 rounded-xl text-[11px] font-bold transition-all ${activeTab === 'child' ? 'bg-primary text-white shadow-md' : 'text-text-sub hover:text-text-main hover:bg-beige-light/50'}`}
+                    className={`flex-1 py-3 rounded-xl text-[11px] font-bold transition-all ${activeTab === 'child' ? 'bg-primary text-white shadow-md' : 'text-text-sub hover:text-text-main dark:hover:text-white hover:bg-beige-light/50 dark:hover:bg-white/5'}`}
                   >
                     아이 진단
                   </button>
@@ -549,7 +549,7 @@ function ReportContent() {
                         router.push('/survey?type=PARENT');
                       }
                     }}
-                    className={`flex-1 py-3 rounded-xl text-[11px] font-bold transition-all ${activeTab === 'parent' ? 'bg-primary text-white shadow-md' : 'text-text-sub hover:text-text-main hover:bg-beige-light/50'}`}
+                    className={`flex-1 py-3 rounded-xl text-[11px] font-bold transition-all ${activeTab === 'parent' ? 'bg-primary text-white shadow-md' : 'text-text-sub hover:text-text-main dark:hover:text-white hover:bg-beige-light/50 dark:hover:bg-white/5'}`}
                   >
                     양육자 분석
                   </button>
@@ -560,7 +560,7 @@ function ReportContent() {
                         router.push('/survey?type=STYLE');
                       }
                     }}
-                    className={`flex-1 py-3 rounded-xl text-[11px] font-bold transition-all ${activeTab === 'parenting' ? 'bg-primary text-white shadow-md' : 'text-text-sub hover:text-text-main hover:bg-beige-light/50'}`}
+                    className={`flex-1 py-3 rounded-xl text-[11px] font-bold transition-all ${activeTab === 'parenting' ? 'bg-primary text-white shadow-md' : 'text-text-sub hover:text-text-main dark:hover:text-white hover:bg-beige-light/50 dark:hover:bg-white/5'}`}
                   >
                     기질 맞춤 양육
                   </button>
@@ -569,7 +569,7 @@ function ReportContent() {
             )}
 
             {/* 유형 정보 */}
-            <div key={`info-${activeTab}`} className={`dark:bg-surface-dark text-center px-6 ${!isChildOnly ? 'pt-4' : 'pt-8 -mt-6 rounded-t-3xl'} pb-4 space-y-3 relative z-10 animate-in fade-in duration-500`} style={{ backgroundColor: 'var(--background-light)' }}>
+            <div key={`info-${activeTab}`} className={`bg-background-light dark:bg-background-dark text-center px-6 ${!isChildOnly ? 'pt-4' : 'pt-8 -mt-6 rounded-t-3xl'} pb-4 space-y-3 relative z-10 animate-in fade-in duration-500`}>
               {activeTab === 'child' ? (
                 isChildSurveyComplete ? (
                   <>

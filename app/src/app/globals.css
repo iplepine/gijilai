@@ -10,14 +10,37 @@
   --beige-main: #E8E4D9;
   --beige-light: #F5F3EF;
   --background-light: #F9F8F6;
-  --background-dark: #192210;
+  --background-dark: #161311;
   --surface-light: #ffffff;
-  --surface-dark: #2a3620;
+  --surface-dark: #211D19;
   --text-main: #2c3e35;
   --text-sub: #6e7a75;
   --accent-soil: #e8e4d9;
   --caregiver: #4A6E5A;
   --child: #E5A150;
+}
+
+/*
+ * 다크모드 — "달빛 아래 정원"
+ * 배경: 기름진 흙(warm dark earth)
+ * 서피스: 나무 화분(dark bark)
+ * 액센트: 달빛에 비친 잎사귀 + 랜턴 불빛 앰버
+ * 텍스트: 달빛 비친 종이(warm parchment)
+ */
+.dark {
+  --primary: #5B9E60;          /* 달빛 아래 나뭇잎 — bg-primary 버튼 & text-primary 모두 사용 가능 */
+  --primary-light: #7DB882;    /* 밝은 잎사귀 */
+  --primary-dark: #3D7A42;     /* 깊은 잎 */
+  --secondary: #EDAA54;        /* 랜턴 불빛 앰버 */
+  --beige-main: #2E2823;       /* 마른 흙 */
+  --beige-light: #252019;      /* 깊은 흙 */
+  --background-dark: #161311;  /* 밤의 기름진 흙 */
+  --surface-dark: #211D19;     /* 나무 화분 */
+  --text-main: #E8E2D6;        /* 달빛 비친 종이 */
+  --text-sub: #9C9486;          /* 돌 위의 그림자 */
+  --accent-soil: #2E2823;      /* 마른 흙 */
+  --caregiver: #7DB882;        /* 부드러운 잎 */
+  --child: #EDAA54;            /* 따뜻한 앰버 */
 }
 
 @theme inline {
@@ -108,7 +131,12 @@ body {
 
 .dark body {
   background: var(--background-dark);
-  color: white;
+  color: var(--text-main);
+}
+
+/* 다크모드에서 인라인 style 오버라이드 */
+.dark .dark\:\!bg-background-dark {
+  background-color: var(--background-dark) !important;
 }
 
 /* ========== Custom Utilities ========== */

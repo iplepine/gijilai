@@ -226,14 +226,14 @@ export default function LandingPage() {
             </section>
 
             {/* Final CTA Section */}
-            <section className="py-20 md:py-28 px-6 relative overflow-hidden bg-primary-dark">
-                <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-primary/20 rounded-full blur-[150px] -mr-48 -mt-48" />
-                <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-secondary/10 rounded-full blur-[150px] -ml-48 -mb-48" />
+            <section className="py-20 md:py-28 px-6 relative overflow-hidden bg-[#1F3629]">
+                <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-[#2F4F3E]/20 rounded-full blur-[150px] -mr-48 -mt-48" />
+                <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-[#E5A150]/10 rounded-full blur-[150px] -ml-48 -mb-48" />
 
                 <div className="container max-w-3xl mx-auto text-center space-y-8 relative z-10">
                     <h2 className="text-3xl md:text-5xl font-black text-white leading-tight tracking-tight break-keep">
                         아이를 이해하는 것부터<br />
-                        <span className="text-secondary">좋은 양육</span>이 시작됩니다
+                        <span className="text-[#F0B86E]">좋은 양육</span>이 시작됩니다
                     </h2>
                     <p className="text-white/60 text-base md:text-lg max-w-xl mx-auto break-keep">
                         3분 설문으로 우리 아이의 기질 유형을 알아보세요.<br />
@@ -241,7 +241,7 @@ export default function LandingPage() {
                     </p>
                     <div className="flex flex-col items-center gap-4">
                         <Link href="/login" className="w-full max-w-sm">
-                            <Button variant="secondary" size="lg" fullWidth className="h-16 rounded-2xl bg-white text-primary-dark !text-primary-dark text-lg font-black hover:bg-beige-light transition-all shadow-glow">
+                            <Button variant="secondary" size="lg" fullWidth className="h-16 rounded-2xl !bg-white !text-[#1F3629] text-lg font-black hover:bg-gray-100 transition-all shadow-glow">
                                 기질 검사 시작하기
                             </Button>
                         </Link>

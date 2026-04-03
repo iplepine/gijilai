@@ -26,7 +26,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({ question, currentAns
             return (
                 <div className="flex items-center w-full">
                     <div className="flex-1 text-left">
-                        <div className="font-bold text-gray-800 text-sm mb-0.5">
+                        <div className="font-bold text-gray-800 dark:text-gray-200 text-sm mb-0.5">
                             {value}. {question.choices[value - 1]}
                         </div>
                     </div>
@@ -38,7 +38,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({ question, currentAns
         return (
             <div className="flex items-center w-full">
                 <div className="flex-1 text-left">
-                    <div className="font-bold text-gray-800 text-sm mb-0.5">
+                    <div className="font-bold text-gray-800 dark:text-gray-200 text-sm mb-0.5">
                         {value}. {label}
                     </div>
                 </div>
@@ -56,10 +56,10 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({ question, currentAns
 
     // Using inline style for dynamic hex colors since Tailwind arbitrary values can't be computed fully dynamically this simply in standard strings without safelists
     return (
-        <div className="flex flex-col items-center justify-center p-6 bg-white rounded-2xl shadow-lg border border-gray-100 min-h-[500px] w-full max-w-md mx-auto animate-fadeIn">
+        <div className="flex flex-col items-center justify-center p-6 bg-white dark:bg-surface-dark rounded-2xl shadow-lg border border-gray-100 dark:border-gray-800 min-h-[500px] w-full max-w-md mx-auto animate-fadeIn">
             <div className="mb-6 text-center">
 
-                <h3 className="text-xl font-bold text-gray-900 leading-tight">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white leading-tight">
                     {isBARS ? question.context : question.text}
                 </h3>
                 {isBARS && (
@@ -85,7 +85,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({ question, currentAns
                                 w-full py-3 px-4 rounded-xl border-2 transition-all duration-200
                                 ${isSelected
                                     ? 'bg-opacity-10'
-                                    : 'bg-white border-gray-100 hover:bg-gray-50'
+                                    : 'bg-white dark:bg-surface-dark border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
                                 }
                             `}
                             style={{

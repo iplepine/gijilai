@@ -31,16 +31,16 @@ export default function LoginPage() {
     }, [user, router]);
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-white p-6">
+        <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-background-dark p-6">
             <div className="w-full max-w-sm text-center">
                 <div className="mb-8 flex justify-center">
                     <img src="/gijilai_icon.png" alt="기질아이" className="w-16 h-16 rounded-2xl object-contain" />
                 </div>
 
-                <h1 className="text-2xl font-bold text-[var(--text-main)] mb-2">
+                <h1 className="text-2xl font-bold text-[var(--text-main)] dark:text-white mb-2">
                     기질아이
                 </h1>
-                <p className="text-gray-500 mb-10">
+                <p className="text-gray-500 dark:text-gray-400 mb-10">
                     아이의 신호를 올바르게 통역하는<br />우리 아이 맞춤 양육 가이드
                 </p>
 
@@ -63,10 +63,10 @@ export default function LoginPage() {
                     <button
                         onClick={signInWithGoogle}
                         disabled={isLoadingGoogle}
-                        className="w-full bg-white border border-gray-200 text-gray-700 py-4 rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 transition-all active:scale-[0.98]"
+                        className="w-full bg-white dark:bg-surface-dark border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 py-4 rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 transition-all active:scale-[0.98]"
                     >
                         {isLoadingGoogle ? (
-                            <div className="w-5 h-5 border-2 border-gray-200 border-t-gray-800 rounded-full animate-spin" />
+                            <div className="w-5 h-5 border-2 border-gray-200 dark:border-gray-600 border-t-gray-800 dark:border-t-gray-200 rounded-full animate-spin" />
                         ) : (
                             <Icon name="g_translate" size="sm" />
                         )}
@@ -75,15 +75,15 @@ export default function LoginPage() {
                 </div>
 
                 <div className="mt-6 flex items-center gap-3">
-                    <div className="flex-1 h-px bg-gray-200" />
+                    <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
                     <button
                         type="button"
                         onClick={() => setShowEmailLogin(!showEmailLogin)}
-                        className="text-xs text-gray-400 hover:text-gray-600"
+                        className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                     >
                         이메일로 로그인
                     </button>
-                    <div className="flex-1 h-px bg-gray-200" />
+                    <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
                 </div>
 
                 {showEmailLogin && (
@@ -93,7 +93,7 @@ export default function LoginPage() {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder="이메일"
-                            className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-surface-dark text-sm text-text-main dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
                             required
                         />
                         <input
@@ -101,7 +101,7 @@ export default function LoginPage() {
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="비밀번호"
-                            className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-surface-dark text-sm text-text-main dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30"
                             required
                         />
                         {emailError && (
@@ -110,14 +110,14 @@ export default function LoginPage() {
                         <button
                             type="submit"
                             disabled={isLoadingEmail}
-                            className="w-full bg-gray-800 text-white py-3 rounded-xl font-medium text-sm disabled:opacity-50 transition-all active:scale-[0.98]"
+                            className="w-full bg-gray-800 dark:bg-gray-700 text-white py-3 rounded-xl font-medium text-sm disabled:opacity-50 transition-all active:scale-[0.98]"
                         >
                             {isLoadingEmail ? '로그인 중...' : '로그인'}
                         </button>
                     </form>
                 )}
 
-                <p className="mt-8 text-xs text-gray-400">
+                <p className="mt-8 text-xs text-gray-400 dark:text-gray-500">
                     로그인 시 이용약관 및 개인정보처리방침에 동의하게 됩니다.
                 </p>
             </div>
