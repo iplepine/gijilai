@@ -12,4 +12,5 @@
 | [CONVENTIONS.md](CONVENTIONS.md) | 코드 규칙 및 패턴 |
 | [ADR.md](ADR.md) | 주요 의사결정 기록 (Architecture Decision Records) |
 | [TODO.md](TODO.md) | 향후 작업 목록 |
+| [ADMIN-LINKS.md](ADMIN-LINKS.md) | 외부 서비스 관리자 대시보드 링크 모음 |
 | [migrations/](migrations/) | Supabase DB 마이그레이션 SQL |
