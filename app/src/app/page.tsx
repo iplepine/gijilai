@@ -15,9 +15,11 @@ import { TemperamentClassifier } from '@/lib/TemperamentClassifier';
 import { CHILD_QUESTIONS, PARENT_QUESTIONS, PARENTING_STYLE_QUESTIONS } from '@/data/questions';
 import { useSurveyStore } from '@/store/surveyStore';
 import { TCI_TERMINOLOGY } from '@/constants/terminology';
+import { useLocale } from '@/i18n/LocaleProvider';
 
 export default function HomePage() {
   const router = useRouter();
+  const { t } = useLocale();
   const { user, loading: authLoading } = useAuth();
   const { intake, cbqResponses, atqResponses, parentingResponses, resetSurveyOnly, resetAll, selectedChildId, setSelectedChildId } = useAppStore();
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -130,7 +132,7 @@ export default function HomePage() {
     return () => clearInterval(timer);
   }, [magicWords.length]);
 
-  const childName = mainChild?.name || "우리 아이";
+  const childName = mainChild?.name || t('home.defaultChildName');
 
   // Derived Temperament (Parent = Soil, Child = Seed + Plant)
   // 양육자 기질은 아이와 무관하게 하나
@@ -292,7 +294,7 @@ export default function HomePage() {
       ));
     } catch (error) {
       console.error('Failed to update profile image:', error);
-      alert('이미지 업로드에 실패했습니다.');
+      alert(t('home.imageUploadFailed'));
     } finally {
       setUploading(false);
     }
@@ -311,8 +313,8 @@ export default function HomePage() {
           <header className="sticky top-0 z-40 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-xl pt-12 pb-4 border-b border-gray-100 dark:border-gray-800">
             <div className="flex items-center justify-between min-h-[40px] px-4">
               <div className="flex items-center gap-3">
-                <img src="/gijilai_icon.png" alt="기질아이" className="w-7 h-7 rounded-lg object-contain" />
-                <span className="text-xl font-logo tracking-wide text-primary dark:text-white pt-0.5">기질아이</span>
+                <img src="/gijilai_icon.png" alt={t('common.appName')} className="w-7 h-7 rounded-lg object-contain" />
+                <span className="text-xl font-logo tracking-wide text-primary dark:text-white pt-0.5">{t('common.appName')}</span>
               </div>
               <div className="w-14 h-6 bg-gray-100 dark:bg-surface-dark rounded-full animate-pulse" />
             </div>
@@ -332,12 +334,12 @@ export default function HomePage() {
     const birth = new Date(mainChild.birth_date);
     const today = new Date();
     const totalMonths = (today.getFullYear() - birth.getFullYear()) * 12 + (today.getMonth() - birth.getMonth());
-    if (totalMonths <= 36) return `${totalMonths}개월`;
+    if (totalMonths <= 36) return t('home.ageMonths', { months: totalMonths });
     const years = Math.floor(totalMonths / 12);
     const remainingMonths = totalMonths % 12;
-    if (remainingMonths === 0) return `${years}년`;
-    return `${years}년 ${remainingMonths}개월`;
-  })() : "생일 정보 없음";
+    if (remainingMonths === 0) return t('home.ageYears', { years });
+    return t('home.ageYearsMonths', { years, months: remainingMonths });
+  })() : t('home.noBirthInfo');
 
   // TODO: Implement actual db-backed isReportViewed and hasActiveCoaching
   const hasReport = mainChild ? reports.some(r => r.child_id === mainChild.id) : false;
@@ -349,8 +351,8 @@ export default function HomePage() {
         <header className="sticky top-0 z-40 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-xl pt-12 pb-4 border-b border-gray-100 dark:border-gray-800">
           <div className="flex items-center justify-between min-h-[40px] px-4">
             <div className="flex items-center gap-3">
-              <img src="/gijilai_icon.png" alt="기질아이" className="w-7 h-7 rounded-lg object-contain" />
-              <span className="text-xl font-logo tracking-wide text-primary dark:text-white pt-0.5">기질아이</span>
+              <img src="/gijilai_icon.png" alt={t('common.appName')} className="w-7 h-7 rounded-lg object-contain" />
+              <span className="text-xl font-logo tracking-wide text-primary dark:text-white pt-0.5">{t('common.appName')}</span>
             </div>
             {(() => {
               if (subscription) {
@@ -361,7 +363,7 @@ export default function HomePage() {
                     className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/10 dark:bg-primary/20 text-primary text-xs font-semibold"
                   >
                     <span className="material-symbols-outlined text-sm">workspace_premium</span>
-                    <span>구독중</span>
+                    <span>{t('home.subscribing')}</span>
                     {isCancelled && (
                       <span className="text-[10px] text-text-muted dark:text-gray-400">
                         ~{new Date(subscription.current_period_end).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}
@@ -378,7 +380,7 @@ export default function HomePage() {
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-secondary/10 dark:bg-secondary/20 text-secondary"
                   >
                     <span className="material-symbols-outlined text-sm">auto_awesome</span>
-                    <span>체험중 D-{trial.daysRemaining}</span>
+                    <span>{t('home.trialDays', { days: trial.daysRemaining })}</span>
                   </button>
                 );
               }
@@ -388,7 +390,7 @@ export default function HomePage() {
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-primary/10 dark:bg-primary/20 text-primary"
                 >
                   <span className="material-symbols-outlined text-sm">auto_awesome</span>
-                  <span>프리미엄 시작하기</span>
+                  <span>{t('home.startPremium')}</span>
                 </button>
               );
             })()}
@@ -422,7 +424,7 @@ export default function HomePage() {
                       ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
                           <span className="material-icons-round text-5xl">face</span>
-                          <span className="text-[10px] font-bold mt-1">사진 등록</span>
+                          <span className="text-[10px] font-bold mt-1">{t('home.registerPhoto')}</span>
                         </div>
                       )}
                     </div>
@@ -440,7 +442,7 @@ export default function HomePage() {
                       className="bg-white dark:bg-surface-dark text-primary dark:text-white px-3 py-1 rounded-full text-[12px] font-bold shadow-sm inline-flex items-center gap-1 border border-primary/10 cursor-pointer active:scale-95 transition-transform"
                     >
                       <span className="material-symbols-outlined text-[14px] text-child">child_care</span>
-                      {temperamentInfo ? temperamentInfo.child.label : '기질 검사하기'}
+                      {temperamentInfo ? temperamentInfo.child.label : t('home.assessTemperament')}
                     </div>
                   </div>
 
@@ -480,7 +482,7 @@ export default function HomePage() {
                       onClick={() => {
                         if (!parentTemperament?.hasData) return;
                         if (!temperamentInfo) {
-                          alert(`${childName}의 기질 검사를 먼저 완료해주세요.`);
+                          alert(t('home.childTestAlert', { name: childName }));
                           router.push('/survey/intro');
                           return;
                         }
@@ -489,12 +491,12 @@ export default function HomePage() {
                       className={`mt-2 bg-white/60 dark:bg-surface-dark/60 backdrop-blur-sm text-text-main dark:text-gray-200 px-3.5 py-1.5 rounded-full text-[12px] font-medium shadow-[0_2px_10px_-2px_rgba(0,0,0,0.05)] inline-flex items-center gap-1.5 ring-1 ring-black/5 dark:ring-white/10 ${parentTemperament?.hasData ? 'cursor-pointer active:scale-95 transition-transform' : ''}`}
                     >
                       <span className="material-symbols-outlined text-[16px] text-caregiver">volunteer_activism</span>
-                      {TCI_TERMINOLOGY.REPORT.PARENT_NAME} <span className="mx-0.5 text-gray-300 dark:text-gray-600">|</span> <span className="font-bold text-caregiver">{parentTemperament?.hasData ? parentTemperament.label : '검사 필요'}</span>
+                      {TCI_TERMINOLOGY.REPORT.PARENT_NAME} <span className="mx-0.5 text-gray-300 dark:text-gray-600">|</span> <span className="font-bold text-caregiver">{parentTemperament?.hasData ? parentTemperament.label : t('home.assessNeeded')}</span>
                     </div>
                   </div>
                 </div>
                 <p className="text-text-sub dark:text-gray-400 text-sm font-light mt-2 break-keep text-center px-8">
-                  오늘도 아이의 기질에 맞는 대화를 시도해보세요.
+                  {t('home.dailyMessage')}
                 </p>
               </div>
 
@@ -506,13 +508,13 @@ export default function HomePage() {
                     <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
                     <div className="relative z-10">
                       <div className="flex flex-col gap-1 mb-4">
-                        <span className="text-white/80 text-xs font-medium bg-black/10 px-2 py-1 rounded inline-block w-fit">첫 번째 단계</span>
-                        <h3 className="text-xl font-bold text-white leading-snug tracking-tight">{childName}의 기질 검사</h3>
+                        <span className="text-white/80 text-xs font-medium bg-black/10 px-2 py-1 rounded inline-block w-fit">{t('home.firstStep')}</span>
+                        <h3 className="text-xl font-bold text-white leading-snug tracking-tight">{childName}{t('home.temperamentTest')}</h3>
                       </div>
-                      <p className="text-sm text-white/90 mb-6">아이의 타고난 기질을 알면 소통이 달라집니다.</p>
+                      <p className="text-sm text-white/90 mb-6">{t('home.testDescription')}</p>
                       <Link href="/survey/intro">
                         <button className="w-full py-4 rounded-xl bg-white text-primary font-bold text-sm shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-                          <span>기질 검사 시작하기</span>
+                          <span>{t('home.startTest')}</span>
                           <span className="material-symbols-outlined text-[18px]">play_arrow</span>
                         </button>
                       </Link>
@@ -527,14 +529,14 @@ export default function HomePage() {
                     <div className="relative z-10">
                       <div className="flex justify-between items-start mb-4">
                         <div className="flex flex-col gap-1">
-                          <span className="text-white/80 text-xs font-medium bg-black/10 px-2 py-1 rounded inline-block w-fit">필수 진행 단계</span>
-                          <h3 className="text-xl font-bold text-white leading-snug tracking-tight">나의 양육 성향 검사</h3>
+                          <span className="text-white/80 text-xs font-medium bg-black/10 px-2 py-1 rounded inline-block w-fit">{t('home.requiredStep')}</span>
+                          <h3 className="text-xl font-bold text-white leading-snug tracking-tight">{t('home.parentStyleTest')}</h3>
                         </div>
                       </div>
-                      <p className="text-sm text-white/90 mb-6">양육자의 기질을 알면 양육이 훨씬 쉬워집니다.</p>
+                      <p className="text-sm text-white/90 mb-6">{t('home.parentTestDescription')}</p>
                       <Link href="/survey?type=PARENT">
                         <button className="w-full py-4 rounded-xl bg-white text-secondary font-bold text-sm shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-                          <span>{Object.keys(atqResponses).length > 0 ? '검사 이어하기' : '검사 시작하기'}</span>
+                          <span>{Object.keys(atqResponses).length > 0 ? t('home.continueTest') : t('home.startTestButton')}</span>
                           <span className="material-symbols-outlined text-[18px]">play_arrow</span>
                         </button>
                       </Link>
@@ -578,7 +580,7 @@ export default function HomePage() {
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-1.5">
                           <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
-                          <span className="text-[13px] font-black">오늘의 마법의 한마디</span>
+                          <span className="text-[13px] font-black">{t('home.todaysMagicWord')}</span>
                         </div>
                         {magicWords.length > 1 && (
                           <span className="text-[11px] text-white/60 font-medium">{magicWordIndex + 1} / {magicWords.length}</span>
@@ -627,8 +629,8 @@ export default function HomePage() {
                           <span className="material-symbols-outlined text-[20px] text-primary">checklist</span>
                         </div>
                         <div className="flex-1">
-                          <h3 className="text-[14px] font-bold text-text-main dark:text-white">오늘의 실천</h3>
-                          <p className="text-[11px] text-text-sub dark:text-gray-400">체크할 실천 항목이 {practices.uncheckedCount}개 있어요</p>
+                          <h3 className="text-[14px] font-bold text-text-main dark:text-white">{t('home.todaysPractice')}</h3>
+                          <p className="text-[11px] text-text-sub dark:text-gray-400">{t('home.practiceItemsRemaining', { count: practices.uncheckedCount })}</p>
                         </div>
                         <span className="material-symbols-outlined text-[18px] text-primary/50">arrow_forward</span>
                       </div>
@@ -641,7 +643,7 @@ export default function HomePage() {
                             </div>
                           ))}
                           {practices.uncheckedItems.length > 3 && (
-                            <p className="text-[11px] text-text-sub dark:text-gray-500 pl-6.5">+{practices.uncheckedItems.length - 3}개 더</p>
+                            <p className="text-[11px] text-text-sub dark:text-gray-500 pl-6.5">{t('home.moreItems', { count: practices.uncheckedItems.length - 3 })}</p>
                           )}
                         </div>
                       )}
@@ -660,8 +662,8 @@ export default function HomePage() {
                             <span className="material-symbols-outlined text-[20px] text-amber-600 dark:text-amber-400">chat_bubble</span>
                           </div>
                           <div className="flex-1">
-                            <h3 className="text-[14px] font-bold text-text-main dark:text-white">육아 고민, 기질로 풀어볼까요?</h3>
-                            <p className="text-[11px] text-text-sub dark:text-gray-400">{childName}의 기질에 맞는 대화법을 처방받아보세요</p>
+                            <h3 className="text-[14px] font-bold text-text-main dark:text-white">{t('home.consultCTA')}</h3>
+                            <p className="text-[11px] text-text-sub dark:text-gray-400">{t('home.consultCTADescription', { name: childName })}</p>
                           </div>
                           <span className="material-symbols-outlined text-[18px] text-amber-400">arrow_forward</span>
                         </div>
@@ -678,12 +680,12 @@ export default function HomePage() {
                         <span className="material-symbols-outlined text-[20px]">description</span>
                       </div>
                       <div>
-                        <h3 className="text-[15px] font-bold text-text-main dark:text-white">기질 분석 리포트</h3>
-                        <p className="text-[11px] text-text-sub dark:text-gray-400">우리아이&양육자 상세 결과</p>
+                        <h3 className="text-[15px] font-bold text-text-main dark:text-white">{t('home.temperamentAnalysisReport')}</h3>
+                        <p className="text-[11px] text-text-sub dark:text-gray-400">{t('home.reportSubtitle')}</p>
                       </div>
                     </div>
                     <Link href="/report">
-                      <button className="px-4 py-2.5 rounded-xl bg-primary/5 text-primary font-bold text-[12px] border border-primary/10">결과 보기</button>
+                      <button className="px-4 py-2.5 rounded-xl bg-primary/5 text-primary font-bold text-[12px] border border-primary/10">{t('home.viewResult')}</button>
                     </Link>
                   </div>
                 )}
@@ -703,17 +705,16 @@ export default function HomePage() {
                   </div>
 
                   <h2 className="text-[28px] font-black text-text-main dark:text-white leading-tight break-keep mb-4">
-                    반가워요, {profile?.full_name || '양육자'}님!<br />
-                    <span className="text-primary">아이와 함께</span> 시작할까요?
+                    {t('home.welcomeGreeting', { name: profile?.full_name || t('home.defaultParentName') })}<br />
+                    <span className="text-primary">{t('home.welcomeSubtitle')}</span>
                   </h2>
-                  <p className="text-text-sub dark:text-gray-400 text-sm leading-relaxed break-keep mb-10">
-                    우리 아이의 타고난 기질을 이해하고<br />
-                    맞춤형 대화 처방을 받는 첫걸음입니다.
+                  <p className="text-text-sub dark:text-gray-400 text-sm leading-relaxed break-keep mb-10 whitespace-pre-line">
+                    {t('home.welcomeDescription')}
                   </p>
 
                   <Link href="/settings/child/new" className="w-full">
                     <button className="w-full bg-primary hover:bg-primary-dark py-5 rounded-[1.5rem] text-white font-bold text-[17px] shadow-2xl shadow-primary/30 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2">
-                      <span>아이 프로필 등록하기</span>
+                      <span>{t('home.registerChildProfile')}</span>
                       <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
                     </button>
                   </Link>
@@ -737,17 +738,15 @@ export default function HomePage() {
 
               <div className="relative z-10 p-8 flex flex-col items-center">
                 <div className="w-24 h-24 bg-white dark:bg-slate-800 rounded-[2.5rem] flex items-center justify-center mb-8 rotate-3 shadow-xl">
-                  <img src="/gijilai_icon.png" alt="기질아이" className="w-16 h-16 object-contain" />
+                  <img src="/gijilai_icon.png" alt={t('common.appName')} className="w-16 h-16 object-contain" />
                 </div>
 
                 <div className="text-center space-y-3 mb-10">
-                  <h3 className="text-2xl font-black text-slate-800 dark:text-white font-display break-keep">
-                    반가워요!<br />이제 아이를 알아가볼까요?
+                  <h3 className="text-2xl font-black text-slate-800 dark:text-white font-display break-keep whitespace-pre-line">
+                    {t('home.onboardingTitle')}
                   </h3>
-                  <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed break-keep px-4">
-                    아이의 <strong>타고난 기질</strong>을 이해하고,<br />
-                    양육자의 <strong>따뜻한 시선</strong>으로 아름답게<br />
-                    성장하는 과정을 함께 도와드릴게요.
+                  <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed break-keep px-4 whitespace-pre-line">
+                    {t('home.onboardingDescription')}
                   </p>
                 </div>
 
@@ -757,8 +756,8 @@ export default function HomePage() {
                       <span className="text-lg">🧬</span>
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">과학적 기질 분석</h4>
-                      <p className="text-[11px] text-slate-400 mt-0.5">타고난 성향을 정확히 파악합니다.</p>
+                      <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">{t('home.scientificAnalysis')}</h4>
+                      <p className="text-[11px] text-slate-400 mt-0.5">{t('home.scientificAnalysisDesc')}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
@@ -766,8 +765,8 @@ export default function HomePage() {
                       <span className="text-lg">💬</span>
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">맞춤형 대화 처방</h4>
-                      <p className="text-[11px] text-slate-400 mt-0.5">아이의 신호를 올바르게 통역해드려요.</p>
+                      <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">{t('home.customPrescription')}</h4>
+                      <p className="text-[11px] text-slate-400 mt-0.5">{t('home.customPrescriptionDesc')}</p>
                     </div>
                   </div>
                 </div>
@@ -780,14 +779,14 @@ export default function HomePage() {
                     }}
                     className="w-full bg-primary text-white font-black py-5 rounded-[2rem] shadow-2xl shadow-primary/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2 group"
                   >
-                    <span className="text-lg">아이 정보 등록하기</span>
+                    <span className="text-lg">{t('home.registerChildInfo')}</span>
                     <span className="material-symbols-outlined text-xl group-hover:translate-x-1 transition-transform">arrow_forward</span>
                   </button>
                   <button
                     onClick={() => setShowOnboarding(false)}
                     className="w-full py-4 text-slate-400 text-xs font-bold hover:text-slate-600 transition-colors mt-2"
                   >
-                    나중에 둘러볼게요
+                    {t('home.laterButton')}
                   </button>
                 </div>
               </div>
@@ -801,17 +800,13 @@ export default function HomePage() {
             <div className="relative bg-background-light dark:bg-surface-dark w-full max-w-sm rounded-[2rem] p-6 shadow-2xl animate-in fade-in zoom-in duration-300">
               <div className="flex flex-col items-center text-center">
                 <div className="w-20 h-20 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center mb-5 shadow-lg animate-bounce-subtle">
-                  <img src="/gijilai_icon.png" alt="기질아이" className="w-12 h-12 object-contain" />
+                  <img src="/gijilai_icon.png" alt={t('common.appName')} className="w-12 h-12 object-contain" />
                 </div>
                 <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-3 font-display">
-                  어떤 기질일까요?
+                  {t('home.surveyIntroTitle')}
                 </h3>
-                <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed mb-8 break-keep">
-                  아이의 타고난 기질을 알면<br />
-                  더 지혜롭게 사랑할 수 있습니다.<br />
-                  <br />
-                  약 3분 정도 소요되는 간단한 테스트로<br />
-                  우리 아이만의 특별한 빛을 발견해보세요.
+                <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed mb-8 break-keep whitespace-pre-line">
+                  {t('home.surveyIntroDescription')}
                 </p>
 
                 <div className="w-full space-y-3">
@@ -822,14 +817,14 @@ export default function HomePage() {
                     }}
                     className="w-full bg-[#2E7D32] text-white font-bold py-4 rounded-xl shadow-lg shadow-[#2E7D32]/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                   >
-                    <span>테스트 시작하기</span>
+                    <span>{t('home.startTestSurvey')}</span>
                     <span className="material-symbols-outlined text-sm">arrow_forward</span>
                   </button>
                   <button
                     onClick={() => setShowSurveyIntro(false)}
                     className="w-full py-3 text-slate-400 text-sm font-medium hover:text-slate-600 transition-colors"
                   >
-                    나중에 하기
+                    {t('home.laterSurvey')}
                   </button>
                 </div>
               </div>

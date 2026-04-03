@@ -2,6 +2,7 @@
 
 import { Icon } from '@/components/ui/Icon';
 import Link from 'next/link';
+import { useLocale } from '@/i18n/LocaleProvider';
 
 interface FamilyGardenHeroProps {
     childId?: string;
@@ -15,17 +16,22 @@ interface FamilyGardenHeroProps {
 
 export function FamilyGardenHero({
     childId,
-    childName = "우리 아이",
-    childTrait = "기질 분석 전",
+    childName: childNameProp,
+    childTrait: childTraitProp,
     childImage,
-    parentName = "양육자",
-    parentTrait = "기질 분석 전",
+    parentName: parentNameProp,
+    parentTrait: parentTraitProp,
     hasChild = false
 }: Partial<FamilyGardenHeroProps>) {
+    const { t } = useLocale();
+    const childName = childNameProp || t('home.defaultChildName');
+    const childTrait = childTraitProp || t('home.preAnalysis');
+    const parentName = parentNameProp || t('home.defaultParentName');
+    const parentTrait = parentTraitProp || t('home.preAnalysis');
     return (
         <section className="px-6 pt-6 pb-10 text-center">
             <p className="text-sm font-medium text-garden-green mb-2 tracking-widest uppercase">Our Family Garden</p>
-            <h2 className="font-display text-2xl font-bold mb-8 text-[var(--navy)]">우리 가족의 정원</h2>
+            <h2 className="font-display text-2xl font-bold mb-8 text-[var(--navy)]">{t('home.familyGarden')}</h2>
 
             <div className="relative w-full aspect-square max-w-[320px] mx-auto bg-white/40 rounded-full border border-white/60 shadow-sm flex flex-col items-center justify-end pb-8">
 
@@ -57,7 +63,7 @@ export function FamilyGardenHero({
                         </div>
 
                         <div className="mt-2 text-xs font-bold px-3 py-1 bg-white/80 rounded-full text-garden-brown shadow-sm flex items-center gap-1">
-                            {hasChild ? `${childTrait} ${childName}` : "아이 등록하기"}
+                            {hasChild ? `${childTrait} ${childName}` : t('home.registerChild')}
                         </div>
                     </Link>
                 </div>
@@ -66,7 +72,7 @@ export function FamilyGardenHero({
                 <Link href="/settings/profile" className="w-48 h-16 bg-garden-brown/20 rounded-[50%] flex items-center justify-center border-t-2 border-garden-brown/30 active:scale-95 transition-transform">
                     <div className="text-center">
                         <p className="text-[10px] text-garden-brown/60 uppercase font-bold tracking-tighter flex items-center justify-center gap-1">
-                            {parentTrait} {parentName}님 <Icon name="edit" className="text-[10px]" />
+                            {parentTrait} {parentName}{t('home.parentSuffix')} <Icon name="edit" className="text-[10px]" />
                         </p>
                     </div>
                 </Link>

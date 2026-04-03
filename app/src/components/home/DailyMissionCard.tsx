@@ -3,6 +3,7 @@
 import { DailyMission } from '@/types/gardening';
 import { useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
+import { useLocale } from '@/i18n/LocaleProvider';
 
 interface DailyMissionCardProps {
     mission: DailyMission;
@@ -10,6 +11,7 @@ interface DailyMissionCardProps {
 }
 
 export function DailyMissionCard({ mission, onComplete }: DailyMissionCardProps) {
+    const { t } = useLocale();
     const [isOpen, setIsOpen] = useState(false);
     const [completed, setCompleted] = useState(mission.isCompleted);
 
@@ -37,7 +39,7 @@ export function DailyMissionCard({ mission, onComplete }: DailyMissionCardProps)
                 <div className="flex-1">
                     <div className="flex justify-between items-start mb-1">
                         <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Today's Mission</span>
-                        {completed && <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded-full">완료!</span>}
+                        {completed && <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded-full">{t('home.completed')}</span>}
                     </div>
 
                     <h3 className={`font-medium text-lg text-gray-800 mb-2 leading-snug ${completed ? 'line-through text-gray-400 scale-95 origin-left transition-transform' : ''}`}>
@@ -51,7 +53,7 @@ export function DailyMissionCard({ mission, onComplete }: DailyMissionCardProps)
                             className="text-xs text-gray-500 flex items-center gap-1 hover:text-gray-700 transition-colors"
                         >
                             <Icon name={isOpen ? "expand_less" : "expand_more"} />
-                            {isOpen ? "가이드 접기" : "실행 가이드 보기"}
+                            {isOpen ? t('home.guideCollapse') : t('home.guideExpand')}
                         </button>
 
                         {isOpen && (

@@ -2,6 +2,7 @@
 
 import { ProgramCycle } from '@/types/gardening';
 import { Icon } from '@/components/ui/Icon';
+import { useLocale } from '@/i18n/LocaleProvider';
 
 interface CycleSelectorProps {
     cycle: ProgramCycle | null;
@@ -9,6 +10,7 @@ interface CycleSelectorProps {
 }
 
 export function CycleSelector({ cycle, onChange }: CycleSelectorProps) {
+    const { t } = useLocale();
     if (!cycle) {
         return (
             <button
@@ -16,7 +18,7 @@ export function CycleSelector({ cycle, onChange }: CycleSelectorProps) {
                 className="w-full p-4 rounded-xl border-2 border-dashed border-gray-300 text-gray-400 hover:border-primary hover:text-primary hover:bg-primary/5 transition-all flex items-center justify-center gap-2"
             >
                 <Icon name="add_circle" />
-                <span className="font-medium">새로운 돌봄 루틴 시작하기</span>
+                <span className="font-medium">{t('home.newCareRoutine')}</span>
             </button>
         );
     }
@@ -28,9 +30,9 @@ export function CycleSelector({ cycle, onChange }: CycleSelectorProps) {
             <div className="flex justify-between items-center mb-3">
                 <h3 className="font-bold text-gray-800 flex items-center gap-2">
                     <span className="text-primary text-sm">📅</span>
-                    {cycle.concern} 마음 돌봄 루틴 ({cycle.duration}일)
+                    {t('home.careRoutineDays', { concern: cycle.concern, duration: String(cycle.duration) })}
                 </h3>
-                <button className="text-xs text-gray-400 underline" onClick={onChange}>변경</button>
+                <button className="text-xs text-gray-400 underline" onClick={onChange}>{t('home.change')}</button>
             </div>
 
             {/* Progress Bar */}
@@ -43,7 +45,7 @@ export function CycleSelector({ cycle, onChange }: CycleSelectorProps) {
 
             <div className="flex justify-between text-xs text-gray-500 font-medium">
                 <span>Day {cycle.currentDay}</span>
-                <span>{cycle.duration - cycle.currentDay}일 남음</span>
+                <span>{t('home.daysRemaining', { days: String(cycle.duration - cycle.currentDay) })}</span>
             </div>
         </div>
     );

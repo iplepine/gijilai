@@ -1,36 +1,38 @@
 'use client';
 
 import { Icon } from '@/components/ui/Icon';
+import { useLocale } from '@/i18n/LocaleProvider';
 
 export function GardeningToolkit() {
+    const { t } = useLocale();
     const tools = [
         {
             icon: 'thumb_up',
             iconColor: 'text-blue-500',
             iconBg: 'bg-blue-100',
-            title: '칭찬 한 마디',
-            description: '아이의 작은 노력 발견하기',
+            title: t('home.toolPraise'),
+            description: t('home.toolPraiseDesc'),
         },
         {
             icon: 'self_improvement',
             iconColor: 'text-green-600',
             iconBg: 'bg-green-100',
-            title: '셀프 케어 (명상)',
-            description: '양육자를 위한 5분 휴식',
+            title: t('home.toolSelfCare'),
+            description: t('home.toolSelfCareDesc'),
         },
         {
             icon: 'sentiment_satisfied',
             iconColor: 'text-orange-500',
             iconBg: 'bg-orange-100',
-            title: '스트레스 해소',
-            description: '오늘의 걱정 비워내기',
+            title: t('home.toolStress'),
+            description: t('home.toolStressDesc'),
         }
     ];
 
     return (
         <section className="px-6 mb-12">
             <div className="flex items-center gap-2 mb-6">
-                <h3 className="font-display font-bold text-lg text-[var(--navy)]">양육자 돌봄 툴킷</h3>
+                <h3 className="font-display font-bold text-lg text-[var(--navy)]">{t('home.toolkitTitle')}</h3>
                 <span className="text-[10px] bg-primary text-white px-2 py-0.5 rounded-full font-bold">DAILY</span>
             </div>
 
