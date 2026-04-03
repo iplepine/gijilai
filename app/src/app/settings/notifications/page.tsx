@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import { Navbar } from '@/components/layout/Navbar';
+import { useLocale } from '@/i18n/LocaleProvider';
 
 export default function NotificationsPage() {
+    const { t } = useLocale();
     const [pushEnabled, setPushEnabled] = useState(true);
     const [emailEnabled, setEmailEnabled] = useState(false);
     const [marketingEnabled, setMarketingEnabled] = useState(false);
@@ -11,15 +13,15 @@ export default function NotificationsPage() {
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen">
             <div className="max-w-md mx-auto relative min-h-screen flex flex-col">
-                <Navbar title="알림 설정" />
+                <Navbar title={t('settings.notificationSettings')} />
 
                 <main className="flex-1 px-4 py-8">
                     <div className="bg-white dark:bg-surface-dark rounded-3xl p-6 shadow-soft border border-gray-100 dark:border-gray-800 space-y-8">
 
                         <div className="flex items-center justify-between">
                             <div className="flex-1 pr-6 flex flex-col gap-1">
-                                <h2 className="text-[15px] font-bold text-navy dark:text-white">앱 푸시 알림</h2>
-                                <p className="text-[13px] text-gray-500 break-keep">매일 저녁 실천 미션 리마인드 및 기질 처방전 알림을 앱으로 받습니다.</p>
+                                <h2 className="text-[15px] font-bold text-navy dark:text-white">{t('settings.pushNotifications')}</h2>
+                                <p className="text-[13px] text-gray-500 break-keep">{t('settings.pushDescription')}</p>
                             </div>
                             <button
                                 onClick={() => setPushEnabled(!pushEnabled)}
@@ -33,8 +35,8 @@ export default function NotificationsPage() {
 
                         <div className="flex items-center justify-between">
                             <div className="flex-1 pr-6 flex flex-col gap-1">
-                                <h2 className="text-[15px] font-bold text-navy dark:text-white">이메일 알림</h2>
-                                <p className="text-[13px] text-gray-500 break-keep">최종 기질 분석 리포트 및 중요 공지를 가입하신 이메일로 받습니다.</p>
+                                <h2 className="text-[15px] font-bold text-navy dark:text-white">{t('settings.emailNotifications')}</h2>
+                                <p className="text-[13px] text-gray-500 break-keep">{t('settings.emailDescription')}</p>
                             </div>
                             <button
                                 onClick={() => setEmailEnabled(!emailEnabled)}
@@ -48,8 +50,8 @@ export default function NotificationsPage() {
 
                         <div className="flex items-center justify-between">
                             <div className="flex-1 pr-6 flex flex-col gap-1">
-                                <h2 className="text-[15px] font-bold text-navy dark:text-white">이벤트/마케팅 정보 수신</h2>
-                                <p className="text-[13px] text-gray-500 break-keep">새로운 기능 출시 및 육아 관련 추천 콘텐츠, 이벤트 알림을 받습니다.</p>
+                                <h2 className="text-[15px] font-bold text-navy dark:text-white">{t('settings.marketingNotifications')}</h2>
+                                <p className="text-[13px] text-gray-500 break-keep">{t('settings.marketingDescription')}</p>
                             </div>
                             <button
                                 onClick={() => setMarketingEnabled(!marketingEnabled)}

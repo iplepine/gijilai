@@ -7,8 +7,10 @@ import { db } from '@/lib/db'; // Import db
 import { Icon } from '@/components/ui/Icon';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Navbar } from '@/components/layout/Navbar';
+import { useLocale } from '@/i18n/LocaleProvider';
 
 export default function EditChildPage() {
+    const { t } = useLocale();
     const router = useRouter();
     const params = useParams();
     const childId = params.id as string;
@@ -45,7 +47,7 @@ export default function EditChildPage() {
                 }
             } catch (error) {
                 console.error('Error fetching child:', error);
-                alert('아이 정보를 불러오는데 실패했습니다.');
+                alert(t('settings.fetchChildFailed'));
                 router.back();
             } finally {
                 setLoading(false);
@@ -70,7 +72,7 @@ export default function EditChildPage() {
             setSaving(true);
             const { data: { user } } = await supabase.auth.getUser();
 
-            if (!user) throw new Error('로그인이 필요합니다.');
+            if (!user) throw new Error(t('settings.loginRequired'));
 
             let imageUrl = previewUrl; // Keep existing URL if no new file
             if (avatarFile) {
@@ -79,7 +81,7 @@ export default function EditChildPage() {
                     imageUrl = await db.uploadChildAvatar(avatarFile, user.id);
                 } catch (uploadError: any) {
                     console.error('Avatar upload failed:', uploadError);
-                    alert(`사진 업로드 실패: ${uploadError.message || '알 수 없는 오류'}`);
+                    alert(t('settings.photoUploadFailed').replace('{message}', uploadError.message || t('common.error')));
                     return;
                 }
             }
@@ -101,14 +103,14 @@ export default function EditChildPage() {
             router.replace('/');
         } catch (error: any) {
             console.error('Error updating child:', error);
-            alert(`수정에 실패했습니다.\n${error.message}`);
+            alert(t('settings.updateFailed').replace('{message}', error.message));
         } finally {
             setSaving(false);
         }
     };
 
     const handleDelete = async () => {
-        if (!confirm('정말로 삭제하시겠습니까? 모든 분석 기록이 함께 삭제됩니다.')) return;
+        if (!confirm(t('settings.deleteConfirm'))) return;
 
         try {
             setSaving(true);
@@ -123,7 +125,7 @@ export default function EditChildPage() {
             router.replace('/');
         } catch (error: any) {
             console.error('Error deleting child:', error);
-            alert('삭제에 실패했습니다.');
+            alert(t('settings.deleteFailed'));
             setSaving(false);
         }
     };
@@ -141,10 +143,10 @@ export default function EditChildPage() {
             <div className="relative flex h-full min-h-screen w-full max-w-[480px] flex-col overflow-x-hidden bg-background-light dark:bg-background-dark">
                 {/* Header */}
                 <Navbar
-                    title="아이 정보 수정"
+                    title={t('settings.editChild')}
                     rightElement={
                         <button onClick={handleDelete} className="text-red-500 font-medium text-sm">
-                            삭제
+                            {t('common.delete')}
                         </button>
                     }
                 />
@@ -170,7 +172,7 @@ export default function EditChildPage() {
                     <div className="space-y-6">
                         {/* Name Input */}
                         <div className="space-y-2">
-                            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 ml-1">아이 이름</label>
+                            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 ml-1">{t('settings.childName')}</label>
                             <input
                                 type="text"
                                 value={formData.name}
@@ -181,7 +183,7 @@ export default function EditChildPage() {
 
                         {/* Birthdate */}
                         <div className="space-y-2">
-                            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 ml-1">생년월일</label>
+                            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 ml-1">{t('settings.birthDate')}</label>
                             <DatePicker
                                 value={formData.birthdate}
                                 onChange={(date) => setFormData({ ...formData, birthdate: date })}
@@ -190,7 +192,7 @@ export default function EditChildPage() {
 
                         {/* Gender Selection */}
                         <div className="space-y-2">
-                            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 ml-1">성별</label>
+                            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 ml-1">{t('settings.gender')}</label>
                             <div className="flex gap-3">
                                 {['MALE', 'FEMALE'].map((gender) => (
                                     <button
@@ -205,7 +207,7 @@ export default function EditChildPage() {
                                             name={gender === 'MALE' ? 'boy' : 'girl'}
                                             className={formData.gender === gender ? 'fill-1' : ''}
                                         />
-                                        {gender === 'MALE' ? '남아' : '여아'}
+                                        {gender === 'MALE' ? t('settings.boy') : t('settings.girl')}
                                     </button>
                                 ))}
                             </div>
@@ -221,7 +223,7 @@ export default function EditChildPage() {
                             disabled={!formData.name || !formData.birthdate || !formData.gender || saving}
                             className="w-full bg-[#2E7D32] dark:bg-[#4CAF50] text-white font-bold text-lg h-16 rounded-2xl shadow-xl shadow-[#2E7D32]/10 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {saving ? '저장 중...' : '수정 완료'}
+                            {saving ? t('settings.saving') : t('settings.editComplete')}
                         </button>
                     </div>
                 </div>

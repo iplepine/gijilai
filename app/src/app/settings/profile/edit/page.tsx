@@ -6,8 +6,10 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { db, UserProfile } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import { Navbar } from '@/components/layout/Navbar';
+import { useLocale } from '@/i18n/LocaleProvider';
 
 export default function ProfileEditPage() {
+    const { t } = useLocale();
     const router = useRouter();
     const { user, loading: authLoading } = useAuth();
     const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -47,7 +49,7 @@ export default function ProfileEditPage() {
             });
         } catch (error) {
             console.error('Failed to upload image:', error);
-            alert('이미지 업로드에 실패했습니다.');
+            alert(t('settings.imageUploadFailed'));
         } finally {
             setIsSaving(false);
         }
@@ -65,11 +67,11 @@ export default function ProfileEditPage() {
                 data: { full_name: fullName.trim() }
             });
 
-            alert('프로필이 수정되었습니다.');
+            alert(t('settings.profileUpdated'));
             router.push('/settings/profile');
         } catch (error) {
             console.error('Failed to update profile:', error);
-            alert('프로필 수정 중 오류가 발생했습니다.');
+            alert(t('settings.profileUpdateError'));
         } finally {
             setIsSaving(false);
         }
@@ -86,7 +88,7 @@ export default function ProfileEditPage() {
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen">
             <div className="max-w-md mx-auto relative min-h-screen flex flex-col">
-                <Navbar title="프로필 편집" />
+                <Navbar title={t('settings.editProfile')} />
 
                 <main className="flex-1 px-6 py-8">
                     <div className="flex flex-col items-center mb-10 relative">
@@ -117,31 +119,31 @@ export default function ProfileEditPage() {
                             onChange={handleImageChange}
                         />
                         <p className="text-xs text-gray-400 mt-4 leading-relaxed text-center break-keep">
-                            사진을 터치하면 프로필 이미지를<br />변경할 수 있어요
+                            {t('settings.profileImageHint')}
                         </p>
                     </div>
 
                     <div className="space-y-6">
                         <div className="space-y-2">
-                            <label className="text-sm font-bold text-navy dark:text-white ml-2">이름 또는 닉네임</label>
+                            <label className="text-sm font-bold text-navy dark:text-white ml-2">{t('settings.nameOrNickname')}</label>
                             <input
                                 type="text"
                                 value={fullName}
                                 onChange={(e) => setFullName(e.target.value)}
-                                placeholder="사용하실 이름을 적어주세요"
+                                placeholder={t('settings.namePlaceholder')}
                                 className="w-full h-14 bg-white dark:bg-surface-dark border border-gray-100 dark:border-gray-800 rounded-2xl px-5 text-navy dark:text-white font-medium focus:outline-none focus:border-primary/30 transition-colors shadow-sm"
                             />
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-bold text-navy dark:text-white ml-2">계정 이메일</label>
+                            <label className="text-sm font-bold text-navy dark:text-white ml-2">{t('settings.accountEmail')}</label>
                             <input
                                 type="text"
                                 value={user?.email || ''}
                                 disabled
                                 className="w-full h-14 bg-gray-50 dark:bg-surface-dark/50 border border-gray-100 dark:border-gray-800 rounded-2xl px-5 text-gray-500 font-medium opacity-70"
                             />
-                            <p className="text-[11px] text-gray-400 ml-2">소셜 연동 계정 이메일은 변경할 수 없습니다.</p>
+                            <p className="text-[11px] text-gray-400 ml-2">{t('settings.emailCannotChange')}</p>
                         </div>
                     </div>
                 </main>
@@ -155,7 +157,7 @@ export default function ProfileEditPage() {
                         {isSaving ? (
                             <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
                         ) : (
-                            '저장하기'
+                            t('settings.saveButton')
                         )}
                     </button>
                 </div>

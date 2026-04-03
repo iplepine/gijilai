@@ -8,8 +8,10 @@ import { useAppStore } from '@/store/useAppStore';
 import { Icon } from '@/components/ui/Icon';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Navbar } from '@/components/layout/Navbar';
+import { useLocale } from '@/i18n/LocaleProvider';
 
 export default function RegisterChildPage() {
+    const { t } = useLocale();
     const router = useRouter();
     const setSelectedChildId = useAppStore((s) => s.setSelectedChildId);
     const [loading, setLoading] = useState(false);
@@ -34,7 +36,7 @@ export default function RegisterChildPage() {
             setLoading(true);
             const { data: { user } } = await supabase.auth.getUser();
 
-            if (!user) throw new Error('로그인이 필요합니다.');
+            if (!user) throw new Error(t('settings.loginRequired'));
 
             let imageUrl = null;
             if (avatarFile) {
@@ -42,7 +44,7 @@ export default function RegisterChildPage() {
                     imageUrl = await db.uploadChildAvatar(avatarFile, user.id);
                 } catch (uploadError) {
                     console.error('Avatar upload failed:', uploadError);
-                    alert('사진 업로드에 실패했지만, 나머지 정보는 계속 저장합니다.');
+                    alert(t('settings.photoUploadFailedContinue'));
                 }
             }
 
@@ -72,7 +74,7 @@ export default function RegisterChildPage() {
             router.replace('/');
         } catch (error: any) {
             console.error('Error registering child:', error);
-            alert(`아이 등록에 실패했습니다.\n${error.message || error.details || '알 수 없는 오류가 발생했습니다.'}`);
+            alert(`${t('settings.registerFailed')}\n${error.message || error.details || t('common.error')}`);
         } finally {
             setLoading(false);
         }
@@ -81,7 +83,7 @@ export default function RegisterChildPage() {
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center font-body">
             <div className="w-full max-w-md bg-background-light dark:bg-background-dark min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
-                <Navbar title="아이 등록하기" />
+                <Navbar title={t('settings.registerChild')} />
 
                 <main className="flex-1 px-6 pb-32">
                     {/* Avatar Upload Section */}
@@ -99,25 +101,25 @@ export default function RegisterChildPage() {
                             </div>
                             <input accept="image/*" className="hidden" type="file" onChange={handleFileChange} />
                         </label>
-                        <p className="mt-4 text-text-main dark:text-white font-medium">우리 아이의 소중한 모습을 등록해주세요</p>
+                        <p className="mt-4 text-text-main dark:text-white font-medium">{t('settings.registerChildPhoto')}</p>
                     </div>
 
                     <div className="space-y-6">
                         {/* Name Input */}
                         <div className="space-y-2">
-                            <label className="text-sm font-semibold text-text-sub ml-1">아이 이름</label>
+                            <label className="text-sm font-semibold text-text-sub ml-1">{t('settings.childName')}</label>
                             <input
                                 type="text"
                                 value={formData.name}
                                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                 className="w-full h-14 px-4 bg-white dark:bg-surface-dark border border-primary/10 dark:border-white/10 rounded-2xl focus:ring-2 focus:ring-primary focus:border-primary transition-all placeholder:text-text-sub/50 shadow-sm outline-none"
-                                placeholder="아이의 이름을 입력해주세요"
+                                placeholder={t('settings.childNamePlaceholder')}
                             />
                         </div>
 
                         {/* Birthdate */}
                         <div className="space-y-2">
-                            <label className="text-sm font-semibold text-text-sub ml-1">생년월일</label>
+                            <label className="text-sm font-semibold text-text-sub ml-1">{t('settings.birthDate')}</label>
                             <DatePicker
                                 value={formData.birthdate}
                                 onChange={(date) => setFormData({ ...formData, birthdate: date })}
@@ -126,7 +128,7 @@ export default function RegisterChildPage() {
 
                         {/* Gender Selection */}
                         <div className="space-y-2">
-                            <label className="text-sm font-semibold text-text-sub ml-1">성별</label>
+                            <label className="text-sm font-semibold text-text-sub ml-1">{t('settings.gender')}</label>
                             <div className="flex gap-3">
                                 {['MALE', 'FEMALE'].map((gender) => (
                                     <button
@@ -141,7 +143,7 @@ export default function RegisterChildPage() {
                                             name={gender === 'MALE' ? 'boy' : 'girl'}
                                             className={formData.gender === gender ? 'fill-1' : ''}
                                         />
-                                        {gender === 'MALE' ? '남아' : '여아'}
+                                        {gender === 'MALE' ? t('settings.boy') : t('settings.girl')}
                                     </button>
                                 ))}
                             </div>
@@ -150,8 +152,7 @@ export default function RegisterChildPage() {
                         {/* Info Box */}
                         <div className="p-4 bg-primary/5 dark:bg-primary/10 rounded-2xl border border-primary/10">
                             <p className="text-[13px] leading-relaxed text-primary text-center font-medium">
-                                등록하신 정보와 사진은 아이만을 위한<br />
-                                맞춤형 분석 리포트와 맞춤형 코칭에 사용됩니다.
+                                {t('settings.childInfoNote')}
                             </p>
                         </div>
                     </div>
@@ -165,7 +166,7 @@ export default function RegisterChildPage() {
                             disabled={!formData.name || !formData.birthdate || !formData.gender || loading}
                             className="w-full bg-primary text-white font-bold text-lg h-16 rounded-2xl shadow-card active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {loading ? '등록 중...' : '아이 등록 완료'}
+                            {loading ? t('settings.registering') : t('settings.registerComplete')}
                         </button>
                     </div>
                 </div>
