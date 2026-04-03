@@ -111,7 +111,7 @@ export default function SharedReportPage() {
 
   return (
     <div className="bg-background-light dark:bg-background-dark text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center font-body">
-      <div className="w-full max-w-md bg-background-light dark:bg-background-dark min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
+      <div className="w-full app-shell-width bg-background-light dark:bg-background-dark min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
         <main className="flex-1 pb-8">
           {/* Hero Image */}
           <div className="relative">

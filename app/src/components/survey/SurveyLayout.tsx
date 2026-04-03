@@ -26,7 +26,7 @@ export const SurveyLayout: React.FC<SurveyLayoutProps> = ({ children, progress, 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-background-dark flex flex-col">
             <header className="bg-white dark:bg-surface-dark px-4 py-3 shadow-sm sticky top-0 z-10">
-                <div className="max-w-md mx-auto">
+                <div className="app-shell-width mx-auto">
                     <div className="flex items-center justify-between mb-2">
                         <button
                             onClick={handleBack}

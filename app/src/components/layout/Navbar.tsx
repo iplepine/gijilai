@@ -14,7 +14,7 @@ export function Navbar({ title, showBack = true, onBackClick, rightElement }: Na
   const router = useRouter();
 
   return (
-    <header className="sticky top-0 z-40 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-xl pt-12 pb-4 border-b border-gray-100 dark:border-gray-800">
+    <header className="sticky top-0 z-40 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-xl pt-12 lg:pt-4 pb-4 border-b border-gray-100 dark:border-gray-800">
       <div className="relative flex items-center justify-center w-full px-4 min-h-[40px]">
         <div className="absolute left-4">
           {showBack && (

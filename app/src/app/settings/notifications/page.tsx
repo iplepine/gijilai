@@ -10,7 +10,7 @@ export default function NotificationsPage() {
 
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen">
-            <div className="max-w-md mx-auto relative min-h-screen flex flex-col">
+            <div className="app-shell-width mx-auto relative min-h-screen flex flex-col">
                 <Navbar title="알림 설정" />
 
                 <main className="flex-1 px-4 py-8">

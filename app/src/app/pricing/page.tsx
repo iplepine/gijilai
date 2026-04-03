@@ -152,7 +152,7 @@ export default function PricingPage() {
   if (existingSubscription) {
     return (
       <div className="bg-background-light dark:bg-background-dark text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center font-body">
-        <div className="w-full max-w-md min-h-screen flex flex-col shadow-2xl">
+        <div className="w-full app-shell-width min-h-screen flex flex-col shadow-2xl">
           <Navbar title={locale === 'ko' ? '요금제' : 'Pricing'} showBack />
           <div className="flex-1 flex flex-col items-center justify-center px-6 text-center space-y-4">
             <Icon name="check_circle" className="text-primary text-5xl" size="lg" />
@@ -173,7 +173,7 @@ export default function PricingPage() {
 
   return (
     <div className="bg-background-light dark:bg-background-dark text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center font-body">
-      <div className="w-full max-w-md min-h-screen flex flex-col shadow-2xl">
+      <div className="w-full app-shell-width min-h-screen flex flex-col shadow-2xl">
         <Navbar title={locale === 'ko' ? '요금제' : 'Pricing'} showBack />
 
         <div className="flex-1 overflow-y-auto px-6 pt-8 pb-32 space-y-8">
@@ -295,7 +295,7 @@ export default function PricingPage() {
         </div>
 
         {/* CTA */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl border-t border-beige-main/20 z-30 max-w-md mx-auto w-full">
+        <div className="absolute bottom-0 left-0 right-0 p-6 bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl border-t border-beige-main/20 z-30 app-shell-width mx-auto w-full">
           <Button
             variant="primary"
             size="lg"

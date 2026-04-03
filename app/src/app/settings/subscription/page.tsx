@@ -51,7 +51,7 @@ export default function SubscriptionPage() {
   if (loading) {
     return (
       <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center">
-        <div className="w-full max-w-md min-h-screen flex flex-col">
+        <div className="w-full app-shell-width min-h-screen flex flex-col">
           <Navbar title="구독 관리" showBack />
           <div className="flex-1 flex items-center justify-center">
             <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
@@ -68,7 +68,7 @@ export default function SubscriptionPage() {
 
   return (
     <div className="bg-background-light dark:bg-background-dark text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center font-body">
-      <div className="w-full max-w-md min-h-screen flex flex-col shadow-2xl">
+      <div className="w-full app-shell-width min-h-screen flex flex-col shadow-2xl">
         <Navbar title="구독 관리" showBack />
 
         <div className="flex-1 overflow-y-auto px-6 pt-8 pb-10 space-y-6">

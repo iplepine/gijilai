@@ -173,7 +173,7 @@ export default function RecordPage() {
 
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center font-body">
-            <div className="w-full max-w-md bg-background-light dark:bg-background-dark min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
+            <div className="w-full app-shell-width bg-background-light dark:bg-background-dark min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
                 <Navbar
                     title="관찰일지"
                     rightElement={filteredObservations.length > 0 ? (
@@ -212,7 +212,7 @@ export default function RecordPage() {
                     </div>
                 )}
 
-                <main className="w-full max-w-md px-5 py-4 pb-32">
+                <main className="w-full app-shell-width px-5 py-4 pb-32">
                     {/* 최근 상담 액션 아이템 */}
                     {!isLoading && latestActionItem && children.length > 0 && (
                         <div
@@ -360,7 +360,7 @@ export default function RecordPage() {
                 {/* 작성 바텀시트 모달 */}
                 {showModal && (
                     <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-300">
-                        <div className="w-full max-w-md bg-white dark:bg-background-dark rounded-t-[2rem] max-h-[85vh] flex flex-col animate-in slide-in-from-bottom-10 duration-500 shadow-2xl relative overflow-hidden">
+                        <div className="w-full app-shell-width bg-white dark:bg-background-dark rounded-t-[2rem] max-h-[85vh] flex flex-col animate-in slide-in-from-bottom-10 duration-500 shadow-2xl relative overflow-hidden">
                             {/* 핸들바 + 닫기 */}
                             <div className="sticky top-0 bg-white dark:bg-background-dark pt-3 pb-4 px-7 z-10">
                                 <div className="w-10 h-1 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto mb-4"></div>

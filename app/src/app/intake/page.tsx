@@ -65,7 +65,7 @@ export default function IntakePage() {
 
   return (
     <div className="bg-background-light dark:bg-background-dark text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center font-body">
-      <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
+      <div className="w-full app-shell-width bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
         <Navbar title="기본 정보" showBack />
 
         <div className="flex-1 overflow-y-auto px-6 py-10 space-y-12 w-full pb-32">

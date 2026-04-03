@@ -139,6 +139,22 @@ body {
   background-color: var(--background-dark) !important;
 }
 
+/* ========== Responsive App Shell ========== */
+/* 앱 셸 & BottomNav 등에서 공유하는 반응형 최대 너비 */
+.app-shell-width {
+  max-width: 28rem; /* 448px — mobile */
+}
+@media (min-width: 768px) {
+  .app-shell-width {
+    max-width: 42rem; /* 672px — tablet */
+  }
+}
+@media (min-width: 1024px) {
+  .app-shell-width {
+    max-width: 48rem; /* 768px — desktop */
+  }
+}
+
 /* ========== Custom Utilities ========== */
 .watercolor-bg {
   background: radial-gradient(circle at top right, #F3D7CA 0%, transparent 40%),

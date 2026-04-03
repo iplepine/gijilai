@@ -85,7 +85,7 @@ export default function ProfileEditPage() {
 
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen">
-            <div className="max-w-md mx-auto relative min-h-screen flex flex-col">
+            <div className="app-shell-width mx-auto relative min-h-screen flex flex-col">
                 <Navbar title="프로필 편집" />
 
                 <main className="flex-1 px-6 py-8">

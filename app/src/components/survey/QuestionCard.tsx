@@ -56,7 +56,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({ question, currentAns
 
     // Using inline style for dynamic hex colors since Tailwind arbitrary values can't be computed fully dynamically this simply in standard strings without safelists
     return (
-        <div className="flex flex-col items-center justify-center p-6 bg-white dark:bg-surface-dark rounded-2xl shadow-lg border border-gray-100 dark:border-gray-800 min-h-[500px] w-full max-w-md mx-auto animate-fadeIn">
+        <div className="flex flex-col items-center justify-center p-6 bg-white dark:bg-surface-dark rounded-2xl shadow-lg border border-gray-100 dark:border-gray-800 min-h-[500px] w-full app-shell-width mx-auto animate-fadeIn">
             <div className="mb-6 text-center">
 
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white leading-tight">

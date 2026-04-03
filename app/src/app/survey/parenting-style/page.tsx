@@ -56,7 +56,7 @@ export default function ParentingStyleSurveyPage() {
     if (showBridge) {
         return (
             <div className="min-h-screen bg-green-50 flex flex-col items-center justify-center p-6 text-center animate-fadeIn">
-                <div className="max-w-md w-full bg-white p-8 rounded-2xl shadow-xl">
+                <div className="app-shell-width w-full bg-white p-8 rounded-2xl shadow-xl">
                     <div className="text-5xl mb-6">🌱</div>
                     <h2 className="text-2xl font-bold text-gray-800 mb-4">
                         마지막 단계입니다!
@@ -87,7 +87,7 @@ export default function ParentingStyleSurveyPage() {
             themeColor="#8BC34A"
             onBack={handleBack}
         >
-            <div className="w-full max-w-md py-6">
+            <div className="w-full app-shell-width py-6">
                 <div className="mb-4 text-center">
                     <span className="inline-block px-3 py-1 text-sm font-bold mb-2 rounded-full" style={{ backgroundColor: '#8BC34A33', color: '#558B2F' }}>
                         Part 3. 양육 스타일

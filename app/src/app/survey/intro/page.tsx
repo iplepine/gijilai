@@ -36,10 +36,10 @@ export default function IntroPage() {
 
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center font-body">
-            <div className="w-full max-w-md bg-background-light dark:bg-background-dark min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
+            <div className="w-full app-shell-width bg-background-light dark:bg-background-dark min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
                 <Navbar title="기질 검사 소개" showBack />
                 <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                    <div className="max-w-md w-full space-y-8 animate-fadeIn">
+                    <div className="app-shell-width w-full space-y-8 animate-fadeIn">
                         <div className="relative w-52 h-52 mx-auto mb-4">
                             <div className="absolute inset-0 rounded-full bg-primary/10 animate-pulse" />
                             <div className="absolute inset-3 rounded-full bg-white dark:bg-surface-dark shadow-lg overflow-hidden">

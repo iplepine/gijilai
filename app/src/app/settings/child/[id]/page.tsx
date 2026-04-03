@@ -138,7 +138,7 @@ export default function EditChildPage() {
 
     return (
         <div className="min-h-screen bg-background-light dark:bg-background-dark text-text-main dark:text-[#E8E2D6] font-sans flex justify-center">
-            <div className="relative flex h-full min-h-screen w-full max-w-[480px] flex-col overflow-x-hidden bg-background-light dark:bg-background-dark">
+            <div className="relative flex h-full min-h-screen w-full app-shell-width flex-col overflow-x-hidden bg-background-light dark:bg-background-dark">
                 {/* Header */}
                 <Navbar
                     title="아이 정보 수정"
@@ -215,7 +215,7 @@ export default function EditChildPage() {
 
                 {/* Submit Button */}
                 <div className="fixed bottom-0 left-0 right-0 p-6 flex justify-center z-40 bg-gradient-to-t from-[#FAFCFA] via-[#FAFCFA]/90 to-transparent dark:from-[#161311] dark:via-[#161311]/90 pointer-events-none">
-                    <div className="max-w-[480px] w-full pointer-events-auto">
+                    <div className="app-shell-width w-full pointer-events-auto">
                         <button
                             onClick={handleSubmit}
                             disabled={!formData.name || !formData.birthdate || !formData.gender || saving}

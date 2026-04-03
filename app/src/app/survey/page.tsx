@@ -254,7 +254,7 @@ function SurveyContent() {
   if (isCalculating) {
     return (
       <div className="bg-background-light dark:bg-background-dark text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center font-body">
-        <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl items-center justify-center px-10 text-center relative">
+        <div className="w-full app-shell-width bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl items-center justify-center px-10 text-center relative">
           <div className="relative w-32 h-32 mb-8">
             <div className="absolute inset-0 border-4 border-primary/20 rounded-full"></div>
             <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
@@ -279,7 +279,7 @@ function SurveyContent() {
   // 2. 질문 데이터 로딩 체크
   if (!currentQuestion) return (
     <div className="bg-background-light dark:bg-background-dark text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center font-body">
-      <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex items-center justify-center shadow-2xl relative">
+      <div className="w-full app-shell-width bg-background-light dark:bg-background-dark h-full min-h-screen flex items-center justify-center shadow-2xl relative">
         <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
       </div>
     </div>
@@ -287,7 +287,7 @@ function SurveyContent() {
 
   return (
     <div className="text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center font-body transition-colors duration-500 dark:!bg-background-dark" style={{ backgroundColor: accentBg }}>
-      <div className="w-full max-w-md h-full min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative dark:!bg-background-dark" style={{ backgroundColor: accentBg }}>
+      <div className="w-full app-shell-width h-full min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative dark:!bg-background-dark" style={{ backgroundColor: accentBg }}>
         <Navbar title={title} showBack onBackClick={handlePrev} />
 
         {/* Progress Bar & Module Tabs */}

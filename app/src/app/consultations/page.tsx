@@ -91,10 +91,10 @@ export default function RecordsPage() {
 
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center font-body">
-            <div className="w-full max-w-md bg-background-light dark:bg-background-dark min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
+            <div className="w-full app-shell-width bg-background-light dark:bg-background-dark min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
                 <Navbar title="상담 기록" showBack={true} />
 
-                <main className="w-full max-w-md p-6 pb-32 flex-1">
+                <main className="w-full app-shell-width p-6 pb-32 flex-1">
                     {isLoading ? (
                         <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-50">
                             <span className="w-10 h-10 border-4 border-primary/10 border-t-primary rounded-full animate-spin" />

@@ -65,7 +65,7 @@ export default function ParentSurveyPage() {
     if (showBridge) {
         return (
             <div className="min-h-screen bg-blue-50 flex flex-col items-center justify-center p-6 text-center animate-fadeIn">
-                <div className="max-w-md w-full bg-white p-8 rounded-2xl shadow-xl">
+                <div className="app-shell-width w-full bg-white p-8 rounded-2xl shadow-xl">
                     <div className="text-5xl mb-6">🧬</div>
                     <h2 className="text-2xl font-bold text-gray-800 mb-4">
                         아이 성향 파악 완료!
@@ -95,7 +95,7 @@ export default function ParentSurveyPage() {
             themeColor="#4A90E2"
             onBack={handleBack}
         >
-            <div className="w-full max-w-md py-6">
+            <div className="w-full app-shell-width py-6">
                 <div className="mb-4 text-center">
                     <span className="inline-block px-3 py-1 text-sm font-bold mb-2 rounded-full" style={{ backgroundColor: '#4A90E233', color: '#2C5E9E' }}>
                         Part 2. 나(양육자) 편

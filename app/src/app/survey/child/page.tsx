@@ -58,7 +58,7 @@ export default function ChildSurveyPage() {
             themeColor="#FFD700"
             onBack={handleBack}
         >
-            <div className="w-full max-w-md py-6">
+            <div className="w-full app-shell-width py-6">
                 <div className="mb-4 text-center">
                     <span className="inline-block px-3 py-1 text-sm font-bold mb-2 rounded-full" style={{ backgroundColor: '#FFD70033', color: '#B29600' }}>
                         Part 1. 아이 편

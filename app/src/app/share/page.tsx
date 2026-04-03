@@ -146,7 +146,7 @@ function SharePageContent() {
 
   return (
     <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center font-body">
-      <div className="w-full max-w-md bg-background-light dark:bg-background-dark min-h-screen flex flex-col shadow-2xl relative">
+      <div className="w-full app-shell-width bg-background-light dark:bg-background-dark min-h-screen flex flex-col shadow-2xl relative">
         <Navbar title="결과 공유하기" showBack onBackClick={() => router.back()} />
 
         <main className="flex-1 px-6 py-8 space-y-8 pb-24">

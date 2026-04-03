@@ -85,7 +85,7 @@ export default function ProfilePage() {
 
     return (
         <div className="bg-background-light dark:bg-background-dark text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center justify-center font-body pb-0">
-            <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl overflow-hidden relative">
+            <div className="w-full app-shell-width bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl overflow-hidden relative">
                 {deleting && (
                     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm">
                         <div className="w-10 h-10 border-4 border-white/30 border-t-white rounded-full animate-spin" />

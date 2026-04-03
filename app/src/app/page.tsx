@@ -307,8 +307,8 @@ export default function HomePage() {
   if (loading || authLoading) {
     return (
       <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center justify-center font-body">
-        <div className="w-full max-w-md min-h-screen flex flex-col shadow-2xl relative">
-          <header className="sticky top-0 z-40 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-xl pt-12 pb-4 border-b border-gray-100 dark:border-gray-800">
+        <div className="w-full app-shell-width min-h-screen flex flex-col shadow-2xl relative">
+          <header className="sticky top-0 z-40 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-xl pt-12 lg:pt-4 pb-4 border-b border-gray-100 dark:border-gray-800">
             <div className="flex items-center justify-between min-h-[40px] px-4">
               <div className="flex items-center gap-3">
                 <img src="/gijilai_icon.png" alt="기질아이" className="w-7 h-7 rounded-lg object-contain" />
@@ -345,8 +345,8 @@ export default function HomePage() {
 
   return (
     <div className="bg-background-light dark:bg-background-dark text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center justify-center font-body pb-0">
-      <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl overflow-hidden relative">
-        <header className="sticky top-0 z-40 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-xl pt-12 pb-4 border-b border-gray-100 dark:border-gray-800">
+      <div className="w-full app-shell-width bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl overflow-hidden relative">
+        <header className="sticky top-0 z-40 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-xl pt-12 lg:pt-4 pb-4 border-b border-gray-100 dark:border-gray-800">
           <div className="flex items-center justify-between min-h-[40px] px-4">
             <div className="flex items-center gap-3">
               <img src="/gijilai_icon.png" alt="기질아이" className="w-7 h-7 rounded-lg object-contain" />

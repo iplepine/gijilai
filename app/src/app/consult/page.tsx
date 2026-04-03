@@ -374,10 +374,10 @@ function ConsultContent() {
 
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center justify-center font-body pb-0">
-            <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
+            <div className="w-full app-shell-width bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
                 <Navbar title={step === 'RESULT' ? '마음 처방전' : '마음 통역소'} />
 
-                <main className="w-full max-w-md flex flex-col flex-1 p-6 pb-36">
+                <main className="w-full app-shell-width flex flex-col flex-1 p-6 pb-36">
                     {step === 'INPUT' && childLoading && (
                         <div className="flex flex-col items-center justify-center flex-1">
                             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />

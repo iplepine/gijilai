@@ -80,7 +80,7 @@ export default function RegisterChildPage() {
 
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center font-body">
-            <div className="w-full max-w-md bg-background-light dark:bg-background-dark min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
+            <div className="w-full app-shell-width bg-background-light dark:bg-background-dark min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
                 <Navbar title="아이 등록하기" />
 
                 <main className="flex-1 px-6 pb-32">
@@ -159,7 +159,7 @@ export default function RegisterChildPage() {
 
                 {/* Submit Button */}
                 <div className="fixed bottom-0 left-0 right-0 p-6 flex justify-center z-40 bg-gradient-to-t from-[#F9F8F6] via-[#F9F8F6]/90 to-transparent dark:from-[#161311] dark:via-[#161311]/90 pointer-events-none">
-                    <div className="max-w-md w-full pointer-events-auto">
+                    <div className="app-shell-width w-full pointer-events-auto">
                         <button
                             onClick={handleSubmit}
                             disabled={!formData.name || !formData.birthdate || !formData.gender || loading}

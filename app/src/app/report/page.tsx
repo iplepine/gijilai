@@ -487,14 +487,14 @@ function ReportContent() {
 
   return (
     <div className="bg-background-light dark:bg-background-dark text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center font-body">
-      <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
+      <div className="w-full app-shell-width bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
         <main className={`flex-1 overflow-y-auto no-scrollbar ${isChildOnly ? 'pb-40' : 'pb-24'}`}>
           {/* Header Overlay */}
           <div className="relative z-10">
             {/* 히어로 이미지 */}
             <div className="relative">
               {/* Top Navigation Bar */}
-              <div className="absolute top-0 left-0 right-0 pt-12 px-4 z-20 flex items-center justify-between">
+              <div className="absolute top-0 left-0 right-0 pt-12 lg:pt-4 px-4 z-20 flex items-center justify-between">
                 <button
                   onClick={() => router.back()}
                   className="size-10 flex items-center justify-center text-text-main dark:text-white"
@@ -1261,7 +1261,7 @@ function ReportContent() {
 
       {isChildOnly && (
         <div className="fixed bottom-0 left-0 right-0 z-50">
-          <div className="max-w-md mx-auto">
+          <div className="app-shell-width mx-auto">
             {isParentSurveyComplete ? (
               <div className="m-3 bg-white rounded-[2rem] shadow-2xl border border-slate-100 overflow-hidden">
                 <div className="px-5 py-4 flex gap-3">
@@ -1315,7 +1315,7 @@ export default function ReportPage() {
   return (
     <Suspense fallback={
       <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center justify-center font-body pb-0">
-        <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl items-center justify-center">
+        <div className="w-full app-shell-width bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl items-center justify-center">
           <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
         </div>
       </div>

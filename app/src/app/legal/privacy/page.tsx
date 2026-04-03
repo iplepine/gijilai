@@ -5,7 +5,7 @@ import { Navbar } from '@/components/layout/Navbar';
 export default function PrivacyPage() {
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen">
-            <div className="max-w-md mx-auto relative min-h-screen flex flex-col">
+            <div className="app-shell-width mx-auto relative min-h-screen flex flex-col">
                 <Navbar title="개인정보 처리방침" />
 
                 <main className="flex-1 px-6 py-8">
