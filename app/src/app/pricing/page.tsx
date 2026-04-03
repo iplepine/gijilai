@@ -11,6 +11,8 @@ import { useAuth } from '@/components/auth/AuthProvider';
 declare global {
   interface Window {
     PortOne?: any;
+    PaymentBridge?: { postMessage: (msg: string) => void };
+    onPaymentComplete?: (data: { status: string; message?: string; data?: any }) => void;
   }
 }
 
@@ -42,8 +44,14 @@ export default function PricingPage() {
   const [payMethod, setPayMethod] = useState<PayMethodOption>('CARD');
   const [existingSubscription, setExistingSubscription] = useState<any>(null);
   const [isFirstSubscription, setIsFirstSubscription] = useState(true);
+  const [isApp, setIsApp] = useState(false);
 
   useEffect(() => {
+    // 앱 감지
+    const ua = navigator.userAgent.toLowerCase();
+    const inApp = ua.includes('gijilai_app') || !!window.PaymentBridge;
+    setIsApp(inApp);
+
     // locale 감지
     const saved = document.cookie.match(/gijilai_locale=(\w+)/)?.[1];
     if (saved === 'en' || saved === 'ko') {
@@ -65,8 +73,41 @@ export default function PricingPage() {
       .catch(() => {});
   }, [user]);
 
+  // 앱 내 IAP 결제 결과 콜백 등록
+  useEffect(() => {
+    if (!isApp) return;
+    window.onPaymentComplete = (data) => {
+      setLoading(false);
+      if (data.status === 'success') {
+        router.replace('/');
+      } else if (data.status === 'cancelled') {
+        // 사용자 취소 — 무시
+      } else {
+        alert(locale === 'ko'
+          ? `결제 처리 중 오류가 발생했습니다: ${data.message || ''}`
+          : `Payment error: ${data.message || ''}`);
+      }
+    };
+    return () => { window.onPaymentComplete = undefined; };
+  }, [isApp, locale, router]);
+
   const handleSubscribe = async () => {
-    if (!user || !window.PortOne) return;
+    if (!user) return;
+
+    // 앱 → IAP (Apple/Google이 결제수단 처리)
+    if (isApp) {
+      if (!window.PaymentBridge) return;
+      setLoading(true);
+      window.PaymentBridge.postMessage(JSON.stringify({
+        type: 'PAYMENT_REQUEST',
+        provider: 'APPLE_GOOGLE',
+        productId: 'monthly_premium',
+      }));
+      return;
+    }
+
+    // 웹 → PortOne
+    if (!window.PortOne) return;
     setLoading(true);
 
     try {
@@ -247,8 +288,8 @@ export default function PricingPage() {
             ))}
           </section>
 
-          {/* 결제수단 선택 (한국만) */}
-          {locale === 'ko' && (
+          {/* 결제수단 선택 (한국 웹만 — 앱에서는 Apple/Google이 처리) */}
+          {locale === 'ko' && !isApp && (
             <section className="space-y-3">
               <h3 className="text-sm font-bold text-text-main dark:text-white">결제수단</h3>
               <div className="grid grid-cols-3 gap-2">
