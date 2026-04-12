@@ -4,9 +4,9 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
@@ -15,23 +15,37 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'firebase_options.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
 
-  // Crashlytics: Flutter 프레임워크 에러 캐치
-  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
-  PlatformDispatcher.instance.onError = (error, stack) {
+    await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(
+      !kDebugMode,
+    );
+    await FirebaseCrashlytics.instance.setCustomKey(
+      'app_platform',
+      defaultTargetPlatform.name,
+    );
+    await FirebaseCrashlytics.instance.setCustomKey(
+      'webview_target',
+      MainWebView.targetUrl,
+    );
+
+    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+    PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      return true;
+    };
+
+    final messaging = FirebaseMessaging.instance;
+    await messaging.requestPermission();
+
+    runApp(const GijilaiApp());
+  }, (error, stack) {
     FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-    return true;
-  };
-
-  // 푸시 알림 권한 요청
-  final messaging = FirebaseMessaging.instance;
-  await messaging.requestPermission();
-
-  runApp(const GijilaiApp());
+  });
 }
 
 class GijilaiApp extends StatelessWidget {
@@ -54,16 +68,17 @@ class GijilaiApp extends StatelessWidget {
 class MainWebView extends StatefulWidget {
   const MainWebView({super.key});
 
+  static const targetUrl = 'https://gijilai.com/';
+
   @override
   State<MainWebView> createState() => _MainWebViewState();
 }
 
 class _MainWebViewState extends State<MainWebView> {
-  static const _targetUrl = 'https://gijilai.com/';
   static const _subscriptionProductId = 'monthly_premium';
 
   WebViewController? _controller;
-  late final StreamSubscription<List<PurchaseDetails>> _purchaseSubscription;
+  StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
   final InAppPurchase _iap = InAppPurchase.instance;
 
   @override
@@ -87,6 +102,14 @@ class _MainWebViewState extends State<MainWebView> {
         NavigationDelegate(
           onWebResourceError: (WebResourceError error) {
             debugPrint('WebView error: ${error.description}');
+            unawaited(
+              FirebaseCrashlytics.instance.recordError(
+                Exception('WebView error: ${error.description}'),
+                StackTrace.current,
+                reason:
+                    'WebView failed to load ${error.url ?? MainWebView.targetUrl}',
+              ),
+            );
           },
         ),
       )
@@ -94,7 +117,7 @@ class _MainWebViewState extends State<MainWebView> {
         'PaymentBridge',
         onMessageReceived: _onPaymentMessage,
       )
-      ..loadRequest(Uri.parse(_targetUrl));
+      ..loadRequest(Uri.parse(MainWebView.targetUrl));
 
     setState(() {
       _controller = controller;
@@ -105,6 +128,7 @@ class _MainWebViewState extends State<MainWebView> {
     final available = await _iap.isAvailable();
     if (!available) {
       debugPrint('IAP not available');
+      FirebaseCrashlytics.instance.log('IAP not available on current device');
       return;
     }
 
@@ -113,6 +137,13 @@ class _MainWebViewState extends State<MainWebView> {
       _onPurchaseUpdated,
       onError: (error) {
         debugPrint('IAP stream error: $error');
+        unawaited(
+          FirebaseCrashlytics.instance.recordError(
+            error,
+            StackTrace.current,
+            reason: 'IAP purchase stream error',
+          ),
+        );
       },
     );
 
@@ -120,9 +151,18 @@ class _MainWebViewState extends State<MainWebView> {
     final response = await _iap.queryProductDetails({_subscriptionProductId});
     if (response.error != null) {
       debugPrint('IAP product query error: ${response.error}');
+      await FirebaseCrashlytics.instance.recordError(
+        response.error!,
+        StackTrace.current,
+        reason: 'IAP product query error',
+      );
     }
     if (response.notFoundIDs.isNotEmpty) {
       debugPrint('IAP products not found: ${response.notFoundIDs}');
+      await FirebaseCrashlytics.instance.recordError(
+        Exception('IAP products not found: ${response.notFoundIDs.join(",")}'),
+        StackTrace.current,
+      );
     }
   }
 
@@ -134,6 +174,13 @@ class _MainWebViewState extends State<MainWebView> {
       }
     } catch (e) {
       debugPrint('PaymentBridge parse error: $e');
+      unawaited(
+        FirebaseCrashlytics.instance.recordError(
+          e,
+          StackTrace.current,
+          reason: 'PaymentBridge parse error',
+        ),
+      );
     }
   }
 
@@ -259,13 +306,22 @@ class _MainWebViewState extends State<MainWebView> {
       if (data['success'] == true) {
         _showSnackBar('구독이 시작되었습니다!');
         // WebView 새로고침으로 구독 상태 반영
-        await _controller!.loadRequest(Uri.parse(_targetUrl));
+        await _controller!.loadRequest(Uri.parse(MainWebView.targetUrl));
       } else {
         _showSnackBar(data['error']?.toString() ?? '검증 실패', isError: true);
         _notifyWebLoadingDone();
+        await FirebaseCrashlytics.instance.recordError(
+          Exception('IAP verification failed: ${data['error'] ?? 'unknown'}'),
+          StackTrace.current,
+        );
       }
     } catch (e) {
       debugPrint('IAP verify error: $e');
+      await FirebaseCrashlytics.instance.recordError(
+        e,
+        StackTrace.current,
+        reason: 'IAP receipt verification error',
+      );
       _showSnackBar('영수증 검증에 실패했습니다', isError: true);
       _notifyWebLoadingDone();
     } finally {
@@ -306,7 +362,7 @@ class _MainWebViewState extends State<MainWebView> {
 
   @override
   void dispose() {
-    _purchaseSubscription.cancel();
+    _purchaseSubscription?.cancel();
     super.dispose();
   }
 
