@@ -27,7 +27,9 @@
     "analysis": "분석",
     "reanalyze": "다시 분석하기",
     "pleaseWait": "잠시만 기다려주세요",
-    "select": "선택해주세요"
+    "select": "선택해주세요",
+    "question": "질문",
+    "answer": "답변"
   },
   "nav": {
     "home": "홈",

@@ -192,6 +192,39 @@ export default function ConsultationDetailPage() {
                                                             <p className="text-[13px] text-text-main dark:text-gray-200 leading-relaxed">{rx.chemistry}</p>
                                                         </div>
                                                     )}
+                                                    {rx.magicWord && (
+                                                        <div className="rounded-xl bg-primary/10 border border-primary/15 px-4 py-3">
+                                                            <div className="text-[11px] font-bold text-primary mb-1.5 flex items-center gap-1">
+                                                                <span className="material-symbols-outlined text-[14px]">record_voice_over</span>
+                                                                {t('consult.magicWord')}
+                                                            </div>
+                                                            <p className="text-[14px] font-bold text-text-main dark:text-white leading-relaxed break-keep">
+                                                                &ldquo;{rx.magicWord.replace(/^["“”]+|["“”]+$/g, '')}&rdquo;
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                                    {Array.isArray(rx.questionAnalysis) && rx.questionAnalysis.length > 0 && (
+                                                        <div className="space-y-2.5">
+                                                            <div className="text-[11px] font-bold text-slate-400">
+                                                                {t('consult.questionAnalysis')}
+                                                            </div>
+                                                            {rx.questionAnalysis.map((qa: any, index: number) => (
+                                                                <div key={index} className="rounded-xl bg-background-light dark:bg-background-dark px-4 py-3 space-y-2">
+                                                                    <div>
+                                                                        <p className="text-[11px] font-bold text-[#D08B5B] mb-1">{t('common.question')}</p>
+                                                                        <p className="text-[12px] text-text-main dark:text-gray-200 leading-relaxed">{qa.question}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[11px] font-bold text-secondary mb-1">{t('common.answer')}</p>
+                                                                        <p className="text-[12px] text-text-main dark:text-gray-200 leading-relaxed">{qa.answer}</p>
+                                                                    </div>
+                                                                    <div className="pt-2 border-t border-black/5 dark:border-white/10">
+                                                                        <p className="text-[12px] text-text-sub dark:text-gray-300 leading-relaxed">{qa.analysis}</p>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
 

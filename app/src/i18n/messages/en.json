@@ -27,7 +27,9 @@
     "analysis": "Analysis",
     "reanalyze": "Reanalyze",
     "pleaseWait": "Please wait",
-    "select": "Please select"
+    "select": "Please select",
+    "question": "Question",
+    "answer": "Answer"
   },
   "nav": {
     "home": "Home",
