@@ -171,7 +171,7 @@ function SessionCard({ session, statusLabel, onSelect }: {
                             {new Date(session.latestDate).toLocaleDateString(locale === 'ko' ? 'ko-KR' : 'en-US')}
                         </span>
                         {session.childName && (
-                            <span className="text-[10px] font-medium text-text-sub/90">· {session.childName}</span>
+                            <span className="text-[10px] font-medium text-text-sub/90">{session.childName}</span>
                         )}
                         {session.consultCount > 1 && (
                             <span className="text-[10px] font-semibold text-primary/85">{t('consult.consultCount', { count: session.consultCount })}</span>
