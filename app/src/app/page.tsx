@@ -674,20 +674,20 @@ export default function HomePage() {
 
                 {/* 기질 분석 리포트 */}
                 {temperamentInfo?.child && (
-                  <div className="bg-white dark:bg-surface-dark/50 rounded-2xl p-5 shadow-soft border border-primary/10 dark:border-primary/50 flex justify-between items-center gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                        <span className="material-symbols-outlined text-[20px]">description</span>
+                  <Link href="/report" className="block">
+                    <div className="bg-white dark:bg-surface-dark/50 rounded-2xl p-5 shadow-soft border border-primary/10 dark:border-primary/50 flex justify-between items-center gap-4 active:scale-[0.99] transition-all">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                          <span className="material-symbols-outlined text-[20px]">description</span>
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="text-[15px] font-bold text-text-main dark:text-white">{t('home.temperamentAnalysisReport')}</h3>
+                          <p className="text-[11px] text-text-sub dark:text-gray-400 break-keep">{t('home.reportSubtitle')}</p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-[15px] font-bold text-text-main dark:text-white">{t('home.temperamentAnalysisReport')}</h3>
-                        <p className="text-[11px] text-text-sub dark:text-gray-400">{t('home.reportSubtitle')}</p>
-                      </div>
+                      <span className="material-symbols-outlined text-[18px] text-primary/50 shrink-0">arrow_forward</span>
                     </div>
-                    <Link href="/report">
-                      <button className="px-4 py-2.5 rounded-xl bg-primary/5 text-primary font-bold text-[12px] border border-primary/10">{t('home.viewResult')}</button>
-                    </Link>
-                  </div>
+                  </Link>
                 )}
               </div>
             </div>
