@@ -161,44 +161,44 @@ function SessionCard({ session, statusLabel, onSelect }: {
     return (
         <button
             onClick={onSelect}
-            className="w-full text-left bg-white dark:bg-surface-dark rounded-2xl p-4.5 border border-primary/10 active:scale-[0.99] transition-all"
+            className="w-full text-left bg-white dark:bg-surface-dark rounded-xl p-4 border border-primary/10 active:scale-[0.99] transition-all"
         >
             <div className="flex justify-between items-start gap-3">
                 <div className="flex-1 min-w-0">
-                    <h4 className="text-[15px] font-bold text-text-main dark:text-white">{session.title}</h4>
+                    <h4 className="text-[14px] font-bold tracking-[-0.01em] text-text-main dark:text-white">{session.title}</h4>
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1">
-                        <span className="text-[11px] text-text-sub">
+                        <span className="text-[10px] font-medium text-text-sub/90">
                             {new Date(session.latestDate).toLocaleDateString(locale === 'ko' ? 'ko-KR' : 'en-US')}
                         </span>
                         {session.childName && (
-                            <span className="text-[11px] text-text-sub">· {session.childName}</span>
+                            <span className="text-[10px] font-medium text-text-sub/90">· {session.childName}</span>
                         )}
                         {session.consultCount > 1 && (
-                            <span className="text-[11px] text-primary font-bold">{t('consult.consultCount', { count: session.consultCount })}</span>
+                            <span className="text-[10px] font-semibold text-primary/85">{t('consult.consultCount', { count: session.consultCount })}</span>
                         )}
                     </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                    <span className={`text-[9px] font-bold px-2 py-0.75 rounded-full ${label.color}`}>
+                    <span className={`text-[9px] font-semibold px-2 py-1 rounded-md ${label.color}`}>
                         {label.text}
                     </span>
-                    <span className="material-symbols-outlined text-[17px] text-text-sub/35">chevron_right</span>
+                    <span className="material-symbols-outlined text-[16px] text-text-sub/30">chevron_right</span>
                 </div>
             </div>
 
             {session.latestProblem && (
-                <div className="mt-2.5 rounded-xl bg-[#FFF9F4] dark:bg-primary/5 px-3.5 py-2.5">
-                    <p className="text-[10px] font-bold text-[#D08B5B]/90 mb-1">{t('consult.todaysConcern')}</p>
-                    <p className="text-[13px] text-text-main dark:text-white leading-[1.55] line-clamp-2 break-keep">
+                <div className="mt-2.5 rounded-lg bg-[#FFF9F4] dark:bg-primary/5 px-3 py-2.5">
+                    <p className="text-[10px] font-semibold text-[#D08B5B]/85 mb-1">{t('consult.todaysConcern')}</p>
+                    <p className="text-[12px] font-medium text-text-main dark:text-white leading-[1.5] line-clamp-2 break-keep">
                         &ldquo;{session.latestProblem}&rdquo;
                     </p>
                 </div>
             )}
 
             {session.latestMagicWord && (
-                <div className="mt-2 flex items-start gap-1.5 text-secondary/70">
-                    <span className="material-symbols-outlined text-[12px] mt-0.5 shrink-0">record_voice_over</span>
-                    <p className="text-[10px] line-clamp-1 font-medium leading-relaxed">
+                <div className="mt-2 flex items-start gap-1.5 text-secondary/65">
+                    <span className="material-symbols-outlined text-[11px] mt-0.5 shrink-0">record_voice_over</span>
+                    <p className="text-[10px] line-clamp-1 font-medium leading-[1.45]">
                         &ldquo;{session.latestMagicWord}&rdquo;
                     </p>
                 </div>
