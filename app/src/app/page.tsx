@@ -6,38 +6,44 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useAppStore } from '@/store/useAppStore';
 import BottomNav from '@/components/layout/BottomNav';
+import { HomeHeader } from '@/components/home/HomeHeader';
+import { HomeLoadingScreen } from '@/components/home/HomeLoadingScreen';
+import { HomeWelcomeState } from '@/components/home/HomeWelcomeState';
 import LandingPage from '@/components/landing/LandingPage';
-import { db, UserProfile, ChildProfile, ReportData, SurveyData, PracticeItemData, PracticeLogData, SubscriptionData } from '@/lib/db';
-import { supabase } from '@/lib/supabase';
+import { db, ChildProfile } from '@/lib/db';
 import { TemperamentScorer } from '@/lib/TemperamentScorer';
 import { TemperamentClassifier } from '@/lib/TemperamentClassifier';
 import { CHILD_QUESTIONS, PARENT_QUESTIONS } from '@/data/questions';
 import { TCI_TERMINOLOGY } from '@/constants/terminology';
 import { useLocale } from '@/i18n/LocaleProvider';
+import { useHomeDashboard } from '@/hooks/useHomeDashboard';
+import { extractReportScores, parseAnswerMap, type TemperamentScores } from '@/lib/home';
 
 export default function HomePage() {
   const router = useRouter();
   const { t } = useLocale();
   const { user, loading: authLoading } = useAuth();
   const { intake, cbqResponses, atqResponses, resetSurveyOnly, selectedChildId, setSelectedChildId } = useAppStore();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [children, setChildren] = useState<ChildProfile[]>([]);
-  const [reports, setReports] = useState<ReportData[]>([]);
-  const [surveys, setSurveys] = useState<SurveyData[]>([]);
-
   const [uploading, setUploading] = useState(false);
   const [showSurveyIntro, setShowSurveyIntro] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [practices, setPractices] = useState<{ uncheckedCount: number; uncheckedItems: PracticeItemData[] }>({ uncheckedCount: 0, uncheckedItems: [] });
-  const [showConsultCTA, setShowConsultCTA] = useState(false);
-  const [allMagicWords, setAllMagicWords] = useState<{ word: string; date: string; childId?: string; childName?: string }[]>([]);
   const [magicWordIndex, setMagicWordIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const [loading, setLoading] = useState(true);
-  const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
-
   const [showChildDropdown, setShowChildDropdown] = useState(false);
+  const {
+    profile,
+    children,
+    reports,
+    surveys,
+    practices,
+    showConsultCTA,
+    allMagicWords,
+    subscription,
+    loading,
+  } = useHomeDashboard({
+    userId: user?.id,
+    authLoading,
+  });
 
   // Derived Child Profile (DB first, then local intake store)
   const mainChild = useMemo(() => {
@@ -107,15 +113,18 @@ export default function HomePage() {
   // Derived Temperament (Parent = Soil, Child = Seed + Plant)
   // 양육자 기질은 아이와 무관하게 하나
   const parentTemperament = useMemo(() => {
-    let parentScores = { NS: 50, HA: 50, RD: 50, P: 50 };
+    let parentScores: TemperamentScores = { NS: 50, HA: 50, RD: 50, P: 50 };
     const parentReport = reports.find(r => r.type === 'PARENT');
-    const parentReportScores = (parentReport?.analysis_json as any)?.scores;
+    const parentReportScores = extractReportScores(parentReport?.analysis_json);
 
     if (Object.keys(atqResponses).length > 0) {
-      parentScores = TemperamentScorer.calculate(PARENT_QUESTIONS, atqResponses as any);
+      parentScores = TemperamentScorer.calculate(PARENT_QUESTIONS, atqResponses);
     } else if (parentSurvey?.answers) {
-      parentScores = TemperamentScorer.calculate(PARENT_QUESTIONS, parentSurvey.answers as any);
-    } else if (parentReportScores && 'NS' in parentReportScores) {
+      const parentSurveyAnswers = parseAnswerMap(parentSurvey.answers);
+      if (parentSurveyAnswers) {
+        parentScores = TemperamentScorer.calculate(PARENT_QUESTIONS, parentSurveyAnswers);
+      }
+    } else if (parentReportScores) {
       parentScores = parentReportScores;
     }
 
@@ -127,93 +136,23 @@ export default function HomePage() {
 
   const temperamentInfo = useMemo(() => {
     // 해당 아이의 리포트나 설문 데이터 찾기
-    const childSurvey = reports.find(r => r.child_id === mainChild?.id && r.type === 'CHILD');
+    const childReport = reports.find(r => r.child_id === mainChild?.id && r.type === 'CHILD');
 
     // Check DB report/survey first, then fall back to local store for temporary intake
-    const childAnswers = (childSurvey?.analysis_json as any)?.scores
-      || (latestSurvey?.answers as Record<string, number>)
+    const childAnswers = extractReportScores(childReport?.analysis_json)
+      || parseAnswerMap(latestSurvey?.answers)
       || (mainChild?.id === 'temporary-intake-id' && Object.keys(cbqResponses).length > 0 ? cbqResponses : null);
 
     if (!childAnswers) return null;
 
-    const scores = typeof childAnswers === 'object' && 'NS' in childAnswers
+    const scores = 'NS' in childAnswers
       ? childAnswers
-      : TemperamentScorer.calculate(CHILD_QUESTIONS, childAnswers as any);
+      : TemperamentScorer.calculate(CHILD_QUESTIONS, childAnswers);
 
-    const childResult = TemperamentClassifier.analyzeChild(scores as any);
+    const childResult = TemperamentClassifier.analyzeChild(scores);
 
     return { child: childResult };
-  }, [mainChild, children, selectedChildId, cbqResponses, latestSurvey, reports]);
-
-  useEffect(() => {
-    async function fetchData() {
-      if (authLoading) return;
-
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const [data, activePractices, todayLogs, sub] = await Promise.all([
-          db.getDashboardData(user.id),
-          db.getActivePracticeItems(user.id).catch(() => [] as PracticeItemData[]),
-          db.getTodayPracticeLogs(user.id).catch(() => [] as PracticeLogData[]),
-          db.getActiveSubscription(user.id).catch(() => null),
-        ]);
-        setSubscription(sub);
-        setProfile(data.profile);
-        setChildren(data.children);
-        setReports(data.reports);
-        setSurveys(data.surveys);
-
-        // 오늘 미체크 실천 항목 필터링
-        const checkedPracticeIds = new Set((todayLogs as PracticeLogData[]).map(l => l.practice_id));
-        const uncheckedItems = (activePractices as PracticeItemData[]).filter(p => !checkedPracticeIds.has(p.id));
-        setPractices({ uncheckedCount: uncheckedItems.length, uncheckedItems });
-
-        // 상담 이력 없거나 진행 중인 실천이 없으면 상담 유도 표시
-        const hasActivePractices = (activePractices as PracticeItemData[]).length > 0;
-        if (!hasActivePractices) {
-          const { count } = await supabase
-            .from('consultation_sessions')
-            .select('id', { count: 'exact', head: true })
-            .eq('user_id', user.id);
-          setShowConsultCTA(!count || count === 0);
-        } else {
-          setShowConsultCTA(false);
-        }
-
-        // 실천 중인 상담의 마법의 한마디만 표시
-        const activeConsultationIds = [...new Set((activePractices as any[]).map(p => p.consultation_id).filter(Boolean))];
-        if (activeConsultationIds.length > 0) {
-          const { data: activeConsults } = await supabase
-            .from('consultations')
-            .select('ai_prescription, created_at, child_id')
-            .in('id', activeConsultationIds)
-            .eq('status', 'COMPLETED');
-          const words = (activeConsults || [])
-            .filter((c: any) => c.ai_prescription?.magicWord)
-            .map((c: any) => ({
-              word: c.ai_prescription.magicWord,
-              date: c.created_at,
-              childId: c.child_id,
-              childName: data.children.find((ch: ChildProfile) => ch.id === c.child_id)?.name,
-            }));
-          setAllMagicWords(words);
-        } else {
-          setAllMagicWords([]);
-        }
-
-      } catch (error) {
-        console.error('Failed to fetch dashboard data:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchData();
-  }, [user, authLoading]);
+  }, [mainChild, cbqResponses, latestSurvey, reports]);
 
   useEffect(() => {
     // Only show onboarding if no child is registered in DB AND no intake info in local store
@@ -254,26 +193,7 @@ export default function HomePage() {
 
   // 데이터 로딩 중 스켈레톤 표시 (뒤로가기 시 번쩍임 방지)
   if (loading || authLoading) {
-    return (
-      <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center justify-center font-body">
-        <div className="w-full max-w-md min-h-screen flex flex-col shadow-2xl relative">
-          <header className="sticky top-0 z-40 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-xl pt-12 pb-4 border-b border-gray-100 dark:border-gray-800">
-            <div className="flex items-center justify-between min-h-[40px] px-4">
-              <div className="flex items-center gap-3">
-                <img src="/gijilai_icon.png" alt={t('common.appName')} className="w-7 h-7 rounded-lg object-contain" />
-                <span className="text-xl font-logo tracking-wide text-primary dark:text-white pt-0.5">{t('common.appName')}</span>
-              </div>
-              <div className="w-14 h-6 bg-gray-100 dark:bg-surface-dark rounded-full animate-pulse" />
-            </div>
-          </header>
-          <main className="flex-1 flex flex-col items-center pt-12 px-6">
-            <div className="w-32 h-32 rounded-full bg-gray-100 dark:bg-surface-dark animate-pulse" />
-            <div className="w-24 h-4 bg-gray-100 dark:bg-surface-dark rounded-full mt-8 animate-pulse" />
-            <div className="w-40 h-3 bg-gray-50 dark:bg-surface-dark/50 rounded-full mt-3 animate-pulse" />
-          </main>
-        </div>
-      </div>
-    );
+    return <HomeLoadingScreen />;
   }
 
   // Calculate age string
@@ -291,54 +211,12 @@ export default function HomePage() {
   return (
     <div className="bg-background-light dark:bg-background-dark text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center justify-center font-body pb-0">
       <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl overflow-hidden relative">
-        <header className="sticky top-0 z-40 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-xl pt-12 pb-4 border-b border-gray-100 dark:border-gray-800">
-          <div className="flex items-center justify-between min-h-[40px] px-4">
-            <div className="flex items-center gap-3">
-              <img src="/gijilai_icon.png" alt={t('common.appName')} className="w-7 h-7 rounded-lg object-contain" />
-              <span className="text-xl font-logo tracking-wide text-primary dark:text-white pt-0.5">{t('common.appName')}</span>
-            </div>
-            {(() => {
-              if (subscription) {
-                const isCancelled = !!subscription.cancelled_at;
-                return (
-                  <button
-                    onClick={() => router.push('/settings/subscription')}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/10 dark:bg-primary/20 text-primary text-xs font-semibold"
-                  >
-                    <span className="material-symbols-outlined text-sm">workspace_premium</span>
-                    <span>{t('home.subscribing')}</span>
-                    {isCancelled && (
-                      <span className="text-[10px] text-text-muted dark:text-gray-400">
-                        ~{new Date(subscription.current_period_end).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}
-                      </span>
-                    )}
-                  </button>
-                );
-              }
-              const trial = user?.created_at ? db.getTrialStatus(user.created_at) : null;
-              if (trial?.isActive) {
-                return (
-                  <button
-                    onClick={() => router.push('/pricing')}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-secondary/10 dark:bg-secondary/20 text-secondary"
-                  >
-                    <span className="material-symbols-outlined text-sm">auto_awesome</span>
-                    <span>{t('home.trialDays', { days: trial.daysRemaining })}</span>
-                  </button>
-                );
-              }
-              return (
-                <button
-                  onClick={() => router.push('/pricing')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-primary/10 dark:bg-primary/20 text-primary"
-                >
-                  <span className="material-symbols-outlined text-sm">auto_awesome</span>
-                  <span>{t('home.startPremium')}</span>
-                </button>
-              );
-            })()}
-          </div>
-        </header>
+        <HomeHeader
+          userCreatedAt={user?.created_at}
+          subscription={subscription}
+          onSubscriptionClick={() => router.push('/settings/subscription')}
+          onPricingClick={() => router.push('/pricing')}
+        />
 
         <main className="flex-1 overflow-y-auto no-scrollbar pb-32">
           {mainChild ? (
@@ -581,36 +459,7 @@ export default function HomePage() {
               </div>
             </div>
           ) : (
-            /* [신규 사용자] 아이가 등록되지 않은 상테 - 히어로 전용 UI */
-            <div className="px-6 pb-12 animate-in slide-in-from-bottom-8 duration-1000">
-              {/* 통합 환영 하이라이트 카드 */}
-              <div className="bg-gradient-to-br from-white to-primary/5 dark:from-surface-dark/80 dark:to-primary/20 rounded-[2.5rem] p-8 mt-12 mb-10 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.08)] border border-primary/10 dark:border-primary/30 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-[80px] -mr-32 -mt-32 pointer-events-none group-hover:bg-primary/20 transition-all duration-700"></div>
-                <div className="absolute bottom-0 left-0 w-48 h-48 bg-secondary/10 rounded-full blur-[60px] -ml-24 -mb-24 pointer-events-none"></div>
-
-                <div className="relative z-10 flex flex-col items-center text-center">
-                  <div className="w-20 h-20 rounded-[2rem] bg-white dark:bg-slate-800 shadow-xl flex items-center justify-center text-primary mb-8 rotate-3 group-hover:rotate-0 transition-transform duration-500 ring-4 ring-primary/5">
-                    <span className="material-symbols-outlined text-[46px] fill-1 scale-110">child_care</span>
-                  </div>
-
-                  <h2 className="text-[28px] font-black text-text-main dark:text-white leading-tight break-keep mb-4">
-                    {t('home.welcomeGreeting', { name: profile?.full_name || t('home.defaultParentName') })}<br />
-                    <span className="text-primary">{t('home.welcomeSubtitle')}</span>
-                  </h2>
-                  <p className="text-text-sub dark:text-gray-400 text-sm leading-relaxed break-keep mb-10 whitespace-pre-line">
-                    {t('home.welcomeDescription')}
-                  </p>
-
-                  <Link href="/settings/child/new" className="w-full">
-                    <button className="w-full bg-primary hover:bg-primary-dark py-5 rounded-[1.5rem] text-white font-bold text-[17px] shadow-2xl shadow-primary/30 transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2">
-                      <span>{t('home.registerChildProfile')}</span>
-                      <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
-                    </button>
-                  </Link>
-                </div>
-              </div>
-
-            </div>
+            <HomeWelcomeState profile={profile} />
           )}
 
         </main>
