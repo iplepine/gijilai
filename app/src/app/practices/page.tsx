@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/auth/AuthProvider';
 import BottomNav from '@/components/layout/BottomNav';
-import { db, PracticeItemData, PracticeLogData, SessionData } from '@/lib/db';
+import { db, ChildProfile, PracticeItemData, PracticeLogData, SessionData } from '@/lib/db';
 import { Button } from '@/components/ui/Button';
 import { Navbar } from '@/components/layout/Navbar';
 import { PracticeCheckModal } from '@/components/practices/PracticeCheckModal';
@@ -29,7 +29,7 @@ export default function PracticesPage() {
     const [practices, setPractices] = useState<PracticeWithSession[]>([]);
     const [allLogs, setAllLogs] = useState<PracticeLogData[]>([]);
     const [todayLogs, setTodayLogs] = useState<PracticeLogData[]>([]);
-    const [children, setChildren] = useState<any[]>([]);
+    const [children, setChildren] = useState<ChildProfile[]>([]);
     const [selectedChildId, setSelectedChildId] = useState<string | 'ALL'>('ALL');
     const [isLoading, setIsLoading] = useState(true);
     const [hasFullAccess, setHasFullAccess] = useState(false);
@@ -38,14 +38,7 @@ export default function PracticesPage() {
     const [checkModal, setCheckModal] = useState<{ practice: PracticeItemData; existingLog?: PracticeLogData; recentFailCount?: number; sessionId?: string } | null>(null);
     const [reviewModal, setReviewModal] = useState<{ practice: PracticeItemData; doneDays: number; sessionId?: string } | null>(null);
 
-    useEffect(() => {
-        if (!authLoading) {
-            if (user) fetchData();
-            else setIsLoading(false);
-        }
-    }, [user, authLoading]);
-
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         if (!user) return;
         setIsLoading(true);
         try {
@@ -82,33 +75,53 @@ export default function PracticesPage() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [user]);
+
+    useEffect(() => {
+        if (!authLoading) {
+            if (user) {
+                void fetchData();
+            } else {
+                setIsLoading(false);
+            }
+        }
+    }, [authLoading, fetchData, user]);
 
     const today = new Date().toISOString().split('T')[0];
 
-    const filteredPractices = selectedChildId === 'ALL'
-        ? practices
-        : practices.filter(p => p.consultation_sessions?.child_id === selectedChildId);
+    const filteredPractices = useMemo(() => (
+        selectedChildId === 'ALL'
+            ? practices
+            : practices.filter((practice) => practice.consultation_sessions?.child_id === selectedChildId)
+    ), [practices, selectedChildId]);
 
-    // 세션별 그룹핑
-    const grouped: GroupedPractices[] = [];
-    for (const p of filteredPractices) {
-        const existing = grouped.find(g => g.session.id === p.consultation_sessions?.id);
-        if (existing) {
-            existing.practices.push(p);
-        } else if (p.consultation_sessions) {
-            grouped.push({ session: p.consultation_sessions, practices: [p] });
+    const grouped = useMemo(() => {
+        const groupedMap = new Map<string, GroupedPractices>();
+
+        for (const practice of filteredPractices) {
+            const session = practice.consultation_sessions;
+            if (!session) continue;
+
+            const existing = groupedMap.get(session.id);
+            if (existing) {
+                existing.practices.push(practice);
+                continue;
+            }
+
+            groupedMap.set(session.id, {
+                session,
+                practices: [practice],
+            });
         }
-    }
 
-    // 미기록 항목이 있는 세션이 위로 오도록 세션 그룹 정렬
-    grouped.sort((a, b) => {
-        const aHasUnchecked = a.practices.some(p => !todayLogs.find(l => l.practice_id === p.id));
-        const bHasUnchecked = b.practices.some(p => !todayLogs.find(l => l.practice_id === p.id));
-        if (aHasUnchecked && !bHasUnchecked) return -1;
-        if (!aHasUnchecked && bHasUnchecked) return 1;
-        return 0;
-    });
+        return [...groupedMap.values()].sort((a, b) => {
+            const aHasUnchecked = a.practices.some((practice) => !todayLogs.find((log) => log.practice_id === practice.id));
+            const bHasUnchecked = b.practices.some((practice) => !todayLogs.find((log) => log.practice_id === practice.id));
+            if (aHasUnchecked && !bHasUnchecked) return -1;
+            if (!aHasUnchecked && bHasUnchecked) return 1;
+            return 0;
+        });
+    }, [filteredPractices, todayLogs]);
 
     const getTodayLog = (practiceId: string) => todayLogs.find(l => l.practice_id === practiceId);
 
@@ -123,7 +136,7 @@ export default function PracticesPage() {
         return count;
     };
 
-    const handleCheckSave = async (done: boolean, memo: string | null) => {
+    const handleCheckSave = useCallback(async (done: boolean, memo: string | null) => {
         if (!user || !checkModal) return;
         await db.createPracticeLog({
             practice_id: checkModal.practice.id,
@@ -133,9 +146,9 @@ export default function PracticesPage() {
             memo,
         });
         await fetchData();
-    };
+    }, [checkModal, fetchData, today, user]);
 
-    const handleReviewSave = async (content: string) => {
+    const handleReviewSave = useCallback(async (content: string) => {
         if (!user || !reviewModal) return;
         await db.createPracticeReview({
             practice_id: reviewModal.practice.id,
@@ -144,7 +157,7 @@ export default function PracticesPage() {
         });
         await db.updatePracticeItem(reviewModal.practice.id, { status: 'COMPLETED' });
         await fetchData();
-    };
+    }, [fetchData, reviewModal, user]);
 
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center font-body">
