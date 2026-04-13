@@ -9,6 +9,8 @@
 
 시스템은 Next.js 웹 앱과 Flutter 모바일 쉘(`gijilai_app/`)로 구성되어 있으며, Flutter는 웹앱을 WebView로 감싸는 역할만 합니다. 모든 비즈니스 로직은 Next.js 앱에 있습니다.
 
+웹 앱 내부의 모듈 구조, 의존 방향, 상태 관리 기준은 별도 문서 [WEB-ARCHITECTURE.md](WEB-ARCHITECTURE.md)에서 정의합니다.
+
 ## 컴포넌트
 
 ### 점수 산출 파이프라인

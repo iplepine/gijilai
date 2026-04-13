@@ -8,6 +8,7 @@
 |------|------|
 | [SPEC.md](../SPEC.md) | 화면별 상세 요구사항 및 데이터 모델 |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | 시스템 구조, 컴포넌트 책임, 외부 의존성, 데이터 흐름 |
+| [WEB-ARCHITECTURE.md](WEB-ARCHITECTURE.md) | Next.js 웹 앱의 모듈 구조, 의존 방향, 상태 관리 원칙 |
 | [EXTERNAL-SERVICES.md](EXTERNAL-SERVICES.md) | 외부 서비스별 역할, 코드 접점, 운영 포인트 인벤토리 |
 | [policies/](policies/index.md) | 비즈니스 룰 및 정책 (점수, 설문 문항, 결제, 추천, 네비게이션) |
 | [CONVENTIONS.md](CONVENTIONS.md) | 코드 규칙 및 패턴 |
