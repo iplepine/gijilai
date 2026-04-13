@@ -197,7 +197,7 @@ function SessionCard({ session, statusLabel, onSelect }: {
 
             {session.latestMagicWord && (
                 <div className="mt-2 flex items-start gap-1.5 text-secondary/65">
-                    <span className="material-symbols-outlined text-[11px] mt-0.5 shrink-0">record_voice_over</span>
+                    <span className="material-symbols-outlined text-[18px] leading-none mt-0.5 shrink-0">record_voice_over</span>
                     <p className="text-[10px] line-clamp-1 font-medium leading-[1.45]">
                         &ldquo;{session.latestMagicWord}&rdquo;
                     </p>
