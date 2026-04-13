@@ -179,16 +179,16 @@ function SessionCard({ session, statusLabel, onSelect }: {
                     </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${label.color}`}>
+                    <span className={`text-[9px] font-bold px-2 py-0.75 rounded-full ${label.color}`}>
                         {label.text}
                     </span>
-                    <span className="material-symbols-outlined text-[18px] text-text-sub/40">chevron_right</span>
+                    <span className="material-symbols-outlined text-[17px] text-text-sub/35">chevron_right</span>
                 </div>
             </div>
 
             {session.latestProblem && (
-                <div className="mt-2.5 rounded-xl bg-[#FFF9F4] dark:bg-primary/5 px-3.5 py-2.5 border border-[#F4D7B3]/60 dark:border-primary/10">
-                    <p className="text-[10px] font-bold text-[#D08B5B] mb-1">{t('consult.todaysConcern')}</p>
+                <div className="mt-2.5 rounded-xl bg-[#FFF9F4] dark:bg-primary/5 px-3.5 py-2.5">
+                    <p className="text-[10px] font-bold text-[#D08B5B]/90 mb-1">{t('consult.todaysConcern')}</p>
                     <p className="text-[13px] text-text-main dark:text-white leading-[1.55] line-clamp-2 break-keep">
                         &ldquo;{session.latestProblem}&rdquo;
                     </p>
@@ -196,9 +196,9 @@ function SessionCard({ session, statusLabel, onSelect }: {
             )}
 
             {session.latestMagicWord && (
-                <div className="mt-2.5 flex items-start gap-1.5 text-secondary/90">
-                    <span className="material-symbols-outlined text-[13px] mt-0.5 shrink-0">record_voice_over</span>
-                    <p className="text-[11px] line-clamp-1 font-semibold leading-relaxed">
+                <div className="mt-2 flex items-start gap-1.5 text-secondary/70">
+                    <span className="material-symbols-outlined text-[12px] mt-0.5 shrink-0">record_voice_over</span>
+                    <p className="text-[10px] line-clamp-1 font-medium leading-relaxed">
                         &ldquo;{session.latestMagicWord}&rdquo;
                     </p>
                 </div>
