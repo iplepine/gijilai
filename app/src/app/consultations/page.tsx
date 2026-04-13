@@ -4,10 +4,11 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { db, SessionData } from '@/lib/db';
+import { db, SessionData, ChildProfile } from '@/lib/db';
 import BottomNav from '@/components/layout/BottomNav';
 import { Navbar } from '@/components/layout/Navbar';
 import { useLocale } from '@/i18n/LocaleProvider';
+import type { Database } from '@/types/supabase';
 
 interface SessionWithMeta extends SessionData {
     consultCount: number;
@@ -17,73 +18,85 @@ interface SessionWithMeta extends SessionData {
     childName?: string;
 }
 
+type ConsultationRow = Database['public']['Tables']['consultations']['Row'];
+
+function getMagicWord(value: ConsultationRow['ai_prescription']): string | undefined {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+    const magicWord = (value as Record<string, unknown>).magicWord;
+    return typeof magicWord === 'string' ? magicWord : undefined;
+}
+
 export default function RecordsPage() {
     const router = useRouter();
     const { user, loading: authLoading } = useAuth();
-    const { t, locale } = useLocale();
+    const { t } = useLocale();
 
     const [isLoading, setIsLoading] = useState(true);
     const [sessions, setSessions] = useState<SessionWithMeta[]>([]);
 
     useEffect(() => {
-        if (!authLoading && user) loadData();
-        else if (!authLoading) setIsLoading(false);
-    }, [user, authLoading]);
-
-    const loadData = async () => {
-        if (!user) return;
-        try {
-            const [childData, sessionData, { data: consultData }] = await Promise.all([
-                db.getChildren(user.id),
-                db.getSessions(user.id),
-                supabase
-                    .from('consultations')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .eq('status', 'COMPLETED')
-                    .order('created_at', { ascending: false }),
-            ]);
-
-            const consults = consultData || [];
-            const sessionsWithMeta: SessionWithMeta[] = (sessionData || []).map(s => {
-                const sessionConsults = consults.filter((c: any) => c.session_id === s.id);
-                const latest = sessionConsults[0];
-                return {
-                    ...s,
-                    consultCount: sessionConsults.length,
-                    latestDate: latest?.created_at || s.created_at,
-                    latestProblem: latest?.problem_description,
-                    latestMagicWord: latest?.ai_prescription?.magicWord,
-                    childName: (childData || []).find((c: any) => c.id === s.child_id)?.name,
-                };
-            });
-
-            // 세션 없는 상담도 표시 (하위 호환)
-            const orphanConsults = consults.filter((c: any) => !c.session_id);
-            for (const c of orphanConsults) {
-                sessionsWithMeta.push({
-                    id: c.id,
-                    user_id: user.id,
-                    child_id: c.child_id,
-                    title: t('consult.pastConsult'),
-                    status: 'ARCHIVED',
-                    created_at: c.created_at,
-                    updated_at: c.created_at,
-                    consultCount: 1,
-                    latestDate: c.created_at,
-                    latestProblem: c.problem_description,
-                    latestMagicWord: c.ai_prescription?.magicWord,
-                    childName: (childData || []).find((ch: any) => ch.id === c.child_id)?.name,
-                });
-            }
-
-            setSessions(sessionsWithMeta);
-        } catch (e) {
-            console.error('Failed to load records:', e);
-        } finally {
+        if (authLoading) return;
+        if (!user) {
             setIsLoading(false);
+            return;
         }
-    };
+
+        const loadData = async () => {
+            try {
+                const [childData, sessionData, { data: consultData }] = await Promise.all([
+                    db.getChildren(user.id),
+                    db.getSessions(user.id),
+                    supabase
+                        .from('consultations')
+                        .select('*')
+                        .eq('user_id', user.id)
+                        .eq('status', 'COMPLETED')
+                        .order('created_at', { ascending: false }),
+                ]);
+
+                const children = childData || [];
+                const consults = (consultData || []) as ConsultationRow[];
+                const sessionsWithMeta: SessionWithMeta[] = (sessionData || []).map((s) => {
+                    const sessionConsults = consults.filter((c) => c.session_id === s.id);
+                    const latest = sessionConsults[0];
+                    return {
+                        ...s,
+                        consultCount: sessionConsults.length,
+                        latestDate: latest?.created_at || s.created_at,
+                        latestProblem: latest?.problem_description ?? undefined,
+                        latestMagicWord: latest ? getMagicWord(latest.ai_prescription) : undefined,
+                        childName: children.find((c: ChildProfile) => c.id === s.child_id)?.name,
+                    };
+                });
+
+                const orphanConsults = consults.filter((c) => !c.session_id);
+                for (const c of orphanConsults) {
+                    sessionsWithMeta.push({
+                        id: c.id,
+                        user_id: user.id,
+                        child_id: c.child_id,
+                        title: t('consult.pastConsult'),
+                        status: 'ARCHIVED',
+                        created_at: c.created_at,
+                        updated_at: c.created_at,
+                        consultCount: 1,
+                        latestDate: c.created_at,
+                        latestProblem: c.problem_description ?? undefined,
+                        latestMagicWord: getMagicWord(c.ai_prescription),
+                        childName: children.find((ch: ChildProfile) => ch.id === c.child_id)?.name,
+                    });
+                }
+
+                setSessions(sessionsWithMeta);
+            } catch (e) {
+                console.error('Failed to load records:', e);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadData();
+    }, [user, authLoading, t]);
 
     const statusLabel = (status: string) => {
         if (status === 'ACTIVE') return { text: t('consult.statusActive'), color: 'text-primary bg-primary/10' };

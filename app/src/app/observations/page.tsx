@@ -5,18 +5,23 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/auth/AuthProvider';
 import BottomNav from '@/components/layout/BottomNav';
-import { db, ObservationData } from '@/lib/db';
+import { db, ObservationData, ChildProfile } from '@/lib/db';
 import { Button } from '@/components/ui/Button';
 import { Navbar } from '@/components/layout/Navbar';
 import { useLocale } from '@/i18n/LocaleProvider';
+import type { Database } from '@/types/supabase';
 
 interface Consultation {
     id: string;
     created_at: string;
-    problem_description: string;
-    ai_prescription: {
-        actionItem: string;
-    };
+    problem_description: string | null;
+    ai_prescription: Database['public']['Tables']['consultations']['Row']['ai_prescription'];
+}
+
+function getActionItem(value: Consultation['ai_prescription']): string | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const actionItem = (value as Record<string, unknown>).actionItem;
+    return typeof actionItem === 'string' ? actionItem : null;
 }
 
 export default function RecordPage() {
@@ -24,7 +29,7 @@ export default function RecordPage() {
     const { user, loading: authLoading } = useAuth();
     const { t } = useLocale();
     const [observations, setObservations] = useState<ObservationData[]>([]);
-    const [children, setChildren] = useState<any[]>([]);
+    const [children, setChildren] = useState<ChildProfile[]>([]);
     const [selectedChildId, setSelectedChildId] = useState<string | 'ALL'>('ALL');
     const [isLoading, setIsLoading] = useState(true);
 
@@ -42,52 +47,50 @@ export default function RecordPage() {
     const [latestActionItem, setLatestActionItem] = useState<{ actionItem: string; date: string; consultId: string } | null>(null);
 
     useEffect(() => {
-        if (!authLoading) {
-            if (user) {
-                fetchData();
-            } else {
-                setIsLoading(false);
-            }
+        if (authLoading) return;
+        if (!user) {
+            setIsLoading(false);
+            return;
         }
-    }, [user, authLoading]);
 
-    const fetchData = async () => {
-        if (!user) return;
-        setIsLoading(true);
-        try {
-            const [obsData, childData, consultData] = await Promise.all([
-                db.getObservations(user.id),
-                db.getChildren(user.id),
-                supabase
-                    .from('consultations')
-                    .select('id, created_at, ai_prescription')
-                    .eq('user_id', user.id)
-                    .eq('status', 'COMPLETED')
-                    .order('created_at', { ascending: false })
-                    .limit(1)
-                    .then(r => r.data),
-            ]);
-            setObservations(obsData || []);
-            setChildren(childData || []);
-            if (consultData?.[0]?.ai_prescription) {
-                const p = consultData[0].ai_prescription as any;
-                if (p.actionItem) {
+        const fetchData = async () => {
+            setIsLoading(true);
+            try {
+                const [obsData, childData, consultData] = await Promise.all([
+                    db.getObservations(user.id),
+                    db.getChildren(user.id),
+                    supabase
+                        .from('consultations')
+                        .select('id, created_at, ai_prescription')
+                        .eq('user_id', user.id)
+                        .eq('status', 'COMPLETED')
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .then(r => r.data),
+                ]);
+                setObservations(obsData || []);
+                setChildren(childData || []);
+                const latestConsult = (consultData as Pick<Consultation, 'id' | 'created_at' | 'ai_prescription'>[] | null)?.[0];
+                const actionItem = latestConsult ? getActionItem(latestConsult.ai_prescription) : null;
+                if (latestConsult && actionItem) {
                     setLatestActionItem({
-                        actionItem: p.actionItem,
-                        date: consultData[0].created_at,
-                        consultId: consultData[0].id,
+                        actionItem,
+                        date: latestConsult.created_at,
+                        consultId: latestConsult.id,
                     });
                 }
+                if (childData?.length === 1) {
+                    setModalChildId(childData[0].id);
+                }
+            } catch (error) {
+                console.error('Error fetching observations:', error);
+            } finally {
+                setIsLoading(false);
             }
-            if (childData?.length === 1) {
-                setModalChildId(childData[0].id);
-            }
-        } catch (error) {
-            console.error('Error fetching observations:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+        };
+
+        fetchData();
+    }, [user, authLoading]);
 
     const openModal = async () => {
         setSituation('');
@@ -197,7 +200,7 @@ export default function RecordPage() {
                         >
                             {t('common.all')}
                         </button>
-                        {children.map((child: any) => (
+                        {children.map((child) => (
                             <button
                                 key={child.id}
                                 onClick={() => setSelectedChildId(child.id)}
@@ -379,7 +382,7 @@ export default function RecordPage() {
                                 {/* 아이 선택 (2명 이상일 때만) */}
                                 {children.length > 1 && (
                                     <div className="flex gap-2 mb-5">
-                                        {children.map((child: any) => (
+                                        {children.map((child) => (
                                             <button
                                                 key={child.id}
                                                 onClick={() => setModalChildId(child.id)}
@@ -528,8 +531,7 @@ function ConsultationLink({ consultationId }: { consultationId: string }) {
                     .eq('id', consultationId)
                     .single();
                 if (data?.ai_prescription) {
-                    const prescription = data.ai_prescription as any;
-                    setActionItem(prescription.actionItem || null);
+                    setActionItem(getActionItem(data.ai_prescription));
                 }
             } catch {
                 // 조회 실패 시 미표시

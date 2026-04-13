@@ -83,7 +83,7 @@ function SurveyContent() {
         console.warn('Parent survey skip check failed:', e);
       }
     })();
-  }, [currentModule, user]);
+  }, [currentModule, user, atqResponses, restoreSurveyFromDB]);
 
   // 양육태도 검사도 이미 DB에 완료되어 있으면 복원 후 스킵
   const styleSkipCheckedRef = useRef(false);
@@ -115,7 +115,7 @@ function SurveyContent() {
         console.warn('Parenting style skip check failed:', e);
       }
     })();
-  }, [currentModule, user]);
+  }, [currentModule, user, parentingResponses, restoreSurveyFromDB, router]);
 
   // 현재 모듈에 따른 질문 목록과 응답 상태 가져오기
   const getModuleData = useCallback(() => {
@@ -165,13 +165,10 @@ function SurveyContent() {
   const responseCount = Object.keys(responses).length;
 
   // 진행률 계산
-  const totalQuestions = CHILD_QUESTIONS.length + PARENT_QUESTIONS.length + PARENTING_STYLE_QUESTIONS.length;
   const answeredCount =
     Object.keys(cbqResponses).length +
     Object.keys(atqResponses).length +
     Object.keys(parentingResponses).length;
-  const progress = Math.min(100, Math.round((answeredCount / totalQuestions) * 100));
-
   useEffect(() => {
     responseCountRef.current = responseCount;
   }, [responseCount]);
@@ -185,7 +182,7 @@ function SurveyContent() {
     });
   }, [currentModule]);
 
-  const goToNext = useCallback(() => {
+  const goToNext = () => {
     if (currentIndex < questions.length - 1) {
       setCurrentIndex((prev) => prev + 1);
     } else {
@@ -208,9 +205,9 @@ function SurveyContent() {
         setShowTransitionModal(true);
       }
     }
-  }, [currentIndex, questions.length, currentModule, router]);
+  };
 
-  const handleSelect = useCallback((idx: number) => {
+  const handleSelect = (idx: number) => {
     if (isCalculating || isAdvancing) return; // 분석 중이거나 다음 문항으로 넘어가는 중이면 클릭 방지
 
     const score = idx + 1;
@@ -222,7 +219,7 @@ function SurveyContent() {
       goToNext();
       setIsAdvancing(false);
     }, 300);
-  }, [setResponse, currentQuestion?.id, goToNext, isCalculating, isAdvancing]);
+  };
 
   const handlePrev = useCallback(() => {
     if (currentIndex > 0) {

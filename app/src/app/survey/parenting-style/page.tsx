@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSurveyStore } from '../../../store/surveyStore';
 import { PARENTING_STYLE_QUESTIONS } from '../../../data/questions';
@@ -18,7 +18,6 @@ export default function ParentingStyleSurveyPage() {
         nextStep,
         prevStep,
         setSurveyType,
-        setStep,
     } = useSurveyStore();
 
     const [showBridge, setShowBridge] = useState(true);
@@ -50,7 +49,7 @@ export default function ParentingStyleSurveyPage() {
         } else {
             router.replace('/survey/parent');
         }
-    }
+    };
 
     // Effect to handle navigation to this page directly without proper state
     // Skipping relative to 'intro' for now to keep it simple.

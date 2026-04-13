@@ -9,20 +9,17 @@ import BottomNav from '@/components/layout/BottomNav';
 import LandingPage from '@/components/landing/LandingPage';
 import { db, UserProfile, ChildProfile, ReportData, SurveyData, PracticeItemData, PracticeLogData, SubscriptionData } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
-import { GardenState } from '@/types/gardening';
 import { TemperamentScorer } from '@/lib/TemperamentScorer';
 import { TemperamentClassifier } from '@/lib/TemperamentClassifier';
-import { CHILD_QUESTIONS, PARENT_QUESTIONS, PARENTING_STYLE_QUESTIONS } from '@/data/questions';
-import { useSurveyStore } from '@/store/surveyStore';
+import { CHILD_QUESTIONS, PARENT_QUESTIONS } from '@/data/questions';
 import { TCI_TERMINOLOGY } from '@/constants/terminology';
 import { useLocale } from '@/i18n/LocaleProvider';
-import { checkCooldown } from '@/lib/dateUtils';
 
 export default function HomePage() {
   const router = useRouter();
   const { t } = useLocale();
   const { user, loading: authLoading } = useAuth();
-  const { intake, cbqResponses, atqResponses, parentingResponses, resetSurveyOnly, resetAll, selectedChildId, setSelectedChildId } = useAppStore();
+  const { intake, cbqResponses, atqResponses, resetSurveyOnly, selectedChildId, setSelectedChildId } = useAppStore();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [children, setChildren] = useState<ChildProfile[]>([]);
   const [reports, setReports] = useState<ReportData[]>([]);
@@ -37,27 +34,9 @@ export default function HomePage() {
   const [magicWordIndex, setMagicWordIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Gardening State
-  // Gardening State
-  const [garden, setGarden] = useState<GardenState>({
-    level: 1,
-    exp: 0,
-    maxExp: 100,
-    streak: 0,
-    theme: '' as any, // Placeholder until real data
-    plantType: '' as any, // Placeholder until real data
-    stage: '' as any // Placeholder until real data
-  });
-  // Daily Action Checklist State
-  const [dailyActions, setDailyActions] = useState({
-    eyeContact: false,
-    praise: false,
-    skinship: false
-  });
   const [loading, setLoading] = useState(true);
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
 
-  const [cooldownStatus, setCooldownStatus] = useState<{ isAvailable: boolean; remainingHours?: number }>({ isAvailable: true });
   const [showChildDropdown, setShowChildDropdown] = useState(false);
 
   // Derived Child Profile (DB first, then local intake store)
@@ -76,7 +55,7 @@ export default function HomePage() {
         birth_date: intake.birthDate,
         gender: (intake.gender || 'MALE').toUpperCase(),
         image_url: null,
-      } as any as ChildProfile;
+      } as ChildProfile;
     }
     return null;
   }, [children, selectedChildId, intake]);
@@ -236,34 +215,12 @@ export default function HomePage() {
     fetchData();
   }, [user, authLoading]);
 
-  // Cooldown Check
-  useEffect(() => {
-    if (mainChild && reports.length > 0) {
-      // 해당 아이의 가장 최근 리포트 찾기
-      const childReports = reports.filter(r => r.child_id === mainChild.id && r.type === 'CHILD');
-      if (childReports.length > 0) {
-        const lastReport = childReports[0]; // DESC 정렬되어 있음
-        const status = checkCooldown(lastReport.created_at);
-        setCooldownStatus(status);
-      } else {
-        setCooldownStatus({ isAvailable: true });
-      }
-    } else {
-      setCooldownStatus({ isAvailable: true });
-    }
-  }, [mainChild, reports]);
-
   useEffect(() => {
     // Only show onboarding if no child is registered in DB AND no intake info in local store
     if (!loading && user && children.length === 0 && !intake.childName) {
       setShowOnboarding(true);
     }
   }, [loading, user, children, intake.childName]);
-
-  const toggleAction = (key: keyof typeof dailyActions) => {
-    setDailyActions(prev => ({ ...prev, [key]: !prev[key] }));
-  };
-
 
   const handleProfileClick = () => {
     fileInputRef.current?.click();
@@ -330,10 +287,6 @@ export default function HomePage() {
     if (remainingMonths === 0) return t('home.ageYears', { years });
     return t('home.ageYearsMonths', { years, months: remainingMonths });
   })() : t('home.noBirthInfo');
-
-  // TODO: Implement actual db-backed isReportViewed and hasActiveCoaching
-  const hasReport = mainChild ? reports.some(r => r.child_id === mainChild.id) : false;
-  const hasActiveCoaching = false; // DB Schema does not have it yet
 
   return (
     <div className="bg-background-light dark:bg-background-dark text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center justify-center font-body pb-0">

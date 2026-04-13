@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSurveyStore } from '../../../store/surveyStore';
 import { PARENT_QUESTIONS } from '../../../data/questions';
@@ -18,8 +18,6 @@ export default function ParentSurveyPage() {
         nextStep,
         prevStep,
         setSurveyType,
-        getProgress,
-        setStep
     } = useSurveyStore();
 
     const [showBridge, setShowBridge] = useState(true);
@@ -30,13 +28,6 @@ export default function ParentSurveyPage() {
     // Progress needs to be calculated relative to THIS survey or global?
     // UX spec says bridge page separates them, so relative progress is fine.
     const progress = Math.round((currentStep / totalQuestions) * 100);
-
-    useEffect(() => {
-        // Only set type if strictly needed, but bridge logic might need careful handling of state
-        if (showBridge) {
-            // Initial state for this route
-        }
-    }, [showBridge]);
 
     const startParentSurvey = () => {
         setSurveyType('PARENT'); // Resets step to 1
@@ -62,7 +53,7 @@ export default function ParentSurveyPage() {
             // Simplifying: Go back to child survey end
             router.replace('/survey/child');
         }
-    }
+    };
 
     if (showBridge) {
         return (

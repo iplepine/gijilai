@@ -66,5 +66,5 @@ export function useSurveyRestore() {
                 console.warn('Survey restore failed:', e);
             }
         })();
-    }, [user, loading]);
+    }, [user, loading, restoreSurveyFromDB, cbqResponses, atqResponses, parentingResponses]);
 }

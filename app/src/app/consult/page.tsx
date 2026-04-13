@@ -5,10 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useAppStore } from '@/store/useAppStore';
-import BottomNav from '@/components/layout/BottomNav';
 import { Button } from '@/components/ui/Button';
 import { Navbar } from '@/components/layout/Navbar';
-import { db } from '@/lib/db';
+import { db, ObservationData, PracticeItemData, PracticeLogData, ChildProfile } from '@/lib/db';
 import { getFeatureAccess } from '@/lib/access';
 import { getRandomExamples } from '@/data/consultExamples';
 import { useLocale } from '@/i18n/LocaleProvider';
@@ -54,6 +53,21 @@ interface Prescription {
     sessionTitle?: string;
 }
 
+interface TemperamentProfile {
+    label: string;
+    keywords: string[];
+    description: string;
+    scores: {
+        NS: number;
+        HA: number;
+        RD: number;
+        P: number;
+    };
+}
+
+type SessionContextData = Awaited<ReturnType<typeof db.getSessionWithConsultations>>;
+type ChildSummary = Pick<ChildProfile, 'id' | 'name' | 'birth_date' | 'gender'>;
+
 export default function ConsultPage() {
     return (
         <Suspense>
@@ -74,7 +88,7 @@ function ConsultContent() {
     const [childGender, setChildGender] = useState<string | undefined>(intake.gender || undefined);
 
     // 세션 상태
-    const [sessionContext, setSessionContext] = useState<any>(null);
+    const [sessionContext, setSessionContext] = useState<SessionContextData | null>(null);
     const [sessionId, setSessionId] = useState<string | null>(sessionIdParam);
     const [validChildId, setValidChildId] = useState<string | null>(null);
     const [childLoading, setChildLoading] = useState(true);
@@ -84,13 +98,14 @@ function ConsultContent() {
         if (!user) { setChildLoading(false); return; }
         setChildLoading(true);
         supabase.from('children').select('id, name, birth_date, gender').eq('parent_id', user.id).then(async ({ data }) => {
-            if (!data || data.length === 0) {
+            const children = (data || []) as ChildSummary[];
+            if (children.length === 0) {
                 setChildName(intake.childName || null);
                 setValidChildId(null);
                 setChildLoading(false);
             } else {
-                const selected = selectedChildId ? data.find(c => c.id === selectedChildId) : data[0];
-                const child = selected || data[0];
+                const selected = selectedChildId ? children.find(c => c.id === selectedChildId) : children[0];
+                const child = selected || children[0];
                 setChildName(child.name);
                 setChildBirthDate(child.birth_date);
                 setChildGender(child.gender);
@@ -146,8 +161,8 @@ function ConsultContent() {
     const [savedConsultId, setSavedConsultId] = useState<string | null>(null);
 
     // 기질 프로필 (초기 로드 시 1회 계산)
-    const [childProfile, setChildProfile] = useState<any>(null);
-    const [parentProfile, setParentProfile] = useState<any>(null);
+    const [childProfile, setChildProfile] = useState<TemperamentProfile | null>(null);
+    const [parentProfile, setParentProfile] = useState<TemperamentProfile | null>(null);
 
     // 추가 상담: 세션 컨텍스트 로드
     useEffect(() => {
@@ -168,21 +183,25 @@ function ConsultContent() {
             const { TemperamentScorer } = await import('@/lib/TemperamentScorer');
             const { TemperamentClassifier } = await import('@/lib/TemperamentClassifier');
 
-            let childScores: any = null;
-            let parentScores: any = null;
+            let childScores: TemperamentProfile['scores'] | null = null;
+            let parentScores: TemperamentProfile['scores'] | null = null;
 
             if (Object.keys(cbqResponses).length > 0) {
                 const { CHILD_QUESTIONS } = await import('@/data/questions');
-                childScores = TemperamentScorer.calculate(CHILD_QUESTIONS, cbqResponses as any);
+                childScores = TemperamentScorer.calculate(CHILD_QUESTIONS, cbqResponses);
                 const result = TemperamentClassifier.analyzeChild(childScores);
                 setChildProfile({ label: result.label, keywords: result.keywords, description: result.desc, scores: childScores });
+            } else {
+                setChildProfile(null);
             }
 
             if (Object.keys(atqResponses).length > 0) {
                 const { PARENT_QUESTIONS } = await import('@/data/questions');
-                parentScores = TemperamentScorer.calculate(PARENT_QUESTIONS, atqResponses as any);
+                parentScores = TemperamentScorer.calculate(PARENT_QUESTIONS, atqResponses);
                 const result = TemperamentClassifier.analyzeParent(parentScores);
                 setParentProfile({ label: result.label, keywords: result.keywords, description: result.desc, scores: parentScores });
+            } else {
+                setParentProfile(null);
             }
 
         })();
@@ -209,7 +228,7 @@ function ConsultContent() {
 
         setIsLoading(true);
         try {
-            let recentObservations: any[] = [];
+            let recentObservations: ObservationData[] = [];
             if (user) {
                 try {
                     recentObservations = await db.getRecentObservations(user.id, 5);
@@ -317,7 +336,7 @@ function ConsultContent() {
         try {
             const fullProblem = problemDesc;
 
-            let recentObservations: any[] = [];
+            let recentObservations: ObservationData[] = [];
             if (user) {
                 try {
                     recentObservations = await db.getRecentObservations(user.id, 5);
@@ -483,8 +502,8 @@ function ConsultContent() {
                                     {/* 실천 현황 */}
                                     {sessionContext.practices?.length > 0 && (
                                         <div className="space-y-1.5">
-                                            {sessionContext.practices.map((p: any) => {
-                                                const doneDays = (sessionContext.logs || []).filter((l: any) => l.practice_id === p.id && l.done).length;
+                                            {sessionContext.practices.map((p: PracticeItemData) => {
+                                                const doneDays = (sessionContext.logs || []).filter((l: PracticeLogData) => l.practice_id === p.id && l.done).length;
                                                 return (
                                                     <div key={p.id} className="flex items-center gap-2">
                                                         <div className="flex-1 h-1.5 bg-secondary/10 rounded-full overflow-hidden">

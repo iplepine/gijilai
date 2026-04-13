@@ -4,10 +4,29 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { db, SessionData } from '@/lib/db';
+import { db, SessionData, ChildProfile } from '@/lib/db';
 import BottomNav from '@/components/layout/BottomNav';
 import { Navbar } from '@/components/layout/Navbar';
 import { useLocale } from '@/i18n/LocaleProvider';
+import type { Database } from '@/types/supabase';
+
+type ConsultationRow = Database['public']['Tables']['consultations']['Row'];
+type PracticeSummary = Pick<Database['public']['Tables']['practice_items']['Row'], 'consultation_id' | 'title' | 'status'>;
+type QuestionAnalysisItem = { question: string; answer: string; analysis: string };
+type ActionItem = { title: string; description: string; duration: number; encouragement?: string; action?: string; trigger?: string };
+type Prescription = {
+    interpretation?: string;
+    chemistry?: string;
+    magicWord?: string;
+    questionAnalysis?: QuestionAnalysisItem[];
+    actionItems?: ActionItem[];
+    actionItem?: string;
+};
+
+function parsePrescription(value: ConsultationRow['ai_prescription']): Prescription | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    return value as unknown as Prescription;
+}
 
 export default function ConsultationDetailPage() {
     const router = useRouter();
@@ -16,55 +35,59 @@ export default function ConsultationDetailPage() {
     const { t, locale } = useLocale();
 
     const [session, setSession] = useState<(SessionData & { childName?: string }) | null>(null);
-    const [consults, setConsults] = useState<any[]>([]);
+    const [consults, setConsults] = useState<ConsultationRow[]>([]);
     const [practiceItemsByConsult, setPracticeItemsByConsult] = useState<Record<string, Array<{ title: string; status: string }>>>({});
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        if (!authLoading && user) loadData();
-        else if (!authLoading) setIsLoading(false);
-    }, [user, authLoading, id]);
-
-    const loadData = async () => {
-        if (!user || !id) return;
-        try {
-            const [{ data: sessionData }, { data: consultsData }, { data: practicesData }, children] = await Promise.all([
-                supabase
-                    .from('consultation_sessions')
-                    .select('*')
-                    .eq('id', id)
-                    .eq('user_id', user.id)
-                    .single(),
-                supabase
-                    .from('consultations')
-                    .select('*')
-                    .eq('session_id', id)
-                    .order('created_at', { ascending: true }),
-                supabase
-                    .from('practice_items')
-                    .select('consultation_id, title, status')
-                    .eq('session_id', id),
-                db.getChildren(user.id),
-            ]);
-
-            if (sessionData) {
-                const childName = children.find((c: any) => c.id === sessionData.child_id)?.name;
-                setSession({ ...sessionData, childName } as SessionData & { childName?: string });
-            }
-            setConsults(consultsData || []);
-            const groupedPractices = (practicesData || []).reduce((acc: Record<string, Array<{ title: string; status: string }>>, practice: any) => {
-                if (!practice.consultation_id) return acc;
-                if (!acc[practice.consultation_id]) acc[practice.consultation_id] = [];
-                acc[practice.consultation_id].push({ title: practice.title, status: practice.status });
-                return acc;
-            }, {});
-            setPracticeItemsByConsult(groupedPractices);
-        } catch (e) {
-            console.error('Failed to load consultation detail:', e);
-        } finally {
+        if (authLoading) return;
+        if (!user || !id) {
             setIsLoading(false);
+            return;
         }
-    };
+
+        const loadData = async () => {
+            try {
+                const [{ data: sessionData }, { data: consultsData }, { data: practicesData }, children] = await Promise.all([
+                    supabase
+                        .from('consultation_sessions')
+                        .select('*')
+                        .eq('id', id)
+                        .eq('user_id', user.id)
+                        .single(),
+                    supabase
+                        .from('consultations')
+                        .select('*')
+                        .eq('session_id', id)
+                        .order('created_at', { ascending: true }),
+                    supabase
+                        .from('practice_items')
+                        .select('consultation_id, title, status')
+                        .eq('session_id', id),
+                    db.getChildren(user.id),
+                ]);
+
+                if (sessionData) {
+                    const childName = children.find((c: ChildProfile) => c.id === sessionData.child_id)?.name;
+                    setSession({ ...sessionData, childName } as SessionData & { childName?: string });
+                }
+                setConsults((consultsData || []) as ConsultationRow[]);
+                const groupedPractices = ((practicesData || []) as PracticeSummary[]).reduce((acc: Record<string, Array<{ title: string; status: string }>>, practice) => {
+                    if (!practice.consultation_id) return acc;
+                    if (!acc[practice.consultation_id]) acc[practice.consultation_id] = [];
+                    acc[practice.consultation_id].push({ title: practice.title, status: practice.status });
+                    return acc;
+                }, {});
+                setPracticeItemsByConsult(groupedPractices);
+            } catch (e) {
+                console.error('Failed to load consultation detail:', e);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadData();
+    }, [user, authLoading, id]);
 
     const handleResolve = async () => {
         if (!session) return;
@@ -153,8 +176,8 @@ export default function ConsultationDetailPage() {
 
                             {/* 상담 타임라인 */}
                             <div className="space-y-4">
-                                {consults.map((item: any, i: number) => {
-                                    const rx = item.ai_prescription;
+                                {consults.map((item, i: number) => {
+                                    const rx = parsePrescription(item.ai_prescription);
                                     const selectedPracticeTitles = new Set((practiceItemsByConsult[item.id] || []).map(practice => practice.title));
                                     return (
                                         <div key={item.id} className="space-y-3">
@@ -216,13 +239,13 @@ export default function ConsultationDetailPage() {
                                                             </p>
                                                         </div>
                                                     )}
-                                                    {Array.isArray(rx.questionAnalysis) && rx.questionAnalysis.length > 0 && (
+                                                    {Array.isArray(rx?.questionAnalysis) && rx.questionAnalysis.length > 0 && (
                                                         <div className="bg-white dark:bg-surface-dark rounded-2xl p-5 border border-[#EACCA4]/30 space-y-3">
                                                             <div className="text-[12px] font-bold text-[#D08B5B] flex items-center gap-1.5">
                                                                 <span className="material-symbols-outlined text-[16px]">quiz</span>
                                                                 {t('consult.questionAnalysis')}
                                                             </div>
-                                                            {rx.questionAnalysis.map((qa: any, index: number) => (
+                                                            {rx.questionAnalysis.map((qa: QuestionAnalysisItem, index: number) => (
                                                                 <div key={index} className="space-y-1">
                                                                     <p className="text-[11px] text-text-sub dark:text-gray-500">Q. {qa.question}</p>
                                                                     <p className="text-[12px] font-medium text-text-main dark:text-gray-200 pl-3 border-l-2 border-secondary/40">{qa.answer}</p>
@@ -241,7 +264,7 @@ export default function ConsultationDetailPage() {
                                                         <span className="material-symbols-outlined text-[16px]">target</span>
                                                         {t('consult.actionItems')}
                                                     </div>
-                                                    {rx.actionItems.map((ai: any, j: number) => {
+                                                    {rx.actionItems.map((ai: ActionItem, j: number) => {
                                                         const isSelectedPractice = selectedPracticeTitles.has(ai.title);
                                                         const isMagic = ai.title === t('consult.magicWord') || ai.duration === 1;
                                                         return isMagic ? (
