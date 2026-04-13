@@ -3,9 +3,49 @@ import { openai } from '@/lib/openai';
 import { createClient } from '@/lib/supabaseServer';
 import { getConsultModel } from '@/lib/consult-model';
 import { getServerFeatureAccess } from '@/lib/access';
+import type { Database } from '@/types/supabase';
 
-function formatObservationsForPrompt(observations: any[]): string {
-    return observations.map((obs: any) => {
+type ObservationRow = Database['public']['Tables']['observations']['Row'];
+type SessionRow = Database['public']['Tables']['consultation_sessions']['Row'];
+type ConsultationRow = Database['public']['Tables']['consultations']['Row'];
+type PracticeItemRow = Database['public']['Tables']['practice_items']['Row'];
+type PracticeLogRow = Database['public']['Tables']['practice_logs']['Row'];
+type TemperamentProfile = {
+    label: string;
+    keywords: string[];
+    description: string;
+    scores: {
+        NS: number;
+        HA: number;
+        RD: number;
+        P: number;
+    };
+};
+type SessionContextPayload = {
+    session?: SessionRow | null;
+    consultations?: ConsultationRow[];
+    practices?: PracticeItemRow[];
+    logs?: PracticeLogRow[];
+};
+type InitialQuestionRequest = {
+    problem?: string;
+    childName?: string;
+    childBirthDate?: string;
+    childGender?: 'male' | 'female' | string;
+    childProfile?: TemperamentProfile | null;
+    parentProfile?: TemperamentProfile | null;
+    recentObservations?: ObservationRow[];
+    sessionContext?: SessionContextPayload | null;
+};
+
+function getMagicWord(value: ConsultationRow['ai_prescription']): string | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const magicWord = (value as Record<string, unknown>).magicWord;
+    return typeof magicWord === 'string' ? magicWord : null;
+}
+
+function formatObservationsForPrompt(observations: ObservationRow[]): string {
+    return observations.map((obs) => {
         const date = new Date(obs.created_at).toLocaleDateString('ko-KR');
         let entry = `[${date}] 상황: ${obs.situation} → 양육자 행동: ${obs.my_action} → 아이 반응: ${obs.child_reaction}`;
         if (obs.note) {
@@ -31,7 +71,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Subscription required', code: 'SUBSCRIPTION_REQUIRED' }, { status: 402 });
     }
 
-    const { problem, childName, childBirthDate, childGender, childProfile, parentProfile, recentObservations, sessionContext } = await request.json();
+    const {
+      problem,
+      childName,
+      childBirthDate,
+      childGender,
+      childProfile,
+      parentProfile,
+      recentObservations,
+      sessionContext,
+    } = (await request.json()) as InitialQuestionRequest;
 
     // 나이 계산
     let childAge = '';
@@ -74,13 +123,14 @@ ${formatObservationsForPrompt(recentObservations)}
 
 ` : ''}${sessionContext ? `**[이전 상담 맥락 — 추가 상담]**
 이 상담은 기존 세션 "${sessionContext.session?.title}"의 추가 상담입니다. 이전 상담 내용과 실천 기록을 참고하여 질문을 생성하세요.
-${(sessionContext.consultations || []).slice(-2).map((c: any) => {
+${(sessionContext.consultations || []).slice(-2).map((c) => {
     const date = new Date(c.created_at).toLocaleDateString('ko-KR');
-    return `[${date}] 고민: ${c.problem_description}${c.ai_prescription?.magicWord ? ` → 마법의 한마디: ${c.ai_prescription.magicWord}` : ''}`;
+    const magicWord = getMagicWord(c.ai_prescription);
+    return `[${date}] 고민: ${c.problem_description}${magicWord ? ` → 마법의 한마디: ${magicWord}` : ''}`;
 }).join('\n')}
-${(sessionContext.practices || []).map((p: any) => {
-    const logs = (sessionContext.logs || []).filter((l: any) => l.practice_id === p.id);
-    const doneDays = logs.filter((l: any) => l.done).length;
+${(sessionContext.practices || []).map((p) => {
+    const logs = (sessionContext.logs || []).filter((l) => l.practice_id === p.id);
+    const doneDays = logs.filter((l) => l.done).length;
     return `실천: ${p.title} | ${doneDays}/${p.duration}일 실천 (${p.status})`;
 }).join('\n')}
 

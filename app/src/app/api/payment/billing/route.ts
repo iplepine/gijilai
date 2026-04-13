@@ -3,8 +3,14 @@ import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { payWithBillingKey } from '@/lib/portone';
 import { computePeriodEnd } from '@/lib/subscription';
 import type { Currency } from '@/lib/portone';
+import type { Database } from '@/types/supabase';
 
 const MAX_RETRY_COUNT = 3;
+type SubscriptionRow = Database['public']['Tables']['subscriptions']['Row'];
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 function getSupabaseAdmin() {
   return createAdminClient(
@@ -38,7 +44,7 @@ export async function POST(req: Request) {
     let processed = 0;
     let failed = 0;
 
-    for (const sub of subscriptions) {
+    for (const sub of subscriptions as SubscriptionRow[]) {
       // 해지 예약된 구독은 만료 처리
       if (sub.cancelled_at) {
         await getSupabaseAdmin()
@@ -92,7 +98,7 @@ export async function POST(req: Request) {
         } else {
           throw new Error('Payment not confirmed');
         }
-      } catch (payError: any) {
+      } catch (payError: unknown) {
         // 갱신 실패
         await getSupabaseAdmin().from('payments').insert({
           user_id: sub.user_id,
@@ -102,7 +108,7 @@ export async function POST(req: Request) {
           status: 'FAILED',
           currency,
           amount: sub.amount,
-          failed_reason: payError.message || 'Unknown',
+          failed_reason: getErrorMessage(payError) || 'Unknown',
         });
 
         // 최근 연속 실패 횟수 확인
@@ -133,8 +139,8 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ processed, failed, total: subscriptions.length });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Billing cron error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

@@ -2,6 +2,15 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabaseServer';
 import { verifyPayment } from '@/lib/portone';
 
+type VerifyRequest = {
+  paymentId?: string;
+  reportId?: string;
+};
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 export async function POST(req: Request) {
   try {
     const supabase = await createClient();
@@ -11,7 +20,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { paymentId, reportId } = await req.json();
+    const { paymentId, reportId } = (await req.json()) as VerifyRequest;
 
     if (!paymentId) {
       return NextResponse.json({ error: 'MISSING_PAYMENT_ID' }, { status: 400 });
@@ -71,8 +80,8 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Payment verify error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

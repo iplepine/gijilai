@@ -3,6 +3,27 @@ import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { Webhook } from '@portone/server-sdk';
 import { verifyPayment, cancelPayment } from '@/lib/portone';
 import { computePeriodEnd } from '@/lib/subscription';
+import type { Json } from '@/types/supabase';
+
+type PaymentMetadata = { reportId?: string };
+type PortoneWebhookPayload = {
+  type?: string;
+  data?: {
+    paymentId?: string;
+    billingKey?: string;
+    failReason?: string;
+  };
+};
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function getReportId(metadata: Json | null): string | null {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return null;
+  const reportId = (metadata as PaymentMetadata).reportId;
+  return typeof reportId === 'string' ? reportId : null;
+}
 
 function getSupabaseAdmin() {
   return createAdminClient(
@@ -30,7 +51,7 @@ export async function POST(req: Request) {
       }
     }
 
-    const { type, data } = JSON.parse(body);
+    const { type, data } = JSON.parse(body) as PortoneWebhookPayload;
 
     switch (type) {
       case 'Transaction.Paid': {
@@ -56,11 +77,12 @@ export async function POST(req: Request) {
             .eq('portone_payment_id', paymentId);
 
           // 건별 결제면 리포트 업데이트
-          if (existing.type === 'ONE_TIME' && existing.metadata?.reportId) {
+          const reportId = getReportId(existing.metadata);
+          if (existing.type === 'ONE_TIME' && reportId) {
             await admin
               .from('reports')
               .update({ is_paid: true })
-              .eq('id', existing.metadata.reportId);
+              .eq('id', reportId);
           }
         } else if (paymentId.startsWith('sub_')) {
           // 구독 결제인데 DB 레코드가 없음 = subscribe API가 실패한 케이스
@@ -74,7 +96,9 @@ export async function POST(req: Request) {
 
             const amount = portonePayment.amount?.total ?? 0;
             const currency = portonePayment.currency === 'KRW' ? 'KRW' : 'USD';
-            const billingKey = ('billingKey' in portonePayment) ? (portonePayment as any).billingKey : null;
+            const billingKey = 'billingKey' in portonePayment
+              ? (typeof portonePayment.billingKey === 'string' ? portonePayment.billingKey : null)
+              : null;
             // [연 구독] 재활성화 시: orderName 기반 판별 복원
             // const orderName = portonePayment.orderName ?? '';
             // const plan = orderName.includes('연') || orderName.includes('Yearly') ? 'YEARLY' : 'MONTHLY';
@@ -188,8 +212,9 @@ export async function POST(req: Request) {
 
     // 포트원 재시도 방지: 항상 200 반환
     return NextResponse.json({ received: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Webhook error:', error);
+    console.error('Webhook error detail:', getErrorMessage(error));
     return NextResponse.json({ received: true });
   }
 }

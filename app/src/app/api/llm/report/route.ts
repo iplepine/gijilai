@@ -1,6 +1,33 @@
 import { NextResponse } from 'next/server';
-import { generateReport } from '@/lib/openai';
+import { generateReport, type ReportType } from '@/lib/openai';
 import { createClient } from '@/lib/supabaseServer';
+import type { Json } from '@/types/supabase';
+
+type TemperamentScores = { NS: number; HA: number; RD: number; P: number };
+type AnswerItem = { questionId: string; score: number };
+type TemperamentSummary = { label: string; keywords: string[] };
+type IntakePayload = {
+    childName?: string;
+    gender?: 'male' | 'female';
+    birthDate?: string;
+};
+type ReportRequestBody = {
+    userName?: string;
+    scores?: TemperamentScores;
+    type?: ReportType;
+    answers?: AnswerItem[];
+    parentScores?: TemperamentScores;
+    childType?: TemperamentSummary;
+    parentType?: TemperamentSummary;
+    refresh?: boolean;
+    intake?: IntakePayload | null;
+    styleScores?: TemperamentScores;
+    childId?: string | null;
+};
+
+function isReportType(value: unknown): value is ReportType {
+    return value === 'PARENT' || value === 'CHILD' || value === 'HARMONY';
+}
 
 export async function POST(request: Request) {
     try {
@@ -15,7 +42,7 @@ export async function POST(request: Request) {
         }
 
         const userId = session.user.id;
-        const body = await request.json();
+        const body = (await request.json()) as ReportRequestBody;
         const {
             userName, scores, type, answers,
             parentScores, childType, parentType,
@@ -31,7 +58,7 @@ export async function POST(request: Request) {
             );
         }
 
-        if (type !== 'PARENT' && type !== 'CHILD' && type !== 'HARMONY') {
+        if (!isReportType(type)) {
             return NextResponse.json(
                 { error: 'Invalid type. Must be PARENT, CHILD, or HARMONY.' },
                 { status: 400 }
@@ -74,7 +101,7 @@ export async function POST(request: Request) {
         let childInfo: { name: string, gender: string, birthDate: string } | null = null;
 
         if (childId) {
-            const { data, error } = await supabase
+            const { data } = await supabase
                 .from('children')
                 .select('name, gender, birth_date')
                 .eq('id', childId)
@@ -127,7 +154,7 @@ export async function POST(request: Request) {
             // answers를 Record 형태로 변환 (배열 → 객체)
             const answersRecord: Record<string, number> = {};
             if (Array.isArray(answers)) {
-                answers.forEach((a: any) => { answersRecord[a.questionId] = a.score; });
+                answers.forEach((a) => { answersRecord[a.questionId] = a.score; });
             }
 
             const { data: survey, error: surveyError } = await supabase
@@ -153,7 +180,7 @@ export async function POST(request: Request) {
         // 4. LLM 호출
         console.log(`[Report API] Generating ${type} report via LLM (refresh=${refresh})`);
         const report = await generateReport(
-            userName, scores, type as any, undefined,
+            userName, scores, type, undefined,
             answers, parentScores, childType, parentType, childInfo
         );
 
@@ -179,7 +206,7 @@ export async function POST(request: Request) {
                 child_id: childId,
                 survey_id: surveyId,
                 type,
-                analysis_json: report as any,
+                analysis_json: report as Json,
                 model_used: 'gpt-4o-mini',
                 is_paid: false,
             })

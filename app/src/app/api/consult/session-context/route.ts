@@ -1,5 +1,15 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabaseServer';
+import type { Database } from '@/types/supabase';
+
+type SessionRow = Database['public']['Tables']['consultation_sessions']['Row'];
+type ConsultationRow = Database['public']['Tables']['consultations']['Row'];
+type PracticeItemRow = Database['public']['Tables']['practice_items']['Row'];
+type PracticeLogRow = Database['public']['Tables']['practice_logs']['Row'];
+type PracticeReviewRow = Database['public']['Tables']['practice_reviews']['Row'];
+type SessionContextRequest = {
+    sessionId?: string;
+};
 
 export async function POST(request: Request) {
     try {
@@ -9,7 +19,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { sessionId } = await request.json();
+        const { sessionId } = (await request.json()) as SessionContextRequest;
 
         if (!sessionId) {
             return NextResponse.json(
@@ -30,8 +40,8 @@ export async function POST(request: Request) {
 
         // 실천 로그 & 회고
         const practiceIds = (practicesRes.data || []).map(p => p.id);
-        let logs: any[] = [];
-        let reviews: any[] = [];
+        let logs: PracticeLogRow[] = [];
+        let reviews: PracticeReviewRow[] = [];
 
         if (practiceIds.length > 0) {
             const [logsRes, reviewsRes] = await Promise.all([
@@ -43,9 +53,9 @@ export async function POST(request: Request) {
         }
 
         return NextResponse.json({
-            session: sessionRes.data,
-            consultations: consultsRes.data || [],
-            practices: practicesRes.data || [],
+            session: sessionRes.data as SessionRow,
+            consultations: (consultsRes.data || []) as ConsultationRow[],
+            practices: (practicesRes.data || []) as PracticeItemRow[],
             logs,
             reviews,
         });

@@ -5,11 +5,28 @@ import { payWithBillingKey, getAmount, getFirstMonthAmount, cancelPayment } from
 import { computePeriodEnd } from '@/lib/subscription';
 import type { Currency } from '@/lib/portone';
 
+type SubscribeRequest = {
+  billingKey?: string;
+  plan?: 'MONTHLY';
+  locale?: string;
+};
+
 function getSupabaseAdmin() {
   return createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function getErrorDetail(error: unknown): unknown {
+  if (typeof error === 'object' && error !== null && 'data' in error) {
+    return (error as { data?: unknown }).data ?? error;
+  }
+  return error;
 }
 
 export async function POST(req: Request) {
@@ -21,7 +38,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { billingKey, plan, locale } = await req.json();
+    const { billingKey, plan, locale } = (await req.json()) as SubscribeRequest;
 
     // [연 구독] 재활성화 시: plan !== 'MONTHLY' → !['MONTHLY', 'YEARLY'].includes(plan)
     if (!billingKey || !plan || plan !== 'MONTHLY') {
@@ -115,7 +132,7 @@ export async function POST(req: Request) {
           currentPeriodEnd: subscription.current_period_end,
         },
       });
-    } catch (dbError: any) {
+    } catch (dbError: unknown) {
       // 구독/결제기록 생성 실패 → 결제 취소(환불)
       console.error('Subscribe DB error, cancelling payment:', dbError);
       try {
@@ -125,9 +142,9 @@ export async function POST(req: Request) {
       }
       return NextResponse.json({ error: '구독 생성 실패' }, { status: 500 });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Subscribe error:', error);
-    console.error('Subscribe error detail:', JSON.stringify(error.data ?? error, null, 2));
-    return NextResponse.json({ error: error.message || '구독 처리 실패' }, { status: 500 });
+    console.error('Subscribe error detail:', JSON.stringify(getErrorDetail(error), null, 2));
+    return NextResponse.json({ error: getErrorMessage(error) || '구독 처리 실패' }, { status: 500 });
   }
 }
