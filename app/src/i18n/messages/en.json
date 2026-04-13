@@ -385,6 +385,8 @@
     "loadingRecords": "Loading practice records",
     "noPractices": "No practice items yet",
     "noPracticesDesc": "Practice items will be created\nafter your consultation",
+    "lockedTitle": "Free plan shows only your latest practice item",
+    "lockedDesc": "Subscribe to view your full practice history and reviews.",
     "startConsult": "Start consultation",
     "doneToday": "Completed today",
     "failedToday": "Couldn't do it today",

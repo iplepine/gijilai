@@ -181,7 +181,7 @@ export async function POST(request: Request) {
                 type,
                 analysis_json: report as any,
                 model_used: 'gpt-4o-mini',
-                is_paid: true,
+                is_paid: false,
             })
             .select('id')
             .single();

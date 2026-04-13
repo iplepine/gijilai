@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { openai } from '@/lib/openai';
 import { createClient } from '@/lib/supabaseServer';
 import { getConsultModel } from '@/lib/consult-model';
+import { getServerFeatureAccess } from '@/lib/access';
 
 function formatObservationsForPrompt(observations: any[]): string {
     return observations.map((obs: any) => {
@@ -20,6 +21,14 @@ export async function POST(request: Request) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const access = await getServerFeatureAccess(supabase, {
+      userId: session.user.id,
+      userCreatedAt: session.user.created_at,
+    });
+    if (!access.canUseConsult) {
+      return NextResponse.json({ error: 'Subscription required', code: 'SUBSCRIPTION_REQUIRED' }, { status: 402 });
     }
 
     const { problem, childName, childBirthDate, childGender, childProfile, parentProfile, recentObservations, sessionContext } = await request.json();

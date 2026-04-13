@@ -11,6 +11,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import { PracticeCheckModal } from '@/components/practices/PracticeCheckModal';
 import { PracticeReviewModal } from '@/components/practices/PracticeReviewModal';
 import { useLocale } from '@/i18n/LocaleProvider';
+import { getFeatureAccess } from '@/lib/access';
 
 interface PracticeWithSession extends PracticeItemData {
     consultation_sessions: SessionData;
@@ -31,6 +32,7 @@ export default function PracticesPage() {
     const [children, setChildren] = useState<any[]>([]);
     const [selectedChildId, setSelectedChildId] = useState<string | 'ALL'>('ALL');
     const [isLoading, setIsLoading] = useState(true);
+    const [hasFullAccess, setHasFullAccess] = useState(false);
 
     // 모달 상태
     const [checkModal, setCheckModal] = useState<{ practice: PracticeItemData; existingLog?: PracticeLogData; recentFailCount?: number; sessionId?: string } | null>(null);
@@ -47,13 +49,22 @@ export default function PracticesPage() {
         if (!user) return;
         setIsLoading(true);
         try {
-            const [childrenData, practicesData, todayLogsData] = await Promise.all([
+            const [childrenData, practicesData, todayLogsData, subscription] = await Promise.all([
                 db.getChildren(user.id),
                 db.getActivePracticeItems(user.id),
                 db.getTodayPracticeLogs(user.id),
+                db.getActiveSubscription(user.id).catch(() => null),
             ]);
+            const access = getFeatureAccess({ userCreatedAt: user.created_at, hasSubscription: !!subscription });
+            setHasFullAccess(access.hasFullAccess);
             setChildren(childrenData);
-            setPractices(practicesData as PracticeWithSession[]);
+            const sortedPractices = [...(practicesData as PracticeWithSession[])].sort((a, b) =>
+                new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            );
+            const visiblePractices = access.visiblePracticeCount
+                ? sortedPractices.slice(0, access.visiblePracticeCount)
+                : sortedPractices;
+            setPractices(visiblePractices);
             setTodayLogs(todayLogsData);
 
             // 각 practice의 전체 로그 가져오기
@@ -167,6 +178,18 @@ export default function PracticesPage() {
                                     {child.name}
                                 </button>
                             ))}
+                        </div>
+                    )}
+
+                    {!isLoading && !hasFullAccess && practices.length > 0 && (
+                        <div className="rounded-2xl border border-primary/10 bg-primary/5 px-4 py-3 flex items-center justify-between gap-3">
+                            <div>
+                                <p className="text-[12px] font-bold text-text-main dark:text-white">{t('practices.lockedTitle')}</p>
+                                <p className="text-[11px] text-text-sub dark:text-gray-400">{t('practices.lockedDesc')}</p>
+                            </div>
+                            <Button variant="primary" size="sm" onClick={() => router.push('/pricing')} className="shrink-0 rounded-xl px-4">
+                                {t('consult.subscribeCta')}
+                            </Button>
                         </div>
                     )}
 

@@ -9,6 +9,7 @@ import BottomNav from '@/components/layout/BottomNav';
 import { Button } from '@/components/ui/Button';
 import { Navbar } from '@/components/layout/Navbar';
 import { db } from '@/lib/db';
+import { getFeatureAccess } from '@/lib/access';
 import { getRandomExamples } from '@/data/consultExamples';
 import { useLocale } from '@/i18n/LocaleProvider';
 import { trackEvent } from '@/lib/analytics';
@@ -117,8 +118,9 @@ function ConsultContent() {
 
     // 구독/트라이얼 상태
     const [hasSubscription, setHasSubscription] = useState(false);
-    const trial = user?.created_at ? db.getTrialStatus(user.created_at) : null;
-    const hasFullAccess = hasSubscription || !!trial?.isActive;
+    const access = getFeatureAccess({ userCreatedAt: user?.created_at, hasSubscription });
+    const trial = access.trial;
+    const hasFullAccess = access.hasFullAccess;
     useEffect(() => {
         if (!user) return;
         db.getActiveSubscription(user.id).catch(() => null).then(sub => {
@@ -188,6 +190,11 @@ function ConsultContent() {
 
 
     const handleStartDiagnostic = async () => {
+        if (!hasFullAccess) {
+            router.push('/pricing');
+            return;
+        }
+
         if (!problemDesc.trim()) {
             alert(t('consult.pleaseDescribeProblem'));
             return;
@@ -226,6 +233,10 @@ function ConsultContent() {
                 }),
             });
 
+            if (res.status === 402 || res.status === 403) {
+                router.push('/pricing');
+                return;
+            }
             if (!res.ok) throw new Error('Failed to fetch initial questions');
 
             const data = await res.json();
@@ -259,6 +270,10 @@ function ConsultContent() {
     };
 
     const handleCheckFollowUp = async (currentAnswers: Record<string, string>) => {
+        if (!hasFullAccess) {
+            router.push('/pricing');
+            return;
+        }
         setIsLoading(true);
         try {
             const fullProblem = problemDesc;
@@ -270,6 +285,11 @@ function ConsultContent() {
                     firstRoundAnswers: currentAnswers
                 }),
             });
+
+            if (res.status === 402 || res.status === 403) {
+                router.push('/pricing');
+                return;
+            }
 
             const data = await res.json();
             if (data.needsFollowUp && data.followUpQuestions && data.followUpQuestions.length > 0) {
@@ -289,6 +309,10 @@ function ConsultContent() {
     };
 
     const handleGeneratePrescription = async (allAnswers: Record<string, string>) => {
+        if (!hasFullAccess) {
+            router.push('/pricing');
+            return;
+        }
         setIsLoading(true);
         try {
             const fullProblem = problemDesc;
@@ -319,6 +343,10 @@ function ConsultContent() {
                 }),
             });
 
+            if (res.status === 402 || res.status === 403) {
+                router.push('/pricing');
+                return;
+            }
             if (!res.ok) throw new Error('Failed to generate prescription');
 
             const data = await res.json();
@@ -538,14 +566,14 @@ function ConsultContent() {
                                 </p>
                             )}
                             <button
-                                onClick={handleStartDiagnostic}
-                                disabled={problemDesc.trim().length < 30 || isLoading}
-                                className={`w-full py-5 rounded-2xl text-white font-bold text-lg transition-all flex items-center justify-center gap-2 active:scale-[0.98] ${problemDesc.trim().length < 30 || isLoading
+                                onClick={hasFullAccess ? handleStartDiagnostic : () => router.push('/pricing')}
+                                disabled={(hasFullAccess && problemDesc.trim().length < 30) || isLoading}
+                                className={`w-full py-5 rounded-2xl text-white font-bold text-lg transition-all flex items-center justify-center gap-2 active:scale-[0.98] ${((hasFullAccess && problemDesc.trim().length < 30) || isLoading)
                                     ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                                     : 'bg-primary hover:bg-primary-dark shadow-xl shadow-primary/20'
                                     }`}
                             >
-                                <span>{t('consult.startConsult')}</span>
+                                <span>{hasFullAccess ? t('consult.startConsult') : t('consult.subscribeCta')}</span>
                                 <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
                             </button>
                         </div>

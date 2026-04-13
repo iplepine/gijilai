@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { Database } from '@/types/supabase';
+import { getTrialStatus } from '@/lib/access';
 
 // Type definitions mapped from Supabase types
 export type UserProfile = Database['public']['Tables']['profiles']['Row'];
@@ -627,16 +628,7 @@ export const db = {
      * 7일 리버스 트라이얼 상태 확인
      * 가입일로부터 7일 이내면 트라이얼 활성, 이후는 만료
      */
-    getTrialStatus: (userCreatedAt: string) => {
-        const created = new Date(userCreatedAt);
-        const now = new Date();
-        const diffMs = now.getTime() - created.getTime();
-        const diffDays = diffMs / (1000 * 60 * 60 * 24);
-        const trialDays = 7;
-        const isActive = diffDays < trialDays;
-        const daysRemaining = isActive ? Math.ceil(trialDays - diffDays) : 0;
-        return { isActive, daysRemaining, diffDays };
-    },
+    getTrialStatus,
 
     getTotalConsultCount: async (userId: string) => {
         const { count, error } = await supabase
