@@ -19,7 +19,7 @@ export const FIRST_MONTH_DISCOUNT = 0.3;
 
 export type ProductCode = keyof typeof PRICE_TABLE;
 export type Currency = 'KRW' | 'USD';
-export type PayMethod = 'CARD' | 'TOSSPAY' | 'NAVERPAY';
+export type PayMethod = 'KCP_CARD' | 'INICIS_CARD' | 'TOSSPAY' | 'NAVERPAY';
 
 export function getAmount(product: ProductCode, currency: Currency): number {
   return PRICE_TABLE[product][currency];
@@ -33,6 +33,9 @@ export function getFirstMonthAmount(currency: Currency): number {
 
 /** 한국 결제수단별 채널키 반환 */
 export function getKoChannelKey(payMethod: PayMethod): string {
+  if (payMethod === 'INICIS_CARD') {
+    return process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_INICIS as string;
+  }
   if (payMethod === 'NAVERPAY') {
     return process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_NAVERPAY as string;
   }

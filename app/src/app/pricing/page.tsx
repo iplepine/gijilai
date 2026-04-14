@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-type PayMethodOption = 'CARD' | 'TOSSPAY' | 'NAVERPAY';
+type PayMethodOption = 'KCP_CARD' | 'INICIS_CARD' | 'TOSSPAY' | 'NAVERPAY';
 
 const PRICES = {
   MONTHLY: { KRW: 12000, USD: 1199 },
@@ -48,7 +48,7 @@ export default function PricingPage() {
   const { user } = useAuth();
   const { locale, t, currency } = useLocale();
   const [loading, setLoading] = useState(false);
-  const [payMethod, setPayMethod] = useState<PayMethodOption>('CARD');
+  const [payMethod, setPayMethod] = useState<PayMethodOption>('KCP_CARD');
   const [existingSubscription, setExistingSubscription] = useState<ExistingSubscriptionSummary>(null);
   const [isFirstSubscription, setIsFirstSubscription] = useState(true);
   const [isApp, setIsApp] = useState(false);
@@ -112,6 +112,9 @@ export default function PricingPage() {
         } else if (payMethod === 'TOSSPAY') {
           channelKey = process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_TOSS;
           billingKeyMethod = 'EASY_PAY';
+        } else if (payMethod === 'INICIS_CARD') {
+          channelKey = process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_INICIS;
+          billingKeyMethod = 'CARD';
         } else {
           channelKey = process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_KCP;
           billingKeyMethod = 'CARD';
@@ -279,18 +282,30 @@ export default function PricingPage() {
           {locale === 'ko' && !isApp && (
             <section className="space-y-3">
               <h3 className="text-[13px] font-bold text-text-main dark:text-white">{t('pricing.payMethod')}</h3>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <button
-                  onClick={() => setPayMethod('CARD')}
+                  onClick={() => setPayMethod('KCP_CARD')}
                   className={`p-3 rounded-xl border-2 transition-all text-center ${
-                    payMethod === 'CARD'
+                    payMethod === 'KCP_CARD'
                       ? 'border-primary bg-primary/5'
                       : 'border-gray-100 bg-white dark:bg-surface-dark dark:border-gray-700'
                   }`}
                 >
-                  <Icon name="credit_card" size="sm" className={`text-2xl mb-1 ${payMethod === 'CARD' ? 'text-primary' : 'text-text-sub'}`} />
-                  <p className={`text-sm font-bold ${payMethod === 'CARD' ? 'text-primary' : 'text-text-main dark:text-white'}`}>{t('pricing.card')}</p>
+                  <Icon name="credit_card" size="sm" className={`text-2xl mb-1 ${payMethod === 'KCP_CARD' ? 'text-primary' : 'text-text-sub'}`} />
+                  <p className={`text-sm font-bold ${payMethod === 'KCP_CARD' ? 'text-primary' : 'text-text-main dark:text-white'}`}>{t('pricing.card')}</p>
                   <p className="text-[11px] text-text-sub mt-0.5">NHN KCP</p>
+                </button>
+                <button
+                  onClick={() => setPayMethod('INICIS_CARD')}
+                  className={`p-3 rounded-xl border-2 transition-all text-center ${
+                    payMethod === 'INICIS_CARD'
+                      ? 'border-[#E84B3C] bg-[#E84B3C]/5'
+                      : 'border-gray-100 bg-white dark:bg-surface-dark dark:border-gray-700'
+                  }`}
+                >
+                  <Icon name="credit_card" size="sm" className={`text-2xl mb-1 ${payMethod === 'INICIS_CARD' ? 'text-[#E84B3C]' : 'text-text-sub'}`} />
+                  <p className={`text-sm font-bold ${payMethod === 'INICIS_CARD' ? 'text-[#E84B3C]' : 'text-text-main dark:text-white'}`}>{t('pricing.card')}</p>
+                  <p className="text-[11px] text-text-sub mt-0.5">KG Inicis</p>
                 </button>
                 <button
                   onClick={() => setPayMethod('TOSSPAY')}

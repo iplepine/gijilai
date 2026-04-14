@@ -43,7 +43,7 @@ declare global {
 }
 
 type LoadingStatus = 'idle' | 'paying' | 'analyzing' | 'complete';
-type PayMethodOption = 'CARD' | 'TOSSPAY' | 'NAVERPAY';
+type PayMethodOption = 'KCP_CARD' | 'INICIS_CARD' | 'TOSSPAY' | 'NAVERPAY';
 type Coupon = { id: string; discount_amount: number };
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -60,7 +60,7 @@ export default function PaymentPage() {
   const [isApp, setIsApp] = useState(false);
   const [availableCoupon, setAvailableCoupon] = useState<Coupon | null>(null);
   const [useCoupon, setUseCoupon] = useState(false);
-  const [payMethod, setPayMethod] = useState<PayMethodOption>('CARD');
+  const [payMethod, setPayMethod] = useState<PayMethodOption>('KCP_CARD');
 
   const LOADING_MESSAGES = [
     { icon: 'analytics', text: t('payment.analyzingTempData') },
@@ -183,6 +183,8 @@ export default function PaymentPage() {
         channelKey = process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_NAVERPAY;
       } else if (payMethod === 'TOSSPAY') {
         channelKey = process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_TOSS;
+      } else if (payMethod === 'INICIS_CARD') {
+        channelKey = process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_INICIS;
       } else {
         channelKey = process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_KCP;
       }
@@ -194,7 +196,7 @@ export default function PaymentPage() {
         orderName: t('payment.productName'),
         totalAmount: finalAmount,
         currency: 'KRW',
-        payMethod: payMethod === 'CARD' ? 'CARD' : 'EASY_PAY',
+        payMethod: payMethod === 'KCP_CARD' || payMethod === 'INICIS_CARD' ? 'CARD' : 'EASY_PAY',
       };
 
       if (payMethod === 'NAVERPAY') {
@@ -359,18 +361,30 @@ export default function PaymentPage() {
                 {/* 결제수단 선택 */}
                 <div className="space-y-3">
                   <p className="text-xs font-bold text-text-sub">{t('payment.selectPayMethod')}</p>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <button
-                      onClick={() => setPayMethod('CARD')}
+                      onClick={() => setPayMethod('KCP_CARD')}
                       className={`p-3 rounded-2xl border-2 transition-all text-center ${
-                        payMethod === 'CARD'
+                        payMethod === 'KCP_CARD'
                           ? 'border-primary bg-primary/5'
                           : 'border-gray-100 bg-white dark:bg-surface-dark dark:border-gray-700'
                       }`}
                     >
-                      <Icon name="credit_card" size="sm" className={`text-2xl mb-1 ${payMethod === 'CARD' ? 'text-primary' : 'text-text-sub'}`} />
-                      <p className={`text-sm font-bold ${payMethod === 'CARD' ? 'text-primary' : 'text-text-main dark:text-white'}`}>{t('payment.cardLabel')}</p>
+                      <Icon name="credit_card" size="sm" className={`text-2xl mb-1 ${payMethod === 'KCP_CARD' ? 'text-primary' : 'text-text-sub'}`} />
+                      <p className={`text-sm font-bold ${payMethod === 'KCP_CARD' ? 'text-primary' : 'text-text-main dark:text-white'}`}>{t('payment.cardLabel')}</p>
                       <p className="text-[11px] text-text-sub mt-0.5">NHN KCP</p>
+                    </button>
+                    <button
+                      onClick={() => setPayMethod('INICIS_CARD')}
+                      className={`p-3 rounded-2xl border-2 transition-all text-center ${
+                        payMethod === 'INICIS_CARD'
+                          ? 'border-[#E84B3C] bg-[#E84B3C]/5'
+                          : 'border-gray-100 bg-white dark:bg-surface-dark dark:border-gray-700'
+                      }`}
+                    >
+                      <Icon name="credit_card" size="sm" className={`text-2xl mb-1 ${payMethod === 'INICIS_CARD' ? 'text-[#E84B3C]' : 'text-text-sub'}`} />
+                      <p className={`text-sm font-bold ${payMethod === 'INICIS_CARD' ? 'text-[#E84B3C]' : 'text-text-main dark:text-white'}`}>{t('payment.cardLabel')}</p>
+                      <p className="text-[11px] text-text-sub mt-0.5">KG Inicis</p>
                     </button>
                     <button
                       onClick={() => setPayMethod('TOSSPAY')}
