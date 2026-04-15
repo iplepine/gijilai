@@ -23,6 +23,7 @@
 |--------|------|------------|
 | **PortOne** | 결제 게이트웨이 (통합) | https://merchants.portone.io |
 | **NHN KCP** | 카드결제 PG | https://partner.kcp.co.kr/auth/login |
+| **KG 이니시스** | 카드결제 PG / MID `MOI8434775` | https://iniweb.inicis.com/j_spring_security_check |
 | **Stripe** | 해외 결제 (USD) | https://dashboard.stripe.com |
 
 > 토스페이 / 네이버페이는 PortOne을 통해 연동되므로 별도 관리 콘솔 불필요.

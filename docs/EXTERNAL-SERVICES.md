@@ -20,6 +20,7 @@
 | PortOne | 결제 오케스트레이션 | 웹 구독 결제, 웹훅 | [ADMIN-LINKS.md](ADMIN-LINKS.md) |
 | Stripe | 해외 결제 PG | 해외 구독 결제 | [ADMIN-LINKS.md](ADMIN-LINKS.md) |
 | NHN KCP | 국내 카드 PG | 한국 카드 결제 | [ADMIN-LINKS.md](ADMIN-LINKS.md) |
+| KG 이니시스 | 국내 카드 PG | 한국 카드 결제 | [ADMIN-LINKS.md](ADMIN-LINKS.md) |
 | Kakao Developers | 카카오 로그인 / 공유 | 소셜 로그인, 공유 SDK | [ADMIN-LINKS.md](ADMIN-LINKS.md) |
 | Google Cloud Console | Google OAuth | 구글 로그인 | [ADMIN-LINKS.md](ADMIN-LINKS.md) |
 | GitHub | 소스 저장소 / 협업 | 코드 저장, 배포 연계 | [ADMIN-LINKS.md](ADMIN-LINKS.md) |
@@ -107,6 +108,14 @@
 - **운영 포인트**
 - 국내 카드 승인/실패 원인 확인 시 PortOne과 KCP 운영 콘솔을 함께 확인
 
+### KG 이니시스
+
+- **역할**: 한국 카드결제 PG
+- **코드 접점**: PortOne 설정에 종속
+- **운영 포인트**
+- 운영 MID: `MOI8434775`
+- 국내 카드 승인/실패 원인 확인 시 PortOne과 KG 이니시스 운영 콘솔을 함께 확인
+
 ### Kakao Developers
 
 - **역할**: 카카오 OAuth 및 공유 SDK 설정
@@ -157,6 +166,7 @@
 - PortOne
 - Stripe
 - NHN KCP
+- KG 이니시스
 
 ## 관련 문서
 
