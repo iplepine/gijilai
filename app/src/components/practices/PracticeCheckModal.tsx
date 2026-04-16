@@ -92,13 +92,13 @@ export function PracticeCheckModal({ practiceTitle, onSave, onClose, existingDon
                                 onChange={(e) => setMemo(e.target.value.slice(0, 200))}
                                 maxLength={200}
                                 placeholder={t('practices.memoPlaceholder')}
-                                className="w-full h-24 p-4 pr-16 text-[14px] leading-relaxed rounded-xl border border-primary/10 focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none bg-white dark:bg-surface-dark dark:text-white"
+                                className="w-full h-24 p-4 pr-14 text-[14px] leading-relaxed rounded-lg border border-primary/10 focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none bg-white dark:bg-surface-dark dark:text-white"
                             />
                             <VoiceInputButton
                                 value={memo}
                                 onChange={setMemo}
                                 maxLength={200}
-                                className="absolute bottom-3 right-3"
+                                className="absolute bottom-3 right-3 h-9 w-9"
                             />
                         </div>
                     </div>
