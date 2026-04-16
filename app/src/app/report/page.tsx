@@ -19,6 +19,7 @@ import { Radar } from 'react-chartjs-2';
 import Link from 'next/link';
 import { Icon } from '@/components/ui/Icon';
 import { Button } from '@/components/ui/Button';
+import { MedicalDisclaimer } from '@/components/ui/MedicalDisclaimer';
 import { trackEvent } from '@/lib/analytics';
 import { db } from '@/lib/db';
 import { TemperamentScorer } from '@/lib/TemperamentScorer';
@@ -864,6 +865,7 @@ function ReportContent() {
                   {/* Footer Actions */}
                   {!isChildOnly && childAiReport && (
                     <div className="flex flex-col gap-4 pt-10 pb-10 text-center">
+                      <MedicalDisclaimer title={t('report.medicalDisclaimerTitle')} body={t('report.medicalDisclaimerBody')} />
                       {showPremiumCta && <PremiumContinuationCard />}
                       <Button variant="secondary" onClick={() => router.push(`/share${(reportId || childReportId) ? `?id=${reportId || childReportId}` : ''}`)} fullWidth className="h-14 rounded-2xl border-none bg-white shadow-lg">
                         {t('report.shareResult')}
@@ -1040,6 +1042,7 @@ function ReportContent() {
                 {/* Footer Actions */}
                 {parentAiReport && (
                   <div className="flex flex-col gap-4 pt-10 pb-10 text-center">
+                    <MedicalDisclaimer title={t('report.medicalDisclaimerTitle')} body={t('report.medicalDisclaimerBody')} />
                     {showPremiumCta && <PremiumContinuationCard compact />}
                     <Button variant="secondary" onClick={() => router.push(`/share${(reportId || childReportId) ? `?id=${reportId || childReportId}` : ''}`)} fullWidth className="h-14 rounded-2xl border-none bg-white shadow-lg">
                       {t('report.shareMyResult')}
@@ -1261,6 +1264,7 @@ function ReportContent() {
 
                 {/* Footer Actions */}
                 {harmonyAiReport && <div className="flex flex-col gap-4 pt-10 pb-16 text-center px-4">
+                  <MedicalDisclaimer title={t('report.medicalDisclaimerTitle')} body={t('report.medicalDisclaimerBody')} />
                   {showPremiumCta && <PremiumContinuationCard />}
                   <Button variant="secondary" onClick={() => router.push(`/share${(reportId || childReportId) ? `?id=${reportId || childReportId}` : ''}`)} fullWidth className="h-14 rounded-2xl border-none bg-white shadow-lg text-slate-800 font-bold">
                     결과 공유하기

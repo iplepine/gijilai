@@ -275,6 +275,8 @@
     "encouragementWithName": "Just trying to understand {name}'s heart\nmakes you a wonderful parent.",
     "encouragementDefault": "Just trying to understand your child's heart\nmakes you a wonderful parent.",
     "aiDisclaimer": "This analysis is generated based on temperament psychology theory and AI analysis.",
+    "medicalDisclaimerTitle": "Medical Notice",
+    "medicalDisclaimerBody": "AI consultation is parenting reference material and does not replace medical diagnosis, treatment, or professional counseling. If you have concerns about your child's safety, health, or development, or if symptoms persist, please seek help from a qualified professional.",
     "appDownloadHint": "Practicing is easier\nwith Aina's reminders",
     "appInstallPush": "Install app for push notifications",
     "analyzingTemperament": "Analyzing {name}'s temperament",
@@ -545,7 +547,9 @@
     "persistenceDesc": "Ability to persevere",
     "parentingEfficacy": "Parenting Efficacy",
     "autonomySupport": "Autonomy Support",
-    "emotionalResponsiveness": "Emotional Responsiveness"
+    "emotionalResponsiveness": "Emotional Responsiveness",
+    "medicalDisclaimerTitle": "Medical Notice",
+    "medicalDisclaimerBody": "This report is reference material to help understand temperament and does not replace medical or psychological diagnosis. If you have concerns about health or development, please consult a qualified professional."
   },
   "payment": {
     "title": "Payment",

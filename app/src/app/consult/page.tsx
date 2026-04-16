@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useAppStore } from '@/store/useAppStore';
 import { Button } from '@/components/ui/Button';
+import { MedicalDisclaimer } from '@/components/ui/MedicalDisclaimer';
 import { VoiceInputButton } from '@/components/ui/VoiceInputButton';
 import { Navbar } from '@/components/layout/Navbar';
 import { db, ObservationData, PracticeItemData, PracticeLogData, ChildProfile } from '@/lib/db';
@@ -922,6 +923,11 @@ function ConsultContent() {
                                 <p className="text-[12px] text-text-sub dark:text-gray-500">
                                     {t('consult.aiDisclaimer')}
                                 </p>
+                                <MedicalDisclaimer
+                                    title={t('consult.medicalDisclaimerTitle')}
+                                    body={t('consult.medicalDisclaimerBody')}
+                                    className="mt-4"
+                                />
                             </div>
                         </div>
                     )}

@@ -275,6 +275,8 @@
     "encouragementWithName": "{name}의 마음을 이해하려는 것만으로도\n이미 충분히 좋은 부모예요.",
     "encouragementDefault": "아이의 마음을 이해하려는 것만으로도\n이미 충분히 좋은 부모예요.",
     "aiDisclaimer": "이 분석은 기질 심리학 이론과 AI 분석을 바탕으로 생성되었습니다.",
+    "medicalDisclaimerTitle": "의료 관련 안내",
+    "medicalDisclaimerBody": "AI 상담 내용은 양육 참고 자료이며, 의학적 진단·치료·전문 상담을 대체하지 않습니다. 아이의 안전, 건강, 발달에 대한 우려가 있거나 증상이 지속된다면 전문기관의 도움을 받아 주세요.",
     "appDownloadHint": "아이나의 알림과 함께라면\n실천이 더 쉬워져요",
     "appInstallPush": "앱 설치하고 푸시 알림 받기",
     "analyzingTemperament": "{name}의 기질을 분석하고 있어요",
@@ -545,7 +547,9 @@
     "persistenceDesc": "꾸준히 해내는 정도",
     "parentingEfficacy": "양육 효능감",
     "autonomySupport": "자율성 지지",
-    "emotionalResponsiveness": "정서적 반응성"
+    "emotionalResponsiveness": "정서적 반응성",
+    "medicalDisclaimerTitle": "의료 관련 안내",
+    "medicalDisclaimerBody": "이 리포트는 기질 이해를 돕기 위한 참고 자료이며, 의학적·심리학적 진단을 대체하지 않습니다. 건강이나 발달 관련 우려가 있다면 전문기관에 상담해 주세요."
   },
   "payment": {
     "title": "결제",
