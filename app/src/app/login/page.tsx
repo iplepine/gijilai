@@ -54,52 +54,48 @@ export default function LoginPage() {
                     {t('auth.tagline')}
                 </p>
 
-                <div className="space-y-3">
-                    <button
-                        onClick={() => {
-                            trackEvent('login_attempt', { provider: 'kakao' });
-                            signInWithKakao();
-                        }}
-                        disabled={isLoadingKakao}
-                        className="w-full bg-[#FEE500] text-[#191919] py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-[#FADA0A] transition-all active:scale-[0.98] disabled:opacity-50"
-                    >
-                        {isLoadingKakao ? (
-                            <div className="w-5 h-5 border-2 border-[#191919]/20 border-t-[#191919] rounded-full animate-spin" />
-                        ) : (
-                            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path fillRule="evenodd" clipRule="evenodd" d="M9 3C5.13401 3 2 5.313 2 8.166C2 10 3.23 11.616 5.093 12.56L4.417 14.881C4.385 14.992 4.453 15.106 4.568 15.131C4.606 15.14 4.646 15.138 4.683 15.125L7.545 13.905C8.016 14.004 8.502 14.056 9 14.056C12.866 14.056 16 11.743 16 8.89C16 6.037 12.866 3.724 9 3.724V3Z" fill="#191919" />
-                            </svg>
-                        )}
-                        {isLoadingKakao ? t('auth.loggingIn') : t('auth.continueWithKakao')}
-                    </button>
+                <button
+                    onClick={() => {
+                        trackEvent('login_attempt', { provider: 'kakao' });
+                        signInWithKakao();
+                    }}
+                    disabled={isLoadingKakao}
+                    className="w-full bg-[#FEE500] text-[#191919] py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-[#FADA0A] transition-all active:scale-[0.98] disabled:opacity-50"
+                >
+                    {isLoadingKakao ? (
+                        <div className="w-5 h-5 border-2 border-[#191919]/20 border-t-[#191919] rounded-full animate-spin" />
+                    ) : (
+                        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path fillRule="evenodd" clipRule="evenodd" d="M9 3C5.13401 3 2 5.313 2 8.166C2 10 3.23 11.616 5.093 12.56L4.417 14.881C4.385 14.992 4.453 15.106 4.568 15.131C4.606 15.14 4.646 15.138 4.683 15.125L7.545 13.905C8.016 14.004 8.502 14.056 9 14.056C12.866 14.056 16 11.743 16 8.89C16 6.037 12.866 3.724 9 3.724V3Z" fill="#191919" />
+                        </svg>
+                    )}
+                    {isLoadingKakao ? t('auth.loggingIn') : t('auth.continueWithKakao')}
+                </button>
 
+                <div className="mt-4 flex items-center gap-3">
                     <button
+                        type="button"
+                        onClick={() => setShowEmailLogin(!showEmailLogin)}
+                        className="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-surface-dark px-4 py-3 text-sm font-medium text-gray-600 dark:text-gray-300 transition-all active:scale-[0.98]"
+                    >
+                        {t('auth.emailLogin')}
+                    </button>
+                    <button
+                        type="button"
                         onClick={() => {
                             trackEvent('login_attempt', { provider: 'google' });
                             signInWithGoogle();
                         }}
                         disabled={isLoadingGoogle}
-                        className="w-full bg-white dark:bg-surface-dark border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 py-4 rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 transition-all active:scale-[0.98]"
+                        className="inline-flex items-center justify-center gap-1.5 px-3 py-3 text-xs font-medium text-gray-400 transition-colors hover:text-gray-600 disabled:opacity-50 dark:hover:text-gray-300"
                     >
                         {isLoadingGoogle ? (
-                            <div className="w-5 h-5 border-2 border-gray-200 dark:border-gray-600 border-t-gray-800 dark:border-t-gray-200 rounded-full animate-spin" />
+                            <div className="w-4 h-4 border-2 border-gray-200 dark:border-gray-600 border-t-gray-500 dark:border-t-gray-300 rounded-full animate-spin" />
                         ) : (
                             <Icon name="g_translate" size="sm" />
                         )}
                         {isLoadingGoogle ? t('auth.loggingIn') : t('auth.continueWithGoogle')}
                     </button>
-                </div>
-
-                <div className="mt-6 flex items-center gap-3">
-                    <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
-                    <button
-                        type="button"
-                        onClick={() => setShowEmailLogin(!showEmailLogin)}
-                        className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                    >
-                        {t('auth.emailLogin')}
-                    </button>
-                    <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
                 </div>
 
                 {showEmailLogin && (
