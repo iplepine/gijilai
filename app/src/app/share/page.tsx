@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useSyncExternalStore } from 'react';
 import { Navbar } from '@/components/layout/Navbar';
 
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -44,6 +44,16 @@ function SharePageContent() {
 
   const reportId = searchParams.get('id');
 
+  const getNativeShareBridge = () => {
+    if (typeof window === 'undefined') return null;
+    return (window as Window & { ShareBridge?: { postMessage: (message: string) => void } }).ShareBridge || null;
+  };
+
+  const isMobileOrApp = () => {
+    if (typeof navigator === 'undefined') return false;
+    return /gijilai_app|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  };
+
   // Load report from DB if reportId is provided
   useEffect(() => {
     async function loadReport() {
@@ -65,6 +75,12 @@ function SharePageContent() {
     }
     loadReport();
   }, [reportId, user]);
+
+  const canShareToOtherApps = useSyncExternalStore(
+    () => () => undefined,
+    () => isMobileOrApp() && (!!getNativeShareBridge() || !!navigator.share),
+    () => false,
+  );
 
   const childName = child?.name || intake.childName || t('share.defaultChildName');
 
@@ -145,22 +161,29 @@ function SharePageContent() {
   };
 
   const handleNativeShare = async () => {
-    if (!navigator.share) {
-      handleCopyCode();
+    const sharePayload = {
+      title: `${childName}${t('share.resultTitle')}`,
+      text: [
+        `${eunNeun(childName)} "${temperamentInfo?.label || '열정 탐험가'}"`,
+        temperamentInfo?.desc,
+        temperamentInfo?.intro,
+        temperamentInfo?.strengths,
+      ].filter(Boolean).join('\n\n'),
+      url: getShareUrl(),
+    };
+
+    const bridge = getNativeShareBridge();
+    if (bridge) {
+      bridge.postMessage(JSON.stringify({ type: 'SHARE_REQUEST', ...sharePayload }));
       return;
     }
 
     try {
-      await navigator.share({
-        title: `${childName}${t('share.resultTitle')}`,
-        text: [
-          `${eunNeun(childName)} "${temperamentInfo?.label || '열정 탐험가'}"`,
-          temperamentInfo?.desc,
-          temperamentInfo?.intro,
-          temperamentInfo?.strengths,
-        ].filter(Boolean).join('\n\n'),
-        url: getShareUrl(),
-      });
+      if (!navigator.share) {
+        await handleCopyCode();
+        return;
+      }
+      await navigator.share(sharePayload);
     } catch {
       // User cancelled share - ignore
     }
@@ -213,13 +236,15 @@ function SharePageContent() {
                 <span className="material-symbols-outlined text-[20px]">{copied ? 'check' : 'link'}</span>
                 {copied ? t('share.copied') : t('share.copyLink')}
               </button>
-              <button
-                onClick={handleNativeShare}
-                className="flex-1 h-14 rounded-2xl flex items-center justify-center gap-2 text-[15px] font-bold bg-white dark:bg-surface-dark border border-gray-200 dark:border-gray-700 text-text-sub active:scale-[0.98] transition-all"
-              >
-                <span className="material-symbols-outlined text-[20px]">share</span>
-                {t('share.otherApps')}
-              </button>
+              {canShareToOtherApps && (
+                <button
+                  onClick={handleNativeShare}
+                  className="flex-1 h-14 rounded-2xl flex items-center justify-center gap-2 text-[15px] font-bold bg-white dark:bg-surface-dark border border-gray-200 dark:border-gray-700 text-text-sub active:scale-[0.98] transition-all"
+                >
+                  <span className="material-symbols-outlined text-[20px]">share</span>
+                  {t('share.otherApps')}
+                </button>
+              )}
             </div>
           </div>
 

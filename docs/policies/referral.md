@@ -13,6 +13,13 @@
 3. 로그인 후 `db.applyReferralCode()`로 자동 적용 (세션당 1회)
 4. 매칭 성공 시 referral 상태를 `COMPLETED`로 변경, 양쪽에 쿠폰 발급
 
+## 공유 버튼 노출
+
+- 카카오톡 공유와 링크 복사는 모든 환경에서 노출한다.
+- `다른 앱` 공유는 모바일 브라우저 또는 기질아이 앱 WebView에서만 노출한다.
+- 앱 WebView에서는 `ShareBridge` JavaScript channel로 Flutter에 공유 요청을 전달하고, Flutter가 OS 공유 시트를 연다.
+- 모바일 브라우저에서는 `navigator.share`가 지원될 때 Web Share API를 사용한다.
+
 ## 쿠폰
 
 - 할인 금액: 1,980원 (월 구독료와 동일 → 실질적 구독 첫 달 무료)

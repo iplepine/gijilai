@@ -11,6 +11,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -161,6 +162,7 @@ class _MainWebViewState extends State<MainWebView> {
         'ReminderBridge',
         onMessageReceived: _onReminderMessage,
       )
+      ..addJavaScriptChannel('ShareBridge', onMessageReceived: _onShareMessage)
       ..loadRequest(Uri.parse(MainWebView.targetUrl));
 
     setState(() {
@@ -243,6 +245,35 @@ class _MainWebViewState extends State<MainWebView> {
           e,
           StackTrace.current,
           reason: 'ReminderBridge parse error',
+        ),
+      );
+    }
+  }
+
+  Future<void> _onShareMessage(JavaScriptMessage message) async {
+    try {
+      final data = jsonDecode(message.message) as Map<String, dynamic>;
+      if (data['type'] != 'SHARE_REQUEST') return;
+
+      final title = data['title']?.toString() ?? '기질아이';
+      final text = data['text']?.toString() ?? '';
+      final url = data['url']?.toString() ?? '';
+      final content = [
+        text,
+        url,
+      ].where((value) => value.isNotEmpty).join('\n\n');
+
+      await SharePlus.instance.share(
+        ShareParams(title: title, text: content.isNotEmpty ? content : title),
+      );
+    } catch (e) {
+      debugPrint('ShareBridge error: $e');
+      _showSnackBar('공유를 열 수 없습니다', isError: true);
+      unawaited(
+        FirebaseCrashlytics.instance.recordError(
+          e,
+          StackTrace.current,
+          reason: 'ShareBridge error',
         ),
       );
     }
