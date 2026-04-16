@@ -26,6 +26,8 @@ declare global {
     customer?: {
       customerId: string;
       email?: string;
+      fullName?: string;
+      phoneNumber?: string;
     };
     easyPay?: { provider: 'NAVERPAY' | 'TOSSPAY' };
   }

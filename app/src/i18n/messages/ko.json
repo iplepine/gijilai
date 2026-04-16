@@ -71,6 +71,10 @@
     "payMethod": "결제수단",
     "card": "카드",
     "easyPay": "간편결제",
+    "buyerPhone": "구매자 휴대폰 번호",
+    "buyerPhonePlaceholder": "010-1234-5678",
+    "buyerPhoneHelp": "KG 이니시스 빌링키 발급에 필요한 정보입니다. 결제창 호출에만 사용합니다.",
+    "buyerPhoneRequired": "KG 이니시스 카드 결제는 구매자 휴대폰 번호가 필요합니다.",
     "subscribeWithPrice": "{price} 구독 시작하기",
     "subscribeError": "구독 처리 중 오류가 발생했습니다: {message}"
   },

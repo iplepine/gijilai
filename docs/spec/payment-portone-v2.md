@@ -192,7 +192,12 @@ locale 결정 순서:
   channelKey: locale === 'ko' ? TOSS_CHANNEL : STRIPE_CHANNEL,
   billingKeyMethod: locale === 'ko' ? "CARD" : "CARD",
   issueId: 클라이언트에서 생성한 UUID,
-  customer: { customerId: user.id, email: user.email }
+  customer: {
+    customerId: user.id,
+    fullName: user.name 또는 email local-part,
+    email: user.email,
+    phoneNumber: KG 이니시스 카드 선택 시 구매자 휴대폰 번호
+  }
 })
   ↓
 [포트원 빌링키 발급창] 카드 정보 입력
@@ -211,6 +216,8 @@ locale 결정 순서:
   ↓
 [클라이언트] 구독 완료 확인 → 홈으로 이동
 ```
+
+KG 이니시스 V2 카드 빌링키 발급은 PC 결제창에서 구매자 이름, 휴대폰 번호, 이메일이 필수다. 앱은 KG 이니시스 카드 선택 시에만 휴대폰 번호 입력란을 표시하고, 입력값은 PortOne 호출에만 사용하며 DB에 저장하지 않는다.
 
 ### 7.3 정기 갱신
 

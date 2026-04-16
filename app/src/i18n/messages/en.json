@@ -71,6 +71,10 @@
     "payMethod": "Payment method",
     "card": "Card",
     "easyPay": "Easy Pay",
+    "buyerPhone": "Buyer mobile number",
+    "buyerPhonePlaceholder": "010-1234-5678",
+    "buyerPhoneHelp": "Required for KG Inicis billing key issuance. Used only to open the payment window.",
+    "buyerPhoneRequired": "KG Inicis card billing requires the buyer mobile number.",
     "subscribeWithPrice": "Start for {price}",
     "subscribeError": "Subscription error: {message}"
   },

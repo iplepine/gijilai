@@ -46,12 +46,34 @@ function formatPrice(amount: number, curr: 'KRW' | 'USD'): string {
   return `$${(amount / 100).toFixed(2)}`;
 }
 
+function normalizePhoneNumber(value: string): string {
+  return value.replace(/\D/g, '');
+}
+
+function formatPhoneNumber(value: string): string {
+  const digits = normalizePhoneNumber(value).slice(0, 11);
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+}
+
+function getCustomerName(user: { email?: string; user_metadata?: Record<string, unknown> }): string {
+  const fullName = user.user_metadata?.full_name;
+  const displayName = user.user_metadata?.name;
+  const name =
+    (typeof fullName === 'string' && fullName) ||
+    (typeof displayName === 'string' && displayName) ||
+    user.email?.split('@')[0];
+  return (name || 'GIJILAI User').slice(0, 30);
+}
+
 export default function PricingPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { locale, t, currency } = useLocale();
   const [loading, setLoading] = useState(false);
   const [payMethod, setPayMethod] = useState<PayMethodOption>('KCP_CARD');
+  const [buyerPhone, setBuyerPhone] = useState('');
   const [existingSubscription, setExistingSubscription] = useState<ExistingSubscriptionSummary>(null);
   const [isFirstSubscription, setIsFirstSubscription] = useState(true);
   const [isApp, setIsApp] = useState(false);
@@ -128,6 +150,12 @@ export default function PricingPage() {
         billingKeyMethod = 'CARD';
       }
 
+      const buyerPhoneDigits = normalizePhoneNumber(buyerPhone);
+      if (locale === 'ko' && payMethod === 'INICIS_CARD' && buyerPhoneDigits.length < 10) {
+        alert(t('pricing.buyerPhoneRequired'));
+        return;
+      }
+
       // 빌링키 발급
       const issueParams: PortOneIssueBillingKeyParams = {
         storeId,
@@ -137,7 +165,11 @@ export default function PricingPage() {
         issueName: '기질아이 월 구독',
         customer: {
           customerId: user.id,
+          fullName: getCustomerName(user),
           ...(user.email ? { email: user.email } : {}),
+          ...(locale === 'ko' && payMethod === 'INICIS_CARD'
+            ? { phoneNumber: formatPhoneNumber(buyerPhoneDigits) }
+            : {}),
         },
       };
 
@@ -389,6 +421,26 @@ export default function PricingPage() {
                   <p className="text-[11px] text-text-sub mt-0.5">{t('pricing.easyPay')}</p>
                 </button>
               </div>
+              {payMethod === 'INICIS_CARD' && (
+                <div className="space-y-2 rounded-2xl border border-[#E84B3C]/20 bg-[#E84B3C]/5 p-4">
+                  <label htmlFor="buyer-phone" className="block text-[13px] font-bold text-text-main dark:text-white">
+                    {t('pricing.buyerPhone')}
+                  </label>
+                  <input
+                    id="buyer-phone"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    value={buyerPhone}
+                    onChange={(event) => setBuyerPhone(formatPhoneNumber(event.target.value))}
+                    placeholder={t('pricing.buyerPhonePlaceholder')}
+                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-[15px] font-semibold text-text-main outline-none transition focus:border-[#E84B3C] dark:border-gray-700 dark:bg-surface-dark dark:text-white"
+                  />
+                  <p className="text-[12px] leading-relaxed text-text-sub">
+                    {t('pricing.buyerPhoneHelp')}
+                  </p>
+                </div>
+              )}
             </section>
           )}
 
