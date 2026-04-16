@@ -20,7 +20,7 @@
 
 ### 자유 텍스트 입력 보조
 
-- 상담 고민 입력, 주관식 문진 답변, 실천 완료 회고처럼 긴 텍스트 입력이 필요한 곳에는 공통 `VoiceInputButton`을 붙인다.
+- 상담 고민 입력, 주관식 문진 답변, 오늘의 실천 한줄메모, 실천 완료 회고처럼 자유 텍스트 입력이 필요한 곳에는 공통 `VoiceInputButton`을 붙인다.
 - `VoiceInputButton`은 모바일/터치 입력 환경(`pointer: coarse`)에서만 렌더링한다.
 - 음성 입력은 브라우저 Web Speech API(`SpeechRecognition`/`webkitSpeechRecognition`)를 사용한다.
 - 데스크톱에서는 버튼을 숨기고, 모바일 미지원 브라우저에서는 음성 버튼을 비활성화하고 안내 문구를 제공하며, 키보드 입력 흐름은 변경하지 않는다.
@@ -122,7 +122,7 @@
 - 각 카드: 제목, 설명, 진행률 바 (실천 일수/목표 기간), 응원 메시지
 - 세션 그룹 정렬: 오늘 미기록 항목이 있는 세션이 위로
 - 카드 내 정렬: 미기록 > 못했어요 > 완료 순
-- 오늘 실천 기록: PracticeCheckModal (했다/못했다 + 한줄 메모)
+- 오늘 실천 기록: PracticeCheckModal (했다/못했다 + 한줄 메모, 모바일 음성 입력 지원)
 - 기간 완료(doneDays >= duration) 시: PracticeReviewModal (종합 회고 작성 → status COMPLETED로 변경)
 - 진행 중인 실천이 없으면 빈 상태 + "상담 시작하기" CTA
 
