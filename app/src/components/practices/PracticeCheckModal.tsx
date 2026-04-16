@@ -86,6 +86,7 @@ export function PracticeCheckModal({ practiceTitle, onSave, onClose, existingDon
 
                     <div>
                         <label className="block text-[11px] font-bold text-text-sub mb-2 uppercase tracking-wider">{t('practices.memoLabel')}</label>
+                        <p className="mb-2 text-[12px] text-text-muted dark:text-gray-500">{t('practices.memoHelper')}</p>
                         <div className="relative">
                             <textarea
                                 value={memo}
