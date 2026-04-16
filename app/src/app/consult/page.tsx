@@ -864,6 +864,25 @@ function ConsultContent() {
 
                             {/* 다음 행동 유도 */}
                             <div className="space-y-3 mt-2">
+                                {!hasSubscription && (
+                                    <div className="rounded-2xl bg-primary p-5 text-white shadow-card relative overflow-hidden text-left">
+                                        <div className="absolute top-0 right-0 w-28 h-28 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
+                                        <div className="relative z-10 space-y-4">
+                                            <div className="space-y-1">
+                                                <p className="text-[11px] font-black text-white/70 uppercase tracking-wider">{t('consult.resultPremiumEyebrow')}</p>
+                                                <h3 className="text-[18px] font-black leading-tight break-keep">{t('consult.resultPremiumTitle')}</h3>
+                                                <p className="text-[13px] leading-relaxed text-white/85 break-keep">{t('consult.resultPremiumDesc')}</p>
+                                            </div>
+                                            <button
+                                                onClick={() => router.push('/pricing')}
+                                                className="w-full h-12 rounded-xl bg-white text-primary text-[14px] font-black active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
+                                            >
+                                                <span>{t('consult.resultPremiumCta')}</span>
+                                                <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                                 <button
                                     onClick={async () => {
                                         if (user && sessionId && savedConsultId && prescription?.actionItems && selectedActionIndex !== null) {

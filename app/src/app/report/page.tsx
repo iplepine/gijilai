@@ -20,6 +20,7 @@ import Link from 'next/link';
 import { Icon } from '@/components/ui/Icon';
 import { Button } from '@/components/ui/Button';
 import { trackEvent } from '@/lib/analytics';
+import { db } from '@/lib/db';
 import { TemperamentScorer } from '@/lib/TemperamentScorer';
 import { TemperamentClassifier } from '@/lib/TemperamentClassifier';
 import { TCI_TERMINOLOGY } from '@/constants/terminology';
@@ -70,6 +71,7 @@ function ReportContent() {
   const [isGenerating, setIsGenerating] = useState(false);
   const generatingRef = useRef<Set<string>>(new Set());
   const [reportDates, setReportDates] = useState<ReportDates>({});
+  const [hasSubscription, setHasSubscription] = useState(false);
 
   // DB에서 로드된 {t('common.points')}수 데이터 (상세 보기용)
   const [savedChildScores, setSavedChildScores] = useState<TemperamentScores | null>(null);
@@ -87,7 +89,35 @@ function ReportContent() {
     }
   }, [tabParam, parentingResponses]);
 
+  useEffect(() => {
+    if (!user) return;
+    db.getActiveSubscription(user.id).catch(() => null).then((subscription) => {
+      setHasSubscription(!!subscription);
+    });
+  }, [user]);
+
   const reportId = searchParams.get('id');
+  const showPremiumCta = !!user && !hasSubscription;
+
+  const PremiumContinuationCard = ({ compact = false }: { compact?: boolean }) => (
+    <section className="bg-primary rounded-2xl px-6 py-5 text-white shadow-card relative overflow-hidden text-left">
+      <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-12 -mt-12 pointer-events-none" />
+      <div className="relative z-10 space-y-4">
+        <div className="space-y-1">
+          <p className="text-[11px] font-black text-white/70 uppercase tracking-wider">{t('report.premiumCtaEyebrow')}</p>
+          <h3 className={`${compact ? 'text-[18px]' : 'text-xl'} font-black leading-tight break-keep`}>{t('report.premiumCtaTitle')}</h3>
+          <p className="text-[13px] leading-relaxed text-white/85 break-keep">{t('report.premiumCtaDesc')}</p>
+        </div>
+        <button
+          onClick={() => router.push('/pricing')}
+          className="w-full h-12 rounded-xl bg-white text-primary text-[14px] font-black active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
+        >
+          <span>{t('report.premiumCtaButton')}</span>
+          <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+        </button>
+      </div>
+    </section>
+  );
 
   const loadSavedReport = useCallback(async (id: string) => {
     setIsGenerating(true);
@@ -773,6 +803,7 @@ function ReportContent() {
                   {/* Footer Actions */}
                   {!isChildOnly && childAiReport && (
                     <div className="flex flex-col gap-4 pt-10 pb-10 text-center">
+                      {showPremiumCta && <PremiumContinuationCard />}
                       <Button variant="secondary" onClick={() => router.push(`/share${(reportId || childReportId) ? `?id=${reportId || childReportId}` : ''}`)} fullWidth className="h-14 rounded-2xl border-none bg-white shadow-lg">
                         {t('report.shareResult')}
                       </Button>
@@ -952,6 +983,7 @@ function ReportContent() {
                 {/* Footer Actions */}
                 {parentAiReport && (
                   <div className="flex flex-col gap-4 pt-10 pb-10 text-center">
+                    {showPremiumCta && <PremiumContinuationCard compact />}
                     <Button variant="secondary" onClick={() => router.push(`/share${(reportId || childReportId) ? `?id=${reportId || childReportId}` : ''}`)} fullWidth className="h-14 rounded-2xl border-none bg-white shadow-lg">
                       {t('report.shareMyResult')}
                     </Button>
@@ -1176,6 +1208,7 @@ function ReportContent() {
 
                 {/* Footer Actions */}
                 {harmonyAiReport && <div className="flex flex-col gap-4 pt-10 pb-16 text-center px-4">
+                  {showPremiumCta && <PremiumContinuationCard />}
                   <Button variant="secondary" onClick={() => router.push(`/share${(reportId || childReportId) ? `?id=${reportId || childReportId}` : ''}`)} fullWidth className="h-14 rounded-2xl border-none bg-white shadow-lg text-slate-800 font-bold">
                     결과 공유하기
                   </Button>

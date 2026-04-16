@@ -110,6 +110,8 @@ export default function HomePage() {
   }, [magicWords.length, mainChild?.id]);
 
   const childName = mainChild?.name || t('home.defaultChildName');
+  const trialStatus = user?.created_at ? db.getTrialStatus(user.created_at) : null;
+  const shouldShowTrialEndingCard = !subscription && !!trialStatus?.isActive && trialStatus.daysRemaining <= 2;
 
   // Derived Temperament (Parent = Soil, Child = Seed + Plant)
   // 양육자 기질은 아이와 무관하게 하나
@@ -329,6 +331,27 @@ export default function HomePage() {
 
               {/* 기능 카드 리스트 */}
               <div className="px-6 flex flex-col gap-5 mt-8">
+                {shouldShowTrialEndingCard && (
+                  <div className="bg-white dark:bg-surface-dark rounded-2xl p-5 shadow-soft border border-primary/15">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <span className="material-symbols-outlined text-[20px] text-primary">workspace_premium</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-black text-primary mb-1">{t('home.trialEndingTitle', { days: trialStatus.daysRemaining })}</p>
+                        <p className="text-[12px] text-text-sub leading-relaxed break-keep">{t('home.trialEndingDesc')}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => router.push('/pricing')}
+                      className="mt-4 w-full py-3.5 rounded-xl bg-primary text-white text-[13px] font-bold active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <span>{t('home.trialEndingCta')}</span>
+                      <span className="material-symbols-outlined text-[17px]">arrow_forward</span>
+                    </button>
+                  </div>
+                )}
+
                 {/* 아이 기질 검사 유도 카드 */}
                 {!temperamentInfo && (
                   <div className="bg-primary dark:bg-surface-dark rounded-2xl p-6 shadow-card relative overflow-hidden mb-2">
