@@ -232,10 +232,33 @@ class _MainWebViewState extends State<MainWebView> {
 
   bool _shouldOpenExternally(Uri uri) {
     final scheme = uri.scheme.toLowerCase();
-    if (scheme == 'http' || scheme == 'https' || scheme == 'about') {
+    if (scheme == 'http' || scheme == 'https') {
+      return _isOAuthNavigationUri(uri);
+    }
+    if (scheme == 'about') {
       return false;
     }
     return true;
+  }
+
+  bool _isOAuthNavigationUri(Uri uri) {
+    final host = uri.host.toLowerCase();
+    final path = uri.path.toLowerCase();
+
+    if (host == 'accounts.google.com' ||
+        host == 'oauth2.googleapis.com' ||
+        host.endsWith('.googleusercontent.com')) {
+      return true;
+    }
+
+    if (host == 'kauth.kakao.com' ||
+        host == 'accounts.kakao.com' ||
+        host.endsWith('.kakao.com')) {
+      return true;
+    }
+
+    return host.contains('supabase.co') &&
+        path.startsWith('/auth/v1/authorize');
   }
 
   bool _isAuthCallbackUri(Uri uri) {
