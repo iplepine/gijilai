@@ -11,6 +11,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:webview_flutter/webview_flutter.dart';
@@ -81,6 +82,8 @@ class MainWebView extends StatefulWidget {
 class _MainWebViewState extends State<MainWebView> {
   static const _subscriptionProductId = 'monthly_premium';
   static const _practiceReminderNotificationId = 1001;
+  static const _practiceReminderEnabledKey = 'practice_reminder_enabled';
+  static const _practiceReminderTimeKey = 'practice_reminder_time';
 
   WebViewController? _controller;
   StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
@@ -112,6 +115,7 @@ class _MainWebViewState extends State<MainWebView> {
       const settings = InitializationSettings(android: android, iOS: ios);
 
       await _localNotifications.initialize(settings);
+      await _restorePracticeReminder();
     } catch (e) {
       debugPrint('Local notifications init error: $e');
       unawaited(
@@ -247,17 +251,30 @@ class _MainWebViewState extends State<MainWebView> {
   Future<void> _schedulePracticeReminder({
     required bool enabled,
     required String time,
+    bool persist = true,
+    bool requestPermission = true,
+    bool showFeedback = true,
   }) async {
+    if (persist) {
+      await _savePracticeReminderSettings(enabled: enabled, time: time);
+    }
+
     await _localNotifications.cancel(_practiceReminderNotificationId);
 
     if (!enabled) {
-      _showSnackBar('실천 리마인더가 꺼졌습니다');
+      if (showFeedback) {
+        _showSnackBar('실천 리마인더가 꺼졌습니다');
+      }
       return;
     }
 
-    final permissionGranted = await _requestLocalNotificationPermission();
+    final permissionGranted = requestPermission
+        ? await _requestLocalNotificationPermission()
+        : await _areLocalNotificationsEnabled();
     if (!permissionGranted) {
-      _showSnackBar('알림 권한이 필요합니다', isError: true);
+      if (showFeedback) {
+        _showSnackBar('알림 권한이 필요합니다', isError: true);
+      }
       return;
     }
 
@@ -290,7 +307,53 @@ class _MainWebViewState extends State<MainWebView> {
       matchDateTimeComponents: DateTimeComponents.time,
     );
 
-    _showSnackBar('실천 리마인더가 설정되었습니다');
+    if (showFeedback) {
+      _showSnackBar('실천 리마인더가 설정되었습니다');
+    }
+  }
+
+  Future<void> _savePracticeReminderSettings({
+    required bool enabled,
+    required String time,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_practiceReminderEnabledKey, enabled);
+    await prefs.setString(_practiceReminderTimeKey, time);
+  }
+
+  Future<void> _restorePracticeReminder() async {
+    final prefs = await SharedPreferences.getInstance();
+    final enabled = prefs.getBool(_practiceReminderEnabledKey) ?? false;
+    final time = prefs.getString(_practiceReminderTimeKey) ?? '20:00';
+
+    if (!enabled) return;
+
+    final pending = await _localNotifications.pendingNotificationRequests();
+    final alreadyScheduled = pending.any(
+      (notification) => notification.id == _practiceReminderNotificationId,
+    );
+    if (alreadyScheduled) return;
+
+    await _schedulePracticeReminder(
+      enabled: true,
+      time: time,
+      persist: false,
+      requestPermission: false,
+      showFeedback: false,
+    );
+  }
+
+  Future<bool> _areLocalNotificationsEnabled() async {
+    if (Platform.isAndroid) {
+      return await _localNotifications
+              .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin
+              >()
+              ?.areNotificationsEnabled() ??
+          true;
+    }
+
+    return true;
   }
 
   Future<bool> _requestLocalNotificationPermission() async {
