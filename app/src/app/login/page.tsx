@@ -21,7 +21,16 @@ export default function LoginPage() {
     const [emailMessage, setEmailMessage] = useState('');
 
     const getErrorMessage = (error: unknown) => {
-        if (error instanceof Error) return error.message;
+        if (error instanceof Error) {
+            const message = error.message.toLowerCase();
+            if (message.includes('rate limit') || message.includes('too many')) {
+                return t('auth.emailRateLimit');
+            }
+            if (message.includes('already registered') || message.includes('already been registered') || message.includes('user already registered')) {
+                return t('auth.emailAlreadyRegistered');
+            }
+            return error.message;
+        }
         return t('auth.loginFailed');
     };
 

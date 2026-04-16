@@ -50,6 +50,7 @@
 - **운영 포인트**
 - RLS/테이블 변경 시 `docs/migrations/`와 타입 정의 동기화 필요
 - Auth 세션 문제는 OAuth provider 설정과 리다이렉트 URL을 함께 점검
+- 이메일 회원가입/비밀번호 재설정은 인증 메일 발송량 제한에 걸릴 수 있다. 운영 전 Supabase Auth의 Custom SMTP를 설정해야 내장 메일러의 낮은 rate limit을 피할 수 있음.
 
 ### Firebase
 

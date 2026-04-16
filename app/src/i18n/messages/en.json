@@ -667,6 +667,8 @@
     "signup": "Sign up",
     "signingUp": "Signing up...",
     "signupSuccess": "Sign-up is complete. If email verification is required, please check your inbox.",
+    "emailRateLimit": "Email verification is temporarily rate-limited. Please try again later.",
+    "emailAlreadyRegistered": "This email is already registered. Please use the login tab.",
     "emailAuth": "Log in / sign up with email",
     "emailLogin": "Log in with email",
     "email": "Email",
