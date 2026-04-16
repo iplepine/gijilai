@@ -43,8 +43,7 @@ function formatCodeLabel(value?: string): string | null {
   if (!value) return null;
   if (value === 'TOSSPAY') return 'TossPay';
   if (value === 'NAVERPAY') return 'Naver Pay';
-  if (value === 'KCP_CARD') return 'NHN KCP';
-  if (value === 'INICIS_CARD') return 'KG Inicis';
+  if (value === 'KCP_CARD' || value === 'INICIS_CARD') return null;
   return value
     .replace(/^PaymentMethod/, '')
     .replace(/_/g, ' ')

@@ -76,7 +76,7 @@ export async function POST(req: Request) {
 
     const currency: Currency = locale === 'ko' ? 'KRW' : 'USD';
     const channelKey = locale === 'ko'
-      ? getKoChannelKey(payMethod ?? 'KCP_CARD')
+      ? getKoChannelKey(payMethod ?? 'INICIS_CARD')
       : process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_STRIPE;
     // [연 구독] 재활성화 시: const productCode = plan === 'MONTHLY' ? 'subscription_monthly' : 'subscription_yearly';
     const regularAmount = getAmount('subscription_monthly', currency);

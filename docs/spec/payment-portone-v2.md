@@ -7,7 +7,7 @@ Date: 2026-03-25
 
 현재 결제 시스템은 Stripe 직접 연동(카드)과 포트원 V1(카카오/네이버/토스페이)이 혼재되어 있으며, 구독 모델이 없어 반복 수익 구조가 불가능하고, 글로벌 사용자를 위한 통화/가격 분기가 없다. 포트원 V1 가맹점 ID도 플레이스홀더(`imp00000000`) 상태다.
 
-이 스펙은 결제 인프라를 포트원 V2로 통합하고, 구독제 전용 모델을 구현하며, 한국/글로벌 가격·통화·결제수단을 locale 기반으로 자동 분기하는 시스템을 정의한다.
+이 스펙은 웹 결제 인프라를 포트원 V2로 통합하고, 구독제 전용 모델을 구현하며, 플랫폼/locale 기반으로 앱 IAP·웹 PG·통화를 자동 분기하는 시스템을 정의한다.
 
 > **Note (2026-04-01)**: 건별 결제(990원)는 폐지됨. 구독제만 운영.
 
@@ -16,7 +16,7 @@ Date: 2026-03-25
 ### 2.1 목표
 - 포트원 V2 SDK로 결제 인프라 통합 (Stripe 직접 연동 + 포트원 V1 제거)
 - 월/연 구독제 도입 (빌링키 기반 정기결제) — 건별 결제는 폐지
-- 한국/글로벌 가격·통화·결제수단 자동 분기
+- 플랫폼/locale 기반 가격·통화·결제 라우팅 자동 분기
 - 구독 상태에 따른 기능 접근 제어 (리포트, 상담, 실천)
 - 구독 라이프사이클 관리 (생성, 갱신, 해지, 만료)
 - 포트원 웹훅으로 결제 상태 서버 사이드 검증
@@ -174,10 +174,10 @@ locale 결정 순서:
 
 | 속성 | 한국 (ko) | 글로벌 (en) |
 |------|----------|------------|
-| PG사 | `kcp_v2`, `inicis_v2` | `stripe` |
+| PG사 | `inicis_v2` (`kcp_v2` 계약 진행 중) | `stripe` |
 | 통화 | KRW | USD |
 | 간편결제 | 미노출 (토스페이/네이버페이 심사 거부) | Google Pay, Apple Pay |
-| 카드 결제 | O | O |
+| 정기결제 | O | O |
 | 포트원 채널 키 | `NEXT_PUBLIC_PORTONE_CHANNEL_KEY_KCP`, `NEXT_PUBLIC_PORTONE_CHANNEL_KEY_INICIS` | `NEXT_PUBLIC_PORTONE_CHANNEL_KEY_STRIPE` |
 
 ## 7. 결제 플로우
@@ -196,7 +196,7 @@ locale 결정 순서:
     customerId: user.id,
     fullName: user.name 또는 email local-part,
     email: user.email,
-    phoneNumber: KG 이니시스 카드 선택 시 구매자 휴대폰 번호
+    phoneNumber: 웹 정기결제 등록 시 구매자 휴대폰 번호
   },
   redirectUrl: `${origin}/pricing/complete?locale=...&payMethod=...`,
   windowType: { mobile: "REDIRECTION" },
@@ -221,7 +221,7 @@ locale 결정 순서:
 [클라이언트] 구독 완료 확인 → 홈으로 이동
 ```
 
-KG 이니시스 V2 카드 빌링키 발급은 PC 결제창에서 구매자 이름, 휴대폰 번호, 이메일이 필수다. 앱은 KG 이니시스 카드 선택 후 구독 버튼을 누른 시점에 다이얼로그로 휴대폰 번호를 입력받고, 입력값은 PortOne 호출에만 사용하며 DB에 저장하지 않는다.
+웹 정기결제 빌링키 발급은 구매자 이름, 휴대폰 번호, 이메일이 필요하다. 앱은 구독 버튼을 누른 시점에 다이얼로그로 휴대폰 번호를 입력받고, 입력값은 PortOne 호출에만 사용하며 DB에 저장하지 않는다. 사용자는 PG사나 카드/인앱결제 라우팅을 선택하지 않는다.
 
 ### 7.3 정기 갱신
 
@@ -370,7 +370,7 @@ async function getActiveSubscription(userId: string): Promise<Subscription | nul
 | `PORTONE_STORE_ID` | 포트원 상점 ID | O |
 | `PORTONE_API_SECRET` | 포트원 V2 API Secret (서버용) | O |
 | `NEXT_PUBLIC_PORTONE_STORE_ID` | 포트원 상점 ID (클라이언트용) | O |
-| `NEXT_PUBLIC_PORTONE_CHANNEL_KEY_KCP` | NHN KCP 채널 키 (클라이언트용) | O |
+| `NEXT_PUBLIC_PORTONE_CHANNEL_KEY_KCP` | NHN KCP 채널 키 (계약 완료 후 내부 라우팅 전환용) | X |
 | `NEXT_PUBLIC_PORTONE_CHANNEL_KEY_INICIS` | KG 이니시스 채널 키 (클라이언트용) | O |
 | `NEXT_PUBLIC_PORTONE_CHANNEL_KEY_TOSS` | 토스페이 채널 키 (심사 거부로 UI 미노출) | X |
 | `NEXT_PUBLIC_PORTONE_CHANNEL_KEY_NAVERPAY` | 네이버페이 채널 키 (심사 거부로 UI 미노출) | X |
@@ -457,7 +457,7 @@ async function getActiveSubscription(userId: string): Promise<Subscription | nul
   "billingKey": "string",
   "plan": "MONTHLY | YEARLY",
   "locale": "ko | en",
-  "payMethod": "KCP_CARD | INICIS_CARD"
+  "payMethod": "KCP_CARD | INICIS_CARD (내부 라우팅용, 기본값 INICIS_CARD)"
 }
 ```
 
@@ -465,7 +465,7 @@ async function getActiveSubscription(userId: string): Promise<Subscription | nul
 1. Supabase 세션 검증
 2. 기존 활성 구독 확인 → 있으면 에러
 3. 금액 결정: plan + locale → amount, currency
-4. 포트원 빌링키 결제 실행 (`payMethod`에 맞는 `channelKey` 명시)
+4. 포트원 빌링키 결제 실행 (내부 `payMethod`에 맞는 `channelKey` 명시, 사용자에게 선택 UI 미노출)
 5. subscriptions INSERT (ACTIVE), payments INSERT (SUBSCRIPTION, PAID)
 6. period 계산: MONTHLY → +30일, YEARLY → +365일
 

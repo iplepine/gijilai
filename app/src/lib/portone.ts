@@ -20,7 +20,7 @@ export const FIRST_MONTH_DISCOUNT = 0.3;
 
 export type ProductCode = keyof typeof PRICE_TABLE;
 export type Currency = 'KRW' | 'USD';
-export type PayMethod = 'KCP_CARD' | 'INICIS_CARD' | 'TOSSPAY' | 'NAVERPAY';
+export type PayMethod = 'KCP_CARD' | 'INICIS_CARD';
 export type PaymentMethodSnapshot = {
   type?: string;
   provider?: string;
@@ -66,19 +66,13 @@ export function getKoChannelKey(payMethod: PayMethod): string {
   if (payMethod === 'INICIS_CARD') {
     return process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_INICIS as string;
   }
-  if (payMethod === 'NAVERPAY') {
-    return process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_NAVERPAY as string;
-  }
-  if (payMethod === 'TOSSPAY') {
-    return process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_TOSS as string;
-  }
   return process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_KCP as string;
 }
 
-/** locale 기반 기본 채널키 (한국: KCP 카드결제) */
+/** locale 기반 기본 채널키 (한국: KG 이니시스 정기결제) */
 export function getChannelKey(locale: string): string {
   if (locale === 'ko') {
-    return process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_KCP as string;
+    return process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_INICIS as string;
   }
   return process.env.PORTONE_CHANNEL_KEY_STRIPE as string;
 }

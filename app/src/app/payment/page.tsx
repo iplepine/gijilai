@@ -76,7 +76,7 @@ export default function PaymentPage() {
   const [isApp, setIsApp] = useState(false);
   const [availableCoupon, setAvailableCoupon] = useState<Coupon | null>(null);
   const [useCoupon, setUseCoupon] = useState(false);
-  const [payMethod, setPayMethod] = useState<PayMethodOption>('KCP_CARD');
+  const payMethod: PayMethodOption = 'INICIS_CARD';
 
   const LOADING_MESSAGES = [
     { icon: 'analytics', text: t('payment.analyzingTempData') },
@@ -208,7 +208,7 @@ export default function PaymentPage() {
         orderName: t('payment.productName'),
         totalAmount: finalAmount,
         currency: 'KRW',
-        payMethod: payMethod === 'KCP_CARD' || payMethod === 'INICIS_CARD' ? 'CARD' : 'EASY_PAY',
+        payMethod: 'CARD',
         redirectUrl: `${window.location.origin}/payment/success?paymentId=${encodeURIComponent(paymentId)}`,
         windowType: {
           mobile: 'REDIRECTION',
@@ -367,37 +367,6 @@ export default function PaymentPage() {
                     <span className="text-primary font-black text-lg">-{availableCoupon.discount_amount}{t('payment.currency')}</span>
                   </div>
                 )}
-
-                {/* 결제수단 선택 */}
-                <div className="space-y-3">
-                  <p className="text-xs font-bold text-text-sub">{t('payment.selectPayMethod')}</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => setPayMethod('KCP_CARD')}
-                      className={`p-3 rounded-2xl border-2 transition-all text-center ${
-                        payMethod === 'KCP_CARD'
-                          ? 'border-primary bg-primary/5'
-                          : 'border-gray-100 bg-white dark:bg-surface-dark dark:border-gray-700'
-                      }`}
-                    >
-                      <Icon name="credit_card" size="sm" className={`text-2xl mb-1 ${payMethod === 'KCP_CARD' ? 'text-primary' : 'text-text-sub'}`} />
-                      <p className={`text-sm font-bold ${payMethod === 'KCP_CARD' ? 'text-primary' : 'text-text-main dark:text-white'}`}>{t('payment.cardLabel')}</p>
-                      <p className="text-[11px] text-text-sub mt-0.5">NHN KCP</p>
-                    </button>
-                    <button
-                      onClick={() => setPayMethod('INICIS_CARD')}
-                      className={`p-3 rounded-2xl border-2 transition-all text-center ${
-                        payMethod === 'INICIS_CARD'
-                          ? 'border-[#E84B3C] bg-[#E84B3C]/5'
-                          : 'border-gray-100 bg-white dark:bg-surface-dark dark:border-gray-700'
-                      }`}
-                    >
-                      <Icon name="credit_card" size="sm" className={`text-2xl mb-1 ${payMethod === 'INICIS_CARD' ? 'text-[#E84B3C]' : 'text-text-sub'}`} />
-                      <p className={`text-sm font-bold ${payMethod === 'INICIS_CARD' ? 'text-[#E84B3C]' : 'text-text-main dark:text-white'}`}>{t('payment.cardLabel')}</p>
-                      <p className="text-[11px] text-text-sub mt-0.5">KG Inicis</p>
-                    </button>
-                  </div>
-                </div>
 
                 {/* Subscription upsell */}
                 <div className="bg-primary/5 rounded-2xl p-4 border border-primary/20">

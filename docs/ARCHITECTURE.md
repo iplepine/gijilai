@@ -77,7 +77,7 @@
 - **위치**: `app/src/lib/portone.ts`, `app/src/lib/subscription.ts`, `app/src/app/api/payment/`
 - **역할**: 포트원 V2 기반 결제 처리. 구독제(월/연) 전용. 빌링키 기반 정기결제, 웹훅 검증, 구독 라이프사이클 관리
 - **의존**: @portone/server-sdk, Supabase (subscriptions/payments 테이블)
-- **PG사**: NHN KCP (카드, 한국), KG 이니시스 (카드, 한국), 토스페이 (간편결제, 한국), 네이버페이 (간편결제, 한국), Stripe (글로벌)
+- **PG사**: KG 이니시스 (한국 웹 정기결제 운영), NHN KCP (한국 웹 계약 진행 중), Stripe (글로벌 웹), Apple/Google IAP (앱)
 - **사용처**: 결제 페이지 (`/payment`), 요금제 페이지 (`/pricing`), 구독 관리, 리포트/상담 접근 제어
 
 ### 유틸리티
@@ -146,7 +146,7 @@ app/src/components/
 - **용도**: 결제 통합 플랫폼 (구독 정기결제 전용)
 - **프로토콜**: REST (@portone/server-sdk) + 브라우저 SDK (CDN)
 - **인증**: API Secret (서버), Store ID (클라이언트)
-- **PG사**: NHN KCP (한국 카드), KG 이니시스 (한국 카드), 토스페이 (한국 간편결제), 네이버페이 (한국 간편결제), Stripe (글로벌)
+- **PG사**: KG 이니시스 (한국 웹 정기결제 운영), NHN KCP (한국 웹 계약 진행 중), Stripe (글로벌 웹), Apple/Google IAP (앱)
 
 ### Kakao SDK
 - **용도**: 소셜 로그인 (OAuth), 공유 기능
