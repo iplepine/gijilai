@@ -22,6 +22,15 @@ interface GroupedPractices {
     practices: PracticeItemData[];
 }
 
+interface PracticeInsight {
+    totalLogs: number;
+    doneLogs: number;
+    skippedLogs: number;
+    completionRate: number;
+    uncheckedToday: number;
+    recentMemo: string | null;
+}
+
 export default function PracticesPage() {
     const router = useRouter();
     const { user, loading: authLoading } = useAuth();
@@ -67,8 +76,10 @@ export default function PracticesPage() {
                     .from('practice_logs')
                     .select('*')
                     .in('practice_id', practiceIds)
-                    .eq('done', true);
+                    .order('date', { ascending: false });
                 setAllLogs((logsData || []) as PracticeLogData[]);
+            } else {
+                setAllLogs([]);
             }
         } catch (e) {
             console.error('Failed to fetch practices:', e);
@@ -122,6 +133,28 @@ export default function PracticesPage() {
             return 0;
         });
     }, [filteredPractices, todayLogs]);
+
+    const practiceInsight = useMemo<PracticeInsight | null>(() => {
+        if (filteredPractices.length === 0) return null;
+
+        const visiblePracticeIds = new Set(filteredPractices.map((practice) => practice.id));
+        const visibleLogs = allLogs.filter((log) => visiblePracticeIds.has(log.practice_id));
+        const doneLogs = visibleLogs.filter((log) => log.done).length;
+        const skippedLogs = visibleLogs.filter((log) => !log.done).length;
+        const recentMemo = visibleLogs
+            .filter((log) => log.memo && log.memo.trim().length > 0)
+            .sort((a, b) => b.date.localeCompare(a.date))[0]?.memo?.trim() || null;
+        const checkedTodayIds = new Set(todayLogs.map((log) => log.practice_id));
+
+        return {
+            totalLogs: visibleLogs.length,
+            doneLogs,
+            skippedLogs,
+            completionRate: visibleLogs.length > 0 ? Math.round((doneLogs / visibleLogs.length) * 100) : 0,
+            uncheckedToday: filteredPractices.filter((practice) => !checkedTodayIds.has(practice.id)).length,
+            recentMemo,
+        };
+    }, [allLogs, filteredPractices, todayLogs]);
 
     const getTodayLog = (practiceId: string) => todayLogs.find(l => l.practice_id === practiceId);
 
@@ -231,8 +264,58 @@ export default function PracticesPage() {
                             </button>
                         </div>
                     ) : (
-                        grouped.map(({ session, practices: sessionPractices }, gi) => (
-                            <div key={`${session.id}-${gi}`} className="space-y-3">
+                        <>
+                            {practiceInsight && (
+                                <section className="bg-white dark:bg-surface-dark rounded-2xl p-5 border border-primary/10 space-y-4">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p className="text-[11px] font-bold text-secondary uppercase tracking-wider">{t('practices.insightEyebrow')}</p>
+                                            <h2 className="text-[17px] font-bold text-text-main dark:text-white mt-1">{t('practices.insightTitle')}</h2>
+                                        </div>
+                                        <button
+                                            onClick={() => router.push('/settings/notifications')}
+                                            className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center active:scale-[0.96] transition-all"
+                                            aria-label={t('practices.reminderSettings')}
+                                        >
+                                            <span className="material-symbols-outlined text-[20px]">notifications</span>
+                                        </button>
+                                    </div>
+
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div className="rounded-xl bg-primary/5 p-3">
+                                            <p className="text-[11px] text-text-sub">{t('practices.completionRate')}</p>
+                                            <p className="text-[18px] font-bold text-primary mt-1">{practiceInsight.completionRate}%</p>
+                                        </div>
+                                        <div className="rounded-xl bg-secondary/5 p-3">
+                                            <p className="text-[11px] text-text-sub">{t('practices.doneCount')}</p>
+                                            <p className="text-[18px] font-bold text-secondary mt-1">{practiceInsight.doneLogs}</p>
+                                        </div>
+                                        <div className="rounded-xl bg-orange-50 dark:bg-orange-900/10 p-3">
+                                            <p className="text-[11px] text-text-sub">{t('practices.uncheckedToday')}</p>
+                                            <p className="text-[18px] font-bold text-orange-600 mt-1">{practiceInsight.uncheckedToday}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="rounded-xl bg-beige-main/20 dark:bg-white/5 p-3 space-y-2">
+                                        <p className="text-[12px] text-text-sub leading-relaxed">
+                                            {practiceInsight.totalLogs > 0
+                                                ? t('practices.insightSummary', {
+                                                    done: practiceInsight.doneLogs,
+                                                    skipped: practiceInsight.skippedLogs,
+                                                })
+                                                : t('practices.insightEmpty')}
+                                        </p>
+                                        {practiceInsight.recentMemo && (
+                                            <p className="text-[12px] font-medium text-text-main dark:text-white leading-relaxed line-clamp-2">
+                                                &quot;{practiceInsight.recentMemo}&quot;
+                                            </p>
+                                        )}
+                                    </div>
+                                </section>
+                            )}
+
+                            {grouped.map(({ session, practices: sessionPractices }, gi) => (
+                                <div key={`${session.id}-${gi}`} className="space-y-3">
                                 {/* 세션 헤더 */}
                                 <button
                                     onClick={() => router.push(`/consultations/${session.id}`)}
@@ -315,8 +398,9 @@ export default function PracticesPage() {
                                         </div>
                                     );
                                 })}
-                            </div>
-                        ))
+                                </div>
+                            ))}
+                        </>
                     )}
                 </main>
 
