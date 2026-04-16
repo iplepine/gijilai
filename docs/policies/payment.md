@@ -46,6 +46,7 @@
 - **정기 갱신**: cron(`/api/payment/billing`)으로 만료 구독 자동 결제
 - **갱신 실패**: PAST_DUE 상태. 4일 이내 연속 3회 실패 시 EXPIRED (`MAX_RETRY_COUNT = 3`)
 - **해지**: 기간 만료 해지 (`cancelled_at` 설정, status는 ACTIVE 유지). 다음 갱신 시점에 EXPIRED 처리 (`/api/payment/cancel-subscription`)
+  - 해지 API는 `subscriptions` RLS 정책상 사용자 update가 불가능하므로 서버 service role로 `cancelled_at`을 설정한다.
 - **환불**: 결제 7일 이내 미이용 시 전액 환불 가능 (쿨링오프). 이후 환불 불가. 환불 요청은 devhohouse@gmail.com (`/legal/refund`)
 - **구독 생성 실패 시 자동 환불**: DB 저장 실패 → `cancelPayment`로 즉시 결제 취소
 
