@@ -452,7 +452,8 @@ async function getActiveSubscription(userId: string): Promise<Subscription | nul
 {
   "billingKey": "string",
   "plan": "MONTHLY | YEARLY",
-  "locale": "ko | en"
+  "locale": "ko | en",
+  "payMethod": "KCP_CARD | INICIS_CARD | TOSSPAY | NAVERPAY"
 }
 ```
 
@@ -460,7 +461,7 @@ async function getActiveSubscription(userId: string): Promise<Subscription | nul
 1. Supabase 세션 검증
 2. 기존 활성 구독 확인 → 있으면 에러
 3. 금액 결정: plan + locale → amount, currency
-4. 포트원 빌링키 결제 실행
+4. 포트원 빌링키 결제 실행 (`payMethod`에 맞는 `channelKey` 명시)
 5. subscriptions INSERT (ACTIVE), payments INSERT (SUBSCRIPTION, PAID)
 6. period 계산: MONTHLY → +30일, YEARLY → +365일
 

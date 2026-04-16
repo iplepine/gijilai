@@ -95,9 +95,11 @@ export async function payWithBillingKey(params: {
   amount: number;
   currency: Currency;
   customerId: string;
+  channelKey?: string;
 }) {
   const result = await getPortone().payment.payWithBillingKey({
     billingKey: params.billingKey,
+    channelKey: params.channelKey,
     paymentId: params.paymentId,
     orderName: params.orderName,
     amount: { total: params.amount },
