@@ -46,4 +46,6 @@ app.*.map.json
 
 # Local release credentials / fastlane outputs
 /fastlane/json_key.json
+/fastlane/AuthKey_*.p8
+/fastlane/app_store_connect_api_key.json
 /fastlane/report.xml
