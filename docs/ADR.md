@@ -240,3 +240,9 @@
 - **결정**: 앱 WebView에서 웹 로그인 화면의 `AuthBridge` 또는 네이티브 로그인 화면이 외부 OAuth 앱/브라우저를 열었지만 `gijilai://auth/callback` 없이 앱으로 복귀하면, Flutter가 인증 핸드오프를 취소로 보고 웹의 `__authLoadingDone` 훅과 네이티브 로딩 상태를 함께 해제한다.
 - **이유**: 사용자가 제공자 로그인 화면에서 뒤로가기나 취소를 선택하면 성공 콜백이 오지 않는다. 이 경로를 처리하지 않으면 로그인 버튼이 계속 `Logging in...` 상태로 남아 재시도할 수 없다.
 - **대안**: 웹에서 타임아웃으로만 해제 — 실제 외부 앱 전환 시간과 네트워크 지연을 구분하기 어렵다. Flutter 네이티브 로그인 화면만 사용 — 기존 웹 `AuthBridge` fallback을 유지해야 하므로 불충분하다.
+
+## 2026-04-20 | 앱 OAuth fallback은 웹 AuthProvider 경로를 우선 사용
+
+- **결정**: Flutter 앱에서 Kakao ID 토큰이 없어 OAuth fallback으로 내려가거나 Google 로그인을 시작할 때, 직접 Supabase authorize URL을 만들기 전에 WebView의 `AuthProvider` 훅을 호출한다. 서버 콜백 라우트는 localhost 계열 host 헤더를 정식 앱 origin으로 보정한다.
+- **이유**: Flutter에서 직접 만든 authorize URL은 auth-js의 PKCE 생성과 앱 WebView 판정을 우회해 localhost origin이나 비정상 콜백으로 이어질 수 있었다. OAuth URL 생성 책임을 웹 `AuthProvider`로 모으면 웹/앱 리다이렉트 정책이 일관되고, 앱 로그인 후 `localhost:3000`으로 이동하는 문제를 막을 수 있다.
+- **대안**: Flutter에서 PKCE를 직접 구현 — 모바일 코드와 웹 인증 정책이 중복되어 유지보수 부담이 커 기각. Supabase/Kakao 콘솔 설정만 변경 — 런타임 origin 생성 문제가 남아 기각.

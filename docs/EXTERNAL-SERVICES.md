@@ -135,6 +135,7 @@
 - Flutter 앱 Native App Key: `8d63a45bb147379940cda43c72e841d6`
 - 앱 URL scheme: `kakao8d63a45bb147379940cda43c72e841d6`
 - 앱투앱 로그인 후 Supabase 세션으로 교환하려면 Kakao Developers에서 OpenID Connect를 활성화해 ID 토큰이 발급되어야 한다.
+- OAuth fallback은 Kakao scope에 `openid,profile_nickname,profile_image`를 요청한다.
 - Android 앱 키 해시, iOS Bundle ID, 플랫폼별 Redirect URI를 Kakao Developers와 Supabase Auth provider 설정에 함께 등록해야 한다.
 
 ### Google Cloud Console
@@ -151,6 +152,7 @@
 - 웹: `https://gijilai.com/auth/callback`
 - 앱 WebView: `gijilai://auth/callback`
 - 앱 소셜 로그인 장애 시 `gijilai://auth/callback`이 Redirect URL allow list에 포함되어 있는지 먼저 확인
+- 앱 로그인 후 localhost로 이동하면 배포 환경의 `NEXT_PUBLIC_APP_URL` 값을 `https://gijilai.com`으로 설정했는지 확인
 
 ### GitHub
 

@@ -381,6 +381,12 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     setState(() {
       _authInProgress = true;
     });
+
+    if (await _startOAuthThroughWebAuth(provider)) {
+      _externalAuthInProgress = true;
+      return;
+    }
+
     _externalAuthInProgress = true;
 
     try {
@@ -388,7 +394,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         queryParameters: {
           'provider': provider,
           'redirect_to': 'gijilai://auth/callback',
-          if (provider == 'kakao') 'scopes': 'profile_nickname,profile_image',
+          if (provider == 'kakao')
+            'scopes': 'openid,profile_nickname,profile_image',
         },
       );
 
@@ -412,6 +419,28 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           reason: 'Native OAuth start error',
         ),
       );
+    }
+  }
+
+  Future<bool> _startOAuthThroughWebAuth(String provider) async {
+    final controller = _controller;
+    if (controller == null) return false;
+
+    try {
+      final raw = await controller.runJavaScriptReturningResult('''
+        (() => {
+          if (window.__startNativeOAuthProvider) {
+            window.__startNativeOAuthProvider('${_escapeForJs(provider)}');
+            return 'started';
+          }
+          return '';
+        })();
+      ''');
+      final result = raw.toString().replaceAll('"', '');
+      return result == 'started';
+    } catch (e) {
+      debugPrint('Web OAuth handoff unavailable: $e');
+      return false;
     }
   }
 

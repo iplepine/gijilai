@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { trackEvent } from '@/lib/analytics';
 import { supabase } from '@/lib/supabase';
@@ -11,6 +11,7 @@ declare global {
             postMessage: (message: string) => void;
         };
         __authLoadingDone?: () => void;
+        __startNativeOAuthProvider?: (provider: 'google' | 'kakao') => Promise<void>;
     }
 }
 
@@ -29,6 +30,16 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const isAppWebView = () => (
+    typeof window !== 'undefined' &&
+    window.navigator.userAgent.includes('gijilai_app')
+);
+
+const getRedirectTo = () => {
+    if (isAppWebView()) return 'gijilai://auth/callback';
+    return `${window.location.origin}/auth/callback`;
+};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [session, setSession] = useState<Session | null>(null);
@@ -67,29 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [isLoadingKakao, setIsLoadingKakao] = useState(false);
     const [isLoadingEmail, setIsLoadingEmail] = useState(false);
 
-    useEffect(() => {
-        window.__authLoadingDone = () => {
-            setIsLoadingGoogle(false);
-            setIsLoadingKakao(false);
-        };
-
-        return () => {
-            window.__authLoadingDone = undefined;
-        };
-    }, []);
-
-    const isAppWebView = () => (
-        typeof window !== 'undefined' &&
-        window.navigator.userAgent.includes('gijilai_app') &&
-        !!window.AuthBridge
-    );
-
-    const getRedirectTo = () => {
-        if (isAppWebView()) return 'gijilai://auth/callback';
-        return `${window.location.origin}/auth/callback`;
-    };
-
-    const signInWithOAuthProvider = async (
+    const signInWithOAuthProvider = useCallback(async (
         provider: 'google' | 'kakao',
         setProviderLoading: (loading: boolean) => void,
         queryParams?: Record<string, string>
@@ -119,17 +108,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             console.error(`${provider} sign in error:`, error);
             setProviderLoading(false);
         }
-    };
+    }, []);
 
-    const signInWithGoogle = async () => {
+    const signInWithGoogle = useCallback(async () => {
         await signInWithOAuthProvider('google', setIsLoadingGoogle);
-    };
+    }, [signInWithOAuthProvider]);
 
-    const signInWithKakao = async () => {
+    const signInWithKakao = useCallback(async () => {
         await signInWithOAuthProvider('kakao', setIsLoadingKakao, {
-            scope: 'profile_nickname,profile_image'
+            scope: 'openid,profile_nickname,profile_image'
         });
-    };
+    }, [signInWithOAuthProvider]);
+
+    useEffect(() => {
+        window.__authLoadingDone = () => {
+            setIsLoadingGoogle(false);
+            setIsLoadingKakao(false);
+        };
+
+        window.__startNativeOAuthProvider = async (provider) => {
+            if (provider === 'kakao') {
+                await signInWithKakao();
+                return;
+            }
+            await signInWithGoogle();
+        };
+
+        return () => {
+            window.__authLoadingDone = undefined;
+            window.__startNativeOAuthProvider = undefined;
+        };
+    }, [signInWithGoogle, signInWithKakao]);
 
     const signInWithEmail = async (email: string, password: string) => {
         setIsLoadingEmail(true);

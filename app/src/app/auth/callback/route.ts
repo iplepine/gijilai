@@ -1,6 +1,22 @@
 import { createServerClient } from '@supabase/ssr'
 import { type NextRequest, NextResponse } from 'next/server'
 
+function getRedirectOrigin(request: NextRequest) {
+    const configuredOrigin =
+        process.env.NEXT_PUBLIC_APP_URL ??
+        process.env.NEXT_PUBLIC_SITE_URL ??
+        'https://gijilai.com'
+    const forwardedHost = request.headers.get('x-forwarded-host')
+    const forwardedProto = request.headers.get('x-forwarded-proto') ?? 'https'
+    const host = forwardedHost ?? request.headers.get('host')
+
+    if (!host || host.startsWith('localhost') || host.startsWith('127.0.0.1')) {
+        return configuredOrigin
+    }
+
+    return `${forwardedProto}://${host}`
+}
+
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const code = searchParams.get('code')
@@ -8,12 +24,7 @@ export async function GET(request: NextRequest) {
     const errorParam = searchParams.get('error')
     const errorDescription = searchParams.get('error_description')
 
-    // request.url의 origin은 서버리스 환경에서 localhost로 잡힐 수 있으므로
-    // 요청 헤더의 실제 호스트 정보를 사용
-    const forwardedHost = request.headers.get('x-forwarded-host')
-    const forwardedProto = request.headers.get('x-forwarded-proto') ?? 'https'
-    const host = forwardedHost ?? request.headers.get('host') ?? 'localhost:3000'
-    const origin = `${forwardedProto}://${host}`
+    const origin = getRedirectOrigin(request)
 
     if (errorParam) {
         console.error('Auth callback error parameter:', errorParam, errorDescription)
