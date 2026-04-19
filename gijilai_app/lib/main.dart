@@ -1148,7 +1148,7 @@ class NativeLoginScreen extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               const Text(
-                '아이의 타고난 기질을 이해하고\\n우리 가족에게 맞는 대화를 찾아보세요.',
+                '아이의 타고난 기질을 이해하고\n우리 가족에게 맞는 대화를 찾아보세요.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: _textSub,

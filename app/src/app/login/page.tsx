@@ -69,7 +69,7 @@ export default function LoginPage() {
                 <h1 className="text-2xl font-bold text-[var(--text-main)] dark:text-white mb-2">
                     {t('common.appName')}
                 </h1>
-                <p className="text-gray-500 dark:text-gray-400 mb-10">
+                <p className="text-gray-500 dark:text-gray-400 mb-10 whitespace-pre-line">
                     {t('auth.tagline')}
                 </p>
 
