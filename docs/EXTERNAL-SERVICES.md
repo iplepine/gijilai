@@ -152,7 +152,7 @@
 - 웹: `https://gijilai.com/auth/callback`
 - 앱 WebView: `gijilai://auth/callback`
 - 앱 소셜 로그인 장애 시 `gijilai://auth/callback`이 Redirect URL allow list에 포함되어 있는지 먼저 확인
-- 앱 로그인 후 localhost로 이동하면 배포 환경의 `NEXT_PUBLIC_APP_URL` 값을 `https://gijilai.com`으로 설정했는지 확인
+- 앱 로그인 후 localhost로 이동하면 Supabase Auth URL Configuration의 Site URL이 `https://gijilai.com`인지 확인
 
 ### GitHub
 

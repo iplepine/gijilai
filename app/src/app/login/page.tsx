@@ -2,11 +2,32 @@
 
 import Image from 'next/image';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { Icon } from '@/components/ui/Icon';
 import { trackEvent } from '@/lib/analytics';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useLocale } from '@/i18n/LocaleProvider';
+
+function KakaoLoginSymbol() {
+    return (
+        <svg width="20" height="20" viewBox="0 0 256 256" aria-hidden="true" focusable="false">
+            <path
+                d="M128 36C70.6 36 24 72.4 24 116.8c0 28.9 19.2 54.2 48.1 68.6l-9.8 36.2c-.8 2.9 2.6 5.2 5.1 3.5l42.5-28.4c5.9.8 12 1.3 18.1 1.3 57.4 0 104-36.4 104-80.8S185.4 36 128 36z"
+                fill="#000000"
+            />
+        </svg>
+    );
+}
+
+function GoogleLoginSymbol() {
+    return (
+        <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+            <path d="M18.48 10.2c0-.64-.06-1.25-.16-1.84H10v3.48h4.76c-.21 1.12-.83 2.07-1.76 2.71v2.26h2.84c1.66-1.53 2.64-3.78 2.64-6.61z" fill="#4285F4" />
+            <path d="M10 19c2.38 0 4.38-.79 5.84-2.14L13 14.6c-.79.53-1.8.84-3 .84-2.3 0-4.25-1.55-4.95-3.64H2.1v2.33C3.55 17.01 6.53 19 10 19z" fill="#34A853" />
+            <path d="M5.05 11.8c-.18-.53-.28-1.1-.28-1.69s.1-1.16.28-1.69V6.09H2.1C1.5 7.28 1.16 8.62 1.16 10.11s.34 2.83.94 4.02l2.95-2.33z" fill="#FBBC05" />
+            <path d="M10 4.77c1.29 0 2.45.44 3.36 1.31l2.52-2.52C14.37 2.15 12.37 1.29 10 1.29 6.53 1.29 3.55 3.28 2.1 6.16l2.95 2.33C5.75 6.32 7.7 4.77 10 4.77z" fill="#EA4335" />
+        </svg>
+    );
+}
 
 export default function LoginPage() {
     const { t } = useLocale();
@@ -85,9 +106,7 @@ export default function LoginPage() {
                         {isLoadingKakao ? (
                             <div className="w-5 h-5 border-2 border-[#191919]/20 border-t-[#191919] rounded-full animate-spin" />
                         ) : (
-                            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path fillRule="evenodd" clipRule="evenodd" d="M9 3C5.13401 3 2 5.313 2 8.166C2 10 3.23 11.616 5.093 12.56L4.417 14.881C4.385 14.992 4.453 15.106 4.568 15.131C4.606 15.14 4.646 15.138 4.683 15.125L7.545 13.905C8.016 14.004 8.502 14.056 9 14.056C12.866 14.056 16 11.743 16 8.89C16 6.037 12.866 3.724 9 3.724V3Z" fill="#191919" />
-                            </svg>
+                            <KakaoLoginSymbol />
                         )}
                         {isLoadingKakao ? t('auth.loggingIn') : t('auth.continueWithKakao')}
                     </button>
@@ -103,7 +122,7 @@ export default function LoginPage() {
                         {isLoadingGoogle ? (
                             <div className="w-5 h-5 border-2 border-gray-200 dark:border-gray-600 border-t-gray-800 dark:border-t-gray-200 rounded-full animate-spin" />
                         ) : (
-                            <Icon name="g_translate" size="sm" />
+                            <GoogleLoginSymbol />
                         )}
                         {isLoadingGoogle ? t('auth.loggingIn') : t('auth.continueWithGoogle')}
                     </button>

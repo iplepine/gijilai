@@ -1192,14 +1192,7 @@ class NativeLoginScreen extends StatelessWidget {
                 backgroundColor: const Color(0xFFFEE500),
                 foregroundColor: const Color(0xFF191919),
                 enabled: !isLoading,
-                icon: const Text(
-                  'K',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 18,
-                    color: Color(0xFF191919),
-                  ),
-                ),
+                icon: const _KakaoLoginSymbol(size: 20),
                 onPressed: onKakaoPressed,
               ),
               const SizedBox(height: 12),
@@ -1209,14 +1202,7 @@ class NativeLoginScreen extends StatelessWidget {
                 foregroundColor: _textMain,
                 borderColor: const Color(0xFFE6E2D8),
                 enabled: !isLoading,
-                icon: const Text(
-                  'G',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 18,
-                    color: Color(0xFF4285F4),
-                  ),
-                ),
+                icon: const _GoogleLoginSymbol(size: 20),
                 onPressed: onGooglePressed,
               ),
               if (isLoading) ...[
@@ -1260,6 +1246,142 @@ class NativeLoginScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+class _KakaoLoginSymbol extends StatelessWidget {
+  const _KakaoLoginSymbol({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: Size.square(size),
+      painter: _KakaoLoginSymbolPainter(),
+    );
+  }
+}
+
+class _KakaoLoginSymbolPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.scale(size.width / 256, size.height / 256);
+
+    final paint = Paint()
+      ..color = const Color(0xFF000000)
+      ..style = PaintingStyle.fill;
+
+    final path = Path()
+      ..moveTo(128, 36)
+      ..cubicTo(70.6, 36, 24, 72.4, 24, 116.8)
+      ..cubicTo(24, 145.7, 43.2, 171, 72.1, 185.4)
+      ..lineTo(62.3, 221.6)
+      ..cubicTo(61.5, 224.5, 64.9, 226.8, 67.4, 225.1)
+      ..lineTo(109.9, 196.7)
+      ..cubicTo(115.8, 197.5, 121.9, 198, 128, 198)
+      ..cubicTo(185.4, 198, 232, 161.6, 232, 117.2)
+      ..cubicTo(232, 72.8, 185.4, 36, 128, 36)
+      ..close();
+
+    canvas.drawPath(path, paint);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _GoogleLoginSymbol extends StatelessWidget {
+  const _GoogleLoginSymbol({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: Size.square(size),
+      painter: _GoogleLoginSymbolPainter(),
+    );
+  }
+}
+
+class _GoogleLoginSymbolPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.scale(size.width / 20, size.height / 20);
+
+    void drawPath(Path path, Color color) {
+      canvas.drawPath(
+        path,
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.fill,
+      );
+    }
+
+    drawPath(
+      Path()
+        ..moveTo(18.48, 10.2)
+        ..cubicTo(18.48, 9.56, 18.42, 8.95, 18.32, 8.36)
+        ..lineTo(10, 8.36)
+        ..lineTo(10, 11.84)
+        ..lineTo(14.76, 11.84)
+        ..cubicTo(14.55, 12.96, 13.93, 13.91, 13, 14.55)
+        ..lineTo(13, 16.81)
+        ..lineTo(15.84, 16.81)
+        ..cubicTo(17.5, 15.28, 18.48, 13.03, 18.48, 10.2)
+        ..close(),
+      const Color(0xFF4285F4),
+    );
+
+    drawPath(
+      Path()
+        ..moveTo(10, 19)
+        ..cubicTo(12.38, 19, 14.38, 18.21, 15.84, 16.86)
+        ..lineTo(13, 14.6)
+        ..cubicTo(12.21, 15.13, 11.2, 15.44, 10, 15.44)
+        ..cubicTo(7.7, 15.44, 5.75, 13.89, 5.05, 11.8)
+        ..lineTo(2.1, 11.8)
+        ..lineTo(2.1, 14.13)
+        ..cubicTo(3.55, 17.01, 6.53, 19, 10, 19)
+        ..close(),
+      const Color(0xFF34A853),
+    );
+
+    drawPath(
+      Path()
+        ..moveTo(5.05, 11.8)
+        ..cubicTo(4.87, 11.27, 4.77, 10.7, 4.77, 10.11)
+        ..cubicTo(4.77, 9.52, 4.87, 8.95, 5.05, 8.42)
+        ..lineTo(5.05, 6.09)
+        ..lineTo(2.1, 6.09)
+        ..cubicTo(1.5, 7.28, 1.16, 8.62, 1.16, 10.11)
+        ..cubicTo(1.16, 11.6, 1.5, 12.94, 2.1, 14.13)
+        ..lineTo(5.05, 11.8)
+        ..close(),
+      const Color(0xFFFBBC05),
+    );
+
+    drawPath(
+      Path()
+        ..moveTo(10, 4.77)
+        ..cubicTo(11.29, 4.77, 12.45, 5.21, 13.36, 6.08)
+        ..lineTo(15.88, 3.56)
+        ..cubicTo(14.37, 2.15, 12.37, 1.29, 10, 1.29)
+        ..cubicTo(6.53, 1.29, 3.55, 3.28, 2.1, 6.16)
+        ..lineTo(5.05, 8.49)
+        ..cubicTo(5.75, 6.32, 7.7, 4.77, 10, 4.77)
+        ..close(),
+      const Color(0xFFEA4335),
+    );
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _LoginButton extends StatelessWidget {
