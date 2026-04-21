@@ -252,3 +252,9 @@
 - **결정**: 앱 OAuth fallback에서 Kakao `openid`, `profile_nickname`, `profile_image` scope를 명시하지 않는다. 네이티브 SDK ID 토큰 경로는 Kakao Developers의 OpenID Connect 설정이 완료된 경우에만 사용하고, fallback은 Supabase provider 기본 요청에 맡긴다.
 - **이유**: Kakao Developers 동의항목 또는 OIDC 설정이 요청 scope와 맞지 않으면 `KOE205`로 로그인 화면에서 차단된다. 로그인 자체가 우선이므로 앱 코드에서 추가 동의항목을 강제하지 않는다.
 - **대안**: 코드에서 `openid,profile_nickname,profile_image`를 강제 — 콘솔 설정이 완전히 맞지 않으면 서비스가 차단되어 기각. Kakao 콘솔 설정만 바꾸기 — 운영 설정 반영 전 앱이 계속 실패하므로 코드도 방어적으로 조정한다.
+
+## 2026-04-22 | Kakao OAuth fallback은 account_email을 제외
+
+- **결정**: Supabase Kakao OAuth fallback 요청에 `profile_nickname` scope를 명시해 `account_email` 기본 요청을 제외한다.
+- **이유**: Kakao Developers에서 `account_email` 동의항목이 설정되지 않은 상태에서 인증 코드 요청에 email scope가 포함되면 `KOE205`가 발생한다. 현재 로그인에 이메일은 필수 입력값이 아니므로 닉네임 scope만 요청해 차단을 피한다.
+- **대안**: Kakao Developers에서 `account_email` 동의항목 활성화 — 운영 콘솔 설정 변경이 필요하고 개인/비즈앱 상태에 따라 불가능할 수 있어 앱 요청을 먼저 보수적으로 제한한다.

@@ -394,6 +394,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         queryParameters: {
           'provider': provider,
           'redirect_to': 'gijilai://auth/callback',
+          if (provider == 'kakao') 'scopes': 'profile_nickname',
         },
       );
 

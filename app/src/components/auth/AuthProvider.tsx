@@ -81,7 +81,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const signInWithOAuthProvider = useCallback(async (
         provider: 'google' | 'kakao',
         setProviderLoading: (loading: boolean) => void,
-        queryParams?: Record<string, string>
+        options?: {
+            scopes?: string;
+            queryParams?: Record<string, string>;
+        }
     ) => {
         setProviderLoading(true);
         try {
@@ -91,7 +94,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 options: {
                     redirectTo: getRedirectTo(),
                     skipBrowserRedirect: useNativeHandoff,
-                    queryParams,
+                    scopes: options?.scopes,
+                    queryParams: options?.queryParams,
                 },
             });
             if (error) throw error;
@@ -115,7 +119,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, [signInWithOAuthProvider]);
 
     const signInWithKakao = useCallback(async () => {
-        await signInWithOAuthProvider('kakao', setIsLoadingKakao);
+        await signInWithOAuthProvider('kakao', setIsLoadingKakao, {
+            scopes: 'profile_nickname',
+        });
     }, [signInWithOAuthProvider]);
 
     useEffect(() => {
