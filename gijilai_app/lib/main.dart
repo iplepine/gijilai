@@ -193,6 +193,11 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     // 기본 UA를 유지하면서 gijilai_app 식별자 추가 (navigator.language 등 보존)
     final defaultUA = await controller.getUserAgent() ?? '';
     await controller.setUserAgent('$defaultUA gijilai_app');
+    await controller.setOnJavaScriptAlertDialog(_showJavaScriptAlertDialog);
+    await controller.setOnJavaScriptConfirmDialog(_showJavaScriptConfirmDialog);
+    await controller.setOnJavaScriptTextInputDialog(
+      _showJavaScriptTextInputDialog,
+    );
 
     controller
       ..setNavigationDelegate(
@@ -228,6 +233,125 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       _controller = controller;
     });
     await _consumePendingAuthCallback();
+  }
+
+  Future<void> _showJavaScriptAlertDialog(
+    JavaScriptAlertDialogRequest request,
+  ) async {
+    if (!mounted) return;
+    await _showAppAlertDialog(message: request.message);
+  }
+
+  Future<bool> _showJavaScriptConfirmDialog(
+    JavaScriptConfirmDialogRequest request,
+  ) async {
+    if (!mounted) return false;
+    return await _showAppConfirmDialog(message: request.message);
+  }
+
+  Future<String> _showJavaScriptTextInputDialog(
+    JavaScriptTextInputDialogRequest request,
+  ) async {
+    if (!mounted) return request.defaultText ?? '';
+    return await _showAppTextInputDialog(
+      message: request.message,
+      defaultText: request.defaultText,
+    );
+  }
+
+  Future<void> _showAppAlertDialog({required String message}) async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => _AppWebDialog(
+        message: message,
+        actions: [
+          _AppDialogButton(
+            label: '확인',
+            isPrimary: true,
+            onPressed: () => Navigator.of(dialogContext).pop(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<bool> _showAppConfirmDialog({required String message}) async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => _AppWebDialog(
+        message: message,
+        actions: [
+          _AppDialogButton(
+            label: '취소',
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+          ),
+          _AppDialogButton(
+            label: '확인',
+            isPrimary: true,
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
+  Future<String> _showAppTextInputDialog({
+    required String message,
+    required String? defaultText,
+  }) async {
+    final inputController = TextEditingController(text: defaultText ?? '');
+    try {
+      final result = await showDialog<String>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => _AppWebDialog(
+          message: message,
+          content: TextField(
+            controller: inputController,
+            autofocus: true,
+            minLines: 1,
+            maxLines: 3,
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: const Color(0xFFF5F3EF),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFFE1DDD2)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFFE1DDD2)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(
+                  color: Color(0xFF2F4F3E),
+                  width: 1.4,
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            _AppDialogButton(
+              label: '취소',
+              onPressed: () => Navigator.of(dialogContext).pop(''),
+            ),
+            _AppDialogButton(
+              label: '확인',
+              isPrimary: true,
+              onPressed: () =>
+                  Navigator.of(dialogContext).pop(inputController.text),
+            ),
+          ],
+        ),
+      );
+      return result ?? '';
+    } finally {
+      inputController.dispose();
+    }
   }
 
   NavigationDecision _handleNavigationRequest(NavigationRequest request) {
@@ -1109,6 +1233,127 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AppWebDialog extends StatelessWidget {
+  const _AppWebDialog({
+    required this.message,
+    required this.actions,
+    this.content,
+  });
+
+  final String message;
+  final Widget? content;
+  final List<Widget> actions;
+
+  static const _primary = Color(0xFF2F4F3E);
+  static const _textMain = Color(0xFF26382F);
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: const Color(0xFFFBFAF6),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.14),
+              blurRadius: 32,
+              offset: const Offset(0, 18),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: _primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(
+                    Icons.info_outline_rounded,
+                    color: _primary,
+                    size: 24,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                message,
+                style: const TextStyle(
+                  color: _textMain,
+                  fontSize: 16,
+                  height: 1.55,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0,
+                ),
+              ),
+              if (content != null) ...[const SizedBox(height: 16), content!],
+              const SizedBox(height: 22),
+              Row(
+                children: [
+                  for (int index = 0; index < actions.length; index++) ...[
+                    if (index > 0) const SizedBox(width: 10),
+                    Expanded(child: actions[index]),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AppDialogButton extends StatelessWidget {
+  const _AppDialogButton({
+    required this.label,
+    required this.onPressed,
+    this.isPrimary = false,
+  });
+
+  final String label;
+  final VoidCallback onPressed;
+  final bool isPrimary;
+
+  static const _primary = Color(0xFF2F4F3E);
+  static const _textSub = Color(0xFF6E7A75);
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 48,
+      child: FilledButton(
+        onPressed: onPressed,
+        style: FilledButton.styleFrom(
+          backgroundColor: isPrimary ? _primary : const Color(0xFFF0EDE5),
+          foregroundColor: isPrimary ? Colors.white : _textSub,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          textStyle: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0,
+          ),
+        ),
+        child: Text(label),
       ),
     );
   }

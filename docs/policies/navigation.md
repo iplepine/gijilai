@@ -64,6 +64,7 @@
 - Android 앱에서 WebView 현재 URL이 홈(`/`)이면 백키 1회 입력 시 "한번 더 누르면 종료됩니다" 안내를 띄우고, 3초 안에 한 번 더 누르면 앱을 종료한다.
 - 홈이 아닌 URL에서는 앱 종료보다 WebView 뒤로가기를 우선한다.
 - Android 런처 아이콘은 adaptive icon(`mipmap-anydpi-v26/ic_launcher.xml`)으로 제공하고, 배경색과 전경 이미지를 분리해 런처 마스크 안에서 작게 축소되지 않도록 한다.
+- Flutter 앱 WebView에서 웹 JavaScript `alert`, `confirm`, `prompt`가 호출되면 플랫폼 기본 시스템 다이얼로그 대신 앱 테마의 Flutter 다이얼로그로 표시한다.
 - Flutter 앱 WebView가 `/login`에 도달하면 WebView 위에 네이티브 로그인 화면을 오버레이한다.
 - 카카오 버튼은 Kakao Flutter SDK 앱투앱 로그인을 먼저 시도하고, Kakao ID 토큰을 `/auth/native-session`으로 전달해 Supabase 세션 쿠키를 WebView에 설정한다.
 - Kakao ID 토큰이 없거나 Google 로그인을 사용하는 경우 앱은 WebView의 `AuthProvider` OAuth 훅을 우선 호출해 Supabase auth-js가 PKCE 및 `gijilai://auth/callback` 리다이렉트를 생성하게 한다. 훅을 사용할 수 없는 경우에만 Supabase OAuth authorize URL을 외부 앱/브라우저로 직접 열고, 딥링크를 받아 WebView의 `/auth/callback`으로 다시 로드한다.
