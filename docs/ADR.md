@@ -246,3 +246,9 @@
 - **결정**: Flutter 앱에서 Kakao ID 토큰이 없어 OAuth fallback으로 내려가거나 Google 로그인을 시작할 때, 직접 Supabase authorize URL을 만들기 전에 WebView의 `AuthProvider` 훅을 호출한다. 서버 콜백 라우트는 localhost 계열 host 헤더를 정식 앱 origin으로 보정한다.
 - **이유**: Flutter에서 직접 만든 authorize URL은 auth-js의 PKCE 생성과 앱 WebView 판정을 우회해 localhost origin이나 비정상 콜백으로 이어질 수 있었다. OAuth URL 생성 책임을 웹 `AuthProvider`로 모으면 웹/앱 리다이렉트 정책이 일관되고, 앱 로그인 후 `localhost:3000`으로 이동하는 문제를 막을 수 있다.
 - **대안**: Flutter에서 PKCE를 직접 구현 — 모바일 코드와 웹 인증 정책이 중복되어 유지보수 부담이 커 기각. Supabase/Kakao 콘솔 설정만 변경 — 런타임 origin 생성 문제가 남아 기각.
+
+## 2026-04-22 | Kakao OAuth fallback은 추가 scope를 요청하지 않음
+
+- **결정**: 앱 OAuth fallback에서 Kakao `openid`, `profile_nickname`, `profile_image` scope를 명시하지 않는다. 네이티브 SDK ID 토큰 경로는 Kakao Developers의 OpenID Connect 설정이 완료된 경우에만 사용하고, fallback은 Supabase provider 기본 요청에 맡긴다.
+- **이유**: Kakao Developers 동의항목 또는 OIDC 설정이 요청 scope와 맞지 않으면 `KOE205`로 로그인 화면에서 차단된다. 로그인 자체가 우선이므로 앱 코드에서 추가 동의항목을 강제하지 않는다.
+- **대안**: 코드에서 `openid,profile_nickname,profile_image`를 강제 — 콘솔 설정이 완전히 맞지 않으면 서비스가 차단되어 기각. Kakao 콘솔 설정만 바꾸기 — 운영 설정 반영 전 앱이 계속 실패하므로 코드도 방어적으로 조정한다.

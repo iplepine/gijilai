@@ -135,7 +135,7 @@
 - Flutter 앱 Native App Key: `8d63a45bb147379940cda43c72e841d6`
 - 앱 URL scheme: `kakao8d63a45bb147379940cda43c72e841d6`
 - 앱투앱 로그인 후 Supabase 세션으로 교환하려면 Kakao Developers에서 OpenID Connect를 활성화해 ID 토큰이 발급되어야 한다.
-- OAuth fallback은 Kakao scope에 `openid,profile_nickname,profile_image`를 요청한다.
+- OAuth fallback은 Kakao Developers 동의항목 설정과 불일치해 `KOE205`가 나지 않도록 추가 scope를 명시하지 않는다.
 - Android 앱 키 해시, iOS Bundle ID, 플랫폼별 Redirect URI를 Kakao Developers와 Supabase Auth provider 설정에 함께 등록해야 한다.
 
 ### Google Cloud Console
