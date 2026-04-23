@@ -13,6 +13,27 @@ IOS_IPA_PATH = File.join(FLUTTER_DIR, "build", "ios", "ipa", "gijilai.ipa")
 # ─────────────────────────────────────────────
 platform :android do
 
+  desc "pubspec.yaml Android build number 자동 증가"
+  private_lane :bump_pubspec_build_number do
+    pubspec_path = File.join(FLUTTER_DIR, "pubspec.yaml")
+    pubspec = File.read(pubspec_path)
+    version_match = pubspec.match(/^version:\s*(\d+\.\d+\.\d+)\+(\d+)\s*$/)
+
+    UI.user_error!("pubspec.yaml version must use <major>.<minor>.<patch>+<build> format") unless version_match
+
+    marketing_version = version_match[1]
+    current_build_number = version_match[2].to_i
+    next_build_number = current_build_number + 1
+    next_version = "#{marketing_version}+#{next_build_number}"
+
+    File.write(
+      pubspec_path,
+      pubspec.sub(/^version:\s*#{Regexp.escape(marketing_version)}\+#{current_build_number}\s*$/, "version: #{next_version}")
+    )
+
+    UI.success("Android build number bumped: #{marketing_version}+#{current_build_number} → #{next_version}")
+  end
+
   desc "Flutter 빌드 → AAB (App Bundle)"
   lane :build do
     Dir.chdir(FLUTTER_DIR) do
@@ -143,6 +164,7 @@ platform :android do
 
   desc "Google Play 내부 테스트 트랙에 업로드"
   lane :deploy_internal do
+    bump_pubspec_build_number
     build
     upload_to_play_store(
       package_name: PACKAGE_NAME,
@@ -157,6 +179,7 @@ platform :android do
 
   desc "Google Play 프로덕션 배포"
   lane :deploy_production do
+    bump_pubspec_build_number
     build
     upload_to_play_store(
       package_name: PACKAGE_NAME,

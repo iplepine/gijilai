@@ -274,3 +274,9 @@
 - **결정**: Supabase Kakao OAuth fallback 요청에 `profile_nickname` scope를 명시해 `account_email` 기본 요청을 제외한다.
 - **이유**: Kakao Developers에서 `account_email` 동의항목이 설정되지 않은 상태에서 인증 코드 요청에 email scope가 포함되면 `KOE205`가 발생한다. 현재 로그인에 이메일은 필수 입력값이 아니므로 닉네임 scope만 요청해 차단을 피한다.
 - **대안**: Kakao Developers에서 `account_email` 동의항목 활성화 — 운영 콘솔 설정 변경이 필요하고 개인/비즈앱 상태에 따라 불가능할 수 있어 앱 요청을 먼저 보수적으로 제한한다.
+
+## 2026-04-23 | Android 배포 lane은 pubspec build number를 자동 증가
+
+- **결정**: Fastlane `android deploy_internal`과 `android deploy_production`은 Play Store 업로드 전에 Flutter `pubspec.yaml`의 `version` build number(`+N`)를 1 증가시킨다. 로컬 AAB 확인용 `android build` lane은 버전을 변경하지 않는다.
+- **이유**: Google Play는 이미 사용한 `versionCode` 재사용을 거절한다. Flutter Android 빌드는 `pubspec.yaml`의 build number를 `versionCode`로 사용하므로, 업로드 직전에 자동 증가시키면 매번 실패 후 수동으로 bump하는 흐름을 제거할 수 있다.
+- **대안**: 실패 후 수동 bump 유지 — 반복적인 배포 실패를 만들므로 기각. 모든 `android build`에서 자동 bump — 로컬 검증 빌드만 해도 버전이 바뀌어 불필요한 변경이 생기므로 기각.
