@@ -963,13 +963,51 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   Future<void> _startPurchase() async {
     final available = await _iap.isAvailable();
     if (!available) {
+      debugPrint('IAP purchase blocked: store is not available');
+      unawaited(
+        FirebaseCrashlytics.instance.recordError(
+          Exception('IAP store is not available'),
+          StackTrace.current,
+          reason: 'IAP purchase blocked before product query',
+        ),
+      );
       _showSnackBar('인앱결제를 사용할 수 없습니다', isError: true);
       _notifyWebLoadingDone();
       return;
     }
 
     final response = await _iap.queryProductDetails({_subscriptionProductId});
+    if (response.error != null) {
+      debugPrint(
+        'IAP product query failed before purchase: '
+        'code=${response.error!.code}, '
+        'message=${response.error!.message}, '
+        'details=${response.error!.details}',
+      );
+      unawaited(
+        FirebaseCrashlytics.instance.recordError(
+          response.error!,
+          StackTrace.current,
+          reason: 'IAP product query failed before purchase',
+        ),
+      );
+    }
+
     if (response.productDetails.isEmpty) {
+      debugPrint(
+        'IAP product details empty: productId=$_subscriptionProductId, '
+        'notFoundIDs=${response.notFoundIDs.join(",")}',
+      );
+      unawaited(
+        FirebaseCrashlytics.instance.recordError(
+          Exception(
+            'IAP product not found: $_subscriptionProductId '
+            '(notFoundIDs=${response.notFoundIDs.join(",")})',
+          ),
+          StackTrace.current,
+          reason: 'IAP product details empty before purchase',
+        ),
+      );
       _showSnackBar('상품 정보를 찾을 수 없습니다', isError: true);
       _notifyWebLoadingDone();
       return;
@@ -978,16 +1016,34 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     // Android 구독: queryProductDetails가 offer별로 별도 ProductDetails 반환
     // 첫 번째 항목 사용 (Google Play가 적격 offer를 우선 반환)
     final product = response.productDetails.first;
+    debugPrint(
+      'IAP launching purchase: productId=${product.id}, '
+      'title=${product.title}, price=${product.price}',
+    );
 
-    if (Platform.isAndroid && product is GooglePlayProductDetails) {
-      final purchaseParam = GooglePlayPurchaseParam(
-        productDetails: product,
-        offerToken: product.offerToken,
+    try {
+      if (Platform.isAndroid && product is GooglePlayProductDetails) {
+        debugPrint('IAP Android offerToken=${product.offerToken}');
+        final purchaseParam = GooglePlayPurchaseParam(
+          productDetails: product,
+          offerToken: product.offerToken,
+        );
+        await _iap.buyNonConsumable(purchaseParam: purchaseParam);
+      } else {
+        final purchaseParam = PurchaseParam(productDetails: product);
+        await _iap.buyNonConsumable(purchaseParam: purchaseParam);
+      }
+    } catch (e) {
+      debugPrint('IAP purchase launch threw: $e');
+      unawaited(
+        FirebaseCrashlytics.instance.recordError(
+          e,
+          StackTrace.current,
+          reason: 'IAP purchase launch threw',
+        ),
       );
-      await _iap.buyNonConsumable(purchaseParam: purchaseParam);
-    } else {
-      final purchaseParam = PurchaseParam(productDetails: product);
-      await _iap.buyNonConsumable(purchaseParam: purchaseParam);
+      _showSnackBar('결제창을 열 수 없습니다', isError: true);
+      _notifyWebLoadingDone();
     }
   }
 
@@ -999,6 +1055,21 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           _verifyAndDeliver(purchase);
           break;
         case PurchaseStatus.error:
+          debugPrint(
+            'IAP purchase error: '
+            'productId=${purchase.productID}, '
+            'purchaseId=${purchase.purchaseID}, '
+            'code=${purchase.error?.code}, '
+            'message=${purchase.error?.message}, '
+            'details=${purchase.error?.details}',
+          );
+          unawaited(
+            FirebaseCrashlytics.instance.recordError(
+              purchase.error ?? Exception('Unknown IAP purchase error'),
+              StackTrace.current,
+              reason: 'IAP purchase status error',
+            ),
+          );
           _showSnackBar('결제에 실패했습니다', isError: true);
           _notifyWebLoadingDone();
           if (purchase.pendingCompletePurchase) {
