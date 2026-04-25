@@ -32,21 +32,54 @@ function getSupabaseAdmin() {
   );
 }
 
+function getWebhookSecrets(): string[] {
+  const secrets = [
+    process.env.PORTONE_WEBHOOK_SECRET,
+    process.env.PORTONE_WEBHOOK_SECRET_SECONDARY,
+    ...(process.env.PORTONE_WEBHOOK_SECRETS?.split(',') ?? []),
+  ]
+    .map(value => value?.trim())
+    .filter((value): value is string => Boolean(value));
+
+  return [...new Set(secrets)];
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.text();
 
     // 웹훅 시그니처 검증
-    const webhookSecret = process.env.PORTONE_WEBHOOK_SECRET;
-    if (webhookSecret) {
-      try {
-        await Webhook.verify(webhookSecret, body, {
-          'webhook-id': req.headers.get('webhook-id') ?? '',
-          'webhook-signature': req.headers.get('webhook-signature') ?? '',
-          'webhook-timestamp': req.headers.get('webhook-timestamp') ?? '',
+    const webhookSecrets = getWebhookSecrets();
+    if (webhookSecrets.length > 0) {
+      const headers = {
+        'webhook-id': req.headers.get('webhook-id') ?? '',
+        'webhook-signature': req.headers.get('webhook-signature') ?? '',
+        'webhook-timestamp': req.headers.get('webhook-timestamp') ?? '',
+      };
+
+      let verified = false;
+      const verificationErrors: string[] = [];
+
+      for (const webhookSecret of webhookSecrets) {
+        try {
+          await Webhook.verify(webhookSecret, body, headers);
+          verified = true;
+          break;
+        } catch (error) {
+          verificationErrors.push(getErrorMessage(error));
+        }
+      }
+
+      if (!verified) {
+        console.error('Webhook signature verification failed', {
+          headerPresence: {
+            webhookId: Boolean(headers['webhook-id']),
+            webhookSignature: Boolean(headers['webhook-signature']),
+            webhookTimestamp: Boolean(headers['webhook-timestamp']),
+          },
+          secretCount: webhookSecrets.length,
+          verificationErrors,
         });
-      } catch {
-        console.error('Webhook signature verification failed');
         return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
       }
     }
