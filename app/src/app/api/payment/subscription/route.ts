@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabaseServer';
+import { refreshIapSubscriptionState } from '@/lib/iap';
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -14,7 +15,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: subscription } = await supabase
+    let { data: subscription } = await supabase
       .from('subscriptions')
       .select('*')
       .eq('user_id', session.user.id)
@@ -23,6 +24,24 @@ export async function GET() {
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    if (subscription && subscription.source === 'GOOGLE_PLAY') {
+      try {
+        await refreshIapSubscriptionState(subscription);
+
+        const { data: refreshed } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('id', subscription.id)
+          .maybeSingle();
+
+        if (refreshed) {
+          subscription = refreshed;
+        }
+      } catch (refreshError) {
+        console.error('Refresh Google Play subscription error:', refreshError);
+      }
+    }
 
     // 과거 구독 이력 확인 (첫 달 할인 표시 판단용)
     const { count: pastSubCount } = await supabase

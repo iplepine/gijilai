@@ -22,6 +22,7 @@ export interface VerifiedIapPurchase {
   transactionId: string;
   originalTransactionId: string;
   expiresDate: Date | null;
+  cancelAtPeriodEnd?: boolean;
 }
 
 const IAP_PRODUCTS = {
@@ -218,7 +219,58 @@ export async function verifyGoogleSubscription(productId: string, purchaseToken:
     transactionId: purchaseToken,
     originalTransactionId: data.linkedPurchaseToken || purchaseToken,
     expiresDate: data.expiryTimeMillis ? new Date(parseInt(data.expiryTimeMillis, 10)) : null,
+    cancelAtPeriodEnd: data.autoRenewing === false,
   };
+}
+
+function getIapProductIdFromPlan(plan: string | null | undefined): string | null {
+  if (plan === 'MONTHLY') return 'monthly_premium';
+  return null;
+}
+
+type RefreshableIapSubscription = {
+  id: string;
+  user_id: string;
+  source: Platform;
+  plan: string;
+  app_transaction_id: string | null;
+  app_original_transaction_id: string | null;
+  cancelled_at: string | null;
+};
+
+export async function refreshIapSubscriptionState(
+  subscription: RefreshableIapSubscription
+) {
+  const productId = getIapProductIdFromPlan(subscription.plan);
+  if (!productId) {
+    return { ok: false, reason: 'unsupported_plan' as const };
+  }
+
+  if (subscription.source === 'GOOGLE_PLAY') {
+    const purchaseToken =
+      subscription.app_transaction_id || subscription.app_original_transaction_id;
+
+    if (!purchaseToken) {
+      return { ok: false, reason: 'missing_purchase_token' as const };
+    }
+
+    const verified = await verifyGoogleSubscription(productId, purchaseToken);
+    return syncIapSubscription({
+      platform: 'GOOGLE_PLAY',
+      productId,
+      transactionId: verified.transactionId,
+      originalTransactionId: verified.originalTransactionId,
+      expiresDate: verified.expiresDate,
+      userId: subscription.user_id,
+      subscriptionStatus: 'ACTIVE',
+      paymentStatus: null,
+      eventName: 'CLIENT_REFRESH_SUBSCRIPTION',
+      cancelAtPeriodEnd:
+        verified.cancelAtPeriodEnd ?? Boolean(subscription.cancelled_at),
+    });
+  }
+
+  return { ok: false, reason: 'unsupported_source' as const };
 }
 
 type SyncInput = {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/Button';
@@ -100,6 +100,18 @@ export default function SubscriptionPage() {
   const getErrorMessage = (error: unknown) => error instanceof Error ? error.message : t('settings.cancelError');
   const formatLocalDate = (value: string) => new Date(value).toLocaleDateString('ko-KR');
 
+  const loadSubscriptionData = useCallback(async () => {
+    if (!user) return;
+
+    const [subData, paymentData] = await Promise.all([
+      fetch('/api/payment/subscription', { cache: 'no-store' }).then(r => r.json()),
+      db.getPaymentHistory(user.id),
+    ]);
+
+    setSubscription(subData.subscription);
+    setPayments(paymentData);
+  }, [user]);
+
   const getStoreManagementUrl = (source?: string | null): string | undefined => {
     if (source === 'APPLE_IAP') {
       return 'https://apps.apple.com/account/subscriptions';
@@ -125,14 +137,32 @@ export default function SubscriptionPage() {
 
   useEffect(() => {
     if (!user) return;
-    Promise.all([
-      fetch('/api/payment/subscription').then(r => r.json()),
-      db.getPaymentHistory(user.id),
-    ]).then(([subData, paymentData]) => {
-      setSubscription(subData.subscription);
-      setPayments(paymentData);
-    }).catch(console.error).finally(() => setLoading(false));
-  }, [user]);
+    loadSubscriptionData()
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [loadSubscriptionData, user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void loadSubscriptionData().catch(console.error);
+      }
+    };
+
+    const handleWindowFocus = () => {
+      void loadSubscriptionData().catch(console.error);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleWindowFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleWindowFocus);
+    };
+  }, [loadSubscriptionData, user]);
 
   const handleCancelClick = () => {
     if (!subscription) return;
