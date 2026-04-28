@@ -59,6 +59,8 @@
 - **갱신 실패**: PAST_DUE 상태. 4일 이내 연속 3회 실패 시 EXPIRED (`MAX_RETRY_COUNT = 3`)
 - **해지**: 기간 만료 해지 (`cancelled_at` 설정, status는 ACTIVE 유지). 다음 갱신 시점에 EXPIRED 처리 (`/api/payment/cancel-subscription`)
   - 해지 API는 `subscriptions` RLS 정책상 사용자 update가 불가능하므로 서버 service role로 `cancelled_at`을 설정한다.
+  - `PORTONE` 구독만 해지 API로 `cancelled_at`를 직접 설정한다.
+  - `APPLE_IAP` / `GOOGLE_PLAY` 구독은 앱/웹이 각 스토어 구독 관리 화면으로 안내하고, 서버는 스토어 상태 재검증 또는 서버 알림으로 `cancelled_at`를 반영한다.
 - **해지 철회**: 기간 만료 전 `cancelled_at`이 있는 PORTONE 구독은 `/api/payment/reactivate-subscription`으로 즉시 해지 예약을 취소한다.
   - 새 구독을 만들거나 즉시 결제하지 않고 기존 구독의 `cancelled_at`만 `null`로 되돌린다.
   - 앱스토어/플레이스토어 구독은 스토어 구독 관리 화면에서 재활성화해야 한다.
@@ -86,6 +88,8 @@
 
 - 최초 구매 성공만으로 구독 운영을 끝내지 않는다. 갱신, 해지 예약, 결제 실패, 환불/회수는 서버 알림으로 반영한다.
 - Apple/Google 알림이 오면 해당 거래를 다시 스토어 API로 조회해 검증한 뒤 `subscriptions` 상태를 갱신한다.
+- Google Play 구독은 사용자가 스토어 구독 관리 화면에서 해지 후 앱으로 복귀했을 때 `/api/payment/subscription` 조회 중 스토어 상태를 다시 확인해 `cancelled_at`를 즉시 동기화한다.
+- App Store 구독은 기본적으로 Apple Server Notification을 우선 진실값으로 사용한다. 앱 복귀 직후에는 알림 반영 전까지 잠시 이전 상태가 보일 수 있다.
 - 해지 예약은 `cancelled_at`만 설정하고, 사용 기간이 끝날 때까지 `ACTIVE`를 유지할 수 있다.
 - 환불/회수는 즉시 접근을 막기 위해 `CANCELLED` 또는 `EXPIRED`로 내린다.
 - 결제 금액은 앱 상품 코드 기준 서버 상수로 기록하며, 앱스토어 콘솔 가격과 항상 일치시켜야 한다.

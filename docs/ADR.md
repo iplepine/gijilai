@@ -285,3 +285,9 @@
 - **결정**: Fastlane `android deploy_internal`과 `android deploy_production`은 Play Store 업로드 전에 Flutter `pubspec.yaml`의 `version` build number(`+N`)를 1 증가시킨다. 로컬 AAB 확인용 `android build` lane은 버전을 변경하지 않는다.
 - **이유**: Google Play는 이미 사용한 `versionCode` 재사용을 거절한다. Flutter Android 빌드는 `pubspec.yaml`의 build number를 `versionCode`로 사용하므로, 업로드 직전에 자동 증가시키면 매번 실패 후 수동으로 bump하는 흐름을 제거할 수 있다.
 - **대안**: 실패 후 수동 bump 유지 — 반복적인 배포 실패를 만들므로 기각. 모든 `android build`에서 자동 bump — 로컬 검증 빌드만 해도 버전이 바뀌어 불필요한 변경이 생기므로 기각.
+
+## 2026-04-29 | 앱 구독 해지는 스토어 관리로 보내고 Google Play는 복귀 시 재동기화
+
+- **결정**: 구독 관리 화면의 해지 UX는 브라우저 기본 `confirm/alert` 대신 서비스 UI에 맞는 커스텀 모달로 통일한다. `PORTONE` 구독만 `/api/payment/cancel-subscription`로 해지 예약을 처리하고, `APPLE_IAP`/`GOOGLE_PLAY` 구독은 각 스토어 구독 관리 화면으로 보낸다. 또한 `GOOGLE_PLAY` 구독은 `/api/payment/subscription` 조회 시 스토어 상태를 다시 읽어 `autoRenewing === false`면 `cancelled_at`를 즉시 반영한다.
+- **이유**: WebView 기본 다이얼로그는 `https://gijilai.com 페이지의 내용` 같은 브라우저 출처 문구를 노출해 앱 UX를 해친다. 또 스토어 구독은 서버가 임의로 종료할 수 없고, 스토어에서 해지한 뒤 앱으로 돌아와도 상태 재조회가 없으면 여전히 활성 구독처럼 보인다. Google Play는 on-demand 재검증으로 즉시 반영이 가능하므로 복귀 UX를 개선한다.
+- **대안**: 앱 구독도 서버 해지 API로 직접 `cancelled_at` 설정 — 스토어 진실값과 어긋날 수 있어 기각. 서버 알림만 기다리기 — 실제 해지 후 즉시 상태가 안 바뀌어 UX가 나빠 기각. 브라우저 기본 `confirm/alert` 유지 — 앱 컨텍스트와 어울리지 않아 기각.

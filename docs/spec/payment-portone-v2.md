@@ -252,6 +252,8 @@ locale 결정 순서:
 ```
 [사용자] 설정 > 구독 관리 > 해지 버튼
   ↓
+[클라이언트] PORTONE 구독이면 커스텀 확인 다이얼로그 표시
+  ↓ 확인
 [클라이언트] POST /api/payment/cancel-subscription
   ↓
 [서버] subscriptions UPDATE (cancelled_at: now())
@@ -261,6 +263,8 @@ locale 결정 순서:
   → cancelled_at IS NOT NULL이므로 갱신 스킵
   → status: EXPIRED로 변경
 ```
+
+앱스토어/플레이스토어 구독은 같은 해지 버튼을 눌러도 서버 해지 API를 호출하지 않는다. 클라이언트는 커스텀 다이얼로그로 각 스토어의 구독 관리 화면을 열고, 서버는 스토어 상태 재검증 또는 서버 알림으로 `cancelled_at`를 반영한다.
 
 ### 7.5 해지 철회
 
@@ -504,6 +508,11 @@ async function getActiveSubscription(userId: string): Promise<Subscription | nul
 ### 12.5 `GET /api/payment/subscription`
 
 현재 구독 상태 조회.
+
+**추가 동작:**
+- `GOOGLE_PLAY` 활성 구독을 반환하기 전, 저장된 purchase token으로 Google Play Developer API를 다시 조회한다.
+- `autoRenewing === false`면 `cancelled_at`를 즉시 동기화해 앱이 스토어 복귀 직후에도 해지 예약 상태를 볼 수 있게 한다.
+- `APPLE_IAP`는 기본적으로 Apple Server Notification 반영 상태를 반환한다.
 
 **처리:**
 1. Supabase 세션 검증
