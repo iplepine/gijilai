@@ -48,7 +48,13 @@ export async function POST() {
     }
 
     if (subscription.source !== 'PORTONE') {
-      return NextResponse.json({ error: 'UNSUPPORTED_SUBSCRIPTION_SOURCE' }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: 'STORE_MANAGED_SUBSCRIPTION',
+          source: subscription.source,
+        },
+        { status: 400 }
+      );
     }
 
     const now = new Date().toISOString();

@@ -1,0 +1,13 @@
+.git
+.next
+.agents
+.claude
+.cursor
+node_modules
+gijilai_app
+docs
+resources
+store-assets
+.DS_Store
+package-lock.json.bak
+package.json.bak

@@ -78,6 +78,12 @@ function getPaymentMethodLabel(payment: PaymentData, t: (key: string) => string)
   return formatCodeLabel(payment.pay_method ?? undefined);
 }
 
+type FeedbackDialogState = {
+  title: string;
+  message: string;
+  actionLabel?: string;
+  actionHref?: string;
+};
 
 export default function SubscriptionPage() {
   const { t } = useLocale();
@@ -88,8 +94,34 @@ export default function SubscriptionPage() {
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
   const [reactivating, setReactivating] = useState(false);
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+  const [feedbackDialog, setFeedbackDialog] = useState<FeedbackDialogState | null>(null);
 
   const getErrorMessage = (error: unknown) => error instanceof Error ? error.message : t('settings.cancelError');
+  const formatLocalDate = (value: string) => new Date(value).toLocaleDateString('ko-KR');
+
+  const getStoreManagementUrl = (source?: string | null): string | undefined => {
+    if (source === 'APPLE_IAP') {
+      return 'https://apps.apple.com/account/subscriptions';
+    }
+
+    if (source === 'GOOGLE_PLAY') {
+      return 'https://play.google.com/store/account/subscriptions';
+    }
+
+    return undefined;
+  };
+
+  const openStoreManagementDialog = (source?: string | null) => {
+    setFeedbackDialog({
+      title: t('settings.storeManagedTitle'),
+      message: source === 'APPLE_IAP'
+        ? t('settings.cancelAppStoreDescription')
+        : t('settings.cancelGooglePlayDescription'),
+      actionLabel: t('settings.openStoreSubscriptions'),
+      actionHref: getStoreManagementUrl(source),
+    });
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -102,8 +134,19 @@ export default function SubscriptionPage() {
     }).catch(console.error).finally(() => setLoading(false));
   }, [user]);
 
-  const handleCancel = async () => {
-    if (!confirm(t('settings.cancelConfirm'))) return;
+  const handleCancelClick = () => {
+    if (!subscription) return;
+
+    if (subscription.source !== 'PORTONE') {
+      openStoreManagementDialog(subscription.source);
+      return;
+    }
+
+    setIsCancelDialogOpen(true);
+  };
+
+  const confirmCancel = async () => {
+    setIsCancelDialogOpen(false);
 
     setCancelling(true);
     try {
@@ -111,12 +154,25 @@ export default function SubscriptionPage() {
       const data = await res.json();
       if (res.ok) {
         setSubscription((prev) => prev ? { ...prev, cancelled_at: new Date().toISOString() } : null);
-        alert(t('settings.cancelSuccess').replace('{date}', new Date(data.activeUntil).toLocaleDateString('ko-KR')));
+        setFeedbackDialog({
+          title: t('settings.cancelSubscription'),
+          message: t('settings.cancelSuccess').replace('{date}', formatLocalDate(data.activeUntil)),
+        });
       } else {
-        alert(data.error || t('settings.cancelError'));
+        if (data.error === 'STORE_MANAGED_SUBSCRIPTION') {
+          openStoreManagementDialog(data.source);
+        } else {
+          setFeedbackDialog({
+            title: t('common.error'),
+            message: data.error || t('settings.cancelError'),
+          });
+        }
       }
     } catch (error) {
-      alert(getErrorMessage(error));
+      setFeedbackDialog({
+        title: t('common.error'),
+        message: getErrorMessage(error),
+      });
     } finally {
       setCancelling(false);
     }
@@ -129,12 +185,21 @@ export default function SubscriptionPage() {
       const data = await res.json();
       if (res.ok) {
         setSubscription(data.subscription);
-        alert(t('settings.reactivateSuccess'));
+        setFeedbackDialog({
+          title: t('settings.reactivateSubscription'),
+          message: t('settings.reactivateSuccess'),
+        });
       } else {
-        alert(data.error || t('settings.reactivateError'));
+        setFeedbackDialog({
+          title: t('common.error'),
+          message: data.error || t('settings.reactivateError'),
+        });
       }
     } catch {
-      alert(t('settings.reactivateError'));
+      setFeedbackDialog({
+        title: t('common.error'),
+        message: t('settings.reactivateError'),
+      });
     } finally {
       setReactivating(false);
     }
@@ -233,7 +298,7 @@ export default function SubscriptionPage() {
                     variant="secondary"
                     size="sm"
                     fullWidth
-                    onClick={handleCancel}
+                    onClick={handleCancelClick}
                     disabled={cancelling}
                     className="mt-2"
                   >
@@ -291,6 +356,94 @@ export default function SubscriptionPage() {
           )}
         </div>
       </div>
+
+      {isCancelDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 px-4 pb-4 sm:items-center sm:pb-0">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-5 shadow-2xl dark:bg-surface-dark">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <h2 className="text-lg font-bold text-text-main dark:text-white">
+                  {t('settings.cancelSubscription')}
+                </h2>
+                <p className="text-[13px] leading-relaxed whitespace-pre-line text-text-sub">
+                  {t('settings.cancelConfirm')}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCancelDialogOpen(false)}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-text-sub transition hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
+                aria-label={t('common.close')}
+              >
+                <Icon name="close" size="sm" className="text-xl" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                onClick={() => setIsCancelDialogOpen(false)}
+                className="h-12 rounded-xl"
+              >
+                {t('common.cancel')}
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="md"
+                onClick={confirmCancel}
+                disabled={cancelling}
+                className="h-12 rounded-xl"
+              >
+                {cancelling ? t('pricing.processing') : t('common.confirm')}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {feedbackDialog && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 px-4 pb-4 sm:items-center sm:pb-0">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-5 shadow-2xl dark:bg-surface-dark">
+            <div className="mb-5 space-y-1">
+              <h2 className="text-lg font-bold text-text-main dark:text-white">
+                {feedbackDialog.title}
+              </h2>
+              <p className="text-[13px] leading-relaxed whitespace-pre-line text-text-sub">
+                {feedbackDialog.message}
+              </p>
+            </div>
+
+            <div className={`grid gap-2 ${feedbackDialog.actionHref ? 'grid-cols-2' : 'grid-cols-1'}`}>
+              <Button
+                type="button"
+                variant={feedbackDialog.actionHref ? 'secondary' : 'primary'}
+                size="md"
+                onClick={() => setFeedbackDialog(null)}
+                className="h-12 rounded-xl"
+              >
+                {feedbackDialog.actionHref ? t('common.cancel') : t('common.confirm')}
+              </Button>
+              {feedbackDialog.actionHref && (
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="md"
+                  onClick={() => {
+                    window.open(feedbackDialog.actionHref, '_blank', 'noopener,noreferrer');
+                    setFeedbackDialog(null);
+                  }}
+                  className="h-12 rounded-xl"
+                >
+                  {feedbackDialog.actionLabel || t('common.confirm')}
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
