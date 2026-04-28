@@ -4,6 +4,17 @@ type Platform = 'APPLE_IAP' | 'GOOGLE_PLAY';
 type SubscriptionStatus = 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'EXPIRED';
 type PaymentStatus = 'PAID' | 'FAILED' | 'CANCELLED' | 'REFUNDED';
 type PaymentType = 'SUBSCRIPTION' | 'RENEWAL';
+type GoogleServiceAccountCredentials = {
+  client_email: string;
+  private_key: string;
+};
+
+export class IapConfigurationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'IapConfigurationError';
+  }
+}
 
 export interface VerifiedIapPurchase {
   platform: Platform;
@@ -106,8 +117,59 @@ async function createGoogleJWT(credentials: { client_email: string; private_key:
   return `${unsignedToken}.${signature}`;
 }
 
+function parseGoogleCredentials(rawValue: string | undefined): GoogleServiceAccountCredentials {
+  if (!rawValue?.trim()) {
+    throw new IapConfigurationError('GOOGLE_PLAY_CREDENTIALS is not configured');
+  }
+
+  const candidates = [rawValue.trim()];
+
+  try {
+    candidates.push(Buffer.from(rawValue.trim(), 'base64').toString('utf8'));
+  } catch {
+    // Ignore invalid base64 and keep JSON parsing error handling below.
+  }
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate) as Partial<GoogleServiceAccountCredentials> | string;
+      const credentials = typeof parsed === 'string'
+        ? JSON.parse(parsed) as Partial<GoogleServiceAccountCredentials>
+        : parsed;
+
+      const clientEmail = credentials.client_email?.trim();
+      const privateKey = credentials.private_key?.replace(/\\n/g, '\n').trim();
+
+      if (!clientEmail || !privateKey) {
+        throw new IapConfigurationError(
+          'GOOGLE_PLAY_CREDENTIALS must include client_email and private_key'
+        );
+      }
+
+      if (!privateKey.includes('BEGIN PRIVATE KEY')) {
+        throw new IapConfigurationError(
+          'GOOGLE_PLAY_CREDENTIALS.private_key must be a valid service account private key'
+        );
+      }
+
+      return {
+        client_email: clientEmail,
+        private_key: privateKey,
+      };
+    } catch (error) {
+      if (error instanceof IapConfigurationError) {
+        throw error;
+      }
+    }
+  }
+
+  throw new IapConfigurationError(
+    'GOOGLE_PLAY_CREDENTIALS must be a valid Google service account JSON'
+  );
+}
+
 async function getGoogleAccessToken() {
-  const credentials = JSON.parse(process.env.GOOGLE_PLAY_CREDENTIALS || '{}');
+  const credentials = parseGoogleCredentials(process.env.GOOGLE_PLAY_CREDENTIALS);
 
   const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
@@ -119,7 +181,8 @@ async function getGoogleAccessToken() {
   });
 
   if (!tokenResponse.ok) {
-    throw new Error('Google OAuth token request failed');
+    const errorText = await tokenResponse.text();
+    throw new Error(`Google OAuth token request failed (${tokenResponse.status}): ${errorText}`);
   }
 
   const { access_token } = await tokenResponse.json();

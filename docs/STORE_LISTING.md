@@ -118,7 +118,7 @@ bundle install
 | 변수 | 용도 |
 |------|------|
 | `GOOGLE_PLAY_JSON_KEY_PATH` | Google Play 서비스 계정 JSON 키 파일 경로 |
-| `GOOGLE_PLAY_CREDENTIALS` | IAP 영수증 검증용 (서버) |
+| `GOOGLE_PLAY_CREDENTIALS` | IAP 영수증 검증용 (서버, Google 서비스 계정 JSON 전체 문자열) |
 | `APPLE_IAP_JWT` | Apple IAP 영수증 검증용 (서버) |
 | `GOOGLE_RTDN_TOKEN` | Google RTDN 웹훅 보호용 공유 토큰 |
 

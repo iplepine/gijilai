@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabaseServer';
 import {
   getIapProductConfig,
+  IapConfigurationError,
   syncIapSubscription,
   verifyAppleTransaction,
   verifyGoogleSubscription,
@@ -77,6 +78,13 @@ export async function POST(req: Request) {
     });
   } catch (error: unknown) {
     console.error('IAP verification error:', error);
+    if (error instanceof IapConfigurationError) {
+      return NextResponse.json(
+        { error: 'IAP_SERVER_MISCONFIGURED' },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'IAP 검증 실패' },
       { status: 500 }

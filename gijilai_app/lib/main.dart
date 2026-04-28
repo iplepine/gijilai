@@ -1158,7 +1158,11 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         // WebView 새로고침으로 구독 상태 반영
         await _controller!.loadRequest(Uri.parse(MainWebView.targetUrl));
       } else {
-        _showSnackBar(data['error']?.toString() ?? '검증 실패', isError: true);
+        final errorCode = data['error']?.toString();
+        final errorMessage = errorCode == 'IAP_SERVER_MISCONFIGURED'
+            ? '결제 검증 설정에 문제가 있습니다. 잠시 후 다시 시도해주세요.'
+            : errorCode ?? '검증 실패';
+        _showSnackBar(errorMessage, isError: true);
         _notifyWebLoadingDone();
         await FirebaseCrashlytics.instance.recordError(
           Exception('IAP verification failed: ${data['error'] ?? 'unknown'}'),
