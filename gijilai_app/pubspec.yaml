@@ -1,8 +1,7 @@
 name: gijilai_app
 description: 기질아이 - 과학적 기질 분석 기반 맞춤형 육아 가이드
 publish_to: 'none'
-version: 1.0.1+7
-
+version: 1.0.1+8
 environment:
   sdk: ^3.8.1
 
