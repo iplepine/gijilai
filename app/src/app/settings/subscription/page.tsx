@@ -124,6 +124,12 @@ export default function SubscriptionPage() {
     return undefined;
   };
 
+  const openStoreManagementPage = (source?: string | null) => {
+    const url = getStoreManagementUrl(source);
+    if (!url) return;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   const openStoreManagementDialog = (source?: string | null) => {
     setFeedbackDialog({
       title: t('settings.storeManagedTitle'),
@@ -318,9 +324,20 @@ export default function SubscriptionPage() {
                         {reactivating ? t('pricing.processing') : t('settings.reactivateSubscription')}
                       </Button>
                     ) : (
-                      <p className="text-xs text-text-sub bg-beige-main/20 p-3 rounded-xl">
-                        {t('settings.reactivateStoreNotice')}
-                      </p>
+                      <div className="space-y-2">
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          fullWidth
+                          onClick={() => openStoreManagementPage(subscription.source)}
+                          className="mt-2"
+                        >
+                          {t('settings.openStoreSubscriptions')}
+                        </Button>
+                        <p className="text-xs text-text-sub bg-beige-main/20 p-3 rounded-xl">
+                          {t('settings.reactivateStoreNotice')}
+                        </p>
+                      </div>
                     )}
                   </div>
                 ) : (
