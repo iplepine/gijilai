@@ -67,6 +67,18 @@ function getCustomerName(user: { email?: string; user_metadata?: Record<string, 
   return (name || 'GIJILAI User').slice(0, 30);
 }
 
+function getStoreManagementUrl(source?: ExistingSubscriptionSummary['source']): string | undefined {
+  if (source === 'APPLE_IAP') {
+    return 'https://apps.apple.com/account/subscriptions';
+  }
+
+  if (source === 'GOOGLE_PLAY') {
+    return 'https://play.google.com/store/account/subscriptions';
+  }
+
+  return undefined;
+}
+
 export default function PricingPage() {
   const router = useRouter();
   const { user } = useAuth();
@@ -256,6 +268,12 @@ export default function PricingPage() {
     }
   };
 
+  const handleOpenStoreSubscriptions = () => {
+    const url = getStoreManagementUrl(existingSubscription?.source);
+    if (!url) return;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   const monthlyPrice = formatPrice(PRICES.MONTHLY[currency], currency);
 
   if (existingSubscription?.cancelled_at) {
@@ -279,9 +297,14 @@ export default function PricingPage() {
                 {reactivating ? t('pricing.processing') : t('settings.reactivateSubscription')}
               </Button>
             ) : (
-              <p className="text-xs text-text-sub bg-white dark:bg-surface-dark rounded-xl p-3">
-                {t('settings.reactivateStoreNotice')}
-              </p>
+              <div className="w-full max-w-xs space-y-2">
+                <Button variant="primary" fullWidth onClick={handleOpenStoreSubscriptions}>
+                  {t('settings.openStoreSubscriptions')}
+                </Button>
+                <p className="text-xs text-text-sub bg-white dark:bg-surface-dark rounded-xl p-3">
+                  {t('settings.reactivateStoreNotice')}
+                </p>
+              </div>
             )}
             <Button variant="secondary" onClick={() => router.replace('/settings/subscription')}>
               {t('pricing.manageSubscription')}
