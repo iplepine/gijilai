@@ -97,6 +97,15 @@ function getStoreManagementUrl(source?: SubscriptionSource): string | undefined 
   return undefined;
 }
 
+function getAppIapProductId(): string {
+  if (typeof window === 'undefined') return 'monthly_premium';
+
+  const ua = window.navigator.userAgent.toLowerCase();
+  return /iphone|ipad|ipod/.test(ua)
+    ? 'gijilai_premium_monthly'
+    : 'monthly_premium';
+}
+
 export default function PricingPage() {
   const router = useRouter();
   const { user } = useAuth();
@@ -168,7 +177,7 @@ export default function PricingPage() {
       window.PaymentBridge.postMessage(JSON.stringify({
         type: 'PAYMENT_REQUEST',
         provider: 'APPLE_GOOGLE',
-        productId: 'monthly_premium',
+        productId: getAppIapProductId(),
       }));
       return;
     }

@@ -342,7 +342,7 @@ gijilai_app/
 
 - [x] 개인정보 처리방침 URL
 - [x] 이용약관 URL
-- [x] IAP 구독 상품 (monthly_premium)
+- [x] IAP 구독 상품 (`monthly_premium`)
 - [x] 릴리스 서명 설정
 - [x] 스토어 메타데이터 (fastlane/metadata)
 - [x] 앱 아이콘 512x512 (store-assets/icon_512.png)
@@ -367,7 +367,7 @@ gijilai_app/
 - [ ] 스크린샷 (fastlane ios screenshots)
 - [ ] 연령 등급 설문
 - [ ] 앱 개인정보 보호 선언
-- [ ] iOS 구독 상품 생성
+- [ ] iOS 구독 상품 생성 (`gijilai_premium_monthly`)
 - [ ] Sign in with Apple provider 설정 (Apple Developer + Supabase Auth)
 - [ ] `APPLE_IAP_JWT` 환경변수
 - [ ] App Store Server Notifications V2 → `/api/payment/iap/apple-notifications` 연결

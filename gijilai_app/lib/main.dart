@@ -87,7 +87,8 @@ class MainWebView extends StatefulWidget {
 
 class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   static const _supabaseUrl = 'https://gqpedxovfesbusjpjryl.supabase.co';
-  static const _subscriptionProductId = 'monthly_premium';
+  static const _iosSubscriptionProductId = 'gijilai_premium_monthly';
+  static const _androidSubscriptionProductId = 'monthly_premium';
   static const _practiceReminderNotificationId = 1001;
   static const _practiceReminderEnabledKey = 'practice_reminder_enabled';
   static const _practiceReminderTimeKey = 'practice_reminder_time';
@@ -106,6 +107,9 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   bool _externalAuthInProgress = false;
   double? _lastInjectedSafeAreaTop;
   double? _lastInjectedSafeAreaBottom;
+
+  String get _subscriptionProductId =>
+      Platform.isIOS ? _iosSubscriptionProductId : _androidSubscriptionProductId;
 
   @override
   void initState() {

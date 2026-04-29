@@ -25,20 +25,23 @@ export interface VerifiedIapPurchase {
   cancelAtPeriodEnd?: boolean;
 }
 
-const IAP_PRODUCTS = {
-  monthly_premium: {
-    plan: 'MONTHLY' as const,
-    currency: 'KRW',
-    amount: 12000,
-    pgProvider: {
-      APPLE_IAP: 'apple',
-      GOOGLE_PLAY: 'google',
-    },
-    payMethod: {
-      APPLE_IAP: 'applepay',
-      GOOGLE_PLAY: 'googlepay',
-    },
+const MONTHLY_IAP_PRODUCT = {
+  plan: 'MONTHLY' as const,
+  currency: 'KRW',
+  amount: 12000,
+  pgProvider: {
+    APPLE_IAP: 'apple',
+    GOOGLE_PLAY: 'google',
   },
+  payMethod: {
+    APPLE_IAP: 'applepay',
+    GOOGLE_PLAY: 'googlepay',
+  },
+};
+
+const IAP_PRODUCTS = {
+  monthly_premium: MONTHLY_IAP_PRODUCT,
+  gijilai_premium_monthly: MONTHLY_IAP_PRODUCT,
 } as const;
 
 export function getSupabaseAdmin() {
@@ -223,8 +226,15 @@ export async function verifyGoogleSubscription(productId: string, purchaseToken:
   };
 }
 
-function getIapProductIdFromPlan(plan: string | null | undefined): string | null {
-  if (plan === 'MONTHLY') return 'monthly_premium';
+function getIapProductIdFromPlan(
+  plan: string | null | undefined,
+  platform: Platform
+): string | null {
+  if (plan === 'MONTHLY') {
+    return platform === 'APPLE_IAP'
+      ? 'gijilai_premium_monthly'
+      : 'monthly_premium';
+  }
   return null;
 }
 
@@ -241,7 +251,7 @@ type RefreshableIapSubscription = {
 export async function refreshIapSubscriptionState(
   subscription: RefreshableIapSubscription
 ) {
-  const productId = getIapProductIdFromPlan(subscription.plan);
+  const productId = getIapProductIdFromPlan(subscription.plan, subscription.source);
   if (!productId) {
     return { ok: false, reason: 'unsupported_plan' as const };
   }
