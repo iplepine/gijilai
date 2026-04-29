@@ -34,9 +34,11 @@ const FIRST_MONTH_PRICES = {
   USD: Math.round(PRICES.MONTHLY.USD * (1 - FIRST_MONTH_DISCOUNT)),
 };
 
+type SubscriptionSource = 'PORTONE' | 'APPLE_IAP' | 'GOOGLE_PLAY';
+
 type ExistingSubscriptionSummary = {
   id: string;
-  source: 'PORTONE' | 'APPLE_IAP' | 'GOOGLE_PLAY';
+  source: SubscriptionSource;
   cancelled_at: string | null;
   current_period_end: string;
 } | null;
@@ -67,7 +69,7 @@ function getCustomerName(user: { email?: string; user_metadata?: Record<string, 
   return (name || 'GIJILAI User').slice(0, 30);
 }
 
-function getStoreManagementUrl(source?: ExistingSubscriptionSummary['source']): string | undefined {
+function getStoreManagementUrl(source?: SubscriptionSource): string | undefined {
   if (source === 'APPLE_IAP') {
     return 'https://apps.apple.com/account/subscriptions';
   }
