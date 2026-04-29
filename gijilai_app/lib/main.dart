@@ -1294,7 +1294,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         backgroundColor: Colors.white,
         body: Stack(
           children: [
-            SafeArea(child: WebViewWidget(controller: controller)),
+            Positioned.fill(child: WebViewWidget(controller: controller)),
             if (_showNativeLogin)
               NativeLoginScreen(
                 isLoading: _authInProgress,
