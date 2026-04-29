@@ -195,6 +195,8 @@ gijilai_app/
 
 ### 스크린샷 규격
 
+- 현재 iOS 릴리스 타깃은 **iPhone only** 이다. App Store Connect의 iPad 스크린샷/미리보기는 준비하지 않는다.
+
 | 플랫폼 | 해상도 |
 |--------|--------|
 | Google Play | 16:9 또는 9:16, 320~3840px |
@@ -275,6 +277,7 @@ gijilai_app/
 - [x] 개인정보 처리방침 URL
 - [x] 이용약관 URL
 - [x] 스토어 메타데이터 (fastlane/metadata/ios)
+- [x] iPhone only 타깃 (`TARGETED_DEVICE_FAMILY = 1`)
 - [ ] App Store Connect 앱 등록
 - [x] 앱 아이콘 1024x1024 (store-assets/icon_1024.png)
 - [ ] 스크린샷 (fastlane ios screenshots)

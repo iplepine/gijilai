@@ -72,6 +72,7 @@ rm -f /tmp/gijilai_app_store_connect_api_key.json
 
 ## 참고
 
+- 현재 iOS 릴리스는 `TARGETED_DEVICE_FAMILY = 1`인 iPhone only 타깃으로 제출한다. App Store Connect에 iPad 탭이 보였다면, iPad 지원 제거 후 새 빌드를 다시 업로드해야 반영된다.
 - `fastlane ios deploy_testflight` lane은 App Store Connect API Key를 자동 탐색해서 `upload_to_testflight`에 전달한다. 키를 못 찾으면 명확한 에러로 중단된다.
 - `fastlane ios deploy_appstore` lane은 `fastlane/screenshots/ios`에 스크린샷이 없으면 스크린샷 업로드를 건너뛴다. 첫 제출이거나 App Store Connect에 스크린샷이 아직 없다면 별도로 준비해야 한다.
 - `fastlane ios deploy_testflight` lane에서 내부 빌드 단계의 CocoaPods/Xcode 환경 문제가 나면 위 절차처럼 `flutter build ipa`를 직접 실행한 뒤 `upload_to_testflight`만 호출한다.
