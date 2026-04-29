@@ -104,6 +104,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   bool _showNativeLogin = false;
   bool _authInProgress = false;
   bool _externalAuthInProgress = false;
+  double? _lastInjectedSafeAreaTop;
+  double? _lastInjectedSafeAreaBottom;
 
   @override
   void initState() {
@@ -122,6 +124,12 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     }
 
     unawaited(_resetAuthLoadingAfterCancelledHandoff());
+  }
+
+  @override
+  void didChangeMetrics() {
+    super.didChangeMetrics();
+    unawaited(_syncSafeAreaInsetsWithWeb());
   }
 
   Future<void> _initAppLinks() async {
@@ -372,6 +380,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   }
 
   void _handlePageFinished(String url) {
+    unawaited(_syncSafeAreaInsetsWithWeb());
+
     final uri = Uri.tryParse(url);
     final shouldShowLogin =
         uri != null &&
@@ -383,6 +393,32 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         _showNativeLogin = shouldShowLogin;
       });
     }
+  }
+
+  Future<void> _syncSafeAreaInsetsWithWeb() async {
+    final controller = _controller;
+    if (controller == null || !mounted) return;
+
+    final padding = MediaQuery.paddingOf(context);
+    final topInset = padding.top.toStringAsFixed(1);
+    final bottomInset = padding.bottom.toStringAsFixed(1);
+
+    if (_lastInjectedSafeAreaTop == padding.top &&
+        _lastInjectedSafeAreaBottom == padding.bottom) {
+      return;
+    }
+
+    _lastInjectedSafeAreaTop = padding.top;
+    _lastInjectedSafeAreaBottom = padding.bottom;
+
+    await controller.runJavaScript('''
+      (function() {
+        const root = document.documentElement;
+        if (!root) return;
+        root.style.setProperty('--native-safe-area-top', '${topInset}px');
+        root.style.setProperty('--native-safe-area-bottom', '${bottomInset}px');
+      })();
+    ''');
   }
 
   bool _shouldOpenExternally(Uri uri) {

@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-04-29 | 앱 WebView safe area는 웹 CSS와 Flutter native inset을 함께 사용한다
+
+- **결정**: 홈을 포함한 앱 WebView 화면의 상단/하단 고정 UI는 CSS `env(safe-area-inset-top/bottom)`만 단독으로 쓰지 않고, Flutter 쉘이 WebView에 주입하는 `--native-safe-area-top`, `--native-safe-area-bottom` 값을 함께 사용한다. Next.js viewport에는 `viewport-fit=cover`를 명시한다.
+- **이유**: iOS WebView에서는 기기/상태에 따라 CSS safe area env 값이 0으로 떨어져 헤더와 탭바가 상태바, 홈 인디케이터와 겹칠 수 있다. 웹이 브라우저 표준 inset과 앱 쉘이 측정한 native inset 둘 다 읽으면 Safari/웹뷰 간 차이를 흡수하면서 레이아웃을 안정화할 수 있다.
+- **대안**: CSS `env(...)`만 유지 — iOS 앱에서 상단 액션바 겹침이 재발할 수 있어 기각. Flutter `SafeArea`로 WebView 전체를 감싸기 — 웹 내부 sticky/fixed UI의 상하 inset 정보를 직접 해결하지 못해 기각.
+
+---
+
 ## 2026-04-29 | iOS Fastlane은 로컬 App Store Connect API 키를 자동 탐색한다
 
 - **결정**: `gijilai_app/fastlane/Fastfile`의 `deploy_testflight`와 `deploy_appstore` lane은 `APP_STORE_CONNECT_API_KEY_PATH`, `/tmp/gijilai_app_store_connect_api_key.json`, `nodtry` 프로젝트의 공유 키 설정 순으로 App Store Connect API 키를 자동 탐색해 사용한다. iOS 스크린샷 디렉터리가 비어 있으면 `deploy_appstore`는 스크린샷 업로드를 건너뛴다.
