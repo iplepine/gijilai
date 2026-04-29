@@ -406,6 +406,7 @@
     "cancelAppStoreDescription": "App Store subscriptions can be cancelled from Apple's subscription management screen.",
     "cancelGooglePlayDescription": "Google Play subscriptions can be cancelled from the Play Store subscription management screen.",
     "openStoreSubscriptions": "Open Store",
+    "reactivateStoreSubscription": "Resubscribe",
     "reactivateSubscription": "Keep subscription",
     "reactivateSuccess": "Cancellation has been removed. Your subscription will continue.",
     "reactivateError": "An error occurred while keeping your subscription.",

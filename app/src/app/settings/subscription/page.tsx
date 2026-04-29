@@ -332,7 +332,7 @@ export default function SubscriptionPage() {
                           onClick={() => openStoreManagementPage(subscription.source)}
                           className="mt-2"
                         >
-                          {t('settings.openStoreSubscriptions')}
+                          {t('settings.reactivateStoreSubscription')}
                         </Button>
                         <p className="text-xs text-text-sub bg-beige-main/20 p-3 rounded-xl">
                           {t('settings.reactivateStoreNotice')}

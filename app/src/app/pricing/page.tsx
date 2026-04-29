@@ -301,7 +301,7 @@ export default function PricingPage() {
             ) : (
               <div className="w-full max-w-xs space-y-2">
                 <Button variant="primary" fullWidth onClick={handleOpenStoreSubscriptions}>
-                  {t('settings.openStoreSubscriptions')}
+                  {t('settings.reactivateStoreSubscription')}
                 </Button>
                 <p className="text-xs text-text-sub bg-white dark:bg-surface-dark rounded-xl p-3">
                   {t('settings.reactivateStoreNotice')}
