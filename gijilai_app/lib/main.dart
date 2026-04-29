@@ -399,8 +399,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     final controller = _controller;
     if (controller == null || !mounted) return;
 
-    final padding = MediaQuery.paddingOf(context);
-    final topInset = padding.top.toStringAsFixed(1);
+    final padding = MediaQuery.viewPaddingOf(context);
     final bottomInset = padding.bottom.toStringAsFixed(1);
 
     if (_lastInjectedSafeAreaTop == padding.top &&
@@ -415,7 +414,6 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       (function() {
         const root = document.documentElement;
         if (!root) return;
-        root.style.setProperty('--native-safe-area-top', '${topInset}px');
         root.style.setProperty('--native-safe-area-bottom', '${bottomInset}px');
       })();
     ''');
@@ -1317,6 +1315,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final controller = _controller;
+    final topInset = MediaQuery.viewPaddingOf(context).top;
     if (controller == null) {
       return const Scaffold(
         backgroundColor: Colors.white,
@@ -1334,7 +1333,13 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         backgroundColor: Colors.white,
         body: Stack(
           children: [
-            Positioned.fill(child: WebViewWidget(controller: controller)),
+            Positioned(
+              top: topInset,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: WebViewWidget(controller: controller),
+            ),
             if (_showNativeLogin)
               NativeLoginScreen(
                 isLoading: _authInProgress,
