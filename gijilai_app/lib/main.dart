@@ -104,6 +104,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   bool _showNativeLogin = false;
   bool _authInProgress = false;
   bool _externalAuthInProgress = false;
+  double? _lastInjectedSafeAreaTop;
+  double? _lastInjectedSafeAreaBottom;
 
   @override
   void initState() {
@@ -122,6 +124,12 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     }
 
     unawaited(_resetAuthLoadingAfterCancelledHandoff());
+  }
+
+  @override
+  void didChangeMetrics() {
+    super.didChangeMetrics();
+    unawaited(_syncSafeAreaInsetsWithWeb());
   }
 
   Future<void> _initAppLinks() async {
@@ -372,6 +380,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   }
 
   void _handlePageFinished(String url) {
+    unawaited(_syncSafeAreaInsetsWithWeb());
+
     final uri = Uri.tryParse(url);
     final shouldShowLogin =
         uri != null &&
@@ -383,6 +393,30 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         _showNativeLogin = shouldShowLogin;
       });
     }
+  }
+
+  Future<void> _syncSafeAreaInsetsWithWeb() async {
+    final controller = _controller;
+    if (controller == null || !mounted) return;
+
+    final padding = MediaQuery.viewPaddingOf(context);
+    final bottomInset = padding.bottom.toStringAsFixed(1);
+
+    if (_lastInjectedSafeAreaTop == padding.top &&
+        _lastInjectedSafeAreaBottom == padding.bottom) {
+      return;
+    }
+
+    _lastInjectedSafeAreaTop = padding.top;
+    _lastInjectedSafeAreaBottom = padding.bottom;
+
+    await controller.runJavaScript('''
+      (function() {
+        const root = document.documentElement;
+        if (!root) return;
+        root.style.setProperty('--native-safe-area-bottom', '${bottomInset}px');
+      })();
+    ''');
   }
 
   bool _shouldOpenExternally(Uri uri) {
@@ -409,6 +443,10 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     if (host == 'kauth.kakao.com' ||
         host == 'accounts.kakao.com' ||
         host.endsWith('.kakao.com')) {
+      return true;
+    }
+
+    if (host == 'appleid.apple.com') {
       return true;
     }
 
@@ -1277,6 +1315,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final controller = _controller;
+    final topInset = MediaQuery.viewPaddingOf(context).top;
     if (controller == null) {
       return const Scaffold(
         backgroundColor: Colors.white,
@@ -1294,11 +1333,18 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         backgroundColor: Colors.white,
         body: Stack(
           children: [
-            Positioned.fill(child: WebViewWidget(controller: controller)),
+            Positioned(
+              top: topInset,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: WebViewWidget(controller: controller),
+            ),
             if (_showNativeLogin)
               NativeLoginScreen(
                 isLoading: _authInProgress,
                 onKakaoPressed: _startKakaoNativeLogin,
+                onApplePressed: () => _startNativeOAuth('apple'),
                 onGooglePressed: () => _startNativeOAuth('google'),
                 onEmailPressed: () {
                   setState(() {
@@ -1439,12 +1485,14 @@ class NativeLoginScreen extends StatelessWidget {
     super.key,
     required this.isLoading,
     required this.onKakaoPressed,
+    required this.onApplePressed,
     required this.onGooglePressed,
     required this.onEmailPressed,
   });
 
   final bool isLoading;
   final VoidCallback onKakaoPressed;
+  final VoidCallback onApplePressed;
   final VoidCallback onGooglePressed;
   final VoidCallback onEmailPressed;
 
@@ -1514,6 +1562,19 @@ class NativeLoginScreen extends StatelessWidget {
                 enabled: !isLoading,
                 icon: const _KakaoLoginSymbol(size: 20),
                 onPressed: onKakaoPressed,
+              ),
+              const SizedBox(height: 12),
+              _LoginButton(
+                label: 'Apple로 계속하기',
+                backgroundColor: const Color(0xFF111111),
+                foregroundColor: Colors.white,
+                enabled: !isLoading,
+                icon: const Icon(
+                  Icons.apple,
+                  size: 20,
+                  color: Colors.white,
+                ),
+                onPressed: onApplePressed,
               ),
               const SizedBox(height: 12),
               _LoginButton(

@@ -34,3 +34,4 @@
 |--------|------|------------|
 | **Kakao Developers** | 카카오 로그인 / JS SDK | https://developers.kakao.com/console |
 | **Google Cloud Console** | 구글 OAuth | https://console.cloud.google.com |
+| **Apple Developer** | Sign in with Apple / App IDs / Keys | https://developer.apple.com/account/ |

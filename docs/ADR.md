@@ -4,6 +4,30 @@
 
 ---
 
+## 2026-04-29 | iOS 심사 대응을 위해 Apple 로그인을 앱과 웹에 함께 노출한다
+
+- **결정**: 로그인 수단에 Sign in with Apple을 추가한다. 웹 로그인 페이지와 Flutter 앱의 `/login` 네이티브 오버레이 모두에서 Apple 버튼을 노출하고, Apple 로그인은 기존 Supabase OAuth + `gijilai://auth/callback` 딥링크 handoff 경로를 재사용한다. 카카오는 기존처럼 Kakao SDK 앱투앱 + `/auth/native-session` 경로를 우선 유지한다.
+- **이유**: 현재 앱은 Kakao/Google 같은 제3자 로그인을 주 계정 인증에 사용하므로 App Store Review Guidelines 4.8 리스크가 있다. 기존 OAuth/딥링크 구조를 재사용하면 native Apple SDK와 entitlement를 새로 붙이지 않고도 앱과 웹 양쪽에서 일관된 Apple 로그인 동선을 빠르게 제공할 수 있다.
+- **대안**: Apple 로그인을 웹에만 추가 — iOS 앱의 네이티브 로그인 오버레이에는 Apple 선택지가 보이지 않아 심사 대응이 약해 기각. Flutter에 Sign in with Apple 네이티브 SDK를 새로 붙여 ID 토큰을 `/auth/native-session`으로 교환 — 장기적으로 가능하지만 외부 설정과 entitlement 범위가 커 이번 심사 대응 범위로는 과하므로 보류.
+
+---
+
+## 2026-04-29 | 앱 WebView safe area는 웹 CSS와 Flutter native inset을 함께 사용한다
+
+- **결정**: 홈을 포함한 앱 WebView 화면의 상단/하단 고정 UI는 CSS `env(safe-area-inset-top/bottom)`만 단독으로 쓰지 않고, Flutter 쉘이 WebView에 주입하는 `--native-safe-area-top`, `--native-safe-area-bottom` 값을 함께 사용한다. Next.js viewport에는 `viewport-fit=cover`를 명시한다.
+- **이유**: iOS WebView에서는 기기/상태에 따라 CSS safe area env 값이 0으로 떨어져 헤더와 탭바가 상태바, 홈 인디케이터와 겹칠 수 있다. 웹이 브라우저 표준 inset과 앱 쉘이 측정한 native inset 둘 다 읽으면 Safari/웹뷰 간 차이를 흡수하면서 레이아웃을 안정화할 수 있다.
+- **대안**: CSS `env(...)`만 유지 — iOS 앱에서 상단 액션바 겹침이 재발할 수 있어 기각. Flutter `SafeArea`로 WebView 전체를 감싸기 — 웹 내부 sticky/fixed UI의 상하 inset 정보를 직접 해결하지 못해 기각.
+
+---
+
+## 2026-04-29 | iOS Fastlane은 로컬 App Store Connect API 키를 자동 탐색한다
+
+- **결정**: `gijilai_app/fastlane/Fastfile`의 `deploy_testflight`와 `deploy_appstore` lane은 `APP_STORE_CONNECT_API_KEY_PATH`, `/tmp/gijilai_app_store_connect_api_key.json`, `nodtry` 프로젝트의 공유 키 설정 순으로 App Store Connect API 키를 자동 탐색해 사용한다. iOS 스크린샷 디렉터리가 비어 있으면 `deploy_appstore`는 스크린샷 업로드를 건너뛴다.
+- **이유**: 기존 저장소는 iOS 업로드 문서는 있었지만 lane 자체에는 인증 연결이 없어, 같은 개발 머신에서도 매번 수동 명령 조합을 다시 수행해야 했다. 재사용 가능한 로컬 키 경로를 Fastlane이 직접 인식하게 만들면 TestFlight/App Store 제출 준비 절차가 저장소 기준으로 재현 가능해진다. 빈 스크린샷 디렉터리 때문에 제출 lane이 불필요하게 깨지는 것도 방지해야 했다.
+- **대안**: API 키 경로를 매번 환경변수로만 강제 — 문서 의존성이 커지고 같은 머신의 재사용성이 떨어져 기각. 저장소에 키 JSON을 커밋 — 비밀정보 관리 원칙에 어긋나므로 기각. 스크린샷이 없으면 무조건 실패 — 기존 App Store Connect 자산을 유지하는 제출까지 막게 되어 운영성이 떨어져 기각.
+
+---
+
 ## 2026-04-29 | Android 배포는 build number 기준 출시노트를 자동 생성한다
 
 - **결정**: Android Fastlane 배포(`deploy_internal`, `deploy_production`)는 `pubspec.yaml` build number를 증가시킨 직후, `fastlane/release_notes/android/ko-KR.txt`와 `en-US.txt`를 읽어 Play Console 표준 경로인 `fastlane/metadata/android/<locale>/changelogs/<versionCode>.txt`를 자동 생성한다. 프로덕션 배포 진입점은 `release_production` lane과 `scripts/deploy_android_production.sh`로 제공한다.

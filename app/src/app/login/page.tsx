@@ -29,9 +29,31 @@ function GoogleLoginSymbol() {
     );
 }
 
+function AppleLoginSymbol() {
+    return (
+        <svg width="20" height="20" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+            <path
+                fill="currentColor"
+                d="M11.182.008c-.748-.086-1.508.313-2.036.953-.495.598-.848 1.488-.736 2.362.82.064 1.62-.337 2.12-.952.49-.593.85-1.485.652-2.363ZM13.72 12.42c-.3.69-.655 1.326-1.067 1.91-.562.8-1.022 1.804-1.92 1.804-.807 0-1.016-.513-1.94-.513-.923 0-1.162.498-1.94.528-.866.033-1.526-.87-2.093-1.667-1.15-1.62-2.03-4.57-.85-6.62.585-1.02 1.63-1.665 2.766-1.682.769-.014 1.495.53 1.94.53.443 0 1.277-.654 2.152-.558.366.015 1.394.148 2.054 1.113-.053.033-1.226.717-1.214 2.141.014 1.7 1.49 2.264 1.506 2.271-.013.039-.235.8-.694 1.743Z"
+            />
+        </svg>
+    );
+}
+
 export default function LoginPage() {
     const { t } = useLocale();
-    const { user, signInWithGoogle, signInWithKakao, signInWithEmail, signUpWithEmail, isLoadingGoogle, isLoadingKakao, isLoadingEmail } = useAuth();
+    const {
+        user,
+        signInWithApple,
+        signInWithGoogle,
+        signInWithKakao,
+        signInWithEmail,
+        signUpWithEmail,
+        isLoadingApple,
+        isLoadingGoogle,
+        isLoadingKakao,
+        isLoadingEmail,
+    } = useAuth();
     const router = useRouter();
 
     const [showEmailLogin, setShowEmailLogin] = useState(false);
@@ -109,6 +131,22 @@ export default function LoginPage() {
                             <KakaoLoginSymbol />
                         )}
                         {isLoadingKakao ? t('auth.loggingIn') : t('auth.continueWithKakao')}
+                    </button>
+
+                    <button
+                        onClick={() => {
+                            trackEvent('login_attempt', { provider: 'apple' });
+                            signInWithApple();
+                        }}
+                        disabled={isLoadingApple}
+                        className="w-full bg-black text-white py-4 rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 transition-all active:scale-[0.98]"
+                    >
+                        {isLoadingApple ? (
+                            <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                        ) : (
+                            <AppleLoginSymbol />
+                        )}
+                        {isLoadingApple ? t('auth.loggingIn') : t('auth.continueWithApple')}
                     </button>
 
                     <button

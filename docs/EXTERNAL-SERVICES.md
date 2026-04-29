@@ -23,6 +23,7 @@
 | KG 이니시스 | 국내 카드 PG | 한국 카드 결제 | [ADMIN-LINKS.md](ADMIN-LINKS.md) |
 | Kakao Developers | 카카오 로그인 / 공유 | 소셜 로그인, 공유 SDK | [ADMIN-LINKS.md](ADMIN-LINKS.md) |
 | Google Cloud Console | Google OAuth | 구글 로그인 | [ADMIN-LINKS.md](ADMIN-LINKS.md) |
+| Apple Developer | Sign in with Apple / App IDs | Apple 로그인, App Store 로그인 요구사항 | [ADMIN-LINKS.md](ADMIN-LINKS.md) |
 | GitHub | 소스 저장소 / 협업 | 코드 저장, 배포 연계 | [ADMIN-LINKS.md](ADMIN-LINKS.md) |
 
 ## 서비스별 상세
@@ -145,6 +146,15 @@
 - **운영 포인트**
 - 승인된 리디렉션 URI와 Supabase 설정을 함께 맞춰야 함
 
+### Apple Developer
+
+- **역할**: Sign in with Apple OAuth 및 App ID/Service ID 설정
+- **코드 접점**: `app/src/components/auth/AuthProvider.tsx`, `app/src/app/login/page.tsx`, `gijilai_app/lib/main.dart`
+- **운영 포인트**
+- Supabase Auth의 Apple provider에 Team ID, Service ID, Key ID, private key를 연결해야 함
+- Apple 로그인은 `https://gijilai.com/auth/callback`, `gijilai://auth/callback` 리다이렉트 경로와 함께 검증해야 함
+- iOS App Store 심사에서 제3자 로그인(Google/Kakao)을 유지할 경우 Sign in with Apple 제공 여부를 함께 확인해야 함
+
 ### Supabase Auth Redirect URLs
 
 - **역할**: 웹/앱 OAuth 완료 후 돌아올 URL 허용 목록
@@ -173,6 +183,7 @@
 - Supabase
 - Kakao Developers
 - Google Cloud Console
+- Apple Developer
 
 ### 분석/모니터링
 

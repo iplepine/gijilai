@@ -1,3 +1,6 @@
+require "json"
+require "fileutils"
+
 default_platform(:android)
 
 # ─────────────────────────────────────────────
@@ -14,6 +17,9 @@ ANDROID_RELEASE_NOTE_SOURCES = {
   "en-US" => "en-US.txt",
 }.freeze
 
+DEFAULT_APP_STORE_CONNECT_API_KEY_JSON = "/tmp/gijilai_app_store_connect_api_key.json"
+SHARED_APP_STORE_CONNECT_API_KEY_CONFIG = "/Users/basil/Projects/flutter/nodtry/ios/fastlane/api_key.json"
+
 def read_pubspec_version_info
   pubspec_path = File.join(FLUTTER_DIR, "pubspec.yaml")
   pubspec = File.read(pubspec_path)
@@ -27,6 +33,43 @@ def read_pubspec_version_info
     marketing_version: version_match[1],
     build_number: version_match[2].to_i,
   }
+end
+
+def ensure_app_store_connect_api_key_path
+  env_path = ENV["APP_STORE_CONNECT_API_KEY_PATH"]
+  return env_path if env_path && File.exist?(env_path)
+
+  return DEFAULT_APP_STORE_CONNECT_API_KEY_JSON if File.exist?(DEFAULT_APP_STORE_CONNECT_API_KEY_JSON)
+  return build_shared_app_store_connect_api_key_json if File.exist?(SHARED_APP_STORE_CONNECT_API_KEY_CONFIG)
+
+  UI.user_error!("Missing App Store Connect API key. Set APP_STORE_CONNECT_API_KEY_PATH or follow docs/deployment/ios/README.md.")
+end
+
+def build_shared_app_store_connect_api_key_json
+  config_dir = File.dirname(SHARED_APP_STORE_CONNECT_API_KEY_CONFIG)
+  config = JSON.parse(File.read(SHARED_APP_STORE_CONNECT_API_KEY_CONFIG))
+  key_path = File.expand_path(config.fetch("key_filepath"), config_dir)
+
+  UI.user_error!("Missing App Store Connect private key: #{key_path}") unless File.exist?(key_path)
+
+  key_json = {
+    "key_id" => config.fetch("key_id"),
+    "issuer_id" => config.fetch("issuer_id"),
+    "key" => File.read(key_path),
+  }
+
+  File.write(DEFAULT_APP_STORE_CONNECT_API_KEY_JSON, JSON.generate(key_json))
+  File.chmod(0o600, DEFAULT_APP_STORE_CONNECT_API_KEY_JSON)
+  UI.message("Prepared temporary App Store Connect API key JSON: #{DEFAULT_APP_STORE_CONNECT_API_KEY_JSON}")
+
+  DEFAULT_APP_STORE_CONNECT_API_KEY_JSON
+end
+
+def ios_screenshots_available?
+  screenshots_dir = File.join(__dir__, "screenshots", "ios")
+  return false unless Dir.exist?(screenshots_dir)
+
+  Dir.glob(File.join(screenshots_dir, "**", "*.{png,jpg,jpeg}")).any?
 end
 
 # ─────────────────────────────────────────────
@@ -304,8 +347,10 @@ platform :ios do
   desc "App Store Connect에 업로드 (TestFlight)"
   lane :deploy_testflight do
     build
+    api_key_path = ensure_app_store_connect_api_key_path
     upload_to_testflight(
       ipa: IOS_IPA_PATH,
+      api_key_path: api_key_path,
       skip_waiting_for_build_processing: true,
     )
   end
@@ -313,18 +358,28 @@ platform :ios do
   desc "App Store 프로덕션 제출"
   lane :deploy_appstore do
     build
-    deliver(
+    api_key_path = ensure_app_store_connect_api_key_path
+    deliver_options = {
       ipa: IOS_IPA_PATH,
+      api_key_path: api_key_path,
       submit_for_review: true,
       automatic_release: false,
       force: true,
       metadata_path: "./fastlane/metadata/ios",
-      screenshots_path: "./fastlane/screenshots/ios",
       app_identifier: PACKAGE_NAME,
       privacy_url: "https://gijilai.com/legal/privacy",
       support_url: "https://gijilai.com/legal/support",
       marketing_url: "https://gijilai.com",
-    )
+    }
+
+    if ios_screenshots_available?
+      deliver_options[:screenshots_path] = "./fastlane/screenshots/ios"
+    else
+      deliver_options[:skip_upload_screenshots] = true
+      UI.important("No iOS screenshots found in fastlane/screenshots/ios. Skipping screenshot upload.")
+    end
+
+    deliver(**deliver_options)
   end
 
   desc "스크린샷 + 빌드 + TestFlight 한번에"

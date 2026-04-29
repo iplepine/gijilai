@@ -21,7 +21,7 @@ import { Icon } from '@/components/ui/Icon';
 import { Button } from '@/components/ui/Button';
 import { MedicalDisclaimer } from '@/components/ui/MedicalDisclaimer';
 import { trackEvent } from '@/lib/analytics';
-import { db } from '@/lib/db';
+import { db, type ChildProfile, type ReportData, type SurveyData } from '@/lib/db';
 import { TemperamentScorer } from '@/lib/TemperamentScorer';
 import { TemperamentClassifier } from '@/lib/TemperamentClassifier';
 import { TCI_TERMINOLOGY } from '@/constants/terminology';
@@ -29,6 +29,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { supabase } from '@/lib/supabase';
 import { useLocale } from '@/i18n/LocaleProvider';
 import { childNamePossessive, normalizeChildNameParticlesInValue } from '@/lib/koreanUtils';
+import { extractReportScores, isTemperamentScores, parseAnswerMap } from '@/lib/home';
 import {
   asChildAiReport,
   asHarmonyAiReport,
@@ -65,7 +66,7 @@ function ReportContent() {
   const { user } = useAuth();
   const { t, locale } = useLocale();
   const [activeTab, setActiveTab] = useState<ReportTab>('child');
-  const { intake, cbqResponses, atqResponses, parentingResponses, selectedChildId } = useAppStore();
+  const { intake, setIntake, cbqResponses, atqResponses, parentingResponses, selectedChildId } = useAppStore();
 
   const [childAiReport, setChildAiReport] = useState<ChildAiReport | null>(null);
   const [parentAiReport, setParentAiReport] = useState<ParentAiReport | null>(null);
@@ -79,6 +80,10 @@ function ReportContent() {
   // DB에서 로드된 {t('common.points')}수 데이터 (상세 보기용)
   const [savedChildScores, setSavedChildScores] = useState<TemperamentScores | null>(null);
   const [savedParentScores, setSavedParentScores] = useState<TemperamentScores | null>(null);
+  const [children, setChildren] = useState<ChildProfile[]>([]);
+  const [reports, setReports] = useState<ReportData[]>([]);
+  const [surveys, setSurveys] = useState<SurveyData[]>([]);
+  const reportId = searchParams.get('id');
 
   useEffect(() => {
     if (tabParam === 'parent') {
@@ -99,9 +104,92 @@ function ReportContent() {
     });
   }, [user]);
 
-  const reportId = searchParams.get('id');
+  useEffect(() => {
+    if (!user || reportId) return;
+
+    let isActive = true;
+
+    db.getDashboardData(user.id)
+      .then((data) => {
+        if (!isActive) return;
+        setChildren(data.children);
+        setReports(data.reports);
+        setSurveys(data.surveys);
+      })
+      .catch((error) => {
+        console.error('Failed to load report dashboard context:', error);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [reportId, user]);
+
   const showPremiumCta = !!user && !hasSubscription;
-  const childName = intake.childName || t('report.child');
+  const currentChild = useMemo(() => {
+    if (children.length === 0) return null;
+    if (selectedChildId) {
+      const matchedChild = children.find((child) => child.id === selectedChildId);
+      if (matchedChild) return matchedChild;
+    }
+    return children[0] ?? null;
+  }, [children, selectedChildId]);
+
+  useEffect(() => {
+    if (reportId || !currentChild) return;
+
+    setIntake({
+      childName: currentChild.name,
+      gender: currentChild.gender,
+      birthDate: currentChild.birth_date,
+    });
+  }, [currentChild, reportId, setIntake]);
+
+  const currentChildReport = useMemo(() => {
+    if (!currentChild) return null;
+    return reports.find((report) => report.type === 'CHILD' && report.child_id === currentChild.id) ?? null;
+  }, [currentChild, reports]);
+
+  const currentChildSurvey = useMemo(() => {
+    if (!currentChild) return null;
+    return surveys.find((survey) => survey.type === 'CHILD' && survey.child_id === currentChild.id) ?? null;
+  }, [currentChild, surveys]);
+
+  const currentParentReport = useMemo(() => {
+    return reports.find((report) => report.type === 'PARENT') ?? null;
+  }, [reports]);
+
+  const currentParentSurvey = useMemo(() => {
+    return surveys.find((survey) => survey.type === 'PARENT') ?? null;
+  }, [surveys]);
+
+  const currentChildReportScores = useMemo(
+    () => extractReportScores(currentChildReport?.analysis_json),
+    [currentChildReport?.analysis_json],
+  );
+  const currentChildSurveyScores = useMemo(
+    () => (isTemperamentScores(currentChildSurvey?.scores) ? currentChildSurvey.scores : null),
+    [currentChildSurvey?.scores],
+  );
+  const currentChildSurveyAnswers = useMemo(
+    () => parseAnswerMap(currentChildSurvey?.answers),
+    [currentChildSurvey?.answers],
+  );
+
+  const currentParentReportScores = useMemo(
+    () => extractReportScores(currentParentReport?.analysis_json),
+    [currentParentReport?.analysis_json],
+  );
+  const currentParentSurveyScores = useMemo(
+    () => (isTemperamentScores(currentParentSurvey?.scores) ? currentParentSurvey.scores : null),
+    [currentParentSurvey?.scores],
+  );
+  const currentParentSurveyAnswers = useMemo(
+    () => parseAnswerMap(currentParentSurvey?.answers),
+    [currentParentSurvey?.answers],
+  );
+
+  const childName = currentChild?.name || intake.childName || t('report.child');
   const childPossessiveName = locale === 'ko' ? childNamePossessive(childName) : childName;
 
   const normalizeReportTextForName = useCallback(<T,>(report: T, name?: string | null): T => {
@@ -205,11 +293,25 @@ function ReportContent() {
 
         if (data.type === 'CHILD') {
           setChildAiReport(normalizeReportTextForName(asChildAiReport(data.analysis_json), childData?.name));
-          setSavedChildScores((surveyData?.scores as TemperamentScores | null) ?? null);
+          setSavedChildScores(
+            extractReportScores(data.analysis_json)
+            || (isTemperamentScores(surveyData?.scores) ? surveyData.scores : null)
+            || (() => {
+              const surveyAnswers = parseAnswerMap(surveyData?.answers);
+              return surveyAnswers ? TemperamentScorer.calculate(CHILD_QUESTIONS, surveyAnswers) : null;
+            })()
+          );
           setActiveTab('child');
         } else if (data.type === 'PARENT') {
           setParentAiReport(asParentAiReport(data.analysis_json));
-          setSavedParentScores((surveyData?.scores as TemperamentScores | null) ?? null);
+          setSavedParentScores(
+            extractReportScores(data.analysis_json)
+            || (isTemperamentScores(surveyData?.scores) ? surveyData.scores : null)
+            || (() => {
+              const surveyAnswers = parseAnswerMap(surveyData?.answers);
+              return surveyAnswers ? TemperamentScorer.calculate(PARENT_QUESTIONS, surveyAnswers) : null;
+            })()
+          );
           setActiveTab('parent');
         } else if (data.type === 'HARMONY') {
           setHarmonyAiReport(normalizeReportTextForName(asHarmonyAiReport(data.analysis_json), childData?.name));
@@ -270,10 +372,11 @@ function ReportContent() {
   const [childReportId, setChildReportId] = useState<string | null>(null);
 
   const fetchReport = useCallback(async (payload: ReportApiPayload): Promise<ReportApiResult | null> => {
+    const resolvedChildId = currentChild?.id ?? selectedChildId;
     const res = await fetch('/api/llm/report', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...payload, intake, childId: selectedChildId })
+      body: JSON.stringify({ ...payload, intake, childId: resolvedChildId })
     });
     if (!res.ok) {
       const errBody = await res.json().catch(() => ({}));
@@ -291,17 +394,23 @@ function ReportContent() {
     }
 
     return { report: data.report, reportId: data.reportId, createdAt: data.createdAt };
-  }, [intake, isValidReport, selectedChildId]);
+  }, [currentChild?.id, intake, isValidReport, selectedChildId]);
 
   const childScores = useMemo(() => {
     if (savedChildScores) return savedChildScores;
+    if (currentChildReportScores) return currentChildReportScores;
+    if (currentChildSurveyScores) return currentChildSurveyScores;
+    if (currentChildSurveyAnswers) return TemperamentScorer.calculate(CHILD_QUESTIONS, currentChildSurveyAnswers);
     return TemperamentScorer.calculate(CHILD_QUESTIONS, cbqResponses);
-  }, [cbqResponses, savedChildScores]);
+  }, [cbqResponses, currentChildReportScores, currentChildSurveyAnswers, currentChildSurveyScores, savedChildScores]);
 
   const parentScores = useMemo(() => {
     if (savedParentScores) return savedParentScores;
+    if (currentParentReportScores) return currentParentReportScores;
+    if (currentParentSurveyScores) return currentParentSurveyScores;
+    if (currentParentSurveyAnswers) return TemperamentScorer.calculate(PARENT_QUESTIONS, currentParentSurveyAnswers);
     return TemperamentScorer.calculate(PARENT_QUESTIONS, atqResponses);
-  }, [atqResponses, savedParentScores]);
+  }, [atqResponses, currentParentReportScores, currentParentSurveyAnswers, currentParentSurveyScores, savedParentScores]);
 
   const styleScores = useMemo<ParentingStyleScores>(() => {
     const scores = { Efficacy: 0, Autonomy: 0, Responsiveness: 0 };
@@ -325,32 +434,46 @@ function ReportContent() {
   }, [parentingResponses]);
 
   const childType = useMemo(() => TemperamentClassifier.analyzeChild(childScores), [childScores]);
+  const childAnswerMap = currentChildSurveyAnswers ?? cbqResponses;
+  const parentAnswerMap = currentParentSurveyAnswers ?? atqResponses;
 
   const isStyleSurveyComplete = useMemo(() => {
     return PARENTING_STYLE_QUESTIONS.every(q => !!parentingResponses[q.id.toString()]);
   }, [parentingResponses]);
 
   const parentType = useMemo(() => TemperamentClassifier.analyzeParent(parentScores), [parentScores]);
-  const isParentSurveyComplete = useMemo(() => Object.keys(atqResponses).length >= PARENT_QUESTIONS.length, [atqResponses]);
 
   const isChildSurveyComplete = useMemo(() => {
-    return Object.keys(cbqResponses).length > 0 || !!savedChildScores;
-  }, [cbqResponses, savedChildScores]);
+    return !!savedChildScores
+      || !!currentChildReportScores
+      || !!currentChildSurveyScores
+      || !!currentChildSurveyAnswers
+      || Object.keys(cbqResponses).length > 0;
+  }, [cbqResponses, currentChildReportScores, currentChildSurveyAnswers, currentChildSurveyScores, savedChildScores]);
+
+  const hasParentScores = useMemo(() => {
+    return !!savedParentScores
+      || !!currentParentReportScores
+      || !!currentParentSurveyScores
+      || !!currentParentSurveyAnswers
+      || Object.keys(atqResponses).length > 0;
+  }, [atqResponses, currentParentReportScores, currentParentSurveyAnswers, currentParentSurveyScores, savedParentScores]);
+  const isParentSurveyComplete = hasParentScores;
 
   const generateChildAIReport = useCallback(async (refresh = false) => {
     if (generatingRef.current.has('CHILD')) return;
     generatingRef.current.add('CHILD');
     setIsGenerating(true);
     try {
-      const answers = Object.entries(cbqResponses).map(([id, score]) => ({ questionId: id, score: score as number }));
+      const answers = Object.entries(childAnswerMap).map(([id, score]) => ({ questionId: id, score: score as number }));
       const result = await fetchReport({
-        userName: intake.childName || '아이',
+        userName: childName || '아이',
         scores: childScores, type: 'CHILD', answers,
         refresh,
         childType: { label: childType.label, keywords: childType.keywords, desc: childType.desc }
       });
       if (result) {
-        setChildAiReport(normalizeReportTextForName(asChildAiReport(result.report), intake.childName));
+        setChildAiReport(normalizeReportTextForName(asChildAiReport(result.report), childName));
         if (result.reportId) setChildReportId(result.reportId);
         setReportDates(prev => ({ ...prev, child: result.createdAt }));
       }
@@ -361,14 +484,14 @@ function ReportContent() {
       generatingRef.current.delete('CHILD');
       setIsGenerating(generatingRef.current.size > 0);
     }
-  }, [cbqResponses, childScores, childType.desc, childType.keywords, childType.label, fetchReport, intake.childName, normalizeReportTextForName, t]);
+  }, [childAnswerMap, childName, childScores, childType.desc, childType.keywords, childType.label, fetchReport, normalizeReportTextForName, t]);
 
   const generateParentAIReport = useCallback(async (refresh = false) => {
     if (generatingRef.current.has('PARENT')) return;
     generatingRef.current.add('PARENT');
     setIsGenerating(true);
     try {
-      const answers = Object.entries(atqResponses).map(([id, score]) => ({ questionId: id, score: score as number }));
+      const answers = Object.entries(parentAnswerMap).map(([id, score]) => ({ questionId: id, score: score as number }));
       const result = await fetchReport({
         userName: '양육자',
         scores: parentScores, type: 'PARENT', answers,
@@ -386,7 +509,7 @@ function ReportContent() {
       generatingRef.current.delete('PARENT');
       setIsGenerating(generatingRef.current.size > 0);
     }
-  }, [atqResponses, fetchReport, parentScores, parentType.keywords, parentType.label, t]);
+  }, [fetchReport, parentAnswerMap, parentScores, parentType.keywords, parentType.label, t]);
 
   const generateHarmonyAIReport = useCallback(async (refresh = false) => {
     if (generatingRef.current.has('HARMONY')) return;
@@ -394,19 +517,19 @@ function ReportContent() {
     setIsGenerating(true);
     try {
       const answers = [
-        ...Object.entries(cbqResponses),
-        ...Object.entries(atqResponses),
+        ...Object.entries(childAnswerMap),
+        ...Object.entries(parentAnswerMap),
         ...Object.entries(parentingResponses)
       ].map(([id, score]) => ({ questionId: id, score: score as number }));
       const result = await fetchReport({
-        userName: intake.childName || '아이',
+        userName: childName || '아이',
         scores: childScores, parentScores, type: 'HARMONY', answers,
         isPreview: false, refresh, styleScores,
         childType: { label: childType.label, keywords: childType.keywords },
         parentType: { label: parentType.label, keywords: parentType.keywords }
       });
       if (result) {
-        setHarmonyAiReport(normalizeReportTextForName(asHarmonyAiReport(result.report), intake.childName));
+        setHarmonyAiReport(normalizeReportTextForName(asHarmonyAiReport(result.report), childName));
         setReportDates(prev => ({ ...prev, parenting: result.createdAt }));
       }
     } catch (error) {
@@ -416,23 +539,25 @@ function ReportContent() {
       generatingRef.current.delete('HARMONY');
       setIsGenerating(generatingRef.current.size > 0);
     }
-  }, [atqResponses, cbqResponses, childScores, childType.keywords, childType.label, fetchReport, intake.childName, normalizeReportTextForName, parentScores, parentType.keywords, parentType.label, parentingResponses, styleScores, t]);
+  }, [childAnswerMap, childName, childScores, childType.keywords, childType.label, fetchReport, normalizeReportTextForName, parentAnswerMap, parentScores, parentType.keywords, parentType.label, parentingResponses, styleScores, t]);
 
   // 아이 진단 탭: 리포트 없으면 자동 생성 (서버가 캐시/생성 분기)
   useEffect(() => {
-    const hasCbq = Object.keys(cbqResponses).length > 0 || !!savedChildScores;
+    const hasCbq = Object.keys(childAnswerMap).length > 0
+      || !!savedChildScores
+      || !!currentChildReportScores
+      || !!currentChildSurveyScores;
     if (!isGenerating && !reportId && hasCbq && !childAiReport) {
       void generateChildAIReport();
     }
-  }, [cbqResponses, childAiReport, generateChildAIReport, isGenerating, reportId, savedChildScores]);
+  }, [childAiReport, childAnswerMap, currentChildReportScores, currentChildSurveyScores, generateChildAIReport, isGenerating, reportId, savedChildScores]);
 
   // 양육자 탭 진입 시 자동 생성
   useEffect(() => {
-    const hasAtq = Object.keys(atqResponses).length > 0 || !!savedParentScores;
-    if (activeTab === 'parent' && !isGenerating && !reportId && hasAtq && !parentAiReport) {
+    if (activeTab === 'parent' && !isGenerating && !reportId && hasParentScores && !parentAiReport) {
       void generateParentAIReport();
     }
-  }, [activeTab, atqResponses, generateParentAIReport, isGenerating, parentAiReport, reportId, savedParentScores]);
+  }, [activeTab, generateParentAIReport, hasParentScores, isGenerating, parentAiReport, reportId]);
 
   // 기질맞춤양육 탭 진입 시 자동 생성
   useEffect(() => {

@@ -18,6 +18,9 @@
   --accent-soil: #e8e4d9;
   --caregiver: #4A6E5A;
   --child: #E5A150;
+  --native-safe-area-bottom: 0px;
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: max(env(safe-area-inset-bottom, 0px), var(--native-safe-area-bottom));
 }
 
 /*
@@ -189,10 +192,14 @@ body {
 }
 
 .app-top-bar {
-  padding-top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
+  padding-top: calc(var(--safe-area-top) + 0.75rem);
   padding-bottom: 0.75rem;
 }
 
 .app-top-bar-inner {
   min-height: 2.25rem;
+}
+
+.app-bottom-nav {
+  padding-bottom: calc(var(--safe-area-bottom) + 2rem);
 }
