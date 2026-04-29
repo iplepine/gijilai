@@ -21,8 +21,8 @@ export function HomeHeader({
     const trial = userCreatedAt ? db.getTrialStatus(userCreatedAt) : null;
 
     return (
-        <header className="sticky top-0 z-40 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-xl pt-12 pb-4 border-b border-gray-100 dark:border-gray-800">
-            <div className="flex items-center justify-between min-h-[40px] px-4">
+        <header className="app-top-bar sticky top-0 z-40 border-b border-gray-100 bg-background-light/80 backdrop-blur-xl dark:border-gray-800 dark:bg-background-dark/80">
+            <div className="app-top-bar-inner flex items-center justify-between px-4">
                 <div className="flex items-center gap-3">
                     <Image src="/gijilai_icon.png" alt={t('common.appName')} width={28} height={28} className="rounded-lg object-contain" />
                     <span className="text-xl font-logo tracking-wide text-primary dark:text-white pt-0.5">{t('common.appName')}</span>

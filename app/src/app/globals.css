@@ -187,3 +187,12 @@ body {
 .floating-label {
   filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.05));
 }
+
+.app-top-bar {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
+  padding-bottom: 0.75rem;
+}
+
+.app-top-bar-inner {
+  min-height: 2.25rem;
+}
