@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-04-29 | iOS Fastlane은 로컬 App Store Connect API 키를 자동 탐색한다
+
+- **결정**: `gijilai_app/fastlane/Fastfile`의 `deploy_testflight`와 `deploy_appstore` lane은 `APP_STORE_CONNECT_API_KEY_PATH`, `/tmp/gijilai_app_store_connect_api_key.json`, `nodtry` 프로젝트의 공유 키 설정 순으로 App Store Connect API 키를 자동 탐색해 사용한다. iOS 스크린샷 디렉터리가 비어 있으면 `deploy_appstore`는 스크린샷 업로드를 건너뛴다.
+- **이유**: 기존 저장소는 iOS 업로드 문서는 있었지만 lane 자체에는 인증 연결이 없어, 같은 개발 머신에서도 매번 수동 명령 조합을 다시 수행해야 했다. 재사용 가능한 로컬 키 경로를 Fastlane이 직접 인식하게 만들면 TestFlight/App Store 제출 준비 절차가 저장소 기준으로 재현 가능해진다. 빈 스크린샷 디렉터리 때문에 제출 lane이 불필요하게 깨지는 것도 방지해야 했다.
+- **대안**: API 키 경로를 매번 환경변수로만 강제 — 문서 의존성이 커지고 같은 머신의 재사용성이 떨어져 기각. 저장소에 키 JSON을 커밋 — 비밀정보 관리 원칙에 어긋나므로 기각. 스크린샷이 없으면 무조건 실패 — 기존 App Store Connect 자산을 유지하는 제출까지 막게 되어 운영성이 떨어져 기각.
+
+---
+
 ## 2026-04-29 | Android 배포는 build number 기준 출시노트를 자동 생성한다
 
 - **결정**: Android Fastlane 배포(`deploy_internal`, `deploy_production`)는 `pubspec.yaml` build number를 증가시킨 직후, `fastlane/release_notes/android/ko-KR.txt`와 `en-US.txt`를 읽어 Play Console 표준 경로인 `fastlane/metadata/android/<locale>/changelogs/<versionCode>.txt`를 자동 생성한다. 프로덕션 배포 진입점은 `release_production` lane과 `scripts/deploy_android_production.sh`로 제공한다.

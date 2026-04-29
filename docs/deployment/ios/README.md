@@ -22,6 +22,14 @@
 
 ## TestFlight 업로드 절차
 
+현재 `fastlane ios deploy_testflight` / `fastlane ios deploy_appstore` lane은 아래 순서로 App Store Connect API Key를 찾는다.
+
+1. `APP_STORE_CONNECT_API_KEY_PATH` 환경변수
+2. `/tmp/gijilai_app_store_connect_api_key.json`
+3. `nodtry` 프로젝트의 `/Users/basil/Projects/flutter/nodtry/ios/fastlane/api_key.json` + `.p8` 키를 읽어 임시 JSON 자동 생성
+
+즉, 같은 머신에서 `nodtry` 키가 이미 있으면 별도 Fastlane 수정 없이 lane 자체로 업로드를 시도할 수 있다.
+
 1. IPA를 먼저 만든다.
 
 ```sh
@@ -64,6 +72,8 @@ rm -f /tmp/gijilai_app_store_connect_api_key.json
 
 ## 참고
 
-- `fastlane ios deploy_testflight` lane은 현재 내부 빌드 단계에서 CocoaPods 체크가 실패할 수 있다. 이 경우 위 절차처럼 `flutter build ipa`를 직접 실행한 뒤 `upload_to_testflight`만 호출한다.
+- `fastlane ios deploy_testflight` lane은 App Store Connect API Key를 자동 탐색해서 `upload_to_testflight`에 전달한다. 키를 못 찾으면 명확한 에러로 중단된다.
+- `fastlane ios deploy_appstore` lane은 `fastlane/screenshots/ios`에 스크린샷이 없으면 스크린샷 업로드를 건너뛴다. 첫 제출이거나 App Store Connect에 스크린샷이 아직 없다면 별도로 준비해야 한다.
+- `fastlane ios deploy_testflight` lane에서 내부 빌드 단계의 CocoaPods/Xcode 환경 문제가 나면 위 절차처럼 `flutter build ipa`를 직접 실행한 뒤 `upload_to_testflight`만 호출한다.
 - 업로드 성공 후 App Store Connect에서 빌드 처리가 완료되기까지 몇 분 걸릴 수 있다.
 - 새 빌드를 올릴 때는 `gijilai_app/pubspec.yaml`의 build number를 이전 TestFlight 빌드보다 높여야 한다.
