@@ -24,7 +24,7 @@ declare global {
 type PayMethodOption = 'KCP_CARD' | 'INICIS_CARD';
 
 const PRICES = {
-  MONTHLY: { KRW: 12000, USD: 1199 },
+  MONTHLY: { KRW: 12000, USD: 999 },
   // [연 구독] 신뢰 확보 후 재활성화 예정 — 환불 산식/갱신 알림 구현 필요
   // YEARLY: { KRW: 89000, USD: 8999 },
 };

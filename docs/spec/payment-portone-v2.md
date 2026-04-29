@@ -145,7 +145,7 @@ create policy "Service role can manage payments."
 
 | 상품 | 한국 (KRW) | 글로벌 (USD) | 상품 코드 |
 |------|-----------|-------------|----------|
-| 월 구독 | 12,000원 | $11.99 (1199센트) | `subscription_monthly` |
+| 월 구독 | 12,000원 | $9.99 (999센트) | `subscription_monthly` |
 | 연 구독 | 89,000원 | $89.99 (8999센트) | `subscription_yearly` |
 
 ### 5.2 무료/유료 기능 매트릭스
@@ -212,7 +212,7 @@ locale 결정 순서:
   ↓
 [서버] 포트원 서버 SDK로 빌링키 결제 실행
   paymentId: `sub_${userId}_${timestamp}`
-  amount: plan === 'MONTHLY' ? (locale === 'ko' ? 9900 : 999) : (locale === 'ko' ? 79000 : 7999)
+  amount: plan === 'MONTHLY' ? (locale === 'ko' ? 12000 : 999) : (locale === 'ko' ? 89000 : 8999)
   currency: locale === 'ko' ? 'KRW' : 'USD'
   ↓ 결제 성공
 [서버] subscriptions INSERT (status: ACTIVE, period 계산)
@@ -532,9 +532,9 @@ async function getActiveSubscription(userId: string): Promise<Subscription | nul
 │                                             │
 │  ┌─────────────┐  ┌─────────────┐           │
 │  │  월 구독     │  │  연 구독     │           │
-│  │  ₩9,900/월  │  │  ₩79,000/년 │           │
-│  │             │  │  ₩6,580/월  │           │
-│  │             │  │  33% 할인    │           │
+│  │ ₩12,000/월  │  │  ₩89,000/년 │           │
+│  │             │  │  ₩7,417/월  │           │
+│  │             │  │  38% 할인    │           │
 │  │  [구독하기]  │  │  [구독하기]  │           │
 │  └─────────────┘  └─────────────┘           │
 │                                             │
@@ -549,7 +549,7 @@ async function getActiveSubscription(userId: string): Promise<Subscription | nul
 ```
 
 글로벌(en) 버전:
-- 가격: $11.99/month, $89.99/year ($7.50/month)
+- 가격: $9.99/month, $89.99/year ($7.50/month)
 - 건별 옵션 숨김
 - 텍스트 영문
 
@@ -568,13 +568,13 @@ async function getActiveSubscription(userId: string): Promise<Subscription | nul
 │                                             │
 │  현재 플랜: 월 구독 (ACTIVE)                  │
 │  다음 결제일: 2026-04-25                     │
-│  결제 금액: ₩9,900                           │
+│  결제 금액: ₩12,000                          │
 │                                             │
 │  [구독 해지]                                 │
 │  해지해도 2026-04-25까지 이용 가능합니다       │
 │                                             │
 │  ── 결제 이력 ──                             │
-│  2026-03-25  ₩9,900  월 구독  카드 · ****1234 성공 │
+│  2026-03-25  ₩12,000 월 구독  카드 · ****1234 성공 │
 │  2026-03-20  ₩990    리포트   성공           │
 │                                             │
 └─────────────────────────────────────────────┘
@@ -642,7 +642,7 @@ CRON_SECRET 환경 변수.
 ## 17. 정책 변경
 
 ### 신규 정책
-- 구독 플랜: MONTHLY (₩12,000/$11.99), YEARLY (₩89,000/$89.99)
+- 구독 플랜: MONTHLY (₩12,000/$9.99), YEARLY (₩89,000/$89.99)
 - 구독 해지: 즉시 해지 아닌 기간 만료 해지 (cancelled_at 방식)
 - 갱신 실패 유예: 3일간 재시도, 3회 실패 시 만료
 - 무료 상담 제한: 월 2회
