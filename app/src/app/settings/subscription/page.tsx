@@ -315,12 +315,23 @@ export default function SubscriptionPage() {
                         disabled={reactivating}
                         className="mt-2"
                       >
-                        {reactivating ? t('pricing.processing') : t('settings.reactivateSubscription')}
+                        {reactivating ? t('pricing.processing') : t('settings.resubscribe')}
                       </Button>
                     ) : (
-                      <p className="text-xs text-text-sub bg-beige-main/20 p-3 rounded-xl">
-                        {t('settings.reactivateStoreNotice')}
-                      </p>
+                      <div className="space-y-2">
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          fullWidth
+                          onClick={() => openStoreManagementDialog(subscription.source)}
+                          className="mt-2"
+                        >
+                          {t('settings.resubscribe')}
+                        </Button>
+                        <p className="text-xs text-text-sub bg-beige-main/20 p-3 rounded-xl">
+                          {t('settings.reactivateStoreNotice')}
+                        </p>
+                      </div>
                     )}
                   </div>
                 ) : (

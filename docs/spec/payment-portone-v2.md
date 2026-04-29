@@ -582,6 +582,8 @@ async function getActiveSubscription(userId: string): Promise<Subscription | nul
 
 결제 이력은 `payments.pay_method`, `pg_provider`, `metadata.paymentMethod`를 이용해 결제수단을 표시한다. 카드 전체 번호는 저장하지 않으며, PortOne이 반환한 마스킹 카드번호(`method.card.number`)가 있을 때만 표시한다.
 
+해지예약(`cancelled_at` 존재) 상태에서는 구독 관리 화면에 `다시 구독` 버튼을 노출한다. 현재 웹 PORTONE 구독의 `다시 구독`은 신규 결제를 다시 만드는 것이 아니라 `/api/payment/reactivate-subscription`으로 해지 예약을 취소하는 동작이다.
+
 ## 14. 정기결제 Cron
 
 ### 14.1 실행 방식

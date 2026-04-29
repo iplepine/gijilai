@@ -276,7 +276,7 @@ export default function PricingPage() {
             </p>
             {existingSubscription.source === 'PORTONE' ? (
               <Button variant="primary" onClick={handleReactivate} disabled={reactivating}>
-                {reactivating ? t('pricing.processing') : t('settings.reactivateSubscription')}
+                {reactivating ? t('pricing.processing') : t('settings.resubscribe')}
               </Button>
             ) : (
               <p className="text-xs text-text-sub bg-white dark:bg-surface-dark rounded-xl p-3">

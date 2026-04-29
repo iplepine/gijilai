@@ -407,6 +407,7 @@
     "cancelGooglePlayDescription": "Google Play subscriptions can be cancelled from the Play Store subscription management screen.",
     "openStoreSubscriptions": "Open Store",
     "reactivateSubscription": "Keep subscription",
+    "resubscribe": "Subscribe Again",
     "reactivateSuccess": "Cancellation has been removed. Your subscription will continue.",
     "reactivateError": "An error occurred while keeping your subscription.",
     "reactivateStoreNotice": "App Store and Play Store subscriptions can be reactivated from each store's subscription management screen.",
