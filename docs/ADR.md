@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-04-29 | iOS 앱은 iPhone only 대상으로 제출한다
+
+- **결정**: iOS `Runner` 타깃의 `TARGETED_DEVICE_FAMILY`를 `1`로 제한하고, `Info.plist`의 `UISupportedInterfaceOrientations~ipad` 선언을 제거한다. App Store Connect 메타데이터와 스크린샷 준비도 iPhone 규격만 유지한다.
+- **이유**: 현재 기질아이 앱 UI는 WebView 기반의 휴대폰 폭 레이아웃(`max-w-md` 중심)에 맞춰 설계되어 있어, iPad에서는 실행은 가능해도 태블릿 최적화 경험을 제공하지 못한다. 이번 심사에서는 지원하지 않는 폼팩터를 열어두기보다 iPhone 사용성에 집중하는 편이 안전하다.
+- **대안**: iPad 지원을 유지한 채 심사 진행 — iPad 스크린샷과 사용성 검증 범위가 늘고, 중앙 정렬된 휴대폰 UI 그대로 노출될 가능성이 높아 기각. iPad 전용 반응형 레이아웃을 먼저 구현 — 장기적으로 가능하지만 이번 출시 준비 범위를 넘어 보류.
+
+---
+
 ## 2026-04-29 | iOS 심사 대응을 위해 Apple 로그인을 앱과 웹에 함께 노출한다
 
 - **결정**: 로그인 수단에 Sign in with Apple을 추가한다. 웹 로그인 페이지와 Flutter 앱의 `/login` 네이티브 오버레이 모두에서 Apple 버튼을 노출하고, Apple 로그인은 기존 Supabase OAuth + `gijilai://auth/callback` 딥링크 handoff 경로를 재사용한다. 카카오는 기존처럼 Kakao SDK 앱투앱 + `/auth/native-session` 경로를 우선 유지한다.
@@ -33,6 +41,14 @@
 - **결정**: Android Fastlane 배포(`deploy_internal`, `deploy_production`)는 `pubspec.yaml` build number를 증가시킨 직후, `fastlane/release_notes/android/ko-KR.txt`와 `en-US.txt`를 읽어 Play Console 표준 경로인 `fastlane/metadata/android/<locale>/changelogs/<versionCode>.txt`를 자동 생성한다. 프로덕션 배포 진입점은 `release_production` lane과 `scripts/deploy_android_production.sh`로 제공한다.
 - **이유**: 프로덕션 배포가 가능해진 시점부터 내부 테스트와 운영 배포 모두에서 build number와 출시노트 파일명이 어긋나지 않아야 한다. 출시노트 원본을 언어별 단일 파일로 두고 배포 시점에 버전별 changelog를 렌더링하면, 운영자가 한글/영문 문구를 한 곳에서 수정하면서도 Play Console 업로드 규칙을 자동으로 맞출 수 있다.
 - **대안**: 배포 때마다 `metadata/android/.../changelogs/<versionCode>.txt`를 수동 생성 — build number와 파일명을 자주 맞춰야 해 실수 가능성이 높아 기각. 릴리즈 노트를 Fastfile 코드에 직접 하드코딩 — 문구 수정 때 코드 변경 범위가 커지고 운영성이 떨어져 기각.
+
+---
+
+## 2026-04-29 | 앱 구독 가격은 한국 12,000원 / 미국 9.99달러로 운영
+
+- **결정**: 앱 구독 기준 가격을 한국 `₩12,000/월`, 미국 `USD $9.99/월`로 운영한다. App Store Connect와 코드 상수, 운영 문서를 이 기준으로 통일한다.
+- **이유**: 한국은 기존 웹 가격과 맞춰 사용자 혼선을 줄이고, 미국은 App Store 자동 환산 시 한국 가격이 과도하게 올라가는 문제를 피하면서 진입 장벽을 낮추기 위해 `USD 9.99`를 기준가로 채택한다.
+- **대안**: `USD 11.99` 유지 — 한국 storefront를 별도 수동 조정해야 하고, 문서/코드/스토어 가격 정합성을 유지하기 번거로워 기각.
 
 ---
 

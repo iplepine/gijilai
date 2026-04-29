@@ -17,7 +17,7 @@
 
 | 상품 | 한국 (KRW) | 글로벌 (USD) |
 |------|-----------|-------------|
-| 월 구독 | 12,000원/월 | $11.99/month |
+| 월 구독 | 12,000원/월 | $9.99/month |
 
 > 가격 상수: `app/src/lib/portone.ts` `PRICE_TABLE`, `app/src/app/pricing/page.tsx` `PRICES`
 

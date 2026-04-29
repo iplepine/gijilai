@@ -88,6 +88,90 @@ https://gijilai.com/legal/privacy
 
 ---
 
+## App Store 영문 등록정보 (복붙용)
+
+기준 로케일: `English (U.S.)`
+
+### App Information
+
+### Name (30 chars)
+```text
+Gijilai
+```
+
+### Subtitle (30 chars)
+```text
+Parenting Guide by Temperament
+```
+
+### Primary Category
+- **Lifestyle**
+
+### Secondary Category
+- **Education**
+
+### Content Rights
+- **Yes** — the app has the necessary rights for content it includes, displays, or accesses
+
+### Privacy Policy URL
+```text
+https://gijilai.com/legal/privacy
+```
+
+### Version Information
+
+### Promotional Text (170 chars)
+```text
+30% off your first month! Understand your child's temperament and get personalized AI parenting guidance.
+```
+
+### Description (4000 chars)
+```text
+Do you really understand your child?
+
+Gijilai uses scientific temperament analysis to help parents understand their child's innate traits and receive personalized parenting guidance.
+
+Key Features
+
+• Scientific Temperament Analysis
+Analyze your child's activity level, regularity, approach, adaptability, intensity, mood, attention, persistence, and sensitivity.
+
+• Premium Reports
+Get detailed reports tailored to your child's temperament type, including strengths, caution points, and practical parenting tips.
+
+• AI Heart Interpreter
+Ask everyday parenting questions and get personalized AI guidance grounded in your child's temperament.
+
+• Practice Tracking
+Save the advice you received and build small parenting changes into daily routines.
+
+Premium Subscription
+• Unlimited premium reports
+• Unlimited AI consultations
+• Full practice history
+• No reassessment cooldown
+• 30% off your first month
+
+Contact: devhohouse@gmail.com
+```
+
+### Keywords (100 chars)
+```text
+temperament test,parenting guide,child personality,child behavior,AI parenting,parent tips
+```
+
+### Support URL
+```text
+https://gijilai.com/legal/support
+```
+
+### Marketing URL
+```text
+https://gijilai.com
+```
+
+---
+
 ## Fastlane 사용법
 
 ### 초기 설정
@@ -195,6 +279,8 @@ gijilai_app/
 
 ### 스크린샷 규격
 
+- 현재 iOS 릴리스 타깃은 **iPhone only** 이다. App Store Connect의 iPad 스크린샷/미리보기는 준비하지 않는다.
+
 | 플랫폼 | 해상도 |
 |--------|--------|
 | Google Play | 16:9 또는 9:16, 320~3840px |
@@ -275,6 +361,7 @@ gijilai_app/
 - [x] 개인정보 처리방침 URL
 - [x] 이용약관 URL
 - [x] 스토어 메타데이터 (fastlane/metadata/ios)
+- [x] iPhone only 타깃 (`TARGETED_DEVICE_FAMILY = 1`)
 - [ ] App Store Connect 앱 등록
 - [x] 앱 아이콘 1024x1024 (store-assets/icon_1024.png)
 - [ ] 스크린샷 (fastlane ios screenshots)

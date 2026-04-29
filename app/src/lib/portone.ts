@@ -10,7 +10,7 @@ function getPortone() {
 }
 
 export const PRICE_TABLE = {
-  subscription_monthly: { KRW: 12000, USD: 1199 },
+  subscription_monthly: { KRW: 12000, USD: 999 },
   // [연 구독] 신뢰 확보 후 재활성화 예정 — 환불 산식/갱신 알림 구현 필요
   // subscription_yearly: { KRW: 89000, USD: 8999 },
 } as const;
