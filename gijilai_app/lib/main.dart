@@ -448,6 +448,10 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       return true;
     }
 
+    if (host == 'appleid.apple.com') {
+      return true;
+    }
+
     return host.contains('supabase.co') &&
         path.startsWith('/auth/v1/authorize');
   }
@@ -1335,6 +1339,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
               NativeLoginScreen(
                 isLoading: _authInProgress,
                 onKakaoPressed: _startKakaoNativeLogin,
+                onApplePressed: () => _startNativeOAuth('apple'),
                 onGooglePressed: () => _startNativeOAuth('google'),
                 onEmailPressed: () {
                   setState(() {
@@ -1475,12 +1480,14 @@ class NativeLoginScreen extends StatelessWidget {
     super.key,
     required this.isLoading,
     required this.onKakaoPressed,
+    required this.onApplePressed,
     required this.onGooglePressed,
     required this.onEmailPressed,
   });
 
   final bool isLoading;
   final VoidCallback onKakaoPressed;
+  final VoidCallback onApplePressed;
   final VoidCallback onGooglePressed;
   final VoidCallback onEmailPressed;
 
@@ -1550,6 +1557,19 @@ class NativeLoginScreen extends StatelessWidget {
                 enabled: !isLoading,
                 icon: const _KakaoLoginSymbol(size: 20),
                 onPressed: onKakaoPressed,
+              ),
+              const SizedBox(height: 12),
+              _LoginButton(
+                label: 'Apple로 계속하기',
+                backgroundColor: const Color(0xFF111111),
+                foregroundColor: Colors.white,
+                enabled: !isLoading,
+                icon: const Icon(
+                  Icons.apple,
+                  size: 20,
+                  color: Colors.white,
+                ),
+                onPressed: onApplePressed,
               ),
               const SizedBox(height: 12),
               _LoginButton(

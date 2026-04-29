@@ -11,18 +11,22 @@ declare global {
             postMessage: (message: string) => void;
         };
         __authLoadingDone?: () => void;
-        __startNativeOAuthProvider?: (provider: 'google' | 'kakao') => Promise<void>;
+        __startNativeOAuthProvider?: (provider: 'google' | 'kakao' | 'apple') => Promise<void>;
     }
 }
+
+type SocialOAuthProvider = 'google' | 'kakao' | 'apple';
 
 interface AuthContextType {
     session: Session | null;
     user: User | null;
     loading: boolean;
+    signInWithApple: () => Promise<void>;
     signInWithGoogle: () => Promise<void>;
     signInWithKakao: () => Promise<void>;
     signInWithEmail: (email: string, password: string) => Promise<void>;
     signUpWithEmail: (email: string, password: string) => Promise<void>;
+    isLoadingApple: boolean;
     isLoadingGoogle: boolean;
     isLoadingKakao: boolean;
     isLoadingEmail: boolean;
@@ -74,12 +78,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return () => subscription.unsubscribe();
     }, []);
 
+    const [isLoadingApple, setIsLoadingApple] = useState(false);
     const [isLoadingGoogle, setIsLoadingGoogle] = useState(false);
     const [isLoadingKakao, setIsLoadingKakao] = useState(false);
     const [isLoadingEmail, setIsLoadingEmail] = useState(false);
 
     const signInWithOAuthProvider = useCallback(async (
-        provider: 'google' | 'kakao',
+        provider: SocialOAuthProvider,
         setProviderLoading: (loading: boolean) => void,
         options?: {
             scopes?: string;
@@ -114,6 +119,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }, []);
 
+    const signInWithApple = useCallback(async () => {
+        await signInWithOAuthProvider('apple', setIsLoadingApple);
+    }, [signInWithOAuthProvider]);
+
     const signInWithGoogle = useCallback(async () => {
         await signInWithOAuthProvider('google', setIsLoadingGoogle);
     }, [signInWithOAuthProvider]);
@@ -126,6 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         window.__authLoadingDone = () => {
+            setIsLoadingApple(false);
             setIsLoadingGoogle(false);
             setIsLoadingKakao(false);
         };
@@ -135,6 +145,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 await signInWithKakao();
                 return;
             }
+            if (provider === 'apple') {
+                await signInWithApple();
+                return;
+            }
             await signInWithGoogle();
         };
 
@@ -142,7 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             window.__authLoadingDone = undefined;
             window.__startNativeOAuthProvider = undefined;
         };
-    }, [signInWithGoogle, signInWithKakao]);
+    }, [signInWithApple, signInWithGoogle, signInWithKakao]);
 
     const signInWithEmail = async (email: string, password: string) => {
         setIsLoadingEmail(true);
@@ -185,10 +199,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             session,
             user,
             loading,
+            signInWithApple,
             signInWithGoogle,
             signInWithKakao,
             signInWithEmail,
             signUpWithEmail,
+            isLoadingApple,
             isLoadingGoogle,
             isLoadingKakao,
             isLoadingEmail,

@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-04-29 | iOS 심사 대응을 위해 Apple 로그인을 앱과 웹에 함께 노출한다
+
+- **결정**: 로그인 수단에 Sign in with Apple을 추가한다. 웹 로그인 페이지와 Flutter 앱의 `/login` 네이티브 오버레이 모두에서 Apple 버튼을 노출하고, Apple 로그인은 기존 Supabase OAuth + `gijilai://auth/callback` 딥링크 handoff 경로를 재사용한다. 카카오는 기존처럼 Kakao SDK 앱투앱 + `/auth/native-session` 경로를 우선 유지한다.
+- **이유**: 현재 앱은 Kakao/Google 같은 제3자 로그인을 주 계정 인증에 사용하므로 App Store Review Guidelines 4.8 리스크가 있다. 기존 OAuth/딥링크 구조를 재사용하면 native Apple SDK와 entitlement를 새로 붙이지 않고도 앱과 웹 양쪽에서 일관된 Apple 로그인 동선을 빠르게 제공할 수 있다.
+- **대안**: Apple 로그인을 웹에만 추가 — iOS 앱의 네이티브 로그인 오버레이에는 Apple 선택지가 보이지 않아 심사 대응이 약해 기각. Flutter에 Sign in with Apple 네이티브 SDK를 새로 붙여 ID 토큰을 `/auth/native-session`으로 교환 — 장기적으로 가능하지만 외부 설정과 entitlement 범위가 커 이번 심사 대응 범위로는 과하므로 보류.
+
+---
+
 ## 2026-04-29 | 앱 WebView safe area는 웹 CSS와 Flutter native inset을 함께 사용한다
 
 - **결정**: 홈을 포함한 앱 WebView 화면의 상단/하단 고정 UI는 CSS `env(safe-area-inset-top/bottom)`만 단독으로 쓰지 않고, Flutter 쉘이 WebView에 주입하는 `--native-safe-area-top`, `--native-safe-area-bottom` 값을 함께 사용한다. Next.js viewport에는 `viewport-fit=cover`를 명시한다.

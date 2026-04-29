@@ -281,6 +281,7 @@ gijilai_app/
 - [ ] 연령 등급 설문
 - [ ] 앱 개인정보 보호 선언
 - [ ] iOS 구독 상품 생성
+- [ ] Sign in with Apple provider 설정 (Apple Developer + Supabase Auth)
 - [ ] `APPLE_IAP_JWT` 환경변수
 - [ ] App Store Server Notifications V2 → `/api/payment/iap/apple-notifications` 연결
 - [ ] Appfile에 apple_id, team_id 설정
