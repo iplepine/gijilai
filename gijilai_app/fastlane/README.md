@@ -55,6 +55,22 @@ Google Play 내부 테스트 트랙에 업로드
 
 Google Play 프로덕션 배포
 
+### android update_release_notes
+
+```sh
+[bundle exec] fastlane android update_release_notes
+```
+
+현재 pubspec build number 기준 Android 출시노트 changelog 갱신
+
+### android release_production
+
+```sh
+[bundle exec] fastlane android release_production
+```
+
+Google Play 프로덕션 릴리스
+
 ### android release
 
 ```sh

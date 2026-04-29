@@ -7,6 +7,27 @@ APP_NAME = "기질아이"
 PACKAGE_NAME = "com.devho.gijilai"
 FLUTTER_DIR = File.expand_path("..", __dir__)
 IOS_IPA_PATH = File.join(FLUTTER_DIR, "build", "ios", "ipa", "gijilai.ipa")
+ANDROID_RELEASE_NOTES_DIR = File.join(__dir__, "release_notes", "android")
+
+ANDROID_RELEASE_NOTE_SOURCES = {
+  "ko-KR" => "ko-KR.txt",
+  "en-US" => "en-US.txt",
+}.freeze
+
+def read_pubspec_version_info
+  pubspec_path = File.join(FLUTTER_DIR, "pubspec.yaml")
+  pubspec = File.read(pubspec_path)
+  version_match = pubspec.match(/^version:\s*(\d+\.\d+\.\d+)\+(\d+)\s*$/)
+
+  UI.user_error!("pubspec.yaml version must use <major>.<minor>.<patch>+<build> format") unless version_match
+
+  {
+    pubspec_path: pubspec_path,
+    pubspec: pubspec,
+    marketing_version: version_match[1],
+    build_number: version_match[2].to_i,
+  }
+end
 
 # ─────────────────────────────────────────────
 # Android
@@ -15,23 +36,40 @@ platform :android do
 
   desc "pubspec.yaml Android build number 자동 증가"
   private_lane :bump_pubspec_build_number do
-    pubspec_path = File.join(FLUTTER_DIR, "pubspec.yaml")
-    pubspec = File.read(pubspec_path)
-    version_match = pubspec.match(/^version:\s*(\d+\.\d+\.\d+)\+(\d+)\s*$/)
-
-    UI.user_error!("pubspec.yaml version must use <major>.<minor>.<patch>+<build> format") unless version_match
-
-    marketing_version = version_match[1]
-    current_build_number = version_match[2].to_i
+    version_info = read_pubspec_version_info
+    marketing_version = version_info[:marketing_version]
+    current_build_number = version_info[:build_number]
     next_build_number = current_build_number + 1
     next_version = "#{marketing_version}+#{next_build_number}"
 
     File.write(
-      pubspec_path,
-      pubspec.sub(/^version:\s*#{Regexp.escape(marketing_version)}\+#{current_build_number}\s*$/, "version: #{next_version}")
+      version_info[:pubspec_path],
+      version_info[:pubspec].sub(/^version:\s*#{Regexp.escape(marketing_version)}\+#{current_build_number}\s*$/, "version: #{next_version}")
     )
 
     UI.success("Android build number bumped: #{marketing_version}+#{current_build_number} → #{next_version}")
+  end
+
+  desc "Google Play Android 출시노트 changelog 파일 생성"
+  private_lane :prepare_android_release_notes do |options|
+    build_number = options[:build_number] || read_pubspec_version_info[:build_number]
+
+    ANDROID_RELEASE_NOTE_SOURCES.each do |locale, source_name|
+      source_path = File.join(ANDROID_RELEASE_NOTES_DIR, source_name)
+      UI.user_error!("Missing Android release notes source: #{source_path}") unless File.exist?(source_path)
+
+      content = File.read(source_path).strip
+      UI.user_error!("Android release notes source is empty: #{source_path}") if content.empty?
+
+      changelog_dir = File.join(__dir__, "metadata", "android", locale, "changelogs")
+      FileUtils.mkdir_p(changelog_dir)
+
+      changelog_path = File.join(changelog_dir, "#{build_number}.txt")
+      File.write(changelog_path, "#{content}\n")
+      UI.message("Prepared Android #{locale} release notes: #{changelog_path}")
+    end
+
+    UI.success("Android release notes prepared for build #{build_number}")
   end
 
   desc "Flutter 빌드 → AAB (App Bundle)"
@@ -165,6 +203,7 @@ platform :android do
   desc "Google Play 내부 테스트 트랙에 업로드"
   lane :deploy_internal do
     bump_pubspec_build_number
+    prepare_android_release_notes(build_number: read_pubspec_version_info[:build_number])
     build
     upload_to_play_store(
       package_name: PACKAGE_NAME,
@@ -180,13 +219,27 @@ platform :android do
   desc "Google Play 프로덕션 배포"
   lane :deploy_production do
     bump_pubspec_build_number
+    prepare_android_release_notes(build_number: read_pubspec_version_info[:build_number])
     build
     upload_to_play_store(
       package_name: PACKAGE_NAME,
       track: "production",
       aab: "#{FLUTTER_DIR}/build/app/outputs/bundle/release/app-release.aab",
       json_key: ENV["GOOGLE_PLAY_JSON_KEY_PATH"],
+      skip_upload_metadata: false,
+      skip_upload_images: false,
+      skip_upload_screenshots: false,
     )
+  end
+
+  desc "현재 pubspec build number 기준 Android 출시노트 changelog 갱신"
+  lane :update_release_notes do
+    prepare_android_release_notes(build_number: read_pubspec_version_info[:build_number])
+  end
+
+  desc "Google Play 프로덕션 릴리스"
+  lane :release_production do
+    deploy_production
   end
 
   desc "스크린샷 + 메타데이터 + 빌드 + 업로드 한번에"

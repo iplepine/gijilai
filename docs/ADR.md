@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-04-29 | Android 배포는 build number 기준 출시노트를 자동 생성한다
+
+- **결정**: Android Fastlane 배포(`deploy_internal`, `deploy_production`)는 `pubspec.yaml` build number를 증가시킨 직후, `fastlane/release_notes/android/ko-KR.txt`와 `en-US.txt`를 읽어 Play Console 표준 경로인 `fastlane/metadata/android/<locale>/changelogs/<versionCode>.txt`를 자동 생성한다. 프로덕션 배포 진입점은 `release_production` lane과 `scripts/deploy_android_production.sh`로 제공한다.
+- **이유**: 프로덕션 배포가 가능해진 시점부터 내부 테스트와 운영 배포 모두에서 build number와 출시노트 파일명이 어긋나지 않아야 한다. 출시노트 원본을 언어별 단일 파일로 두고 배포 시점에 버전별 changelog를 렌더링하면, 운영자가 한글/영문 문구를 한 곳에서 수정하면서도 Play Console 업로드 규칙을 자동으로 맞출 수 있다.
+- **대안**: 배포 때마다 `metadata/android/.../changelogs/<versionCode>.txt`를 수동 생성 — build number와 파일명을 자주 맞춰야 해 실수 가능성이 높아 기각. 릴리즈 노트를 Fastfile 코드에 직접 하드코딩 — 문구 수정 때 코드 변경 범위가 커지고 운영성이 떨어져 기각.
+
+---
+
 ## 2026-04-29 | 스토어 재구독 CTA는 목적 중심 문구로 표기
 
 - **결정**: 해지 예약 상태에서 `APPLE_IAP`/`GOOGLE_PLAY` 구독 재개 CTA 라벨을 `스토어 열기`에서 `다시 구독하기`로 변경한다. 클릭 동작은 그대로 각 스토어 구독 관리 화면 이동을 유지한다.

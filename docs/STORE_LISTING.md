@@ -104,8 +104,10 @@ bundle install
 | `bundle exec fastlane android screenshots` | 에뮬레이터에서 스크린샷 캡처 |
 | `bundle exec fastlane android metadata` | 스토어 메타데이터 생성 |
 | `bundle exec fastlane android build` | AAB 빌드 |
+| `bundle exec fastlane android update_release_notes` | 현재 build number 기준 Android 출시노트 changelog 생성 |
 | `bundle exec fastlane android deploy_internal` | 내부 테스트 트랙 업로드 |
 | `bundle exec fastlane android deploy_production` | 프로덕션 배포 |
+| `bundle exec fastlane android release_production` | Android 프로덕션 릴리스 진입 lane |
 | `bundle exec fastlane android release` | 스크린샷+메타데이터+빌드+업로드 한번에 |
 | `bundle exec fastlane ios screenshots` | 시뮬레이터에서 스크린샷 캡처 |
 | `bundle exec fastlane ios build` | IPA 빌드 |
@@ -124,31 +126,53 @@ bundle install
 
 ---
 
+### Android 프로덕션 배포 메모
+
+- 프로덕션 배포 스크립트: `gijilai_app/scripts/deploy_android_production.sh`
+- 출시노트 동기화 스크립트: `gijilai_app/scripts/update_android_release_notes.sh`
+- 출시노트 원본:
+  - `gijilai_app/fastlane/release_notes/android/ko-KR.txt`
+  - `gijilai_app/fastlane/release_notes/android/en-US.txt`
+- `deploy_internal` / `deploy_production`은 build number를 올린 뒤 `fastlane/metadata/android/<locale>/changelogs/<versionCode>.txt`를 자동 생성한다.
+- Play Console에 올릴 문구를 바꾸려면 원본 파일 두 개만 수정하면 된다.
+
+---
+
 ## 파일 구조
 
-```
-gijilai_app/fastlane/
-├── Fastfile                          # Fastlane 자동화 스크립트
-├── Appfile                           # 앱 식별자 설정
-├── metadata/
-│   ├── android/
-│   │   ├── ko/
-│   │   │   ├── title.txt             # 앱 이름 (30자)
-│   │   │   ├── short_description.txt # 간단한 설명 (80자)
-│   │   │   └── full_description.txt  # 자세한 설명 (4000자)
-│   │   └── en-US/
-│   │       ├── title.txt
-│   │       ├── short_description.txt
-│   │       └── full_description.txt
-│   └── ios/
-│       └── ko/
-│           ├── name.txt              # 앱 이름
-│           ├── subtitle.txt          # 부제
-│           ├── description.txt       # 설명
-│           ├── keywords.txt          # 검색 키워드
-│           ├── promotional_text.txt  # 프로모션 텍스트
-│           ├── privacy_url.txt
-│           ├── support_url.txt
+``` 
+gijilai_app/
+├── scripts/
+│   ├── deploy_android_production.sh   # Android 프로덕션 배포 스크립트
+│   └── update_android_release_notes.sh # Android 출시노트 changelog 생성 스크립트
+└── fastlane/
+    ├── Fastfile                        # Fastlane 자동화 스크립트
+    ├── Appfile                         # 앱 식별자 설정
+    ├── release_notes/
+    │   └── android/
+    │       ├── ko-KR.txt               # Android 출시노트 원본 (한국어)
+    │       └── en-US.txt               # Android 출시노트 원본 (영어)
+    ├── metadata/
+    │   ├── android/
+    │   │   ├── ko-KR/
+    │   │   │   ├── title.txt             # 앱 이름 (30자)
+    │   │   │   ├── short_description.txt # 간단한 설명 (80자)
+    │   │   │   ├── full_description.txt  # 자세한 설명 (4000자)
+    │   │   │   └── changelogs/           # 버전별 출시노트
+    │   │   └── en-US/
+    │   │       ├── title.txt
+    │   │       ├── short_description.txt
+    │   │       ├── full_description.txt
+    │   │       └── changelogs/
+    │   └── ios/
+    │       └── ko/
+    │           ├── name.txt              # 앱 이름
+    │           ├── subtitle.txt          # 부제
+    │           ├── description.txt       # 설명
+    │           ├── keywords.txt          # 검색 키워드
+    │           ├── promotional_text.txt  # 프로모션 텍스트
+    │           ├── privacy_url.txt
+    │           ├── support_url.txt
 │           └── marketing_url.txt
 └── screenshots/
     ├── android/                      # Android 스크린샷
