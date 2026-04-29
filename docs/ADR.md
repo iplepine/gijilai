@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-04-30 | iOS OAuth 콜드 스타트 딥링크는 AppDelegate에서 app_links로 직접 브리지한다
+
+- **결정**: iOS 앱은 Safari/외부 브라우저 OAuth 완료 후 `gijilai://auth/callback`으로 앱이 새로 시작될 수 있는 경로를 위해, `AppDelegate`에서 `launchOptions`의 초기 URL을 `app_links`에 직접 전달한다. `Info.plist`의 `FlutterDeepLinkingEnabled`는 `false`로 유지해 Flutter 기본 딥링크 처리와 충돌하지 않게 한다. Apple OAuth 요청에는 `name email` scope를 명시한다.
+- **이유**: 기존 구현은 앱이 이미 살아 있는 상태의 딥링크는 받았지만, 외부 브라우저에서 돌아오며 앱이 콜드 스타트되면 첫 callback URL이 Flutter까지 전달되지 않을 수 있었다. 이 경우 Apple/Google 같은 외부 OAuth만 로딩 상태에서 멈추거나 로그인 완료 후 세션 교환이 누락된다. 초기 URL을 네이티브에서 `app_links`로 직접 브리지하면 앱 시작 시점의 callback 유실을 막을 수 있다.
+- **대안**: Flutter 기본 딥링킹에만 의존 — `app_links`와 동일 스킴을 중복 처리하거나 콜드 스타트 callback을 놓칠 수 있어 기각. Apple 로그인만 별도 네이티브 SDK로 전면 교체 — 장기적으로는 가능하지만, 현재 문제의 직접 원인은 딥링크 handoff 안정성이라 수정 범위가 과도해 보류.
+
+---
+
 ## 2026-04-29 | iOS 앱은 iPhone only 대상으로 제출한다
 
 - **결정**: iOS `Runner` 타깃의 `TARGETED_DEVICE_FAMILY`를 `1`로 제한하고, `Info.plist`의 `UISupportedInterfaceOrientations~ipad` 선언을 제거한다. App Store Connect 메타데이터와 스크린샷 준비도 iPhone 규격만 유지한다.

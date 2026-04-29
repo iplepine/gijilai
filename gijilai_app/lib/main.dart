@@ -556,6 +556,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         queryParameters: {
           'provider': provider,
           'redirect_to': 'gijilai://auth/callback',
+          if (provider == 'apple') 'scopes': 'name email',
           if (provider == 'kakao') 'scopes': 'profile_nickname',
         },
       );
@@ -1569,11 +1570,7 @@ class NativeLoginScreen extends StatelessWidget {
                 backgroundColor: const Color(0xFF111111),
                 foregroundColor: Colors.white,
                 enabled: !isLoading,
-                icon: const Icon(
-                  Icons.apple,
-                  size: 20,
-                  color: Colors.white,
-                ),
+                icon: const Icon(Icons.apple, size: 20, color: Colors.white),
                 onPressed: onApplePressed,
               ),
               const SizedBox(height: 12),

@@ -120,7 +120,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const signInWithApple = useCallback(async () => {
-        await signInWithOAuthProvider('apple', setIsLoadingApple);
+        await signInWithOAuthProvider('apple', setIsLoadingApple, {
+            scopes: 'name email',
+        });
     }, [signInWithOAuthProvider]);
 
     const signInWithGoogle = useCallback(async () => {
