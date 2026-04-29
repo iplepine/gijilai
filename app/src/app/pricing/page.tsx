@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useLocale } from '@/i18n/LocaleProvider';
+import { getApiErrorMessage, readJsonResponse } from '@/lib/api';
 
 
 declare global {
@@ -42,6 +43,21 @@ type ExistingSubscriptionSummary = {
   cancelled_at: string | null;
   current_period_end: string;
 } | null;
+
+type SubscriptionBootstrapResponse = {
+  subscription?: ExistingSubscriptionSummary;
+  isFirstSubscription?: boolean;
+};
+
+function isSubscriptionSummary(value: unknown): value is Exclude<ExistingSubscriptionSummary, null> {
+  if (!value || typeof value !== 'object') return false;
+
+  const candidate = value as Record<string, unknown>;
+  return typeof candidate.id === 'string'
+    && (candidate.source === 'PORTONE' || candidate.source === 'APPLE_IAP' || candidate.source === 'GOOGLE_PLAY')
+    && (candidate.cancelled_at === null || typeof candidate.cancelled_at === 'string')
+    && typeof candidate.current_period_end === 'string';
+}
 
 function formatPrice(amount: number, curr: 'KRW' | 'USD'): string {
   if (curr === 'KRW') return `${amount.toLocaleString()}원`;
@@ -93,6 +109,7 @@ export default function PricingPage() {
   const [isFirstSubscription, setIsFirstSubscription] = useState(true);
   const [isApp, setIsApp] = useState(false);
   const [reactivating, setReactivating] = useState(false);
+  const [subscriptionLookupError, setSubscriptionLookupError] = useState('');
   const payMethod: PayMethodOption = 'INICIS_CARD';
 
   const getErrorMessage = (error: unknown) => error instanceof Error ? error.message : t('common.error');
@@ -106,13 +123,32 @@ export default function PricingPage() {
 
   useEffect(() => {
     if (!user) return;
-    fetch('/api/payment/subscription')
-      .then(res => res.json())
-      .then(data => {
-        if (data.subscription) setExistingSubscription(data.subscription);
-        if (data.isFirstSubscription !== undefined) setIsFirstSubscription(data.isFirstSubscription);
-      })
-      .catch(() => {});
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        setSubscriptionLookupError('');
+        const response = await fetch('/api/payment/subscription');
+        const data = await readJsonResponse<SubscriptionBootstrapResponse>(response);
+
+        if (!response.ok) {
+          throw new Error(getApiErrorMessage(data, t('common.error')));
+        }
+
+        if (cancelled) return;
+
+        setExistingSubscription(isSubscriptionSummary(data?.subscription) ? data.subscription : null);
+        setIsFirstSubscription(typeof data?.isFirstSubscription === 'boolean' ? data.isFirstSubscription : true);
+      } catch (error) {
+        if (cancelled) return;
+        console.error('Failed to load subscription state:', error);
+        setSubscriptionLookupError(getErrorMessage(error));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   // 앱 IAP: Flutter가 결과를 네이티브 SnackBar로 처리, 웹은 loading 해제만 담당
@@ -345,6 +381,14 @@ export default function PricingPage() {
         <Navbar title={t('pricing.title')} showBack />
 
         <div className="flex-1 overflow-y-auto px-5 pt-7 pb-32 space-y-6">
+          {subscriptionLookupError && (
+            <section className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-left">
+              <p className="text-sm font-semibold text-amber-900">{t('common.error')}</p>
+              <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                {subscriptionLookupError}
+              </p>
+            </section>
+          )}
           {/* Header */}
           <section className="text-center space-y-2">
             <h2 className="text-[19px] leading-[1.35] font-bold break-keep px-3">

@@ -9,6 +9,7 @@ import { trackEvent } from '@/lib/analytics';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { db } from '@/lib/db';
 import { useLocale } from '@/i18n/LocaleProvider';
+import { getApiErrorMessage, readJsonResponse } from '@/lib/api';
 
 declare global {
   interface PortOnePaymentResult {
@@ -232,9 +233,9 @@ export default function PaymentPage() {
         body: JSON.stringify({ paymentId }),
       });
 
-      const verifyData = await verifyRes.json();
+      const verifyData = await readJsonResponse<{ error?: string }>(verifyRes);
       if (!verifyRes.ok) {
-        throw new Error(verifyData.error || t('payment.paymentFailed', { message: '' }));
+        throw new Error(getApiErrorMessage(verifyData, t('payment.paymentFailed', { message: '' })));
       }
 
       // 쿠폰 사용 처리

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { invalidJsonResponse, isInvalidJsonBodyError, isNonEmptyString, parseJsonBody } from '@/lib/api';
 import { openai } from '@/lib/openai';
 import { createClient } from '@/lib/supabaseServer';
 import { getConsultModel } from '@/lib/consult-model';
@@ -38,6 +39,46 @@ type InitialQuestionRequest = {
     recentObservations?: ObservationRow[];
     sessionContext?: SessionContextPayload | null;
 };
+
+type InitialQuestionsResponse = {
+    empathy: string;
+    questions: Array<{
+        id: string;
+        text: string;
+        type: 'CHOICE' | 'TEXT';
+        options?: Array<{
+            id: string;
+            text: string;
+            freeText?: boolean;
+        }>;
+    }>;
+};
+
+function isInitialQuestionsResponse(value: unknown): value is InitialQuestionsResponse {
+    if (!value || typeof value !== 'object') return false;
+    const payload = value as Record<string, unknown>;
+    if (!isNonEmptyString(payload.empathy) || !Array.isArray(payload.questions)) return false;
+
+    return payload.questions.every((question) => {
+      if (!question || typeof question !== 'object') return false;
+      const candidate = question as Record<string, unknown>;
+      const validOptions = candidate.options === undefined || (
+        Array.isArray(candidate.options)
+        && candidate.options.every((option) => {
+          if (!option || typeof option !== 'object') return false;
+          const optionCandidate = option as Record<string, unknown>;
+          return isNonEmptyString(optionCandidate.id)
+            && isNonEmptyString(optionCandidate.text)
+            && (optionCandidate.freeText === undefined || typeof optionCandidate.freeText === 'boolean');
+        })
+      );
+
+      return isNonEmptyString(candidate.id)
+        && isNonEmptyString(candidate.text)
+        && (candidate.type === 'CHOICE' || candidate.type === 'TEXT')
+        && validOptions;
+    });
+}
 
 function getMagicWord(value: ConsultationRow['ai_prescription']): string | null {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
@@ -81,7 +122,7 @@ export async function POST(request: Request) {
       parentProfile,
       recentObservations,
       sessionContext,
-    } = (await request.json()) as InitialQuestionRequest;
+    } = await parseJsonBody<InitialQuestionRequest>(request);
 
     // 나이 계산
     let childAge = '';
@@ -193,6 +234,9 @@ ${(sessionContext.practices || []).map((p) => {
 
     const content = response.choices[0].message.content;
     const parsed = JSON.parse(content || '{"empathy": "", "questions": []}');
+    if (!isInitialQuestionsResponse(parsed)) {
+      throw new Error('INVALID_INITIAL_QUESTIONS_RESPONSE');
+    }
     await recordSubscriptionUsageEvent({
       userId: session.user.id,
       feature: 'AI_CONSULTATION',
@@ -205,6 +249,10 @@ ${(sessionContext.practices || []).map((p) => {
 
     return NextResponse.json(parsed);
   } catch (error) {
+    if (isInvalidJsonBodyError(error)) {
+      return invalidJsonResponse();
+    }
+
     console.error('Error generating initial questions:', error);
     return NextResponse.json(
       { error: 'Failed to generate questions' },

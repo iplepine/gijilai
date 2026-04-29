@@ -43,8 +43,12 @@ export async function GET(
       .eq('id', id)
       .single();
 
-    if (error || !data) {
+    if (error) {
       console.error('Shared report query error:', error);
+      return NextResponse.json({ error: 'Failed to load report' }, { status: 500 });
+    }
+
+    if (!data) {
       return NextResponse.json({ error: 'Report not found' }, { status: 404 });
     }
 

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { invalidJsonResponse, isInvalidJsonBodyError, parseJsonBody } from '@/lib/api';
 import {
   decodeJwsPayload,
   syncIapSubscription,
@@ -21,7 +22,7 @@ function mapAppleNotificationToStatus(notificationType: string) {
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    const body = await parseJsonBody<{ signedPayload?: string }>(req);
     const signedPayload = body?.signedPayload;
 
     if (!signedPayload) {
@@ -79,7 +80,11 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ received: true, ok: syncResult.ok });
   } catch (error) {
+    if (isInvalidJsonBodyError(error)) {
+      return invalidJsonResponse();
+    }
+
     console.error('Apple IAP notification error:', error);
-    return NextResponse.json({ received: true });
+    return NextResponse.json({ error: 'APPLE_NOTIFICATION_PROCESSING_FAILED' }, { status: 500 });
   }
 }

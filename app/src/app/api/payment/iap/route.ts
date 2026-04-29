@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { invalidJsonResponse, isInvalidJsonBodyError, parseJsonBody } from '@/lib/api';
 import { createClient } from '@/lib/supabaseServer';
 import {
   getIapProductConfig,
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body: IAPRequestBody = await req.json();
+    const body = await parseJsonBody<IAPRequestBody>(req);
     const { platform, receiptToken, productId, originalTransactionId } = body;
 
     if (!platform || !receiptToken || !productId) {
@@ -77,6 +78,10 @@ export async function POST(req: Request) {
       },
     });
   } catch (error: unknown) {
+    if (isInvalidJsonBodyError(error)) {
+      return invalidJsonResponse();
+    }
+
     console.error('IAP verification error:', error);
     if (error instanceof IapConfigurationError) {
       return NextResponse.json(
@@ -86,7 +91,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'IAP 검증 실패' },
+      { error: 'IAP_VERIFICATION_FAILED' },
       { status: 500 }
     );
   }

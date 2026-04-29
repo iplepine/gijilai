@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { invalidJsonResponse, isInvalidJsonBodyError, parseJsonBody } from '@/lib/api';
 import { createClient } from '@/lib/supabaseServer';
 import { recordSubscriptionUsageEvent } from '@/lib/subscription-usage';
 
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = (await request.json()) as UsageRequest;
+    const body = await parseJsonBody<UsageRequest>(request);
     if (!body.eventName || !ALLOWED_CLIENT_EVENTS.has(body.eventName)) {
       return NextResponse.json({ error: 'Unsupported usage event' }, { status: 400 });
     }
@@ -33,6 +34,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
+    if (isInvalidJsonBodyError(error)) {
+      return invalidJsonResponse();
+    }
+
     console.error('[Subscription Usage API] Error:', error);
     return NextResponse.json({ error: 'Failed to record usage event' }, { status: 500 });
   }

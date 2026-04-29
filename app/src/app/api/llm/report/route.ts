@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { invalidJsonResponse, isInvalidJsonBodyError, parseJsonBody } from '@/lib/api';
 import { generateReport, type ReportType } from '@/lib/openai';
 import { createClient } from '@/lib/supabaseServer';
 import type { Json } from '@/types/supabase';
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
         }
 
         const userId = session.user.id;
-        const body = (await request.json()) as ReportRequestBody;
+        const body = await parseJsonBody<ReportRequestBody>(request);
         const {
             userName, scores, type, answers,
             parentScores, childType, parentType,
@@ -226,6 +227,10 @@ export async function POST(request: Request) {
             cached: false
         });
     } catch (error) {
+        if (isInvalidJsonBodyError(error)) {
+            return invalidJsonResponse();
+        }
+
         console.error('[Report API] Error:', error);
         return NextResponse.json(
             { error: 'Failed to generate report' },

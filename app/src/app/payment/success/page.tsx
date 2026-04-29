@@ -6,6 +6,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
 import { useLocale } from '@/i18n/LocaleProvider';
+import { readJsonResponse } from '@/lib/api';
 
 function SuccessContent() {
     const router = useRouter();
@@ -22,12 +23,17 @@ function SuccessContent() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ paymentId }),
         })
-            .then(res => {
+            .then(async (res) => {
+                if (!res.ok) {
+                    await readJsonResponse(res).catch(() => null);
+                    setStatus('error');
+                    return;
+                }
+
+                await readJsonResponse(res).catch(() => null);
                 if (res.ok) {
                     setStatus('success');
                     setTimeout(() => router.push('/report'), 2000);
-                } else {
-                    setStatus('error');
                 }
             })
             .catch(() => setStatus('error'));

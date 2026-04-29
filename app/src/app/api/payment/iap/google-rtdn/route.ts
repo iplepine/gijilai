@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { invalidJsonResponse, isInvalidJsonBodyError, parseJsonBody } from '@/lib/api';
 import { syncIapSubscription, verifyGoogleSubscription } from '@/lib/iap';
 
 function mapGoogleNotificationType(notificationType: number) {
@@ -35,7 +36,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    const body = await req.json();
+    const body = await parseJsonBody<{ message?: { data?: string } }>(req);
     const messageData = body?.message?.data;
 
     if (!messageData) {
@@ -73,7 +74,11 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ received: true, ok: syncResult.ok });
   } catch (error) {
+    if (isInvalidJsonBodyError(error)) {
+      return invalidJsonResponse();
+    }
+
     console.error('Google RTDN error:', error);
-    return NextResponse.json({ received: true });
+    return NextResponse.json({ error: 'GOOGLE_RTDN_PROCESSING_FAILED' }, { status: 500 });
   }
 }

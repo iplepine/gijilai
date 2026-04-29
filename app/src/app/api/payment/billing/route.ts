@@ -149,6 +149,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ processed, failed, total: subscriptions.length });
   } catch (error: unknown) {
     console.error('Billing cron error:', error);
-    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
+    return NextResponse.json({ error: 'BILLING_CRON_FAILED' }, { status: 500 });
   }
 }

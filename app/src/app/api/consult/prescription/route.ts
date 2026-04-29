@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { invalidJsonResponse, isInvalidJsonBodyError, isNonEmptyString, parseJsonBody } from '@/lib/api';
 import { openai } from '@/lib/openai';
 import { createClient } from '@/lib/supabaseServer';
 import { getConsultModel } from '@/lib/consult-model';
@@ -58,6 +59,63 @@ type QuestionPromptItem = {
     id: string;
     text: string;
 };
+
+type PrescriptionResponse = {
+    interpretation: string;
+    chemistry: string;
+    magicWord: string;
+    questionAnalysis?: Array<{
+        question: string;
+        answer: string;
+        analysis: string;
+    }>;
+    actionItem?: string;
+    actionItems?: Array<{
+        title: string;
+        trigger?: string;
+        action?: string;
+        description: string;
+        duration: number;
+        encouragement: string;
+    }>;
+    sessionTitle?: string;
+};
+
+function isPrescriptionResponse(value: unknown): value is PrescriptionResponse {
+    if (!value || typeof value !== 'object') return false;
+    const payload = value as Record<string, unknown>;
+    const validQuestionAnalysis = payload.questionAnalysis === undefined || (
+        Array.isArray(payload.questionAnalysis)
+        && payload.questionAnalysis.every((item) => {
+            if (!item || typeof item !== 'object') return false;
+            const candidate = item as Record<string, unknown>;
+            return isNonEmptyString(candidate.question)
+                && isNonEmptyString(candidate.answer)
+                && isNonEmptyString(candidate.analysis);
+        })
+    );
+    const validActionItems = payload.actionItems === undefined || (
+        Array.isArray(payload.actionItems)
+        && payload.actionItems.every((item) => {
+            if (!item || typeof item !== 'object') return false;
+            const candidate = item as Record<string, unknown>;
+            return isNonEmptyString(candidate.title)
+                && isNonEmptyString(candidate.description)
+                && typeof candidate.duration === 'number'
+                && isNonEmptyString(candidate.encouragement)
+                && (candidate.trigger === undefined || typeof candidate.trigger === 'string')
+                && (candidate.action === undefined || typeof candidate.action === 'string');
+        })
+    );
+
+    return isNonEmptyString(payload.interpretation)
+        && isNonEmptyString(payload.chemistry)
+        && isNonEmptyString(payload.magicWord)
+        && validQuestionAnalysis
+        && validActionItems
+        && (payload.actionItem === undefined || typeof payload.actionItem === 'string')
+        && (payload.sessionTitle === undefined || typeof payload.sessionTitle === 'string');
+}
 
 function formatObservationsForPrompt(observations: ObservationPromptItem[]): string {
     return observations.map((obs) => {
@@ -165,7 +223,28 @@ export async function POST(request: Request) {
             childGender?: string;
             recentObservations?: ObservationPromptItem[];
             sessionContext?: SessionContext | null;
-        } = await request.json();
+        } = await parseJsonBody<{
+            problem?: string;
+            questions?: QuestionPromptItem[];
+            answers?: Record<string, string>;
+            childProfile?: {
+                label: string;
+                keywords: string[];
+                description: string;
+                scores: { NS: number; HA: number; RD: number; P: number };
+            } | null;
+            parentProfile?: {
+                label: string;
+                keywords: string[];
+                description: string;
+                scores: { NS: number; HA: number; RD: number; P: number };
+            } | null;
+            childName?: string;
+            childBirthDate?: string;
+            childGender?: string;
+            recentObservations?: ObservationPromptItem[];
+            sessionContext?: SessionContext | null;
+        }>(request);
 
         // 나이 계산
         let childAge = '';
@@ -288,6 +367,9 @@ ${!isFollowUp ? `8. **세션 제목 (sessionTitle)**: 이 고민을 한 줄(15�
 
         const content = response.choices[0].message.content;
         const parsed = JSON.parse(content || '{}');
+        if (!isPrescriptionResponse(parsed)) {
+            throw new Error('INVALID_PRESCRIPTION_RESPONSE');
+        }
 
         // 하위 호환: actionItem 필드 유지
         if (parsed.actionItems && parsed.actionItems.length > 0 && !parsed.actionItem) {
@@ -307,6 +389,10 @@ ${!isFollowUp ? `8. **세션 제목 (sessionTitle)**: 이 고민을 한 줄(15�
 
         return NextResponse.json(parsed);
     } catch (error) {
+        if (isInvalidJsonBodyError(error)) {
+            return invalidJsonResponse();
+        }
+
         console.error('Error generating prescription:', error);
         return NextResponse.json(
             { error: 'Failed to generate prescription' },

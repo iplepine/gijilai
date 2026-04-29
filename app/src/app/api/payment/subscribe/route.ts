@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { invalidJsonResponse, isInvalidJsonBodyError, parseJsonBody } from '@/lib/api';
 import { createClient } from '@/lib/supabaseServer';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import {
@@ -29,10 +30,6 @@ function getSupabaseAdmin() {
   );
 }
 
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
 function getErrorDetail(error: unknown): unknown {
   if (typeof error === 'object' && error !== null && 'data' in error) {
     return (error as { data?: unknown }).data ?? error;
@@ -49,7 +46,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { billingKey, plan, locale, payMethod } = (await req.json()) as SubscribeRequest;
+    const { billingKey, plan, locale, payMethod } = await parseJsonBody<SubscribeRequest>(req);
 
     // [연 구독] 재활성화 시: plan !== 'MONTHLY' → !['MONTHLY', 'YEARLY'].includes(plan)
     if (!billingKey || !plan || plan !== 'MONTHLY') {
@@ -170,8 +167,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: '구독 생성 실패' }, { status: 500 });
     }
   } catch (error: unknown) {
+    if (isInvalidJsonBodyError(error)) {
+      return invalidJsonResponse();
+    }
+
     console.error('Subscribe error:', error);
     console.error('Subscribe error detail:', JSON.stringify(getErrorDetail(error), null, 2));
-    return NextResponse.json({ error: getErrorMessage(error) || '구독 처리 실패' }, { status: 500 });
+    return NextResponse.json({ error: 'SUBSCRIBE_FAILED' }, { status: 500 });
   }
 }

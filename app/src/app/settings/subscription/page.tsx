@@ -8,6 +8,7 @@ import { Icon } from '@/components/ui/Icon';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { db, PaymentData, SubscriptionData } from '@/lib/db';
 import { useLocale } from '@/i18n/LocaleProvider';
+import { getApiErrorMessage, readJsonResponse } from '@/lib/api';
 
 type PaymentMethodMetadata = {
   paymentMethod?: {
@@ -85,6 +86,10 @@ type FeedbackDialogState = {
   actionHref?: string;
 };
 
+type SubscriptionResponse = {
+  subscription?: SubscriptionData | null;
+};
+
 export default function SubscriptionPage() {
   const { t } = useLocale();
   const router = useRouter();
@@ -96,6 +101,7 @@ export default function SubscriptionPage() {
   const [reactivating, setReactivating] = useState(false);
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
   const [feedbackDialog, setFeedbackDialog] = useState<FeedbackDialogState | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const getErrorMessage = (error: unknown) => error instanceof Error ? error.message : t('settings.cancelError');
   const formatLocalDate = (value: string) => new Date(value).toLocaleDateString('ko-KR');
@@ -103,12 +109,19 @@ export default function SubscriptionPage() {
   const loadSubscriptionData = useCallback(async () => {
     if (!user) return;
 
-    const [subData, paymentData] = await Promise.all([
-      fetch('/api/payment/subscription', { cache: 'no-store' }).then(r => r.json()),
+    setLoadError(null);
+
+    const [subscriptionResponse, paymentData] = await Promise.all([
+      fetch('/api/payment/subscription', { cache: 'no-store' }),
       db.getPaymentHistory(user.id),
     ]);
 
-    setSubscription(subData.subscription);
+    const subData = await readJsonResponse<SubscriptionResponse>(subscriptionResponse);
+    if (!subscriptionResponse.ok) {
+      throw new Error(getApiErrorMessage(subData, t('settings.cancelError')));
+    }
+
+    setSubscription(subData?.subscription ?? null);
     setPayments(paymentData);
   }, [user]);
 
@@ -144,7 +157,10 @@ export default function SubscriptionPage() {
   useEffect(() => {
     if (!user) return;
     loadSubscriptionData()
-      .catch(console.error)
+      .catch((error) => {
+        console.error(error);
+        setLoadError(getErrorMessage(error));
+      })
       .finally(() => setLoading(false));
   }, [loadSubscriptionData, user]);
 
@@ -153,12 +169,18 @@ export default function SubscriptionPage() {
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        void loadSubscriptionData().catch(console.error);
+        void loadSubscriptionData().catch((error) => {
+          console.error(error);
+          setLoadError(getErrorMessage(error));
+        });
       }
     };
 
     const handleWindowFocus = () => {
-      void loadSubscriptionData().catch(console.error);
+      void loadSubscriptionData().catch((error) => {
+        console.error(error);
+        setLoadError(getErrorMessage(error));
+      });
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -248,6 +270,32 @@ export default function SubscriptionPage() {
           <Navbar title={t('settings.subscription')} showBack />
           <div className="flex-1 flex items-center justify-center">
             <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center">
+        <div className="w-full max-w-md min-h-screen flex flex-col">
+          <Navbar title={t('settings.subscription')} showBack />
+          <div className="flex-1 flex flex-col items-center justify-center px-6 text-center space-y-4">
+            <Icon name="error" className="text-red-500 text-5xl" size="lg" />
+            <h2 className="text-xl font-bold text-text-main dark:text-white">{t('common.error')}</h2>
+            <p className="text-sm text-text-sub leading-relaxed">{loadError}</p>
+            <Button variant="primary" onClick={() => {
+              setLoading(true);
+              void loadSubscriptionData()
+                .catch((error) => {
+                  console.error(error);
+                  setLoadError(getErrorMessage(error));
+                })
+                .finally(() => setLoading(false));
+            }}>
+              {t('common.retry')}
+            </Button>
           </div>
         </div>
       </div>

@@ -4,6 +4,7 @@ import { Webhook } from '@portone/server-sdk';
 import { verifyPayment, cancelPayment } from '@/lib/portone';
 import { computePeriodEnd } from '@/lib/subscription';
 import type { Json } from '@/types/supabase';
+import { InvalidJsonBodyError } from '@/lib/api';
 
 type PaymentMetadata = { reportId?: string };
 type PortoneWebhookPayload = {
@@ -84,7 +85,14 @@ export async function POST(req: Request) {
       }
     }
 
-    const { type, data } = JSON.parse(body) as PortoneWebhookPayload;
+    let payload: PortoneWebhookPayload;
+    try {
+      payload = JSON.parse(body) as PortoneWebhookPayload;
+    } catch {
+      throw new InvalidJsonBodyError();
+    }
+
+    const { type, data } = payload;
 
     switch (type) {
       case 'Transaction.Paid': {
@@ -245,11 +253,14 @@ export async function POST(req: Request) {
       }
     }
 
-    // 포트원 재시도 방지: 항상 200 반환
     return NextResponse.json({ received: true });
   } catch (error: unknown) {
+    if (error instanceof InvalidJsonBodyError) {
+      return NextResponse.json({ error: 'INVALID_JSON_BODY' }, { status: 400 });
+    }
+
     console.error('Webhook error:', error);
     console.error('Webhook error detail:', getErrorMessage(error));
-    return NextResponse.json({ received: true });
+    return NextResponse.json({ error: 'WEBHOOK_PROCESSING_FAILED' }, { status: 500 });
   }
 }

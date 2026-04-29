@@ -14,6 +14,7 @@ import { getFeatureAccess } from '@/lib/access';
 import { getRandomExamples } from '@/data/consultExamples';
 import { useLocale } from '@/i18n/LocaleProvider';
 import { trackEvent } from '@/lib/analytics';
+import { getApiErrorMessage, readJsonResponse } from '@/lib/api';
 
 type Step = 'INPUT' | 'DIAGNOSTIC' | 'RESULT';
 
@@ -28,6 +29,63 @@ interface Question {
     text: string;
     type: 'CHOICE' | 'TEXT';
     options?: QuestionOption[];
+}
+
+function isQuestion(value: unknown): value is Question {
+    if (!value || typeof value !== 'object') return false;
+    const question = value as Record<string, unknown>;
+    const isValidType = question.type === 'CHOICE' || question.type === 'TEXT';
+    const hasValidOptions = question.options === undefined || (
+        Array.isArray(question.options)
+        && question.options.every((option) => {
+            if (!option || typeof option !== 'object') return false;
+            const candidate = option as Record<string, unknown>;
+            return typeof candidate.id === 'string'
+                && typeof candidate.text === 'string'
+                && (candidate.freeText === undefined || typeof candidate.freeText === 'boolean');
+        })
+    );
+
+    return typeof question.id === 'string'
+        && typeof question.text === 'string'
+        && isValidType
+        && hasValidOptions;
+}
+
+function isPrescription(value: unknown): value is Prescription {
+    if (!value || typeof value !== 'object') return false;
+    const prescription = value as Record<string, unknown>;
+    const hasQuestionAnalysis = prescription.questionAnalysis === undefined || (
+        Array.isArray(prescription.questionAnalysis)
+        && prescription.questionAnalysis.every((item) => {
+            if (!item || typeof item !== 'object') return false;
+            const candidate = item as Record<string, unknown>;
+            return typeof candidate.question === 'string'
+                && typeof candidate.answer === 'string'
+                && typeof candidate.analysis === 'string';
+        })
+    );
+    const hasActionItems = prescription.actionItems === undefined || (
+        Array.isArray(prescription.actionItems)
+        && prescription.actionItems.every((item) => {
+            if (!item || typeof item !== 'object') return false;
+            const candidate = item as Record<string, unknown>;
+            return typeof candidate.title === 'string'
+                && typeof candidate.description === 'string'
+                && typeof candidate.duration === 'number'
+                && typeof candidate.encouragement === 'string'
+                && (candidate.trigger === undefined || typeof candidate.trigger === 'string')
+                && (candidate.action === undefined || typeof candidate.action === 'string');
+        })
+    );
+
+    return typeof prescription.interpretation === 'string'
+        && typeof prescription.chemistry === 'string'
+        && typeof prescription.magicWord === 'string'
+        && hasQuestionAnalysis
+        && hasActionItems
+        && (prescription.actionItem === undefined || typeof prescription.actionItem === 'string')
+        && (prescription.sessionTitle === undefined || typeof prescription.sessionTitle === 'string');
 }
 
 interface QuestionAnalysisItem {
@@ -258,9 +316,14 @@ function ConsultContent() {
                 router.push('/pricing');
                 return;
             }
-            if (!res.ok) throw new Error('Failed to fetch initial questions');
+            const data = await readJsonResponse<{ empathy?: string; questions?: Question[]; error?: string }>(res);
+            if (!res.ok) {
+                throw new Error(getApiErrorMessage(data, 'Failed to fetch initial questions'));
+            }
 
-            const data = await res.json();
+            if (typeof data?.empathy !== 'string' || !Array.isArray(data.questions) || !data.questions.every(isQuestion)) {
+                throw new Error('INVALID_INITIAL_QUESTIONS_RESPONSE');
+            }
             setEmpathy(data.empathy);
             setQuestions(data.questions);
             setStep('DIAGNOSTIC');
@@ -312,10 +375,28 @@ function ConsultContent() {
                 return;
             }
 
-            const data = await res.json();
-            if (data.needsFollowUp && data.followUpQuestions && data.followUpQuestions.length > 0) {
+            const data = await readJsonResponse<{
+                needsFollowUp?: boolean;
+                followUpReason?: string;
+                followUpQuestions?: Question[];
+                error?: string;
+            }>(res);
+            if (!res.ok) {
+                throw new Error(getApiErrorMessage(data, 'Failed to process follow-up'));
+            }
+            if (!data) {
+                throw new Error('EMPTY_FOLLOWUP_RESPONSE');
+            }
+
+            if (data.needsFollowUp && (!Array.isArray(data.followUpQuestions) || !data.followUpQuestions.every(isQuestion))) {
+                throw new Error('INVALID_FOLLOWUP_RESPONSE');
+            }
+
+            const followUpQuestions = data.followUpQuestions;
+
+            if (data.needsFollowUp && followUpQuestions && followUpQuestions.length > 0) {
                 setEmpathy(data.followUpReason || t('consult.followUpDefault'));
-                setQuestions(prev => [...prev, ...data.followUpQuestions]);
+                setQuestions(prev => [...prev, ...followUpQuestions]);
                 setIsFollowUpDone(true);
                 setCurrentQuestionIndex(prev => prev + 1);
             } else {
@@ -368,14 +449,19 @@ function ConsultContent() {
                 router.push('/pricing');
                 return;
             }
-            if (!res.ok) throw new Error('Failed to generate prescription');
+            const data = await readJsonResponse<Prescription & { error?: string }>(res);
+            if (!res.ok) {
+                throw new Error(getApiErrorMessage(data, 'Failed to generate prescription'));
+            }
 
-            const data = await res.json();
+            if (!isPrescription(data)) {
+                throw new Error('INVALID_PRESCRIPTION_RESPONSE');
+            }
             setPrescription(data);
             setStep('RESULT');
 
             // 모든 실천 항목 기본 선택
-            if (data.actionItems?.length > 0) {
+            if (Array.isArray(data.actionItems) && data.actionItems.length > 0) {
                 setSelectedActionIndex(null);
             }
 

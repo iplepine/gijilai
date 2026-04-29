@@ -6,6 +6,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
 import { useLocale } from '@/i18n/LocaleProvider';
+import { getApiErrorMessage, readJsonResponse } from '@/lib/api';
 
 type CompleteStatus = 'loading' | 'success' | 'error';
 
@@ -51,9 +52,9 @@ function PricingCompleteContent() {
             payMethod,
           }),
         });
-        const data = await response.json();
+        const data = await readJsonResponse<{ error?: string }>(response);
         if (!response.ok) {
-          throw new Error(data.error || '구독 생성 실패');
+          throw new Error(getApiErrorMessage(data, '구독 생성 실패'));
         }
         setStatus('success');
         setTimeout(() => router.replace('/settings/subscription'), 1200);

@@ -1,7 +1,31 @@
 import { NextResponse } from 'next/server';
+import { invalidJsonResponse, isInvalidJsonBodyError, isNonEmptyString, parseJsonBody } from '@/lib/api';
 import { openai } from '@/lib/openai';
 import { createClient } from '@/lib/supabaseServer';
 import { getConsultModel } from '@/lib/consult-model';
+
+type ConsultOptionsResponse = {
+    question: string;
+    options: Array<{
+        id: string;
+        type: string;
+        text: string;
+    }>;
+};
+
+function isOptionsResponse(value: unknown): value is ConsultOptionsResponse {
+    if (!value || typeof value !== 'object') return false;
+    const payload = value as Record<string, unknown>;
+    return typeof payload.question === 'string'
+        && Array.isArray(payload.options)
+        && payload.options.every((option) => {
+            if (!option || typeof option !== 'object') return false;
+            const candidate = option as Record<string, unknown>;
+            return isNonEmptyString(candidate.id)
+                && isNonEmptyString(candidate.type)
+                && isNonEmptyString(candidate.text);
+        });
+}
 
 export async function POST(request: Request) {
     try {
@@ -11,7 +35,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { problem } = await request.json();
+        const { problem } = await parseJsonBody<{ problem?: string }>(request);
 
         if (!problem) {
             return NextResponse.json(
@@ -51,8 +75,17 @@ export async function POST(request: Request) {
         });
 
         const content = response.choices[0].message.content;
-        return NextResponse.json(JSON.parse(content || '{}'));
+        const parsed = JSON.parse(content || '{}');
+        if (!isOptionsResponse(parsed)) {
+            throw new Error('INVALID_OPTIONS_RESPONSE');
+        }
+
+        return NextResponse.json(parsed);
     } catch (error) {
+        if (isInvalidJsonBodyError(error)) {
+            return invalidJsonResponse();
+        }
+
         console.error('Error generating options:', error);
         return NextResponse.json(
             { error: 'Failed to generate options' },

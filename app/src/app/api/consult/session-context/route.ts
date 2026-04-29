@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { invalidJsonResponse, isInvalidJsonBodyError, parseJsonBody } from '@/lib/api';
 import { createClient } from '@/lib/supabaseServer';
 import type { Database } from '@/types/supabase';
 
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { sessionId } = (await request.json()) as SessionContextRequest;
+        const { sessionId } = await parseJsonBody<SessionContextRequest>(request);
 
         if (!sessionId) {
             return NextResponse.json(
@@ -35,7 +36,20 @@ export async function POST(request: Request) {
         ]);
 
         if (sessionRes.error) {
+            console.error('Session context session query error:', sessionRes.error);
+            return NextResponse.json({ error: 'Failed to fetch session context' }, { status: 500 });
+        }
+
+        if (!sessionRes.data) {
             return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+        }
+
+        if (consultsRes.error || practicesRes.error) {
+            console.error('Session context related query error:', {
+                consultations: consultsRes.error,
+                practices: practicesRes.error,
+            });
+            return NextResponse.json({ error: 'Failed to fetch session context' }, { status: 500 });
         }
 
         // 실천 로그 & 회고
@@ -48,6 +62,13 @@ export async function POST(request: Request) {
                 supabase.from('practice_logs').select('*').in('practice_id', practiceIds).order('date', { ascending: true }),
                 supabase.from('practice_reviews').select('*').in('practice_id', practiceIds),
             ]);
+            if (logsRes.error || reviewsRes.error) {
+                console.error('Session context practice detail query error:', {
+                    logs: logsRes.error,
+                    reviews: reviewsRes.error,
+                });
+                return NextResponse.json({ error: 'Failed to fetch session context' }, { status: 500 });
+            }
             logs = logsRes.data || [];
             reviews = reviewsRes.data || [];
         }
@@ -60,6 +81,10 @@ export async function POST(request: Request) {
             reviews,
         });
     } catch (error) {
+        if (isInvalidJsonBodyError(error)) {
+            return invalidJsonResponse();
+        }
+
         console.error('Error fetching session context:', error);
         return NextResponse.json(
             { error: 'Failed to fetch session context' },
