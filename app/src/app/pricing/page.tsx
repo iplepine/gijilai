@@ -322,6 +322,17 @@ export default function PricingPage() {
   };
 
   const monthlyPrice = formatPrice(PRICES.MONTHLY[currency], currency);
+  const premiumBenefits = [
+    { icon: 'description', key: 'pricing.reportConnection' },
+    { icon: 'chat', key: 'pricing.followUpConsult' },
+    { icon: 'history', key: 'pricing.fullHistory' },
+    { icon: 'sync' as const, key: 'pricing.nextConsultContext' },
+  ] as const;
+  const coachingLoop = [
+    { step: '01', titleKey: 'pricing.loopStep1Title', descKey: 'pricing.loopStep1Desc' },
+    { step: '02', titleKey: 'pricing.loopStep2Title', descKey: 'pricing.loopStep2Desc' },
+    { step: '03', titleKey: 'pricing.loopStep3Title', descKey: 'pricing.loopStep3Desc' },
+  ] as const;
 
   if (existingSubscription?.cancelled_at) {
     return (
@@ -447,12 +458,7 @@ export default function PricingPage() {
             <h3 className="text-[13px] font-bold text-text-main dark:text-white">
               {t('pricing.benefits')}
             </h3>
-            {[
-              { icon: 'analytics', key: 'pricing.unlimitedReports' },
-              { icon: 'chat', key: 'pricing.unlimitedConsult' },
-              { icon: 'task_alt', key: 'pricing.fullHistory' },
-              { icon: 'speed', key: 'pricing.noCooldown' },
-            ].map((item, i) => (
+            {premiumBenefits.map((item, i) => (
               <div key={i} className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-full bg-primary/8 flex items-center justify-center shrink-0">
                   <Icon name={item.icon} size="sm" className="text-primary text-[18px]" />
@@ -462,6 +468,41 @@ export default function PricingPage() {
                 </span>
               </div>
             ))}
+          </section>
+
+          <section className="rounded-[28px] bg-primary px-5 py-6 text-white shadow-card relative overflow-hidden">
+            <div className="absolute top-0 right-0 h-36 w-36 rounded-full bg-white/10 blur-3xl -mr-10 -mt-12 pointer-events-none" />
+            <div className="relative z-10 space-y-4">
+              <div className="space-y-1.5">
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-white/70">
+                  {t('pricing.loopEyebrow')}
+                </p>
+                <h3 className="text-[18px] font-black leading-tight break-keep">
+                  {t('pricing.loopTitle')}
+                </h3>
+                <p className="text-[13px] leading-relaxed text-white/85 break-keep">
+                  {t('pricing.loopDesc')}
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                {coachingLoop.map((item) => (
+                  <div key={item.step} className="rounded-2xl bg-white/10 px-4 py-3 flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center shrink-0 text-[12px] font-black">
+                      {item.step}
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[13px] font-black leading-snug">
+                        {t(item.titleKey)}
+                      </p>
+                      <p className="text-[12px] leading-relaxed text-white/80 break-keep">
+                        {t(item.descKey)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </section>
 
         </div>
