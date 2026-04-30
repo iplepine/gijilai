@@ -213,12 +213,6 @@ export default function HomePage() {
   }, [loading, user, children, intake.childName]);
 
   useEffect(() => {
-    if (!authLoading && !user && isAppWebView()) {
-      router.replace("/login");
-    }
-  }, [authLoading, user, router]);
-
-  useEffect(() => {
     if (loading || !isAppWebView()) return;
 
     const preferences = readPracticeReminderPreferences(
@@ -275,9 +269,6 @@ export default function HomePage() {
 
   // Not logged in state (only after auth check completes)
   if (!authLoading && !user) {
-    if (isAppWebView()) {
-      return <HomeLoadingScreen />;
-    }
     return <LandingPage />;
   }
 

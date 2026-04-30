@@ -218,6 +218,7 @@ const calculateAverage = (scores: number[]): number => {
 
 ### 구현 요구사항
 - 웹 앱은 Firebase에 연결된 Measurement ID를 사용하여 이벤트를 전송한다.
+- Flutter 앱 WebView의 루트(`/`) 첫 진입에서는 로그인 세션이 없더라도 바로 `/login`으로 리다이렉트하지 않고, 랜딩 화면을 먼저 보여준다.
 - Flutter 앱은 `/login` 도달 시 네이티브 로그인 화면을 오버레이한다. 카카오는 Kakao Flutter SDK 앱투앱 로그인을 먼저 사용하고, 발급된 ID 토큰을 `/auth/native-session`으로 전달해 WebView Supabase 세션 쿠키와 연결한다. Apple/Google 로그인과 카카오 ID 토큰을 받을 수 없는 환경에서는 Supabase OAuth authorize + `gijilai://auth/callback` 딥링크 방식으로 fallback한다.
 - 환경변수 `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID`가 없는 경우 추적 코드는 동작하지 않아야 한다.
 - 이벤트에는 개인식별 가능한 자유 텍스트를 넣지 않는다.
