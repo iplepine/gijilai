@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, type FormEvent } from 'react';
+import { Suspense, useState, useEffect, useRef, useCallback, type FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/Button';
@@ -108,6 +108,14 @@ function getAppIapProductId(): string {
 }
 
 export default function PricingPage() {
+  return (
+    <Suspense>
+      <PricingContent />
+    </Suspense>
+  );
+}
+
+function PricingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
