@@ -30,7 +30,7 @@
 
 헤더 "기질아이" 로고 오른쪽 끝에 컴팩트 뱃지로 표시한다.
 
-- 앱 WebView(iOS/Android)에서는 상단 헤더와 하단 탭바가 노치/홈 인디케이터와 겹치지 않도록 safe area inset을 반영해야 한다. 웹 CSS `env(safe-area-inset-*)`와 앱 쉘이 주입하는 native inset 값을 함께 사용한다.
+- 앱 WebView(iOS/Android)에서는 상단 헤더와 하단 탭바가 노치/홈 인디케이터와 겹치지 않도록 safe area inset을 반영해야 한다. 웹 CSS `env(safe-area-inset-*)`와 앱 쉘이 주입하는 native inset 값을 함께 사용하되, Android 하단 탭바는 iOS용 홈 인디케이터 보정이 그대로 적용되어 과도하게 높아지지 않도록 플랫폼별로 하단 inset을 분리해 계산한다.
 
 | 사용자 상태 | 뱃지 표시 | 탭 시 이동 |
 |------------|----------|-----------|

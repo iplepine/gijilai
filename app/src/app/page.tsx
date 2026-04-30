@@ -230,7 +230,7 @@ export default function HomePage() {
           onPricingClick={() => router.push('/pricing')}
         />
 
-        <main className="flex-1 overflow-y-auto no-scrollbar pb-32">
+        <main className="app-bottom-nav-scroll flex-1 overflow-y-auto no-scrollbar">
           {mainChild ? (
             /* [기존 사용자] 아이가 등록된 상태 */
             <div className="animate-in fade-in duration-700">

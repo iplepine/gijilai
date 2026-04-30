@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-04-30 | 앱 WebView 하단 탭 safe area는 iOS와 Android를 분리 계산한다
+
+- **결정**: Flutter 앱 쉘은 WebView 문서 루트에 현재 네이티브 플랫폼(`ios`/`android`)을 함께 주입하고, 웹 하단 탭바는 `--native-safe-area-bottom`을 전역 공통값으로 그대로 쓰지 않는다. iOS에서는 홈 인디케이터 보정을 유지하고, Android에서는 하단 inset을 축소한 별도 탭바/스크롤 여백 값을 사용한다.
+- **이유**: iOS WebView 겹침을 막기 위해 넣은 native safe area 보정이 Android 하단 탭바 높이에도 그대로 합산되면서, 탭바가 필요 이상으로 떠 보이고 마지막 카드가 가려지는 회귀가 발생했다. 플랫폼별로 하단 보정을 분리하면 iOS 안전영역 대응은 유지하면서 Android 원래 밀도와 스크롤 가시성을 복원할 수 있다.
+- **대안**: 모든 플랫폼에서 동일한 `max(env(...), native inset)` 유지 — iOS 문제는 해결되지만 Android 탭바 높이 회귀가 계속돼 기각. Flutter에서 WebView 전체를 다시 `SafeArea`로 감싸기 — 웹 내부 fixed/sticky 하단 UI 높이와 스크롤 여백 문제를 직접 제어하지 못해 기각.
+
+---
+
 ## 2026-04-30 | iOS OAuth 콜드 스타트 딥링크는 AppDelegate에서 app_links로 직접 브리지한다
 
 - **결정**: iOS 앱은 Safari/외부 브라우저 OAuth 완료 후 `gijilai://auth/callback`으로 앱이 새로 시작될 수 있는 경로를 위해, `AppDelegate`에서 `launchOptions`의 초기 URL을 `app_links`에 직접 전달한다. `Info.plist`의 `FlutterDeepLinkingEnabled`는 `false`로 유지해 Flutter 기본 딥링크 처리와 충돌하지 않게 한다. Apple OAuth 요청에는 `name email` scope를 명시한다.

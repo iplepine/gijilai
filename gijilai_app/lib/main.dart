@@ -405,6 +405,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
     final padding = MediaQuery.viewPaddingOf(context);
     final bottomInset = padding.bottom.toStringAsFixed(1);
+    final platform = Platform.isIOS ? 'ios' : Platform.isAndroid ? 'android' : 'other';
 
     if (_lastInjectedSafeAreaTop == padding.top &&
         _lastInjectedSafeAreaBottom == padding.bottom) {
@@ -418,6 +419,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       (function() {
         const root = document.documentElement;
         if (!root) return;
+        root.dataset.nativePlatform = '$platform';
         root.style.setProperty('--native-safe-area-bottom', '${bottomInset}px');
       })();
     ''');

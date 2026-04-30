@@ -21,6 +21,13 @@
   --native-safe-area-bottom: 0px;
   --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-bottom: max(env(safe-area-inset-bottom, 0px), var(--native-safe-area-bottom));
+  --bottom-nav-safe-area-bottom: var(--safe-area-bottom);
+  --bottom-nav-content-offset: calc(var(--bottom-nav-safe-area-bottom) + 7.75rem);
+}
+
+html[data-native-platform='android'] {
+  --bottom-nav-safe-area-bottom: min(var(--safe-area-bottom), 0.5rem);
+  --bottom-nav-content-offset: calc(var(--bottom-nav-safe-area-bottom) + 7.25rem);
 }
 
 /*
@@ -201,5 +208,13 @@ body {
 }
 
 .app-bottom-nav {
-  padding-bottom: calc(var(--safe-area-bottom) + 2rem);
+  padding-bottom: calc(var(--bottom-nav-safe-area-bottom) + 1rem);
+}
+
+.app-bottom-nav-scroll {
+  padding-bottom: var(--bottom-nav-content-offset);
+}
+
+.app-bottom-nav-spacer {
+  height: var(--bottom-nav-content-offset);
 }

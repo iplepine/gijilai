@@ -216,7 +216,7 @@ export default function RecordPage() {
                     </div>
                 )}
 
-                <main className="w-full max-w-md px-5 py-4 pb-32">
+                <main className="app-bottom-nav-scroll w-full max-w-md px-5 py-4">
                     {/* 최근 상담 액션 아이템 */}
                     {!isLoading && latestActionItem && children.length > 0 && (
                         <div
@@ -510,7 +510,7 @@ export default function RecordPage() {
                     </div>
                 )}
 
-                <div className="h-32"></div>
+                <div className="app-bottom-nav-spacer"></div>
                 <BottomNav />
             </div>
         </div>

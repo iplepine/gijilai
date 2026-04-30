@@ -95,7 +95,7 @@ export default function ProfilePage() {
                 {/* Sticky Header */}
                 <Navbar title={t('settings.myInfo')} />
 
-                <main className="flex-1 px-4 py-6 space-y-8 pb-32">
+                <main className="app-bottom-nav-scroll flex-1 px-4 py-6 space-y-8">
                     {/* User Profile Card */}
                     <section className="bg-white dark:bg-surface-dark rounded-3xl p-6 shadow-soft border border-gray-100 dark:border-gray-800">
                         <div className="flex items-center gap-4">

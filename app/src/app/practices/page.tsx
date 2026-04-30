@@ -207,7 +207,7 @@ export default function PracticesPage() {
             <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
                 <Navbar title={t('nav.practices')} />
 
-                <main className="flex-1 overflow-y-auto px-6 py-6 pb-36 space-y-6">
+                <main className="app-bottom-nav-scroll flex-1 overflow-y-auto px-6 py-6 space-y-6">
                     {/* 아이별 필터 */}
                     {children.length > 1 && (
                         <div className="flex gap-2 overflow-x-auto no-scrollbar">
