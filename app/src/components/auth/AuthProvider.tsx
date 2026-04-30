@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { trackEvent } from '@/lib/analytics';
+import { createPerfTracker } from '@/lib/perf';
 import { supabase } from '@/lib/supabase';
 
 declare global {
@@ -51,11 +52,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        const perf = createPerfTracker('AuthProvider');
+
         // 1. Initial Session Check
         supabase.auth.getSession().then(({ data: { session } }) => {
             setSession(session);
             setUser(session?.user ?? null);
             setLoading(false);
+            perf.mark('initial_session_loaded', {
+                hasSession: !!session,
+                userId: session?.user?.id ?? null,
+            });
         });
 
         // 2. Listen for Auth Changes
@@ -63,6 +70,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setSession(session);
             setUser(session?.user ?? null);
             setLoading(false);
+            console.log(
+                `[Perf] AuthProvider auth_state_change event=${event} context=${JSON.stringify({
+                    hasSession: !!session,
+                    userId: session?.user?.id ?? null,
+                })}`
+            );
 
             if (event === 'SIGNED_IN') {
                 trackEvent('login_success', {

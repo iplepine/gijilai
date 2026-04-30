@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { db, UserProfile, ChildProfile, ReportData, SurveyData, PracticeItemData, PracticeLogData, SubscriptionData } from '@/lib/db';
+import { createPerfTracker } from '@/lib/perf';
 import { supabase } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
 import { extractMagicWord, type HomeMagicWord } from '@/lib/home';
@@ -12,6 +13,7 @@ type ConsultationPreviewRow = Pick<
 >;
 
 type DashboardPractices = {
+    activeCount: number;
     uncheckedCount: number;
     uncheckedItems: PracticeItemData[];
 };
@@ -28,7 +30,7 @@ type HomeDashboardState = {
     loading: boolean;
 };
 
-const INITIAL_PRACTICES: DashboardPractices = { uncheckedCount: 0, uncheckedItems: [] };
+const INITIAL_PRACTICES: DashboardPractices = { activeCount: 0, uncheckedCount: 0, uncheckedItems: [] };
 
 const INITIAL_STATE: HomeDashboardState = {
     profile: null,
@@ -50,6 +52,8 @@ export function useHomeDashboard(params: { userId?: string; authLoading: boolean
         let isActive = true;
 
         async function fetchDashboardData(currentUserId: string) {
+            const perf = createPerfTracker('HomeDashboard', { userId: currentUserId });
+
             try {
                 setState((previous) => ({ ...previous, loading: true }));
 
@@ -59,6 +63,14 @@ export function useHomeDashboard(params: { userId?: string; authLoading: boolean
                     db.getTodayPracticeLogs(currentUserId).catch(() => [] as PracticeLogData[]),
                     db.getActiveSubscription(currentUserId).catch(() => null),
                 ]);
+                perf.mark('initial_queries', {
+                    children: data.children.length,
+                    reports: data.reports.length,
+                    surveys: data.surveys.length,
+                    activePractices: activePractices.length,
+                    todayLogs: todayLogs.length,
+                    hasSubscription: !!subscription,
+                });
 
                 const checkedPracticeIds = new Set(todayLogs.map((log) => log.practice_id));
                 const uncheckedItems = activePractices.filter((practice) => !checkedPracticeIds.has(practice.id));
@@ -72,6 +84,7 @@ export function useHomeDashboard(params: { userId?: string; authLoading: boolean
                         .eq('user_id', currentUserId);
                     showConsultCTA = !count || count === 0;
                 }
+                perf.mark('consult_cta_check', { showConsultCTA });
 
                 let allMagicWords: HomeMagicWord[] = [];
                 const activeConsultationIds = [...new Set(activePractices.map((practice) => practice.consultation_id))];
@@ -95,6 +108,7 @@ export function useHomeDashboard(params: { userId?: string; authLoading: boolean
                         }];
                     });
                 }
+                perf.mark('magic_words_query', { magicWords: allMagicWords.length });
 
                 if (!isActive) return;
                 setState({
@@ -103,6 +117,7 @@ export function useHomeDashboard(params: { userId?: string; authLoading: boolean
                     reports: data.reports,
                     surveys: data.surveys,
                     practices: {
+                        activeCount: activePractices.length,
                         uncheckedCount: uncheckedItems.length,
                         uncheckedItems,
                     },
@@ -111,7 +126,9 @@ export function useHomeDashboard(params: { userId?: string; authLoading: boolean
                     subscription,
                     loading: false,
                 });
+                perf.mark('state_committed');
             } catch (error) {
+                perf.fail(error);
                 console.error('Failed to fetch dashboard data:', error);
                 if (!isActive) return;
                 setState((previous) => ({ ...previous, loading: false }));

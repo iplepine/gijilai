@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/Button';
 import { MedicalDisclaimer } from '@/components/ui/MedicalDisclaimer';
 import { trackEvent } from '@/lib/analytics';
 import { db, type ChildProfile, type ReportData, type SurveyData } from '@/lib/db';
+import { createPerfTracker } from '@/lib/perf';
 import { TemperamentScorer } from '@/lib/TemperamentScorer';
 import { TemperamentClassifier } from '@/lib/TemperamentClassifier';
 import { TCI_TERMINOLOGY } from '@/constants/terminology';
@@ -373,10 +374,21 @@ function ReportContent() {
 
   const fetchReport = useCallback(async (payload: ReportApiPayload): Promise<ReportApiResult | null> => {
     const resolvedChildId = currentChild?.id ?? selectedChildId;
+    const perf = createPerfTracker('fetchReport', {
+      type: payload.type,
+      childId: resolvedChildId ?? null,
+      refresh: !!payload.refresh,
+    });
+
     const res = await fetch('/api/llm/report', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...payload, intake, childId: resolvedChildId })
+    });
+    perf.mark('network_complete', {
+      ok: res.ok,
+      status: res.status,
+      serverTiming: res.headers.get('server-timing') ?? null,
     });
     if (!res.ok) {
       const errBody = await res.json().catch(() => ({}));
@@ -384,7 +396,13 @@ function ReportContent() {
       throw new Error('Report generation failed');
     }
     const data = await res.json();
-    console.log(`[fetchReport] ${payload.type}: cached=${data.cached}, createdAt=${data.createdAt}`);
+    perf.mark('response_parsed', {
+      cached: data.cached,
+      createdAt: data.createdAt,
+    });
+    console.log(
+      `[fetchReport] ${payload.type}: cached=${data.cached}, createdAt=${data.createdAt}, timings=${JSON.stringify(data.timings ?? null)}`
+    );
     if (!data.report) throw new Error('Empty report response');
 
     // 캐시된 리포트의 포맷이 현재 UI와 맞지 않으면 재생성

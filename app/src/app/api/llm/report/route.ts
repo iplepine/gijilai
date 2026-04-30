@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { invalidJsonResponse, isInvalidJsonBodyError, parseJsonBody } from '@/lib/api';
 import { generateReport, type ReportType } from '@/lib/openai';
+import { buildServerTimingHeader, createPerfTracker } from '@/lib/perf';
 import { createClient } from '@/lib/supabaseServer';
 import type { Json } from '@/types/supabase';
 
@@ -31,9 +32,12 @@ function isReportType(value: unknown): value is ReportType {
 }
 
 export async function POST(request: Request) {
+    const perf = createPerfTracker('Report API');
+
     try {
         const supabase = await createClient();
         const { data: { session } } = await supabase.auth.getSession();
+        perf.mark('auth_session', { hasSession: !!session });
 
         if (!session) {
             return NextResponse.json(
@@ -51,6 +55,12 @@ export async function POST(request: Request) {
             intake, styleScores,
             childId: clientChildId
         } = body;
+        perf.mark('request_parsed', {
+            type,
+            refresh,
+            userId,
+            requestedChildId: clientChildId ?? null,
+        });
 
         if (!userName || !scores || !type) {
             return NextResponse.json(
@@ -86,14 +96,19 @@ export async function POST(request: Request) {
                 console.error('[Report API] Cache query error:', cacheError);
             }
 
+            perf.mark('cache_query', { cacheHit: !!cachedRows?.length });
+
             if (cachedRows && cachedRows.length > 0) {
                 console.log(`[Report API] Returning cached ${type} report (childId=${clientChildId})`);
-                return NextResponse.json({
+                const response = NextResponse.json({
                     report: cachedRows[0].analysis_json,
                     reportId: cachedRows[0].id,
                     createdAt: cachedRows[0].created_at,
-                    cached: true
+                    cached: true,
+                    timings: perf.getSegments(),
                 });
+                response.headers.set('Server-Timing', buildServerTimingHeader(perf.getSegments()));
+                return response;
             }
         }
 
@@ -124,6 +139,8 @@ export async function POST(request: Request) {
                 childInfo = { name: existingChildren[0].name, gender: existingChildren[0].gender, birthDate: existingChildren[0].birth_date };
             }
         }
+
+        perf.mark('child_lookup', { childId: childId ?? null });
         
         if (!childId && intake) {
             const { data: newChild, error: childInsertError } = await supabase
@@ -145,6 +162,8 @@ export async function POST(request: Request) {
                 childId = newChild.id;
                 childInfo = { name: newChild.name, gender: newChild.gender, birthDate: newChild.birth_date };
             }
+
+            perf.mark('child_create', { childId: childId ?? null });
         }
 
         // 3. Survey 저장
@@ -178,12 +197,15 @@ export async function POST(request: Request) {
             }
         }
 
+        perf.mark('survey_insert', { hasSurveyId: !!surveyId });
+
         // 4. LLM 호출
         console.log(`[Report API] Generating ${type} report via LLM (refresh=${refresh})`);
         const report = await generateReport(
             userName, scores, type, undefined,
             answers, parentScores, childType, parentType, childInfo
         );
+        perf.mark('openai_report');
 
         // 5. DB 저장 (childId/surveyId 없어도 캐시를 위해 저장)
         // refresh 시 기존 리포트 삭제
@@ -198,6 +220,7 @@ export async function POST(request: Request) {
             }
             const { error: deleteError } = await deleteQuery;
             if (deleteError) console.error('[Report API] Delete error:', deleteError);
+            perf.mark('refresh_delete');
         }
 
         const { data: savedReport, error: reportError } = await supabase
@@ -219,18 +242,24 @@ export async function POST(request: Request) {
         } else {
             console.log(`[Report API] ${type} report saved to DB (id=${savedReport?.id}, childId=${childId}, surveyId=${surveyId})`);
         }
+        perf.mark('report_insert', { hasReportId: !!savedReport?.id });
 
-        return NextResponse.json({
+        const timings = perf.getSegments();
+        const response = NextResponse.json({
             report,
             reportId: savedReport?.id || null,
             createdAt: new Date().toISOString(),
-            cached: false
+            cached: false,
+            timings,
         });
+        response.headers.set('Server-Timing', buildServerTimingHeader(timings));
+        return response;
     } catch (error) {
         if (isInvalidJsonBodyError(error)) {
             return invalidJsonResponse();
         }
 
+        perf.fail(error);
         console.error('[Report API] Error:', error);
         return NextResponse.json(
             { error: 'Failed to generate report' },

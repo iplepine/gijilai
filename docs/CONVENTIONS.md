@@ -23,6 +23,7 @@
 - `createClient()` + `getSession()`으로 서버 측 세션 검증 후 처리
 - 에러 응답은 `NextResponse.json()`에 적절한 상태 코드 사용
 - try-catch로 감싸고 범용 에러 폴백 처리
+- 지연 원인 추적이 필요한 경로는 `app/src/lib/perf.ts`의 공통 계측 유틸로 단계별 `elapsedMs` / `totalMs` 로그와 `Server-Timing` 헤더를 남긴다
 
 ## 스타일링
 - Tailwind CSS v4, 커스텀 색상 토큰: primary, beige-main, text-main, text-sub, surface-dark, background-light/dark
