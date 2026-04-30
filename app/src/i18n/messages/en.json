@@ -361,6 +361,8 @@
     "practiceReminders": "Practice Reminders",
     "practiceReminderDescription": "When you have active practice items, choose a time to be reminded to check in.",
     "reminderTime": "Reminder time",
+    "reminderHour": "Hour",
+    "reminderMinute": "Minute",
     "practiceReminderLocalNote": "In the app, this schedules a local device notification. In a web browser, only the setting is saved.",
     "emailNotifications": "Email Notifications",
     "emailDescription": "Receive final temperament analysis reports and important announcements via email.",

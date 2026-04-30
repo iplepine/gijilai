@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Navbar } from '@/components/layout/Navbar';
 import { useLocale } from '@/i18n/LocaleProvider';
+import { Button } from '@/components/ui/Button';
 
 const STORAGE_KEY = 'gijilai_notification_settings';
 
@@ -34,6 +35,15 @@ export default function NotificationsPage() {
     const { t } = useLocale();
     const [settings, setSettings] = useState<NotificationSettings>(DEFAULT_SETTINGS);
     const [loaded, setLoaded] = useState(false);
+    const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
+    const [draftReminderTime, setDraftReminderTime] = useState(DEFAULT_SETTINGS.practiceReminderTime);
+
+    const [draftHour, draftMinute] = draftReminderTime.split(':');
+    const selectedHour = Number.parseInt(draftHour ?? '20', 10);
+    const selectedMinute = Number.parseInt(draftMinute ?? '0', 10);
+
+    const hourOptions = Array.from({ length: 24 }, (_, index) => index);
+    const minuteOptions = Array.from({ length: 12 }, (_, index) => index * 5);
 
     useEffect(() => {
         try {
@@ -60,6 +70,44 @@ export default function NotificationsPage() {
 
     const updateSetting = <K extends keyof NotificationSettings>(key: K, value: NotificationSettings[K]) => {
         setSettings((current) => ({ ...current, [key]: value }));
+    };
+
+    useEffect(() => {
+        if (!isTimePickerOpen) return;
+
+        const handleEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setIsTimePickerOpen(false);
+            }
+        };
+
+        document.addEventListener('keydown', handleEscape);
+        return () => document.removeEventListener('keydown', handleEscape);
+    }, [isTimePickerOpen]);
+
+    const formatReminderTime = (time: string) => {
+        const [hours, minutes] = time.split(':').map((value) => Number.parseInt(value, 10));
+        const suffix = hours >= 12 ? 'PM' : 'AM';
+        const displayHour = hours % 12 === 0 ? 12 : hours % 12;
+        return `${suffix} ${displayHour}:${String(minutes).padStart(2, '0')}`;
+    };
+
+    const openTimePicker = () => {
+        setDraftReminderTime(settings.practiceReminderTime);
+        setIsTimePickerOpen(true);
+    };
+
+    const updateDraftHour = (hour: number) => {
+        setDraftReminderTime(`${String(hour).padStart(2, '0')}:${String(selectedMinute).padStart(2, '0')}`);
+    };
+
+    const updateDraftMinute = (minute: number) => {
+        setDraftReminderTime(`${String(selectedHour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`);
+    };
+
+    const saveReminderTime = () => {
+        updateSetting('practiceReminderTime', draftReminderTime);
+        setIsTimePickerOpen(false);
     };
 
     return (
@@ -99,16 +147,17 @@ export default function NotificationsPage() {
                                 </button>
                             </div>
 
-                            <label className="flex items-center justify-between gap-4 rounded-2xl bg-beige-main/20 dark:bg-white/5 px-4 py-3">
+                            <div className="flex items-center justify-between gap-4 rounded-2xl bg-beige-main/20 dark:bg-white/5 px-4 py-3">
                                 <span className="text-[13px] font-bold text-text-main dark:text-white">{t('settings.reminderTime')}</span>
-                                <input
-                                    type="time"
-                                    value={settings.practiceReminderTime}
+                                <button
+                                    type="button"
                                     disabled={!settings.practiceReminderEnabled}
-                                    onChange={(event) => updateSetting('practiceReminderTime', event.target.value)}
-                                    className="rounded-xl border border-primary/10 bg-white dark:bg-surface-dark px-3 py-2 text-[14px] font-bold text-text-main dark:text-white disabled:opacity-40"
-                                />
-                            </label>
+                                    onClick={openTimePicker}
+                                    className="min-w-28 rounded-xl border border-primary/10 bg-white dark:bg-surface-dark px-3 py-2 text-[14px] font-bold text-text-main dark:text-white disabled:opacity-40"
+                                >
+                                    {formatReminderTime(settings.practiceReminderTime)}
+                                </button>
+                            </div>
 
                             <p className="text-[12px] text-gray-500 leading-relaxed break-keep">
                                 {t('settings.practiceReminderLocalNote')}
@@ -148,6 +197,102 @@ export default function NotificationsPage() {
                     </div>
                 </main>
             </div>
+
+            {isTimePickerOpen && (
+                <div
+                    className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in"
+                    onClick={() => setIsTimePickerOpen(false)}
+                >
+                    <div
+                        className="w-full max-w-sm overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-surface-dark animate-slide-up"
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between border-b border-beige-main/10 bg-beige-main/5 px-6 py-5 dark:border-white/5 dark:bg-white/5">
+                            <div>
+                                <p className="text-[12px] font-bold uppercase tracking-[0.2em] text-text-sub">
+                                    {t('settings.practiceReminders')}
+                                </p>
+                                <h4 className="mt-1 text-lg font-bold text-text-main dark:text-white">
+                                    {t('settings.reminderTime')}
+                                </h4>
+                            </div>
+                            <div className="rounded-full bg-primary/10 px-3 py-1 text-sm font-bold text-primary">
+                                {formatReminderTime(draftReminderTime)}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 px-6 py-6">
+                            <div>
+                                <p className="mb-3 text-[12px] font-bold uppercase tracking-[0.2em] text-text-sub">
+                                    {t('settings.reminderHour')}
+                                </p>
+                                <div className="grid max-h-64 grid-cols-3 gap-2 overflow-y-auto pr-1">
+                                    {hourOptions.map((hour) => {
+                                        const isSelected = selectedHour == hour;
+                                        return (
+                                            <button
+                                                key={hour}
+                                                type="button"
+                                                onClick={() => updateDraftHour(hour)}
+                                                className={`h-11 rounded-xl text-sm font-bold transition-all ${
+                                                    isSelected
+                                                        ? 'bg-primary text-white shadow-md shadow-primary/20'
+                                                        : 'bg-beige-main/10 text-text-main hover:bg-primary/10 dark:bg-white/5 dark:text-white'
+                                                }`}
+                                            >
+                                                {String(hour).padStart(2, '0')}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            <div>
+                                <p className="mb-3 text-[12px] font-bold uppercase tracking-[0.2em] text-text-sub">
+                                    {t('settings.reminderMinute')}
+                                </p>
+                                <div className="grid max-h-64 grid-cols-2 gap-2 overflow-y-auto pr-1">
+                                    {minuteOptions.map((minute) => {
+                                        const isSelected = selectedMinute == minute;
+                                        return (
+                                            <button
+                                                key={minute}
+                                                type="button"
+                                                onClick={() => updateDraftMinute(minute)}
+                                                className={`h-11 rounded-xl text-sm font-bold transition-all ${
+                                                    isSelected
+                                                        ? 'bg-primary text-white shadow-md shadow-primary/20'
+                                                        : 'bg-beige-main/10 text-text-main hover:bg-primary/10 dark:bg-white/5 dark:text-white'
+                                                }`}
+                                            >
+                                                {String(minute).padStart(2, '0')}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 border-t border-beige-main/10 px-6 py-5 dark:border-white/5">
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                className="flex-1"
+                                onClick={() => setIsTimePickerOpen(false)}
+                            >
+                                {t('common.cancel')}
+                            </Button>
+                            <Button
+                                type="button"
+                                className="flex-1"
+                                onClick={saveReminderTime}
+                            >
+                                {t('common.confirm')}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

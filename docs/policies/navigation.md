@@ -65,6 +65,7 @@
 - 홈이 아닌 URL에서는 앱 종료보다 WebView 뒤로가기를 우선한다.
 - Android 런처 아이콘은 adaptive icon(`mipmap-anydpi-v26/ic_launcher.xml`)으로 제공하고, 배경색과 전경 이미지를 분리해 런처 마스크 안에서 작게 축소되지 않도록 한다.
 - Flutter 앱 WebView에서 웹 JavaScript `alert`, `confirm`, `prompt`가 호출되면 플랫폼 기본 시스템 다이얼로그 대신 앱 테마의 Flutter 다이얼로그로 표시한다.
+- 알림 설정의 리마인더 시간 선택은 브라우저/WebView 기본 `input type="time"` picker를 쓰지 않고, 웹 커스텀 모달로 표시해 앱/웹에서 동일한 시각 언어를 유지한다.
 - Flutter 앱 WebView가 `/login`에 도달하면 WebView 위에 네이티브 로그인 화면을 오버레이한다.
 - 네이티브 로그인 화면은 카카오, Apple, Google, 이메일 진입점을 제공한다.
 - 카카오 버튼은 Kakao Flutter SDK 앱투앱 로그인을 먼저 시도하고, Kakao ID 토큰을 `/auth/native-session`으로 전달해 Supabase 세션 쿠키를 WebView에 설정한다.
