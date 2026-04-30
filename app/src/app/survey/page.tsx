@@ -20,6 +20,9 @@ function SurveyContent() {
   const searchParams = useSearchParams();
   const typeParam = searchParams.get('type'); // 'CHILD' | 'PARENT' | 'STYLE'
   const flowParam = searchParams.get('flow');
+  const entrySource = searchParams.get('source') ?? 'direct';
+  const reportTab = searchParams.get('report_tab');
+  const reportKind = searchParams.get('report_kind');
   const { t } = useLocale();
 
   const { user } = useAuth();
@@ -181,8 +184,11 @@ function SurveyContent() {
     startedModulesRef.current.add(currentModule);
     trackEvent('survey_module_started', {
       module: currentModule,
+      source: entrySource,
+      report_tab: reportTab ?? undefined,
+      report_kind: reportKind ?? undefined,
     });
-  }, [currentModule]);
+  }, [currentModule, entrySource, reportKind, reportTab]);
 
   const goToNext = () => {
     if (currentIndex < questions.length - 1) {
@@ -191,6 +197,9 @@ function SurveyContent() {
       trackEvent('survey_module_completed', {
         module: currentModule,
         answered_questions: responseCountRef.current,
+        source: entrySource,
+        report_tab: reportTab ?? undefined,
+        report_kind: reportKind ?? undefined,
       });
 
       // Current module finished
@@ -257,6 +266,9 @@ function SurveyContent() {
     } else if (transitionType === 'finish') {
       trackEvent('survey_flow_completed', {
         answered_questions: answeredCount,
+        source: entrySource,
+        report_tab: reportTab ?? undefined,
+        report_kind: reportKind ?? undefined,
       });
       setIsCalculating(true);
       setTimeout(() => {

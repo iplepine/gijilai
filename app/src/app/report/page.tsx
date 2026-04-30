@@ -63,6 +63,8 @@ function ReportContent() {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get('tab');
   const isChildOnly = searchParams.get('child_only') === 'true';
+  const entrySource = searchParams.get('source') ?? (searchParams.get('id') ? 'saved_report' : 'direct');
+  const reportKind = isChildOnly ? 'child_only' : 'full';
 
   const { user } = useAuth();
   const { t, locale } = useLocale();
@@ -260,7 +262,10 @@ function ReportContent() {
           <p className="text-[13px] leading-relaxed text-white/85 break-keep">{t('report.premiumCtaDesc')}</p>
         </div>
         <button
-          onClick={() => router.push('/pricing')}
+          onClick={() => {
+            trackReportCtaClick('start_trial', compact ? 'footer' : 'hero', '/pricing');
+            router.push(buildTrackedPath('/pricing?entry_cta=start_trial'));
+          }}
           className="w-full h-12 rounded-xl bg-white text-primary text-[14px] font-black active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
         >
           <span>{t('report.premiumCtaButton')}</span>
@@ -349,13 +354,43 @@ function ReportContent() {
     setActiveTab(tab);
   };
 
+  const buildTrackedPath = useCallback((path: string) => {
+    const [basePath, queryString] = path.split('?');
+    const params = new URLSearchParams(queryString ?? '');
+    params.set('source', 'report');
+    params.set('report_tab', activeTab);
+    params.set('report_kind', reportKind);
+    const nextQuery = params.toString();
+    return nextQuery ? `${basePath}?${nextQuery}` : basePath;
+  }, [activeTab, reportKind]);
+
+  const trackReportCtaClick = useCallback((
+    ctaType: string,
+    placement: 'hero' | 'footer' | 'sticky',
+    destinationPath: string,
+  ) => {
+    trackEvent('report_primary_cta_clicked', {
+      cta_type: ctaType,
+      placement,
+      report_tab: activeTab,
+      report_kind: reportKind,
+      child_only: isChildOnly,
+      source: entrySource,
+      has_saved_report: !!reportId,
+      destination_path: destinationPath,
+    });
+  }, [activeTab, entrySource, isChildOnly, reportId, reportKind]);
+
   useEffect(() => {
     trackEvent('report_viewed', {
       tab: activeTab,
+      report_kind: reportKind,
       child_only: isChildOnly,
       has_saved_report: !!reportId,
+      source: entrySource,
+      has_subscription: hasSubscription,
     });
-  }, [activeTab, isChildOnly, reportId]);
+  }, [activeTab, entrySource, hasSubscription, isChildOnly, reportId, reportKind]);
 
 
   // 리포트 포맷 검증: 필수 필드가 있는지 확인
@@ -713,7 +748,8 @@ function ReportContent() {
                     onClick={() => {
                       if (isParentSurveyComplete) handleTabChange('parent');
                       else if (confirm(t('report.parentSurveyNeeded'))) {
-                        router.push('/survey?type=PARENT');
+                        trackReportCtaClick('continue_parent_survey', 'hero', '/survey?type=PARENT');
+                        router.push(buildTrackedPath('/survey?type=PARENT'));
                       }
                     }}
                     className={`flex-1 py-3 rounded-xl text-[11px] font-bold transition-all ${activeTab === 'parent' ? 'bg-primary text-white shadow-md' : 'text-text-sub hover:text-text-main dark:hover:text-white hover:bg-beige-light/50 dark:hover:bg-white/5'}`}
@@ -724,7 +760,8 @@ function ReportContent() {
                     onClick={() => {
                       if (isStyleSurveyComplete) handleTabChange('parenting');
                       else if (confirm(t('report.styleSurveyNeeded'))) {
-                        router.push('/survey?type=STYLE');
+                        trackReportCtaClick('continue_parenting_style', 'hero', '/survey?type=STYLE');
+                        router.push(buildTrackedPath('/survey?type=STYLE'));
                       }
                     }}
                     className={`flex-1 py-3 rounded-xl text-[11px] font-bold transition-all ${activeTab === 'parenting' ? 'bg-primary text-white shadow-md' : 'text-text-sub hover:text-text-main dark:hover:text-white hover:bg-beige-light/50 dark:hover:bg-white/5'}`}
@@ -1010,7 +1047,15 @@ function ReportContent() {
                     <div className="flex flex-col gap-4 pt-10 pb-10 text-center">
                       <MedicalDisclaimer title={t('report.medicalDisclaimerTitle')} body={t('report.medicalDisclaimerBody')} />
                       {showPremiumCta && <PremiumContinuationCard />}
-                      <Button variant="secondary" onClick={() => router.push(`/share${(reportId || childReportId) ? `?id=${reportId || childReportId}` : ''}`)} fullWidth className="h-14 rounded-2xl border-none bg-white shadow-lg">
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          trackReportCtaClick('share', 'footer', '/share');
+                          router.push(buildTrackedPath(`/share${(reportId || childReportId) ? `?id=${reportId || childReportId}` : ''}`));
+                        }}
+                        fullWidth
+                        className="h-14 rounded-2xl border-none bg-white shadow-lg"
+                      >
                         {t('report.shareResult')}
                       </Button>
                       <Link href="/" className="text-slate-400 text-sm font-bold hover:text-primary transition-colors">
@@ -1187,7 +1232,15 @@ function ReportContent() {
                   <div className="flex flex-col gap-4 pt-10 pb-10 text-center">
                     <MedicalDisclaimer title={t('report.medicalDisclaimerTitle')} body={t('report.medicalDisclaimerBody')} />
                     {showPremiumCta && <PremiumContinuationCard compact />}
-                    <Button variant="secondary" onClick={() => router.push(`/share${(reportId || childReportId) ? `?id=${reportId || childReportId}` : ''}`)} fullWidth className="h-14 rounded-2xl border-none bg-white shadow-lg">
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        trackReportCtaClick('share', 'footer', '/share');
+                        router.push(buildTrackedPath(`/share${(reportId || childReportId) ? `?id=${reportId || childReportId}` : ''}`));
+                      }}
+                      fullWidth
+                      className="h-14 rounded-2xl border-none bg-white shadow-lg"
+                    >
                       {t('report.shareMyResult')}
                     </Button>
                     <Link href="/" className="text-slate-400 text-sm font-bold hover:text-primary transition-colors">
@@ -1409,7 +1462,15 @@ function ReportContent() {
                 {harmonyAiReport && <div className="flex flex-col gap-4 pt-10 pb-16 text-center px-4">
                   <MedicalDisclaimer title={t('report.medicalDisclaimerTitle')} body={t('report.medicalDisclaimerBody')} />
                   {showPremiumCta && <PremiumContinuationCard />}
-                  <Button variant="secondary" onClick={() => router.push(`/share${(reportId || childReportId) ? `?id=${reportId || childReportId}` : ''}`)} fullWidth className="h-14 rounded-2xl border-none bg-white shadow-lg text-slate-800 font-bold">
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      trackReportCtaClick('share', 'footer', '/share');
+                      router.push(buildTrackedPath(`/share${(reportId || childReportId) ? `?id=${reportId || childReportId}` : ''}`));
+                    }}
+                    fullWidth
+                    className="h-14 rounded-2xl border-none bg-white shadow-lg text-slate-800 font-bold"
+                  >
                     결과 공유하기
                   </Button>
                   <Link href="/" className="text-slate-400 text-sm font-bold hover:text-primary transition-colors">
@@ -1430,14 +1491,26 @@ function ReportContent() {
               <div className="m-3 bg-white rounded-[2rem] shadow-2xl border border-slate-100 overflow-hidden">
                 <div className="px-5 py-4 flex gap-3">
                   <button
-                    onClick={() => router.push(`/share${(reportId || childReportId) ? `?id=${reportId || childReportId}` : ''}`)}
+                    onClick={() => {
+                      trackReportCtaClick('share', 'sticky', '/share');
+                      router.push(buildTrackedPath(`/share${(reportId || childReportId) ? `?id=${reportId || childReportId}` : ''}`));
+                    }}
                     className="flex-1 py-4 rounded-2xl font-black text-base flex items-center justify-center gap-2 active:scale-[0.98] transition-all border-2 border-primary text-primary"
                   >
                     <span className="material-symbols-outlined text-[20px]">share</span>
                     <span>{t('report.shareResults')}</span>
                   </button>
                   <button
-                    onClick={() => router.replace('/report')}
+                    onClick={() => {
+                      trackEvent('report_expand_clicked', {
+                        from_tab: activeTab,
+                        to_tab: 'child',
+                        child_only: isChildOnly,
+                        source: entrySource,
+                      });
+                      trackReportCtaClick('expand_full_report', 'sticky', '/report');
+                      router.replace(buildTrackedPath('/report'));
+                    }}
                     className="flex-1 py-4 rounded-2xl font-black text-white text-base flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
                     style={{ backgroundColor: 'var(--primary)' }}
                   >
@@ -1458,7 +1531,10 @@ function ReportContent() {
                     {t('report.parentChildMatchDesc')}
                   </p>
                   <button
-                    onClick={() => router.push('/survey?type=PARENT')}
+                    onClick={() => {
+                      trackReportCtaClick('continue_parent_survey', 'sticky', '/survey?type=PARENT');
+                      router.push(buildTrackedPath('/survey?type=PARENT'));
+                    }}
                     className="w-full py-4 rounded-2xl font-black text-white text-base flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
                     style={{ backgroundColor: 'var(--primary)' }}
                   >
