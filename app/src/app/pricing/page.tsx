@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, type FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useRef, useCallback, type FormEvent } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useLocale } from '@/i18n/LocaleProvider';
+import { trackEvent } from '@/lib/analytics';
 import { getApiErrorMessage, readJsonResponse } from '@/lib/api';
 
 
@@ -108,6 +109,7 @@ function getAppIapProductId(): string {
 
 export default function PricingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const { locale, t, currency } = useLocale();
   const [loading, setLoading] = useState(false);
@@ -117,18 +119,41 @@ export default function PricingPage() {
   const [existingSubscription, setExistingSubscription] = useState<ExistingSubscriptionSummary>(null);
   const [isFirstSubscription, setIsFirstSubscription] = useState(true);
   const [isApp, setIsApp] = useState(false);
+  const [isEnvironmentReady, setIsEnvironmentReady] = useState(false);
   const [reactivating, setReactivating] = useState(false);
   const [subscriptionLookupError, setSubscriptionLookupError] = useState('');
+  const trackedPricingViewRef = useRef(false);
   const payMethod: PayMethodOption = 'INICIS_CARD';
+  const entrySource = searchParams.get('source') ?? 'direct';
+  const entryCta = searchParams.get('entry_cta') ?? undefined;
+  const reportTab = searchParams.get('report_tab');
+  const reportKind = searchParams.get('report_kind');
 
-  const getErrorMessage = (error: unknown) => error instanceof Error ? error.message : t('common.error');
+  const getErrorMessage = useCallback((error: unknown) => (
+    error instanceof Error ? error.message : t('common.error')
+  ), [t]);
+  const currentPrice = isFirstSubscription ? FIRST_MONTH_PRICES[currency] : PRICES.MONTHLY[currency];
 
   useEffect(() => {
     // 앱 감지
     const ua = navigator.userAgent.toLowerCase();
     const inApp = ua.includes('gijilai_app') || !!window.PaymentBridge;
     setIsApp(inApp);
+    setIsEnvironmentReady(true);
   }, []);
+
+  useEffect(() => {
+    if (!isEnvironmentReady || trackedPricingViewRef.current) return;
+
+    trackEvent('pricing_viewed', {
+      source: entrySource,
+      entry_cta: entryCta,
+      is_app: isApp,
+      report_tab: reportTab ?? undefined,
+      report_kind: reportKind ?? undefined,
+    });
+    trackedPricingViewRef.current = true;
+  }, [entryCta, entrySource, isApp, isEnvironmentReady, reportKind, reportTab]);
 
   useEffect(() => {
     if (!user) return;
@@ -158,7 +183,7 @@ export default function PricingPage() {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [getErrorMessage, t, user]);
 
   // 앱 IAP: Flutter가 결과를 네이티브 SnackBar로 처리, 웹은 loading 해제만 담당
   useEffect(() => {
@@ -173,6 +198,13 @@ export default function PricingPage() {
     // 앱 → IAP (Apple/Google이 결제수단 처리)
     if (isApp) {
       if (!window.PaymentBridge) return;
+      trackEvent('payment_started', {
+        source: entrySource,
+        entry_cta: entryCta,
+        pay_method: 'APPLE_GOOGLE',
+        used_coupon: isFirstSubscription,
+        final_amount: currentPrice,
+      });
       setLoading(true);
       window.PaymentBridge.postMessage(JSON.stringify({
         type: 'PAYMENT_REQUEST',
@@ -193,6 +225,13 @@ export default function PricingPage() {
       return;
     }
 
+    trackEvent('payment_started', {
+      source: entrySource,
+      entry_cta: entryCta,
+      pay_method: payMethod,
+      used_coupon: isFirstSubscription,
+      final_amount: currentPrice,
+    });
     setLoading(true);
 
     try {
@@ -270,6 +309,14 @@ export default function PricingPage() {
       if (!response.ok) {
         throw new Error(data.error || '구독 생성 실패');
       }
+
+      trackEvent('payment_completed', {
+        source: entrySource,
+        entry_cta: entryCta,
+        pay_method: payMethod,
+        used_coupon: isFirstSubscription,
+        final_amount: currentPrice,
+      });
 
       router.refresh();
       router.replace('/settings/subscription');

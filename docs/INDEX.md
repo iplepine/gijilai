@@ -16,6 +16,7 @@
 | [ADR.md](ADR.md) | 주요 의사결정 기록 (Architecture Decision Records) |
 | [TODO.md](TODO.md) | 향후 작업 목록 |
 | [plan/product-success-roadmap.md](plan/product-success-roadmap.md) | 성공 가능성 향상을 위한 제품 실행 로드맵과 검증 지표 |
+| [plan/report-conversion-analytics-cycle.md](plan/report-conversion-analytics-cycle.md) | 리포트 전환 퍼널 측정, 분석, 개선 운영 사이클 |
 | [ADMIN-LINKS.md](ADMIN-LINKS.md) | 외부 서비스 관리자 대시보드 링크 모음 |
 | [deployment/ios/](deployment/ios/) | iOS TestFlight/App Store 배포 설정 재사용 가이드 |
 | [migrations/](migrations/) | Supabase DB 마이그레이션 SQL |

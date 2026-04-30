@@ -140,6 +140,9 @@ function ConsultContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const sessionIdParam = searchParams.get('sessionId');
+    const entrySource = searchParams.get('source') ?? (sessionIdParam ? 'followup' : 'direct');
+    const reportTab = searchParams.get('report_tab');
+    const reportKind = searchParams.get('report_kind');
     const { user } = useAuth();
     const { t, locale } = useLocale();
     const { intake, cbqResponses, atqResponses, selectedChildId } = useAppStore();
@@ -270,7 +273,7 @@ function ConsultContent() {
 
     const handleStartDiagnostic = async () => {
         if (!hasFullAccess) {
-            router.push('/pricing');
+            router.push(`/pricing?source=consult&entry_cta=consult_gate`);
             return;
         }
 
@@ -281,9 +284,12 @@ function ConsultContent() {
 
         const fullProblem = problemDesc;
         trackEvent('consult_started', {
+            source: entrySource,
             has_child_report: hasChildReport,
             has_subscription: hasSubscription,
             is_followup: !!sessionIdParam,
+            report_tab: reportTab ?? undefined,
+            report_kind: reportKind ?? undefined,
         });
 
         setIsLoading(true);
