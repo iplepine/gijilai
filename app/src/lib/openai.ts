@@ -4,6 +4,7 @@ import {
     CHILD_REPORT_PROMPT,
     HARMONY_REPORT_PROMPT,
 } from '@/lib/prompts';
+import { createPerfTracker } from '@/lib/perf';
 import { CHILD_QUESTIONS, PARENT_QUESTIONS, PARENTING_STYLE_QUESTIONS } from '@/data/questions';
 import { Question } from '@/types/survey';
 
@@ -49,6 +50,12 @@ export const generateReport = async (
     parentType?: TemperamentSummary,
     childInfo?: ChildInfo | null
 ) => {
+    const perf = createPerfTracker('generateReport', {
+        type,
+        hasAnswers: !!answers?.length,
+        hasChildInfo: !!childInfo,
+    });
+
     let defaultPrompt = CHILD_REPORT_PROMPT;
     if (type === 'PARENT') defaultPrompt = PARENT_REPORT_PROMPT;
     if (type === 'HARMONY') defaultPrompt = HARMONY_REPORT_PROMPT;
@@ -110,6 +117,7 @@ export const generateReport = async (
     }
 
     const userMessage = JSON.stringify(payload);
+    perf.mark('prompt_prepared', { payloadBytes: userMessage.length });
 
     const response = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
@@ -120,6 +128,7 @@ export const generateReport = async (
         response_format: { type: "json_object" },
         temperature: 0.7,
     });
+    perf.mark('openai_completion');
 
     const content = response.choices[0].message.content;
     if (!content) return null;
@@ -171,8 +180,10 @@ export const generateReport = async (
             console.warn('[generateReport] WARNING: analysis.dimensions is missing after normalization!');
         }
 
+        perf.mark('response_parsed');
         return parsed;
     } catch (e) {
+        perf.fail(e, { stage: 'json_parse' });
         console.error("JSON Parsing failed for AI report", e);
         return content; // Fallback to raw string if parsing fails
     }

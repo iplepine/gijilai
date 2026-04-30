@@ -89,7 +89,7 @@ export default function ProfileEditPage() {
             <div className="max-w-md mx-auto relative min-h-screen flex flex-col">
                 <Navbar title={t('settings.editProfile')} />
 
-                <main className="flex-1 px-6 py-8">
+                <main className="app-fixed-cta-scroll flex-1 px-6 py-8">
                     <div className="flex flex-col items-center mb-10 relative">
                         <div
                             onClick={() => fileInputRef.current?.click()}
@@ -146,7 +146,7 @@ export default function ProfileEditPage() {
                     </div>
                 </main>
 
-                <div className="p-6 pb-12 mt-auto">
+                <div className="app-fixed-cta p-6 mt-auto">
                     <button
                         onClick={handleSave}
                         disabled={isSaving || !fullName.trim()}

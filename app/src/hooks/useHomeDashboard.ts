@@ -11,6 +11,7 @@ import {
   PracticeLogData,
   SubscriptionData,
 } from "@/lib/db";
+import { createPerfTracker } from "@/lib/perf";
 import { supabase } from "@/lib/supabase";
 import type { Database } from "@/types/supabase";
 import { extractMagicWord, type HomeMagicWord } from "@/lib/home";
@@ -67,6 +68,10 @@ export function useHomeDashboard(params: {
     let isActive = true;
 
     async function fetchDashboardData(currentUserId: string) {
+      const perf = createPerfTracker("HomeDashboard", {
+        userId: currentUserId,
+      });
+
       try {
         setState((previous) => ({ ...previous, loading: true }));
 
@@ -81,6 +86,14 @@ export function useHomeDashboard(params: {
               .catch(() => [] as PracticeLogData[]),
             db.getActiveSubscription(currentUserId).catch(() => null),
           ]);
+        perf.mark("initial_queries", {
+          children: data.children.length,
+          reports: data.reports.length,
+          surveys: data.surveys.length,
+          activePractices: activePractices.length,
+          todayLogs: todayLogs.length,
+          hasSubscription: !!subscription,
+        });
 
         const checkedPracticeIds = new Set(
           todayLogs.map((log) => log.practice_id),
@@ -98,6 +111,7 @@ export function useHomeDashboard(params: {
             .eq("user_id", currentUserId);
           showConsultCTA = !count || count === 0;
         }
+        perf.mark("consult_cta_check", { showConsultCTA });
 
         let allMagicWords: HomeMagicWord[] = [];
         const activeConsultationIds = [
@@ -133,6 +147,7 @@ export function useHomeDashboard(params: {
             ];
           });
         }
+        perf.mark("magic_words_query", { magicWords: allMagicWords.length });
 
         if (!isActive) return;
         setState({
@@ -150,7 +165,9 @@ export function useHomeDashboard(params: {
           subscription,
           loading: false,
         });
+        perf.mark("state_committed");
       } catch (error) {
+        perf.fail(error);
         console.error("Failed to fetch dashboard data:", error);
         if (!isActive) return;
         setState((previous) => ({ ...previous, loading: false }));

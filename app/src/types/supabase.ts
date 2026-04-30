@@ -14,6 +14,7 @@ export interface Database {
                     id: string
                     email: string | null
                     full_name: string | null
+                    marketing_opt_in: boolean
                     role: string
                     created_at: string
                 }
@@ -21,6 +22,7 @@ export interface Database {
                     id: string
                     email?: string | null
                     full_name?: string | null
+                    marketing_opt_in?: boolean
                     role?: string
                     created_at?: string
                 }
@@ -28,6 +30,7 @@ export interface Database {
                     id?: string
                     email?: string | null
                     full_name?: string | null
+                    marketing_opt_in?: boolean
                     role?: string
                     created_at?: string
                 }

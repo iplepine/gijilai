@@ -62,6 +62,9 @@
 - 노치/상태표시줄 대응을 위한 상단 여백 통일 (pt-12, pb-4)
 - Flutter 앱 WebView의 루트(`/`) 진입 시 로그인 세션이 없으면 웹 랜딩 화면을 먼저 보여준다. 로그인 세션이 있으면 홈을 그대로 렌더링한다.
 - 앱 로그인은 랜딩 CTA 이후 `/login`에서 네이티브 로그인 화면 오버레이로 시작한다.
+- 노치/상태표시줄 대응은 웹 CSS `env(safe-area-inset-*)`와 Flutter WebView가 주입하는 `--native-safe-area-top/bottom`을 함께 사용한다.
+- `Navbar` 기반 일반 스크롤 화면은 `app-page-scroll`로 하단 safe area + 여유 패딩을 공통 적용한다.
+- 하단 고정 CTA가 있는 화면은 본문에 `app-fixed-cta-scroll`, 하단 컨테이너에 `app-fixed-cta`를 사용해 마지막 입력 필드와 버튼이 시스템 내비게이션 영역에 가려지지 않게 한다.
 - Android 앱에서 WebView 현재 URL이 홈(`/`)이면 백키 1회 입력 시 "한번 더 누르면 종료됩니다" 안내를 띄우고, 3초 안에 한 번 더 누르면 앱을 종료한다.
 - 홈이 아닌 URL에서는 앱 종료보다 WebView 뒤로가기를 우선한다.
 - Android 런처 아이콘은 adaptive icon(`mipmap-anydpi-v26/ic_launcher.xml`)으로 제공하고, 배경색과 전경 이미지를 분리해 런처 마스크 안에서 작게 축소되지 않도록 한다.
