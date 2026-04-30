@@ -19,6 +19,7 @@ function SurveyContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const typeParam = searchParams.get('type'); // 'CHILD' | 'PARENT' | 'STYLE'
+  const flowParam = searchParams.get('flow');
   const { t } = useLocale();
 
   const { user } = useAuth();
@@ -41,6 +42,7 @@ function SurveyContent() {
     if (typeParam === 'STYLE') return 'parenting';
     return 'child';
   });
+  const surveyFlow = flowParam === 'full' ? 'full' : 'quick';
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showTransitionModal, setShowTransitionModal] = useState(false);
   const [transitionType, setTransitionType] = useState<'toParent' | 'toParenting' | 'finish' | null>(null);
@@ -193,8 +195,12 @@ function SurveyContent() {
 
       // Current module finished
       if (currentModule === 'child') {
-        // 아이 기질 완료 → 즉시 아이 리포트 화면으로 이동 (안 A)
-        router.replace('/report?child_only=true');
+        if (surveyFlow === 'full') {
+          setTransitionType('toParent');
+          setShowTransitionModal(true);
+        } else {
+          router.replace('/report?child_only=true');
+        }
       } else if (currentModule === 'parent') {
         // 양육자 기질 완료 시 양육 태도 안내 다이얼로그 노출
         setTransitionType('toParenting');

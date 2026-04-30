@@ -22,11 +22,11 @@
 /login                      # 로그인
 /intake                     # 접수 폼
 /survey/                    # 설문 메인
-  intro/                    # 설문 안내
+  intro/                    # 설문 안내 (quick/full 시작 선택)
   child/                    # 아이 기질 설문
   parent/                   # 양육자 기질 설문
   parenting-style/          # 양육 스타일 설문
-/report                     # 리포트
+/report                     # 리포트 (`child_only=true` quick-start 모드 지원)
 /consult                    # 마음 통역소 (AI 상담)
 /consultations/             # 상담 기록 목록
   [id]/                     # 상담 기록 상세
@@ -58,6 +58,9 @@
 ## 네비게이션 규칙
 
 - 내부 페이지 전환 시 `router.replace()` 사용 (`router.push()` 대신, WebView 뒤로가기 스택 이슈 방지)
+- 설문 안내 화면은 `빠르게 아이 결과 먼저 보기`와 `처음부터 전체 분석 시작하기` 두 경로를 명시적으로 제공한다.
+- `flow=quick` 설문은 아이 설문 완료 후 `/report?child_only=true`로 이동한다.
+- `flow=full` 설문은 아이 설문 후 즉시 양육자/양육 스타일 설문으로 이어진다.
 - 모든 헤더는 absolute positioning으로 타이틀 중앙 정렬
 - 노치/상태표시줄 대응을 위한 상단 여백 통일 (pt-12, pb-4)
 - Flutter 앱 WebView의 루트(`/`) 진입 시 로그인 세션이 없으면 웹 랜딩 화면을 먼저 보여준다. 로그인 세션이 있으면 홈을 그대로 렌더링한다.
