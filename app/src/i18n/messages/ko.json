@@ -307,6 +307,7 @@
     "creatingPrescription": "아이의 마음에 맞는 처방전을 만들고 있어요",
     "consultContent": "상담 내용",
     "trialExpired": "체험 기간이 종료되었어요.",
+    "trialExpiredDesc": "구독하면 상담 기록과 실천 기록이 계속 쌓이고, 다음 상담에서도 이전 맥락을 이어 더 맞춤형 가이드를 받을 수 있어요.",
     "subscribeCta": "구독하기",
     "trialDaysRemaining": "체험 기간이 {days}일 남았어요",
     "resultPremiumEyebrow": "지속관리",

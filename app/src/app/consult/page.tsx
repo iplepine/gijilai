@@ -526,7 +526,7 @@ function ConsultContent() {
             <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
                 <Navbar title={step === 'RESULT' ? t('consult.heartPrescription') : t('consult.heartInterpreterStation')} />
 
-                <main className="w-full max-w-md flex flex-col flex-1 p-6 pb-36">
+                <main className="app-fixed-cta-scroll w-full max-w-md flex flex-col flex-1 p-6">
                     {step === 'INPUT' && childLoading && (
                         <div className="flex flex-col items-center justify-center flex-1">
                             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -675,11 +675,17 @@ function ConsultContent() {
                     )}
 
                     {step === 'INPUT' && !childLoading && validChildId && hasChildReport && (
-                        <div className="absolute bottom-0 left-0 right-0 p-6 bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl border-t border-beige-main/20 z-30">
+                        <div className="app-fixed-cta fixed bottom-0 left-0 right-0 z-30 bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl border-t border-beige-main/20">
+                            <div className="w-full max-w-md mx-auto px-6">
                             {!hasFullAccess && (
-                                <p className="text-center text-xs font-medium mb-3 text-text-sub dark:text-gray-400">
-                                    {t('consult.trialExpired')} <button onClick={() => router.push('/pricing')} className="text-primary font-bold underline underline-offset-2">{t('consult.subscribeCta')}</button>
-                                </p>
+                                <div className="mb-3 rounded-2xl border border-primary/10 bg-primary/5 px-4 py-3 text-left">
+                                    <p className="text-sm font-bold text-text-main dark:text-white">
+                                        {t('consult.trialExpired')}
+                                    </p>
+                                    <p className="mt-1 text-xs leading-relaxed text-text-sub dark:text-gray-400">
+                                        {t('consult.trialExpiredDesc')}
+                                    </p>
+                                </div>
                             )}
                             {trial?.isActive && !hasSubscription && trial.daysRemaining <= 2 && (
                                 <p className="text-center text-xs font-medium mb-3 text-secondary">
@@ -697,6 +703,7 @@ function ConsultContent() {
                                 <span>{hasFullAccess ? t('consult.startConsult') : t('consult.subscribeCta')}</span>
                                 <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
                             </button>
+                            </div>
                         </div>
                     )}
 
