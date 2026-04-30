@@ -92,6 +92,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   static const _practiceReminderNotificationId = 1001;
   static const _practiceReminderEnabledKey = 'practice_reminder_enabled';
   static const _practiceReminderTimeKey = 'practice_reminder_time';
+  static const _practiceReminderTitleKey = 'practice_reminder_title';
+  static const _practiceReminderBodyKey = 'practice_reminder_body';
 
   WebViewController? _controller;
   StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
@@ -817,7 +819,20 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
       final enabled = data['enabled'] == true;
       final time = data['time']?.toString() ?? '20:00';
-      await _schedulePracticeReminder(enabled: enabled, time: time);
+      final activePracticeCount = (data['activePracticeCount'] as num?)
+          ?.toInt();
+      final title = data['title']?.toString();
+      final body = data['body']?.toString();
+      final shouldSchedule =
+          enabled && (activePracticeCount == null || activePracticeCount > 0);
+
+      await _schedulePracticeReminder(
+        enabled: shouldSchedule,
+        time: time,
+        title: title,
+        body: body,
+        storedEnabled: enabled,
+      );
     } catch (e) {
       debugPrint('ReminderBridge parse error: $e');
       unawaited(
@@ -862,12 +877,20 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   Future<void> _schedulePracticeReminder({
     required bool enabled,
     required String time,
+    String? title,
+    String? body,
+    bool? storedEnabled,
     bool persist = true,
     bool requestPermission = true,
     bool showFeedback = true,
   }) async {
     if (persist) {
-      await _savePracticeReminderSettings(enabled: enabled, time: time);
+      await _savePracticeReminderSettings(
+        enabled: storedEnabled ?? enabled,
+        time: time,
+        title: title,
+        body: body,
+      );
     }
 
     await _localNotifications.cancel(_practiceReminderNotificationId);
@@ -906,10 +929,17 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       presentSound: true,
     );
 
+    final notificationTitle = title?.trim().isNotEmpty == true
+        ? title!.trim()
+        : '오늘의 실천을 떠올려볼 시간이에요';
+    final notificationBody = body?.trim().isNotEmpty == true
+        ? body!.trim()
+        : '짧게 체크하고 다음 상담에 쓸 변화를 남겨보세요.';
+
     await _localNotifications.zonedSchedule(
       _practiceReminderNotificationId,
-      '오늘의 실천을 떠올려볼 시간이에요',
-      '짧게 체크하고 다음 상담에 쓸 변화를 남겨보세요.',
+      notificationTitle,
+      notificationBody,
       _nextInstanceOfTime(hour, minute),
       const NotificationDetails(android: androidDetails, iOS: iosDetails),
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
@@ -926,16 +956,26 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   Future<void> _savePracticeReminderSettings({
     required bool enabled,
     required String time,
+    String? title,
+    String? body,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_practiceReminderEnabledKey, enabled);
     await prefs.setString(_practiceReminderTimeKey, time);
+    if (title != null) {
+      await prefs.setString(_practiceReminderTitleKey, title);
+    }
+    if (body != null) {
+      await prefs.setString(_practiceReminderBodyKey, body);
+    }
   }
 
   Future<void> _restorePracticeReminder() async {
     final prefs = await SharedPreferences.getInstance();
     final enabled = prefs.getBool(_practiceReminderEnabledKey) ?? false;
     final time = prefs.getString(_practiceReminderTimeKey) ?? '20:00';
+    final title = prefs.getString(_practiceReminderTitleKey);
+    final body = prefs.getString(_practiceReminderBodyKey);
 
     if (!enabled) return;
 
@@ -948,6 +988,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     await _schedulePracticeReminder(
       enabled: true,
       time: time,
+      title: title,
+      body: body,
       persist: false,
       requestPermission: false,
       showFeedback: false,
