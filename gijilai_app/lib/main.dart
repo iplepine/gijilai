@@ -1322,7 +1322,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final controller = _controller;
-    final topInset = MediaQuery.viewPaddingOf(context).top;
+    final topInset = Platform.isAndroid ? 0.0 : MediaQuery.viewPaddingOf(context).top;
     if (controller == null) {
       return const Scaffold(
         backgroundColor: Colors.white,
