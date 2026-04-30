@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/Button";
@@ -26,6 +26,12 @@ const DEFAULT_SETTINGS: NotificationSettings = {
   practiceReminderTime: "20:00",
 };
 
+const WHEEL_ROW_HEIGHT = 44;
+const WHEEL_VISIBLE_ROWS = 5;
+const WHEEL_SIDE_PADDING = (WHEEL_ROW_HEIGHT * (WHEEL_VISIBLE_ROWS - 1)) / 2;
+const HOUR_OPTIONS = Array.from({ length: 24 }, (_, index) => index);
+const MINUTE_OPTIONS = Array.from({ length: 12 }, (_, index) => index * 5);
+
 export default function NotificationsPage() {
   const { locale, t } = useLocale();
   const { user, loading: authLoading } = useAuth();
@@ -39,13 +45,34 @@ export default function NotificationsPage() {
   const [draftReminderTime, setDraftReminderTime] = useState(
     DEFAULT_SETTINGS.practiceReminderTime,
   );
+  const hourWheelRef = useRef<HTMLDivElement | null>(null);
+  const minuteWheelRef = useRef<HTMLDivElement | null>(null);
 
   const [draftHour, draftMinute] = draftReminderTime.split(":");
   const selectedHour = Number.parseInt(draftHour ?? "20", 10);
   const selectedMinute = Number.parseInt(draftMinute ?? "0", 10);
 
-  const hourOptions = Array.from({ length: 24 }, (_, index) => index);
-  const minuteOptions = Array.from({ length: 12 }, (_, index) => index * 5);
+  const scrollWheelToValue = (
+    wheel: HTMLDivElement | null,
+    value: number,
+    options: number[],
+  ) => {
+    if (!wheel) return;
+    const index = options.indexOf(value);
+    if (index < 0) return;
+    wheel.scrollTo({
+      top: index * WHEEL_ROW_HEIGHT,
+      behavior: "auto",
+    });
+  };
+
+  const updateWheelValue = (value: number, options: number[]) => {
+    const clampedIndex = Math.max(
+      0,
+      Math.min(options.length - 1, Math.round(value / WHEEL_ROW_HEIGHT)),
+    );
+    return options[clampedIndex] ?? options[0] ?? 0;
+  };
 
   useEffect(() => {
     setSettings(readPracticeReminderPreferences(DEFAULT_SETTINGS));
@@ -118,6 +145,21 @@ export default function NotificationsPage() {
     return () => document.removeEventListener("keydown", handleEscape);
   }, [isTimePickerOpen]);
 
+  useEffect(() => {
+    if (!isTimePickerOpen) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      scrollWheelToValue(hourWheelRef.current, selectedHour, HOUR_OPTIONS);
+      scrollWheelToValue(
+        minuteWheelRef.current,
+        selectedMinute,
+        MINUTE_OPTIONS,
+      );
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [isTimePickerOpen, selectedHour, selectedMinute]);
+
   const openTimePicker = () => {
     setDraftReminderTime(settings.practiceReminderTime);
     setIsTimePickerOpen(true);
@@ -138,6 +180,26 @@ export default function NotificationsPage() {
   const saveReminderTime = () => {
     updateSetting("practiceReminderTime", draftReminderTime);
     setIsTimePickerOpen(false);
+  };
+
+  const handleHourWheelScroll = () => {
+    const nextHour = updateWheelValue(
+      hourWheelRef.current?.scrollTop ?? 0,
+      HOUR_OPTIONS,
+    );
+    if (nextHour !== selectedHour) {
+      updateDraftHour(nextHour);
+    }
+  };
+
+  const handleMinuteWheelScroll = () => {
+    const nextMinute = updateWheelValue(
+      minuteWheelRef.current?.scrollTop ?? 0,
+      MINUTE_OPTIONS,
+    );
+    if (nextMinute !== selectedMinute) {
+      updateDraftMinute(nextMinute);
+    }
   };
 
   const reminderEnabled =
@@ -284,11 +346,11 @@ export default function NotificationsPage() {
           onClick={() => setIsTimePickerOpen(false)}
         >
           <div
-            className="w-full max-w-sm overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-surface-dark animate-slide-up"
+            className="flex max-h-[min(78vh,42rem)] w-full max-w-sm flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-surface-dark animate-slide-up"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-beige-main/10 bg-beige-main/5 px-6 py-5 dark:border-white/5 dark:bg-white/5">
-              <div>
+            <div className="flex flex-col gap-3 border-b border-beige-main/10 bg-beige-main/5 px-6 py-5 dark:border-white/5 dark:bg-white/5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
                 <p className="text-[12px] font-bold uppercase tracking-[0.2em] text-text-sub">
                   {t("settings.practiceReminders")}
                 </p>
@@ -296,77 +358,95 @@ export default function NotificationsPage() {
                   {t("settings.reminderTime")}
                 </h4>
               </div>
-              <div className="rounded-full bg-primary/10 px-3 py-1 text-sm font-bold text-primary">
+              <div className="self-start rounded-full bg-primary/10 px-3 py-1 text-sm font-bold text-primary sm:self-auto">
                 {formatPracticeReminderTime(draftReminderTime, locale)}
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 px-6 py-6">
-              <div>
-                <p className="mb-3 text-[12px] font-bold uppercase tracking-[0.2em] text-text-sub">
+            <div className="flex flex-1 gap-4 overflow-hidden px-6 py-6">
+              <section className="flex min-w-0 flex-1 flex-col rounded-2xl bg-beige-main/10 p-3 dark:bg-white/5">
+                <p className="mb-3 px-1 text-[12px] font-bold uppercase tracking-[0.2em] text-text-sub">
                   {t("settings.reminderHour")}
                 </p>
-                <div className="grid max-h-64 grid-cols-3 gap-2 overflow-y-auto pr-1">
-                  {hourOptions.map((hour) => {
-                    const isSelected = selectedHour == hour;
-                    return (
-                      <button
-                        key={hour}
-                        type="button"
-                        onClick={() => updateDraftHour(hour)}
-                        className={`h-11 rounded-xl text-sm font-bold transition-all ${
-                          isSelected
-                            ? "bg-primary text-white shadow-md shadow-primary/20"
-                            : "bg-beige-main/10 text-text-main hover:bg-primary/10 dark:bg-white/5 dark:text-white"
-                        }`}
-                      >
-                        {String(hour).padStart(2, "0")}
-                      </button>
-                    );
-                  })}
+                <div className="relative min-h-0 flex-1 overflow-hidden rounded-2xl bg-white/70 dark:bg-white/5">
+                  <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-16 bg-gradient-to-b from-white via-white/80 to-transparent dark:from-surface-dark dark:via-surface-dark/80" />
+                  <div className="pointer-events-none absolute inset-x-2 top-1/2 z-10 h-11 -translate-y-1/2 rounded-xl border border-primary/15 bg-primary/8 shadow-inner dark:border-white/10 dark:bg-white/5" />
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-16 bg-gradient-to-t from-white via-white/80 to-transparent dark:from-surface-dark dark:via-surface-dark/80" />
+                  <div
+                    ref={hourWheelRef}
+                    onScroll={handleHourWheelScroll}
+                    className="h-full snap-y snap-mandatory overflow-y-auto no-scrollbar"
+                  >
+                    <div style={{ height: WHEEL_SIDE_PADDING }} />
+                    {HOUR_OPTIONS.map((hour) => {
+                      const isSelected = selectedHour == hour;
+                      return (
+                        <button
+                          key={hour}
+                          type="button"
+                          onClick={() => updateDraftHour(hour)}
+                          className={`flex h-11 w-full snap-center items-center justify-center rounded-xl text-base font-bold transition-all ${
+                            isSelected
+                              ? "scale-105 text-primary dark:text-white"
+                              : "text-text-sub hover:text-text-main dark:text-gray-400 dark:hover:text-white"
+                          }`}
+                        >
+                          {String(hour).padStart(2, "0")}
+                        </button>
+                      );
+                    })}
+                    <div style={{ height: WHEEL_SIDE_PADDING }} />
+                  </div>
                 </div>
-              </div>
+              </section>
 
-              <div>
-                <p className="mb-3 text-[12px] font-bold uppercase tracking-[0.2em] text-text-sub">
+              <section className="flex min-w-0 flex-1 flex-col rounded-2xl bg-beige-main/10 p-3 dark:bg-white/5">
+                <p className="mb-3 px-1 text-[12px] font-bold uppercase tracking-[0.2em] text-text-sub">
                   {t("settings.reminderMinute")}
                 </p>
-                <div className="grid max-h-64 grid-cols-2 gap-2 overflow-y-auto pr-1">
-                  {minuteOptions.map((minute) => {
-                    const isSelected = selectedMinute == minute;
-                    return (
-                      <button
-                        key={minute}
-                        type="button"
-                        onClick={() => updateDraftMinute(minute)}
-                        className={`h-11 rounded-xl text-sm font-bold transition-all ${
-                          isSelected
-                            ? "bg-primary text-white shadow-md shadow-primary/20"
-                            : "bg-beige-main/10 text-text-main hover:bg-primary/10 dark:bg-white/5 dark:text-white"
-                        }`}
-                      >
-                        {String(minute).padStart(2, "0")}
-                      </button>
-                    );
-                  })}
+                <div className="relative min-h-0 flex-1 overflow-hidden rounded-2xl bg-white/70 dark:bg-white/5">
+                  <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-16 bg-gradient-to-b from-white via-white/80 to-transparent dark:from-surface-dark dark:via-surface-dark/80" />
+                  <div className="pointer-events-none absolute inset-x-2 top-1/2 z-10 h-11 -translate-y-1/2 rounded-xl border border-primary/15 bg-primary/8 shadow-inner dark:border-white/10 dark:bg-white/5" />
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-16 bg-gradient-to-t from-white via-white/80 to-transparent dark:from-surface-dark dark:via-surface-dark/80" />
+                  <div
+                    ref={minuteWheelRef}
+                    onScroll={handleMinuteWheelScroll}
+                    className="h-full snap-y snap-mandatory overflow-y-auto no-scrollbar"
+                  >
+                    <div style={{ height: WHEEL_SIDE_PADDING }} />
+                    {MINUTE_OPTIONS.map((minute) => {
+                      const isSelected = selectedMinute == minute;
+                      return (
+                        <button
+                          key={minute}
+                          type="button"
+                          onClick={() => updateDraftMinute(minute)}
+                          className={`flex h-11 w-full snap-center items-center justify-center rounded-xl text-base font-bold transition-all ${
+                            isSelected
+                              ? "scale-105 text-primary dark:text-white"
+                              : "text-text-sub hover:text-text-main dark:text-gray-400 dark:hover:text-white"
+                          }`}
+                        >
+                          {String(minute).padStart(2, "0")}
+                        </button>
+                      );
+                    })}
+                    <div style={{ height: WHEEL_SIDE_PADDING }} />
+                  </div>
                 </div>
-              </div>
+              </section>
             </div>
 
             <div className="flex gap-3 border-t border-beige-main/10 px-6 py-5 dark:border-white/5">
               <Button
                 type="button"
                 variant="secondary"
-                className="flex-1"
+                fullWidth
                 onClick={() => setIsTimePickerOpen(false)}
               >
                 {t("common.cancel")}
               </Button>
-              <Button
-                type="button"
-                className="flex-1"
-                onClick={saveReminderTime}
-              >
+              <Button type="button" fullWidth onClick={saveReminderTime}>
                 {t("common.confirm")}
               </Button>
             </div>
