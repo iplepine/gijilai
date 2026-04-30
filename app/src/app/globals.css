@@ -26,8 +26,8 @@
 }
 
 html[data-native-platform='android'] {
-  --bottom-nav-safe-area-bottom: min(var(--safe-area-bottom), 0.5rem);
-  --bottom-nav-content-offset: calc(var(--bottom-nav-safe-area-bottom) + 7.25rem);
+  --bottom-nav-safe-area-bottom: min(var(--safe-area-bottom), 0.25rem);
+  --bottom-nav-content-offset: calc(var(--bottom-nav-safe-area-bottom) + 6.5rem);
 }
 
 /*
@@ -209,6 +209,19 @@ body {
 
 .app-bottom-nav {
   padding-bottom: calc(var(--bottom-nav-safe-area-bottom) + 1rem);
+}
+
+html[data-native-platform='android'] .app-bottom-nav {
+  padding-bottom: calc(var(--bottom-nav-safe-area-bottom) + 0.375rem);
+  padding-top: 0.375rem;
+}
+
+html[data-native-platform='android'] .app-bottom-nav-center {
+  top: -1.125rem;
+}
+
+html[data-native-platform='android'] .app-bottom-nav-center-label {
+  bottom: -1.125rem;
 }
 
 .app-bottom-nav-scroll {

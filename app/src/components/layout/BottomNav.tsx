@@ -23,13 +23,13 @@ export default function BottomNav() {
 
                 if (item.isCenter) {
                     return (
-                        <Link key={item.href} href={item.href} className="relative -top-6 group w-20 flex justify-center">
+                        <Link key={item.href} href={item.href} className="app-bottom-nav-center relative -top-6 group w-20 flex justify-center">
                             <div className="w-14 h-14 rounded-full bg-primary text-white shadow-xl shadow-primary/30 flex items-center justify-center transform transition-all group-hover:scale-105 active:scale-95 border-[4px] border-background-light dark:border-background-dark">
                                 <span className="material-symbols-outlined text-white text-[32px]">
                                     {isActive ? 'chat_bubble' : 'add'}
                                 </span>
                             </div>
-                            <span className="absolute -bottom-[26px] text-[10px] font-bold text-primary">{item.label}</span>
+                            <span className="app-bottom-nav-center-label absolute -bottom-[26px] text-[10px] font-bold text-primary">{item.label}</span>
                         </Link>
                     );
                 }
