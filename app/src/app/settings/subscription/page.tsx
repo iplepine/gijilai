@@ -313,7 +313,7 @@ export default function SubscriptionPage() {
       <div className="w-full max-w-md min-h-screen flex flex-col shadow-2xl">
         <Navbar title={t('settings.subscription')} showBack />
 
-        <div className="flex-1 overflow-y-auto px-6 pt-8 pb-10 space-y-6">
+        <div className="app-page-scroll flex-1 overflow-y-auto px-6 pt-8 pb-10 space-y-6">
           {subscription ? (
             <>
               {/* Current Plan */}

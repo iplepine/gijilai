@@ -156,7 +156,7 @@ export default function EditChildPage() {
                     }
                 />
 
-                <main className="flex-1 px-6 pb-32">
+                <main className="app-fixed-cta-scroll flex-1 px-6">
                     {/* Avatar Upload Section */}
                     <div className="flex flex-col items-center mt-6 mb-8">
                         <div className="relative group cursor-pointer">
@@ -226,7 +226,7 @@ export default function EditChildPage() {
                 </main>
 
                 {/* Submit Button */}
-                <div className="fixed bottom-0 left-0 right-0 p-6 flex justify-center z-40 bg-gradient-to-t from-[#FAFCFA] via-[#FAFCFA]/90 to-transparent dark:from-[#161311] dark:via-[#161311]/90 pointer-events-none">
+                <div className="app-fixed-cta fixed bottom-0 left-0 right-0 p-6 flex justify-center z-40 bg-gradient-to-t from-[#FAFCFA] via-[#FAFCFA]/90 to-transparent dark:from-[#161311] dark:via-[#161311]/90 pointer-events-none">
                     <div className="max-w-[480px] w-full pointer-events-auto">
                         <button
                             onClick={handleSubmit}

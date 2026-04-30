@@ -200,7 +200,7 @@ app/src/components/
 
 | 테이블 | 용도 |
 |--------|------|
-| profiles | 사용자 계정 데이터 |
+| profiles | 사용자 계정 데이터 (`marketing_opt_in` 포함) |
 | children | 아이 프로필 (프로필 이미지 포함) |
 | surveys | 설문 응답 + 계산된 점수 (JSON), 상태 |
 | reports | 분석 결과 (analysis_json), 결제 여부 |

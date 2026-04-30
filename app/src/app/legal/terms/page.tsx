@@ -9,7 +9,7 @@ function TermsContent() {
             <div className="max-w-md mx-auto relative min-h-screen flex flex-col">
                 <Navbar title="서비스 이용약관" />
 
-                <main className="flex-1 px-6 py-8">
+                <main className="app-page-scroll flex-1 px-6 py-8">
                     <div className="bg-white dark:bg-surface-dark rounded-[2rem] p-6 shadow-soft border border-gray-100 dark:border-gray-800 overflow-y-auto" style={{ maxHeight: '75vh' }}>
                         <h2 className="text-xl font-bold mb-6 mt-2">아이기질 이용약관</h2>
                         <div className="space-y-6 text-sm text-gray-600 dark:text-gray-300 leading-relaxed font-medium">

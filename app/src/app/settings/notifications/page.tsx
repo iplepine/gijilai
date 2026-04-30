@@ -1,40 +1,38 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useAuth } from '@/components/auth/AuthProvider';
 import { Navbar } from '@/components/layout/Navbar';
 import { useLocale } from '@/i18n/LocaleProvider';
-import { Button } from '@/components/ui/Button';
-
-const STORAGE_KEY = 'gijilai_notification_settings';
+import { db } from '@/lib/db';
+import {
+    PRACTICE_REMINDER_STORAGE_KEY,
+    formatPracticeReminderTime,
+    isAppWebView,
+    postPracticeReminderSync,
+    readPracticeReminderPreferences,
+} from '@/lib/practiceReminder';
 
 interface NotificationSettings {
     pushEnabled: boolean;
-    emailEnabled: boolean;
-    marketingEnabled: boolean;
     practiceReminderEnabled: boolean;
     practiceReminderTime: string;
 }
 
 const DEFAULT_SETTINGS: NotificationSettings = {
     pushEnabled: true,
-    emailEnabled: false,
-    marketingEnabled: false,
     practiceReminderEnabled: true,
     practiceReminderTime: '20:00',
 };
 
-declare global {
-    interface Window {
-        ReminderBridge?: {
-            postMessage: (message: string) => void;
-        };
-    }
-}
-
 export default function NotificationsPage() {
-    const { t } = useLocale();
+    const { locale, t } = useLocale();
+    const { user, loading: authLoading } = useAuth();
     const [settings, setSettings] = useState<NotificationSettings>(DEFAULT_SETTINGS);
     const [loaded, setLoaded] = useState(false);
+    const [marketingEnabled, setMarketingEnabled] = useState(false);
+    const [marketingLoaded, setMarketingLoaded] = useState(false);
+    const [isSavingMarketing, setIsSavingMarketing] = useState(false);
     const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
     const [draftReminderTime, setDraftReminderTime] = useState(DEFAULT_SETTINGS.practiceReminderTime);
 
@@ -46,26 +44,51 @@ export default function NotificationsPage() {
     const minuteOptions = Array.from({ length: 12 }, (_, index) => index * 5);
 
     useEffect(() => {
-        try {
-            const saved = window.localStorage.getItem(STORAGE_KEY);
-            if (saved) {
-                setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(saved) });
-            }
-        } catch {
-            setSettings(DEFAULT_SETTINGS);
-        } finally {
-            setLoaded(true);
-        }
+        setSettings(readPracticeReminderPreferences(DEFAULT_SETTINGS));
+        setLoaded(true);
     }, []);
 
     useEffect(() => {
+        if (authLoading) return;
+        if (!user?.id) {
+            setMarketingEnabled(false);
+            setMarketingLoaded(true);
+            return;
+        }
+
+        let isCancelled = false;
+
+        const loadMarketingPreference = async () => {
+            try {
+                const profile = await db.getUserProfile(user.id);
+                if (isCancelled) return;
+                setMarketingEnabled(profile.marketing_opt_in ?? false);
+            } catch (error) {
+                console.error('Failed to load marketing preference:', error);
+                if (isCancelled) return;
+                setMarketingEnabled(false);
+            } finally {
+                if (!isCancelled) {
+                    setMarketingLoaded(true);
+                }
+            }
+        };
+
+        setMarketingLoaded(false);
+        void loadMarketingPreference();
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [authLoading, user?.id]);
+
+    useEffect(() => {
         if (!loaded) return;
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-        window.ReminderBridge?.postMessage(JSON.stringify({
-            type: 'PRACTICE_REMINDER_SETTINGS',
+        window.localStorage.setItem(PRACTICE_REMINDER_STORAGE_KEY, JSON.stringify(settings));
+        postPracticeReminderSync({
             enabled: settings.pushEnabled && settings.practiceReminderEnabled,
             time: settings.practiceReminderTime,
-        }));
+        });
     }, [loaded, settings]);
 
     const updateSetting = <K extends keyof NotificationSettings>(key: K, value: NotificationSettings[K]) => {
@@ -85,13 +108,6 @@ export default function NotificationsPage() {
         return () => document.removeEventListener('keydown', handleEscape);
     }, [isTimePickerOpen]);
 
-    const formatReminderTime = (time: string) => {
-        const [hours, minutes] = time.split(':').map((value) => Number.parseInt(value, 10));
-        const suffix = hours >= 12 ? 'PM' : 'AM';
-        const displayHour = hours % 12 === 0 ? 12 : hours % 12;
-        return `${suffix} ${displayHour}:${String(minutes).padStart(2, '0')}`;
-    };
-
     const openTimePicker = () => {
         setDraftReminderTime(settings.practiceReminderTime);
         setIsTimePickerOpen(true);
@@ -110,12 +126,42 @@ export default function NotificationsPage() {
         setIsTimePickerOpen(false);
     };
 
+    const reminderEnabled = settings.pushEnabled && settings.practiceReminderEnabled;
+    const reminderTimeLabel = formatPracticeReminderTime(settings.practiceReminderTime, locale);
+    const reminderPreview = !settings.pushEnabled
+        ? t('settings.practiceReminderPreviewPushOff')
+        : !settings.practiceReminderEnabled
+            ? t('settings.practiceReminderPreviewReminderOff')
+            : isAppWebView()
+                ? t('settings.practiceReminderPreviewActive', { time: reminderTimeLabel })
+                : t('settings.practiceReminderPreviewWeb', { time: reminderTimeLabel });
+
+    const toggleMarketingPreference = async () => {
+        if (!user?.id || isSavingMarketing) return;
+
+        const previousValue = marketingEnabled;
+        const nextValue = !previousValue;
+
+        setMarketingEnabled(nextValue);
+        setIsSavingMarketing(true);
+
+        try {
+            await db.updateUserProfile(user.id, { marketing_opt_in: nextValue });
+        } catch (error) {
+            console.error('Failed to update marketing preference:', error);
+            setMarketingEnabled(previousValue);
+            alert(t('settings.marketingUpdateError'));
+        } finally {
+            setIsSavingMarketing(false);
+        }
+    };
+
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen">
             <div className="max-w-md mx-auto relative min-h-screen flex flex-col">
                 <Navbar title={t('settings.notificationSettings')} />
 
-                <main className="flex-1 px-4 py-8">
+                <main className="app-page-scroll flex-1 px-4 py-8">
                     <div className="bg-white dark:bg-surface-dark rounded-3xl p-6 shadow-soft border border-gray-100 dark:border-gray-800 space-y-8">
 
                         <div className="flex items-center justify-between">
@@ -151,32 +197,20 @@ export default function NotificationsPage() {
                                 <span className="text-[13px] font-bold text-text-main dark:text-white">{t('settings.reminderTime')}</span>
                                 <button
                                     type="button"
-                                    disabled={!settings.practiceReminderEnabled}
+                                    disabled={!reminderEnabled}
                                     onClick={openTimePicker}
                                     className="min-w-28 rounded-xl border border-primary/10 bg-white dark:bg-surface-dark px-3 py-2 text-[14px] font-bold text-text-main dark:text-white disabled:opacity-40"
                                 >
-                                    {formatReminderTime(settings.practiceReminderTime)}
+                                    {reminderTimeLabel}
                                 </button>
                             </div>
 
+                            <p className="text-[12px] font-medium text-primary break-keep">
+                                {reminderPreview}
+                            </p>
                             <p className="text-[12px] text-gray-500 leading-relaxed break-keep">
                                 {t('settings.practiceReminderLocalNote')}
                             </p>
-                        </div>
-
-                        <hr className="border-gray-100 dark:border-gray-800" />
-
-                        <div className="flex items-center justify-between">
-                            <div className="flex-1 pr-6 flex flex-col gap-1">
-                                <h2 className="text-[15px] font-bold text-navy dark:text-white">{t('settings.emailNotifications')}</h2>
-                                <p className="text-[13px] text-gray-500 break-keep">{t('settings.emailDescription')}</p>
-                            </div>
-                            <button
-                                onClick={() => updateSetting('emailEnabled', !settings.emailEnabled)}
-                                className={`w-12 h-6 rounded-full transition-colors flex items-center shrink-0 ${settings.emailEnabled ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-700'}`}
-                            >
-                                <div className={`w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform ${settings.emailEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                            </button>
                         </div>
 
                         <hr className="border-gray-100 dark:border-gray-800" />
@@ -187,10 +221,11 @@ export default function NotificationsPage() {
                                 <p className="text-[13px] text-gray-500 break-keep">{t('settings.marketingDescription')}</p>
                             </div>
                             <button
-                                onClick={() => updateSetting('marketingEnabled', !settings.marketingEnabled)}
-                                className={`w-12 h-6 rounded-full transition-colors flex items-center shrink-0 ${settings.marketingEnabled ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-700'}`}
+                                onClick={() => void toggleMarketingPreference()}
+                                disabled={!marketingLoaded || !user || isSavingMarketing}
+                                className={`w-12 h-6 rounded-full transition-colors flex items-center shrink-0 disabled:opacity-50 ${marketingEnabled ? 'bg-primary' : 'bg-gray-200 dark:bg-gray-700'}`}
                             >
-                                <div className={`w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform ${settings.marketingEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                                <div className={`w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform ${marketingEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
                             </button>
                         </div>
 
@@ -217,7 +252,7 @@ export default function NotificationsPage() {
                                 </h4>
                             </div>
                             <div className="rounded-full bg-primary/10 px-3 py-1 text-sm font-bold text-primary">
-                                {formatReminderTime(draftReminderTime)}
+                                {formatPracticeReminderTime(draftReminderTime, locale)}
                             </div>
                         </div>
 

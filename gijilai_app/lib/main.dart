@@ -27,6 +27,7 @@ Future<void> main() async {
   await runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
+      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
       KakaoSdk.init(nativeAppKey: '8d63a45bb147379940cda43c72e841d6');
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
@@ -64,11 +65,28 @@ class GijilaiApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const overlayStyle = SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+      statusBarBrightness: Brightness.light,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarIconBrightness: Brightness.dark,
+      systemNavigationBarDividerColor: Colors.transparent,
+      systemNavigationBarContrastEnforced: false,
+    );
+
     return MaterialApp(
       title: '기질아이',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2F4F3E)),
         useMaterial3: true,
+      ),
+      builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+        value: overlayStyle,
+        child: ColoredBox(
+          color: Colors.white,
+          child: child ?? const SizedBox.shrink(),
+        ),
       ),
       home: const MainWebView(),
       debugShowCheckedModeBanner: false,
@@ -108,8 +126,9 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   double? _lastInjectedSafeAreaTop;
   double? _lastInjectedSafeAreaBottom;
 
-  String get _subscriptionProductId =>
-      Platform.isIOS ? _iosSubscriptionProductId : _androidSubscriptionProductId;
+  String get _subscriptionProductId => Platform.isIOS
+      ? _iosSubscriptionProductId
+      : _androidSubscriptionProductId;
 
   @override
   void initState() {
@@ -404,8 +423,13 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     if (controller == null || !mounted) return;
 
     final padding = MediaQuery.viewPaddingOf(context);
+    final topInset = padding.top.toStringAsFixed(1);
     final bottomInset = padding.bottom.toStringAsFixed(1);
-    final platform = Platform.isIOS ? 'ios' : Platform.isAndroid ? 'android' : 'other';
+    final platform = Platform.isIOS
+        ? 'ios'
+        : Platform.isAndroid
+        ? 'android'
+        : 'other';
 
     if (_lastInjectedSafeAreaTop == padding.top &&
         _lastInjectedSafeAreaBottom == padding.bottom) {
@@ -420,6 +444,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         const root = document.documentElement;
         if (!root) return;
         root.dataset.nativePlatform = '$platform';
+        root.style.setProperty('--native-safe-area-top', '${topInset}px');
         root.style.setProperty('--native-safe-area-bottom', '${bottomInset}px');
       })();
     ''');
@@ -1322,7 +1347,9 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final controller = _controller;
-    final topInset = Platform.isAndroid ? 0.0 : MediaQuery.viewPaddingOf(context).top;
+    final topInset = Platform.isAndroid
+        ? 0.0
+        : MediaQuery.viewPaddingOf(context).top;
     if (controller == null) {
       return const Scaffold(
         backgroundColor: Colors.white,
