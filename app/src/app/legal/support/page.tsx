@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Suspense, useState } from 'react';
 import { Navbar } from '@/components/layout/Navbar';
 
@@ -39,11 +40,14 @@ function SupportContent() {
                         <h2 className="text-[17px] font-bold text-navy dark:text-white mb-2">무엇을 도와드릴까요?</h2>
                         <p className="text-[13px] text-gray-500 mb-6 break-keep leading-relaxed">
                             앱 이용 중 불편하신 점이나 궁금한 점이 있으시면<br />
-                            1:1 채팅 문의를 통해 빠르게 해결해 드립니다.
+                            이메일 문의를 남겨 주시면 확인 후 답변드리겠습니다.
                         </p>
-                        <button className="w-full h-12 bg-primary text-white font-bold rounded-xl active:scale-95 transition-all shadow-md">
-                            1:1 채팅 문의하기
-                        </button>
+                        <Link
+                            href="mailto:devhohouse@gmail.com?subject=%EA%B8%B0%EC%A7%88%EC%95%84%EC%9D%B4%20%EB%AC%B8%EC%9D%98"
+                            className="w-full h-12 bg-primary text-white font-bold rounded-xl active:scale-95 transition-all shadow-md inline-flex items-center justify-center"
+                        >
+                            이메일로 문의하기
+                        </Link>
                     </section>
 
                     {/* FAQ */}
