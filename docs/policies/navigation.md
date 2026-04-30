@@ -66,6 +66,9 @@
 - Flutter 앱 WebView의 루트(`/`) 진입 시 로그인 세션이 없으면 웹 랜딩 화면을 먼저 보여준다. 로그인 세션이 있으면 홈을 그대로 렌더링한다.
 - 앱 로그인은 랜딩 CTA 이후 `/login`에서 네이티브 로그인 화면 오버레이로 시작한다.
 - 노치/상태표시줄 대응은 웹 CSS `env(safe-area-inset-*)`와 Flutter WebView가 주입하는 `--native-safe-area-top/bottom`을 함께 사용한다.
+- Flutter 앱은 WebView 문서마다 `window.__nativeCapabilities`를 주입해 현재 앱이 네이티브로 지원하는 화면 집합을 명시한다.
+- 웹은 `isAppWebView()` 같은 단순 앱 여부만으로 네이티브 분기를 결정하지 않고, `window.__nativeCapabilities.supportedScreens`를 우선 확인한다.
+- 로그인 외 네이티브 전환 후보 화면(`/payment`, `/settings/subscription`, `/settings/notifications`, `/settings/profile`)은 capability가 없는 앱 버전과 모바일 웹에서 기존 웹 라우트를 fallback으로 유지한다.
 - `Navbar` 기반 일반 스크롤 화면은 `app-page-scroll`로 하단 safe area + 여유 패딩을 공통 적용한다.
 - 하단 고정 CTA가 있는 화면은 본문에 `app-fixed-cta-scroll`, 하단 컨테이너에 `app-fixed-cta`를 사용해 마지막 입력 필드와 버튼이 시스템 내비게이션 영역에 가려지지 않게 한다.
 - Android 앱에서 WebView 현재 URL이 홈(`/`)이면 백키 1회 입력 시 "한번 더 누르면 종료됩니다" 안내를 띄우고, 3초 안에 한 번 더 누르면 앱을 종료한다.

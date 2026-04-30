@@ -23,6 +23,36 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import 'firebase_options.dart';
 
+class NativeCapabilityRegistry {
+  const NativeCapabilityRegistry();
+
+  static const int contractVersion = 1;
+
+  static const Map<String, bool> supportedScreens = {
+    'login': true,
+    'payment': false,
+    'subscription': false,
+    'notifications': false,
+    'profile': false,
+  };
+
+  bool supportsScreen(String screenKey) {
+    return supportedScreens[screenKey] ?? false;
+  }
+
+  String toJavaScriptObjectLiteral() {
+    final screens = supportedScreens.entries
+        .map((entry) => "'${entry.key}': ${entry.value}")
+        .join(', ');
+    return '''
+      {
+        contractVersion: $contractVersion,
+        supportedScreens: { $screens }
+      }
+    ''';
+  }
+}
+
 Future<void> main() async {
   await runZonedGuarded(
     () async {
@@ -112,6 +142,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   static const _practiceReminderTimeKey = 'practice_reminder_time';
   static const _practiceReminderTitleKey = 'practice_reminder_title';
   static const _practiceReminderBodyKey = 'practice_reminder_body';
+  static const _nativeCapabilities = NativeCapabilityRegistry();
 
   WebViewController? _controller;
   StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
@@ -125,8 +156,6 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   bool _showNativeLogin = false;
   bool _authInProgress = false;
   bool _externalAuthInProgress = false;
-  double? _lastInjectedSafeAreaTop;
-  double? _lastInjectedSafeAreaBottom;
 
   String get _subscriptionProductId => Platform.isIOS
       ? _iosSubscriptionProductId
@@ -154,7 +183,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   @override
   void didChangeMetrics() {
     super.didChangeMetrics();
-    unawaited(_syncSafeAreaInsetsWithWeb());
+    unawaited(_syncWebAppContext());
   }
 
   Future<void> _initAppLinks() async {
@@ -405,13 +434,14 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   }
 
   void _handlePageFinished(String url) {
-    unawaited(_syncSafeAreaInsetsWithWeb());
+    unawaited(_syncWebAppContext());
 
     final uri = Uri.tryParse(url);
     final shouldShowLogin =
         uri != null &&
         uri.host == Uri.parse(MainWebView.targetUrl).host &&
-        uri.path == '/login';
+        uri.path == '/login' &&
+        _nativeCapabilities.supportsScreen('login');
 
     if (shouldShowLogin != _showNativeLogin && mounted) {
       setState(() {
@@ -420,7 +450,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _syncSafeAreaInsetsWithWeb() async {
+  Future<void> _syncWebAppContext() async {
     final controller = _controller;
     if (controller == null || !mounted) return;
 
@@ -433,13 +463,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         ? 'android'
         : 'other';
 
-    if (_lastInjectedSafeAreaTop == padding.top &&
-        _lastInjectedSafeAreaBottom == padding.bottom) {
-      return;
-    }
-
-    _lastInjectedSafeAreaTop = padding.top;
-    _lastInjectedSafeAreaBottom = padding.bottom;
+    final nativeCapabilitiesJs = _nativeCapabilities
+        .toJavaScriptObjectLiteral();
 
     await controller.runJavaScript('''
       (function() {
@@ -448,6 +473,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         root.dataset.nativePlatform = '$platform';
         root.style.setProperty('--native-safe-area-top', '${topInset}px');
         root.style.setProperty('--native-safe-area-bottom', '${bottomInset}px');
+        window.__nativeCapabilities = $nativeCapabilitiesJs;
       })();
     ''');
   }
