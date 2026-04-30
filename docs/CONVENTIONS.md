@@ -35,6 +35,17 @@
 - Navbar 컴포넌트: absolute positioning으로 타이틀 중앙 정렬
 - BottomNav: 메인 탭 네비게이션
 
+## 모바일 Safe Area / Edge-to-Edge
+- Flutter 앱 WebView와 모바일 웹 화면은 edge-to-edge 환경을 기본 전제로 레이아웃한다.
+- `Navbar` 기반 일반 세로 스크롤 화면은 공통 하단 여백 유틸리티를 사용한다. 현재 기본 패턴은 `app-page-scroll`.
+- 하단 고정 버튼/CTA가 있는 입력 화면은 본문과 CTA 컨테이너를 분리해 safe area를 처리한다. 현재 기본 패턴은 `app-fixed-cta-scroll` + `app-fixed-cta`.
+- 개별 화면에서 `pb-*` 값을 임의로 늘리기보다 공통 유틸리티나 CSS 변수(`--safe-area-top`, `--safe-area-bottom`)를 우선 사용한다.
+- 새 화면을 만들거나 기존 화면 구조를 바꿀 때는 다음을 확인한다:
+  - 마지막 카드/문단/폼 요소가 하단 시스템 제스처 영역에 붙지 않는가
+  - 마지막 CTA 버튼이 홈 인디케이터/네비게이션 바와 겹치지 않는가
+  - sticky/fixed UI가 있을 때 스크롤 컨테이너 쪽에도 대응 padding이 함께 들어가는가
+- 공통 패턴으로 해결되지 않는 화면별 예외는 해당 페이지 코드에 이유가 드러나게 남기고, 필요하면 `docs/policies/navigation.md`에 규칙을 추가한다.
+
 ## 정원 메타포 체계
 - 아동 분류 = "식물" 유형 (7가지)
 - 부모 분류 = "토양" 유형
