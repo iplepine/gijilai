@@ -236,3 +236,8 @@ html[data-native-platform='android'] .app-bottom-nav-center-label {
 .app-bottom-nav-spacer {
   height: var(--bottom-nav-content-offset);
 }
+
+.app-page-scroll {
+  padding-bottom: calc(var(--safe-area-bottom) + 3rem);
+  scroll-padding-bottom: calc(var(--safe-area-bottom) + 3rem);
+}

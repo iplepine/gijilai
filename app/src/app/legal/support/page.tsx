@@ -31,7 +31,7 @@ function SupportContent() {
             <div className="max-w-md mx-auto relative min-h-screen flex flex-col">
                 <Navbar title="고객센터" />
 
-                <main className="flex-1 px-4 py-8 space-y-8">
+                <main className="app-page-scroll flex-1 px-4 py-8 space-y-8">
                     {/* Contact Option */}
                     <section className="bg-white dark:bg-surface-dark rounded-3xl p-6 shadow-soft border border-gray-100 dark:border-gray-800 flex flex-col items-center text-center">
                         <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4">
