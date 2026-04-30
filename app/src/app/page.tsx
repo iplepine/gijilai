@@ -246,6 +246,7 @@ export default function HomePage() {
     });
   }, [
     loading,
+    locale,
     practices.activeCount,
     practices.uncheckedCount,
     practices.uncheckedItems,

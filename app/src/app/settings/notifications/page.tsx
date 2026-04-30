@@ -93,7 +93,12 @@ export default function NotificationsPage() {
       try {
         const profile = await db.getUserProfile(user.id);
         if (isCancelled) return;
-        setMarketingEnabled(profile.marketing_opt_in ?? false);
+        const marketingOptIn =
+          "marketing_opt_in" in profile
+            ? (profile as { marketing_opt_in?: boolean | null })
+                .marketing_opt_in
+            : false;
+        setMarketingEnabled(marketingOptIn ?? false);
       } catch (error) {
         console.error("Failed to load marketing preference:", error);
         if (isCancelled) return;

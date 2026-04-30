@@ -34,7 +34,10 @@ export const db = {
     return data as UserProfile;
   },
 
-  updateUserProfile: async (userId: string, updates: Partial<UserProfile>) => {
+  updateUserProfile: async (
+    userId: string,
+    updates: Partial<UserProfile> & Record<string, unknown>,
+  ) => {
     const { data, error } = await supabase
       .from("profiles")
       .update(updates)
@@ -125,15 +128,13 @@ export const db = {
         .eq("id", existing.id);
       if (error) throw error;
     } else {
-      const { error } = await supabase
-        .from("surveys")
-        .insert({
-          user_id: userId,
-          type,
-          answers,
-          status,
-          step: Object.keys(answers).length,
-        });
+      const { error } = await supabase.from("surveys").insert({
+        user_id: userId,
+        type,
+        answers,
+        status,
+        step: Object.keys(answers).length,
+      });
       if (error) throw error;
     }
   },
