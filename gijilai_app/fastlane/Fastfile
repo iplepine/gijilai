@@ -72,6 +72,64 @@ def ios_screenshots_available?
   Dir.glob(File.join(screenshots_dir, "**", "*.{png,jpg,jpeg}")).any?
 end
 
+def android_release_aab_path
+  File.join(FLUTTER_DIR, "build", "app", "outputs", "bundle", "release", "app-release.aab")
+end
+
+def android_json_key_path
+  env_path = ENV["GOOGLE_PLAY_JSON_KEY_PATH"]
+  return env_path if env_path && File.exist?(env_path)
+
+  default_path = File.join(__dir__, "json_key.json")
+  return default_path if File.exist?(default_path)
+
+  UI.user_error!("Missing Google Play service account key. Set GOOGLE_PLAY_JSON_KEY_PATH or add fastlane/json_key.json.")
+end
+
+def upload_android_release(track:, skip_upload_metadata:, skip_upload_images:, skip_upload_screenshots:, skip_upload_changelogs:)
+  upload_to_play_store(
+    package_name: PACKAGE_NAME,
+    track: track,
+    aab: android_release_aab_path,
+    json_key: android_json_key_path,
+    skip_upload_metadata: skip_upload_metadata,
+    skip_upload_images: skip_upload_images,
+    skip_upload_screenshots: skip_upload_screenshots,
+    skip_upload_changelogs: skip_upload_changelogs,
+  )
+end
+
+def deploy_android_track(track:)
+  bump_pubspec_build_number
+
+  version_info = read_pubspec_version_info
+  build_number = version_info[:build_number]
+
+  prepare_android_release_notes(build_number: build_number)
+  build
+
+  begin
+    upload_android_release(
+      track: track,
+      skip_upload_metadata: false,
+      skip_upload_images: false,
+      skip_upload_screenshots: false,
+      skip_upload_changelogs: false,
+    )
+  rescue => error
+    UI.important("Primary Google Play upload failed: #{error.message}")
+    UI.important("Retrying Play upload with metadata/images/screenshots skipped while keeping changelogs...")
+
+    upload_android_release(
+      track: track,
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+      skip_upload_changelogs: false,
+    )
+  end
+end
+
 # ─────────────────────────────────────────────
 # Android
 # ─────────────────────────────────────────────
@@ -245,34 +303,12 @@ platform :android do
 
   desc "Google Play 내부 테스트 트랙에 업로드"
   lane :deploy_internal do
-    bump_pubspec_build_number
-    prepare_android_release_notes(build_number: read_pubspec_version_info[:build_number])
-    build
-    upload_to_play_store(
-      package_name: PACKAGE_NAME,
-      track: "internal",
-      aab: "#{FLUTTER_DIR}/build/app/outputs/bundle/release/app-release.aab",
-      json_key: ENV["GOOGLE_PLAY_JSON_KEY_PATH"],
-      skip_upload_metadata: false,
-      skip_upload_images: false,
-      skip_upload_screenshots: false,
-    )
+    deploy_android_track(track: "internal")
   end
 
   desc "Google Play 프로덕션 배포"
   lane :deploy_production do
-    bump_pubspec_build_number
-    prepare_android_release_notes(build_number: read_pubspec_version_info[:build_number])
-    build
-    upload_to_play_store(
-      package_name: PACKAGE_NAME,
-      track: "production",
-      aab: "#{FLUTTER_DIR}/build/app/outputs/bundle/release/app-release.aab",
-      json_key: ENV["GOOGLE_PLAY_JSON_KEY_PATH"],
-      skip_upload_metadata: false,
-      skip_upload_images: false,
-      skip_upload_screenshots: false,
-    )
+    deploy_android_track(track: "production")
   end
 
   desc "현재 pubspec build number 기준 Android 출시노트 changelog 갱신"
