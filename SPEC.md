@@ -93,6 +93,7 @@ const calculateAverage = (scores: number[]): number => {
 ### 결제
 - 구독제: **월 12,000원**
 - 연동: 앱은 Apple/Google IAP, 웹은 포트원 V2 내부 PG 라우팅. 사용자는 PG/카드사를 선택하지 않는다.
+- 웹 브라우저에서 앱 설치 랜딩으로 보낼 때 iOS/Android는 감지된 기기에 맞는 스토어 단일 CTA만 보여주고, 데스크톱/기타 브라우저에서만 App Store/Google Play 선택지를 제공한다.
 - 앱의 구독 관리 화면은 브라우저 기본 `alert/confirm`이 아니라 앱/서비스 디자인에 맞는 커스텀 다이얼로그를 사용해야 한다.
 - 앱 구독(Apple/Google IAP) 해지는 앱 서버가 직접 즉시 종료하지 않고, 각 스토어의 구독 관리 화면으로 안내한 뒤 스토어 상태를 다시 조회해 `cancelled_at`을 반영해야 한다.
 - 해지 예약(`cancelled_at` 존재) 상태에서는 결제 출처와 무관하게 사용자가 즉시 "구독 계속하기" 동선을 볼 수 있어야 하며, `PORTONE`은 앱 내 재개 API 호출 버튼을, `APPLE_IAP`/`GOOGLE_PLAY`는 스토어 구독 관리 화면으로 이동하는 버튼을 노출해야 한다.
