@@ -477,7 +477,7 @@
 
 ## 2026-05-01 | 앱 로그인은 Apple·Google도 네이티브 토큰 교환을 우선한다
 
-- **결정**: Flutter 앱의 로그인 오버레이는 Kakao뿐 아니라 Apple과 Google도 네이티브 SDK 로그인을 우선 시도한다. Apple은 `sign_in_with_apple`로 ID 토큰과 nonce를 받아 `/auth/native-session`에 전달하고, Google은 `google_sign_in`으로 ID 토큰을 받아 같은 세션 교환 경로를 사용한다. 네이티브 토큰을 받을 수 없거나 설정이 비어 있는 경우에만 기존 Supabase OAuth handoff fallback을 유지한다.
+- **결정**: Flutter 앱의 로그인 오버레이는 Kakao뿐 아니라 Apple과 Google도 네이티브 SDK 로그인을 우선 시도한다. Apple은 `sign_in_with_apple`로 ID 토큰과 nonce를 받아 `/auth/native-session`에 전달하고, Google은 `google_sign_in`으로 ID 토큰을 받아 같은 세션 교환 경로를 사용한다. Google의 `GOOGLE_WEB_CLIENT_ID`는 선택값으로 두고, 없어도 모바일 앱 기본 설정으로 네이티브 로그인부터 시도한다. 네이티브 토큰을 받을 수 없을 때만 기존 Supabase OAuth handoff fallback을 유지한다.
 - **이유**: 앱 결제와 알림은 이미 네이티브 경험을 강화하는 쪽으로 가고 있는데, 로그인만 외부 OAuth handoff 중심으로 남으면 첫 진입 경험이 가장 거칠게 느껴진다. 특히 iOS에서는 Sign in with Apple이 네이티브 흐름일수록 심사/신뢰 측면에서 유리하고, Google도 외부 브라우저 전환 없이 복귀 실패 지점을 줄일 수 있다.
 - **대안**: 기존 OAuth handoff 유지 — 구현은 단순하지만 앱다운 경험과 복귀 안정성이 약해 기각. Apple만 네이티브화하고 Google은 유지 — 로그인 수단별 경험 차이가 커져 일관성이 떨어져 기각.
 

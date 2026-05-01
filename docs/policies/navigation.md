@@ -81,7 +81,8 @@
 - 네이티브 로그인 화면은 카카오, Apple, Google, 이메일 진입점을 제공한다.
 - 카카오 버튼은 Kakao Flutter SDK 앱투앱 로그인을 먼저 시도하고, Kakao ID 토큰을 `/auth/native-session`으로 전달해 Supabase 세션 쿠키를 WebView에 설정한다.
 - Apple은 iOS에서 `sign_in_with_apple` 네이티브 SDK를 우선 사용해 ID 토큰(+ nonce)을 받고 `/auth/native-session`으로 세션을 교환한다.
-- Google은 `GOOGLE_WEB_CLIENT_ID`가 주입된 앱 빌드에서 `google_sign_in` 네이티브 SDK를 우선 사용해 ID 토큰을 받고 `/auth/native-session`으로 세션을 교환한다.
+- Google은 `google_sign_in` 네이티브 SDK를 우선 사용해 ID 토큰을 받고 `/auth/native-session`으로 세션을 교환한다.
+- `GOOGLE_WEB_CLIENT_ID` dart define은 선택값이다. 있으면 `serverClientId`로 함께 주입하고, 없어도 모바일 앱 기본 설정(`GoogleService-Info.plist`, `google-services.json`)만으로 네이티브 로그인부터 시도한다.
 - Apple/Google/Kakao 네이티브 토큰을 받을 수 없는 환경에서는 앱이 WebView의 `AuthProvider` OAuth 훅을 우선 호출해 Supabase auth-js가 PKCE 및 `gijilai://auth/callback` 리다이렉트를 생성하게 한다. 훅을 사용할 수 없는 경우에만 Supabase OAuth authorize URL을 외부 앱/브라우저로 직접 열고, 딥링크를 받아 WebView의 `/auth/callback`으로 다시 로드한다.
 - iOS에서 OAuth 후 앱이 콜드 스타트되는 경우를 위해 `AppDelegate`는 `launchOptions`의 초기 URL을 `app_links`로 직접 브리지한다.
 - iOS `Info.plist`의 `FlutterDeepLinkingEnabled`는 `false`로 유지해 Flutter 기본 딥링크 처리와 `app_links`가 같은 커스텀 스킴을 중복 처리하지 않게 한다.

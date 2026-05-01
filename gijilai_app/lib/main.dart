@@ -808,21 +808,10 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     });
 
     try {
-      if (_googleWebClientId.isEmpty) {
-        debugPrint('GOOGLE_WEB_CLIENT_ID is missing. Falling back to OAuth.');
-        if (mounted) {
-          setState(() {
-            _authInProgress = false;
-          });
-        }
-        _externalAuthInProgress = false;
-        await _startNativeOAuth('google');
-        return;
-      }
-
       final googleSignIn = GoogleSignIn(
         scopes: const ['email', 'profile', 'openid'],
-        serverClientId: _googleWebClientId,
+        serverClientId:
+            _googleWebClientId.isEmpty ? null : _googleWebClientId,
       );
 
       final account = await googleSignIn.signIn();
