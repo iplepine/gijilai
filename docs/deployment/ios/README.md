@@ -72,9 +72,9 @@ rm -f /tmp/gijilai_app_store_connect_api_key.json
 
 ## 참고
 
-- iOS 시뮬레이터 `Debug` 실행에서는 앱이 `gijilai_app/ios/Runner/Configuration.storekit`을 번들에서 읽어 `SKTestSession`을 자동으로 시작한다. 그래서 `flutter run`, Xcode `Runner`, 수동 설치 빌드 모두에서 `gijilai_premium_monthly` 로컬 상품 조회와 구매 UI를 같은 방식으로 확인할 수 있다.
+- iOS 시뮬레이터 `Debug` 실행에서는 앱이 `gijilai_app/ios/Runner/Configuration.storekit`으로 로컬 StoreKit 테스트를 시도한다. 다만 Flutter `in_app_purchase` 조합에서 시뮬레이터 상품 조회가 비면, 앱이 네이티브 테스트 다이얼로그(`성공/실패/취소`)로 자동 fallback해 결제 로딩/결과 플로우를 계속 확인할 수 있다.
 - `Runner Local StoreKit` 스킴도 계속 유지한다. 이 스킴은 Xcode Launch Action에 같은 `.storekit` 파일을 연결하므로, 수동 StoreKit 설정이 필요한 디버깅이나 Xcode UI 기반 시나리오 재현에 사용할 수 있다.
-- 실제 샌드박스/스토어 상품 테스트를 실기기에서 할 때는 기본 `Runner`를 실기기 대상으로 실행한다. 자동 `SKTestSession`은 iOS 시뮬레이터 `Debug`에서만 켜지며, 실제 영수증 검증과 구독 상태 동기화는 실기기 샌드박스로 별도 확인해야 한다.
+- 실제 샌드박스/스토어 상품 테스트를 실기기에서 할 때는 기본 `Runner`를 실기기 대상으로 실행한다. 시뮬레이터 fallback은 앱 내부 UX 검증용이며, 실제 영수증 검증과 구독 상태 동기화는 실기기 샌드박스로 별도 확인해야 한다.
 - 현재 iOS 릴리스는 `TARGETED_DEVICE_FAMILY = 1`인 iPhone only 타깃으로 제출한다. App Store Connect에 iPad 탭이 보였다면, iPad 지원 제거 후 새 빌드를 다시 업로드해야 반영된다.
 - `fastlane ios deploy_testflight` lane은 App Store Connect API Key를 자동 탐색해서 `upload_to_testflight`에 전달한다. 키를 못 찾으면 명확한 에러로 중단된다.
 - `fastlane ios deploy_appstore` lane은 `fastlane/screenshots/ios`에 스크린샷이 없으면 스크린샷 업로드를 건너뛴다. 첫 제출이거나 App Store Connect에 스크린샷이 아직 없다면 별도로 준비해야 한다.

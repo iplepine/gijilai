@@ -13,6 +13,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
+import 'package:in_app_purchase_storekit/in_app_purchase_storekit.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -57,6 +58,10 @@ Future<void> main() async {
   await runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
+      if (Platform.isIOS && !kReleaseMode) {
+        await InAppPurchaseStoreKitPlatform.enableStoreKit1();
+        InAppPurchaseStoreKitPlatform.registerPlatform();
+      }
       await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
       KakaoSdk.init(nativeAppKey: '8d63a45bb147379940cda43c72e841d6');
       await Firebase.initializeApp(
@@ -160,6 +165,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   String get _subscriptionProductId => Platform.isIOS
       ? _iosSubscriptionProductId
       : _androidSubscriptionProductId;
+  bool get _useIosDebugPurchaseFallback => Platform.isIOS && !kReleaseMode;
 
   @override
   void initState() {
@@ -805,6 +811,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
   Future<void> _initIAP() async {
     final available = await _iap.isAvailable();
+    debugPrint('IAP init: storeAvailable=$available, platform=${Platform.operatingSystem}');
     if (!available) {
       debugPrint('IAP not available');
       FirebaseCrashlytics.instance.log('IAP not available on current device');
@@ -828,6 +835,13 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
     // 상품 정보 로드
     final response = await _iap.queryProductDetails({_subscriptionProductId});
+    debugPrint(
+      'IAP init product query: '
+      'productId=$_subscriptionProductId, '
+      'count=${response.productDetails.length}, '
+      'notFoundIDs=${response.notFoundIDs.join(",")}, '
+      'error=${response.error?.code ?? "none"}:${response.error?.message ?? "none"}',
+    );
     if (response.error != null) {
       debugPrint('IAP product query error: ${response.error}');
       await FirebaseCrashlytics.instance.recordError(
@@ -1115,6 +1129,13 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     }
 
     final response = await _iap.queryProductDetails({_subscriptionProductId});
+    debugPrint(
+      'IAP purchase product query: '
+      'productId=$_subscriptionProductId, '
+      'count=${response.productDetails.length}, '
+      'notFoundIDs=${response.notFoundIDs.join(",")}, '
+      'error=${response.error?.code ?? "none"}:${response.error?.message ?? "none"}',
+    );
     if (response.error != null) {
       debugPrint(
         'IAP product query failed before purchase: '
@@ -1146,6 +1167,10 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           reason: 'IAP product details empty before purchase',
         ),
       );
+      if (_useIosDebugPurchaseFallback) {
+        await _runIosDebugPurchaseFallback();
+        return;
+      }
       _showSnackBar('상품 정보를 찾을 수 없습니다', isError: true);
       _notifyWebLoadingDone();
       return;
@@ -1183,6 +1208,47 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       _showSnackBar('결제창을 열 수 없습니다', isError: true);
       _notifyWebLoadingDone();
     }
+  }
+
+  Future<void> _runIosDebugPurchaseFallback() async {
+    final action = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('시뮬레이터 결제 테스트'),
+          content: const Text(
+            '로컬 StoreKit 상품 조회가 비어 시뮬레이터 테스트 모드로 전환합니다.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop('cancel'),
+              child: const Text('취소'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop('fail'),
+              child: const Text('실패'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop('success'),
+              child: const Text('성공'),
+            ),
+          ],
+        );
+      },
+    );
+
+    switch (action) {
+      case 'success':
+        _showSnackBar('시뮬레이터 결제 테스트 성공');
+        break;
+      case 'fail':
+        _showSnackBar('시뮬레이터 결제 테스트 실패', isError: true);
+        break;
+      default:
+        break;
+    }
+
+    _notifyWebLoadingDone();
   }
 
   void _onPurchaseUpdated(List<PurchaseDetails> purchases) {

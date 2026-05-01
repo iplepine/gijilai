@@ -76,7 +76,8 @@
 
 - Flutter 앱은 `in_app_purchase`로 Apple App Store / Google Play 구독을 시작한다.
 - 스토어 상품 ID는 플랫폼별로 다를 수 있으며, 현재 월 구독은 `APPLE_IAP = gijilai_premium_monthly`, `GOOGLE_PLAY = monthly_premium`으로 운영한다.
-- iOS 시뮬레이터 `Debug` 실행에서는 앱이 번들된 `Configuration.storekit`으로 `SKTestSession`을 자동 시작해 로컬 StoreKit 상품 조회/구매 플로우를 지원한다. 이 경로는 UI/상태 검증용이며, 실제 영수증 검증과 구독 반영은 실기기 샌드박스로 별도 확인한다.
+- iOS 시뮬레이터 `Debug` 실행에서는 앱이 번들된 `Configuration.storekit`으로 로컬 StoreKit 테스트를 시도한다. 다만 Flutter `in_app_purchase`의 iOS 시뮬레이터 상품 조회가 비는 경우를 대비해, 현재는 iOS 디버그에서 상품 조회 실패 시 네이티브 테스트 다이얼로그(`성공/실패/취소`)로 결제 UI 플로우를 계속 검증할 수 있게 유지한다.
+- 위 시뮬레이터 fallback은 개발용 UX 검증 경로다. 실제 영수증 검증, 구독 생성, 스토어 동기화는 실기기 샌드박스로 별도 확인한다.
 - 최초 구매는 `/api/payment/iap`에서 영수증 검증 후 `subscriptions`/`payments`에 반영한다.
 - 이후 상태 변경은 스토어 서버 알림으로 동기화한다.
   - Apple App Store Server Notifications V2: `/api/payment/iap/apple-notifications`
