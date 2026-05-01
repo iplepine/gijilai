@@ -447,7 +447,6 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   }
 
   Future<T?> _withWebInputBlocked<T>(Future<T?> Function() action) async {
-    await _setWebInputBlocked(true);
     if (mounted) {
       setState(() {
         _isNativeDialogVisible = true;
@@ -463,24 +462,6 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           _isNativeDialogVisible = false;
         });
       }
-      await _setWebInputBlocked(false);
-    }
-  }
-
-  Future<void> _setWebInputBlocked(bool blocked) async {
-    final controller = _controller;
-    if (controller == null) return;
-
-    final value = blocked ? 'none' : '';
-    try {
-      await controller.runJavaScript('''
-        (function() {
-          document.documentElement.style.pointerEvents = '$value';
-          document.body && (document.body.style.pointerEvents = '$value');
-        })();
-      ''');
-    } catch (e) {
-      debugPrint('Web input block script error: $e');
     }
   }
 
