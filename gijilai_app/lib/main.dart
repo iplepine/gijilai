@@ -344,6 +344,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   Future<void> _showAppAlertDialog({required String message}) async {
     await showDialog<void>(
       context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.42),
       barrierDismissible: false,
       builder: (dialogContext) => _AppWebDialog(
         message: message,
@@ -361,6 +362,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   Future<bool> _showAppConfirmDialog({required String message}) async {
     final result = await showDialog<bool>(
       context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.42),
       barrierDismissible: false,
       builder: (dialogContext) => _AppWebDialog(
         message: message,
@@ -388,6 +390,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     try {
       final result = await showDialog<String>(
         context: context,
+        barrierColor: Colors.black.withValues(alpha: 0.42),
         barrierDismissible: false,
         builder: (dialogContext) => _AppWebDialog(
           message: message,
@@ -810,8 +813,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     try {
       final googleSignIn = GoogleSignIn(
         scopes: const ['email', 'profile', 'openid'],
-        serverClientId:
-            _googleWebClientId.isEmpty ? null : _googleWebClientId,
+        serverClientId: _googleWebClientId.isEmpty ? null : _googleWebClientId,
       );
 
       final account = await googleSignIn.signIn();
@@ -1712,7 +1714,10 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
               left: 0,
               right: 0,
               bottom: 0,
-              child: WebViewWidget(controller: controller),
+              child: Offstage(
+                offstage: _showNativeLogin,
+                child: WebViewWidget(controller: controller),
+              ),
             ),
             if (_showNativeLogin)
               NativeLoginScreen(
@@ -1746,59 +1751,73 @@ class _AppWebDialog extends StatelessWidget {
 
   static const _primary = Color(0xFF2F4F3E);
   static const _textMain = Color(0xFF26382F);
+  static const _textSub = Color(0xFF6E7A75);
 
   @override
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20),
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: const Color(0xFFFBFAF6),
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.14),
-              blurRadius: 32,
-              offset: const Offset(0, 18),
+              color: Colors.black.withValues(alpha: 0.18),
+              blurRadius: 30,
+              offset: const Offset(0, 16),
             ),
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: _primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(14),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: _primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.info_outline_rounded,
+                      color: _primary,
+                      size: 21,
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.info_outline_rounded,
-                    color: _primary,
-                    size: 24,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        message,
+                        style: const TextStyle(
+                          color: _textMain,
+                          fontSize: 16,
+                          height: 1.38,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-              const SizedBox(height: 16),
-              Text(
-                message,
-                style: const TextStyle(
-                  color: _textMain,
-                  fontSize: 16,
-                  height: 1.55,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0,
+              if (content != null) ...[
+                const SizedBox(height: 16),
+                DefaultTextStyle.merge(
+                  style: const TextStyle(color: _textSub),
+                  child: content!,
                 ),
-              ),
-              if (content != null) ...[const SizedBox(height: 16), content!],
-              const SizedBox(height: 22),
+              ],
+              const SizedBox(height: 18),
               Row(
                 children: [
                   for (int index = 0; index < actions.length; index++) ...[
@@ -1832,7 +1851,7 @@ class _AppDialogButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 48,
+      height: 46,
       child: FilledButton(
         onPressed: () {
           unawaited(HapticFeedback.lightImpact());
@@ -1843,10 +1862,10 @@ class _AppDialogButton extends StatelessWidget {
           foregroundColor: isPrimary ? Colors.white : _textSub,
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
           ),
           textStyle: const TextStyle(
-            fontSize: 15,
+            fontSize: 14,
             fontWeight: FontWeight.w800,
             letterSpacing: 0,
           ),
