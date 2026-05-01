@@ -91,6 +91,26 @@
     "subscribeWithPrice": "Start for {price}",
     "subscribeError": "Subscription error: {message}"
   },
+  "install": {
+    "title": "Install App",
+    "redirecting": "Moving you to the app install page.",
+    "badgeIos": "iPhone / iPad detected",
+    "badgeAndroid": "Android detected",
+    "badgeDesktop": "Viewing in browser",
+    "headline": "Continue payment and subscription in the app",
+    "description": "Gijilai starts subscriptions through Apple and Google in-app purchase. Open the right store for your device, install the app, and continue there.",
+    "featureSubscriptionTitle": "Start the subscription directly in the app",
+    "featureSubscriptionBody": "Instead of web checkout, continue with App Store or Google Play billing.",
+    "featureReminderTitle": "Keep consultation and practice connected",
+    "featureReminderBody": "Use push reminders and accumulated records so the next consultation keeps the full context.",
+    "availableStores": "Available stores",
+    "openAppStore": "Open App Store",
+    "openPlayStore": "Open Google Play",
+    "chooseStore": "Choose a store",
+    "storeIosCaption": "Install on iPhone or iPad",
+    "storeAndroidCaption": "Install on Android",
+    "footerNote": "After installing, sign in with the same account and continue where you left off."
+  },
   "home": {
     "trialBadge": "Trial",
     "registerPhoto": "Add photo",

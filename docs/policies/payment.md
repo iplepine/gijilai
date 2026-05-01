@@ -6,6 +6,7 @@
 - 한국 웹 PG: KG 이니시스 (정기결제 운영), NHN KCP (계약 진행 중)
 - 글로벌 PG: Stripe (카드)
 - 플랫폼과 locale에 따라 앱 IAP / 웹 PG / 통화 자동 분기
+- 브라우저에서 구독/결제 진입(`/pricing`, `/payment`) 시에는 웹 결제를 계속 진행하지 않고 앱 설치 랜딩(`/install-app`)으로 보낸다. 랜딩 페이지는 접속 브라우저 기준으로 iOS는 App Store, Android는 Google Play를 우선 안내한다.
 - 사용자는 PG사, 카드결제, 인앱결제 같은 결제 라우팅을 선택하지 않는다.
 - 토스페이/네이버페이는 심사 거부로 결제 UI에서 미노출한다.
 - 웹 정기결제 빌링키 발급은 구매자 이름/휴대폰 번호가 필요하므로, 구독 버튼을 누른 시점에 다이얼로그로 휴대폰 번호를 입력받아 PortOne 빌링키 발급창 호출 파라미터로 전달한다. 이 값은 앱 DB에 저장하지 않는다.
@@ -75,6 +76,7 @@
 ## 앱 인앱결제(IAP)
 
 - Flutter 앱은 `in_app_purchase`로 Apple App Store / Google Play 구독을 시작한다.
+- 웹 브라우저에서는 새 구독 결제를 직접 시작하지 않는다. 결제 CTA는 앱 설치 랜딩으로 연결하고, 실제 구독 시작은 설치된 앱 안의 IAP에서 처리한다.
 - 스토어 상품 ID는 플랫폼별로 다를 수 있으며, 현재 월 구독은 `APPLE_IAP = gijilai_premium_monthly`, `GOOGLE_PLAY = monthly_premium`으로 운영한다.
 - iOS 시뮬레이터 `Debug` 실행에서는 앱이 번들된 `Configuration.storekit`으로 로컬 StoreKit 테스트를 시도한다. 다만 Flutter `in_app_purchase`의 iOS 시뮬레이터 상품 조회가 비는 경우를 대비해, 현재는 iOS 디버그에서 상품 조회 실패 시 네이티브 테스트 다이얼로그(`성공/실패/취소`)로 결제 UI 플로우를 계속 검증할 수 있게 유지한다.
 - 위 시뮬레이터 fallback은 개발용 UX 검증 경로다. 실제 영수증 검증, 구독 생성, 스토어 동기화는 실기기 샌드박스로 별도 확인한다.

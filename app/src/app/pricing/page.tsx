@@ -9,6 +9,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { useLocale } from '@/i18n/LocaleProvider';
 import { trackEvent } from '@/lib/analytics';
 import { getApiErrorMessage, readJsonResponse } from '@/lib/api';
+import { buildInstallPageUrl, isAppWebView } from '@/lib/install';
 
 
 declare global {
@@ -143,12 +144,20 @@ function PricingContent() {
   const currentPrice = isFirstSubscription ? FIRST_MONTH_PRICES[currency] : PRICES.MONTHLY[currency];
 
   useEffect(() => {
-    // 앱 감지
-    const ua = navigator.userAgent.toLowerCase();
-    const inApp = ua.includes('gijilai_app') || !!window.PaymentBridge;
+    const inApp = isAppWebView();
     setIsApp(inApp);
     setIsEnvironmentReady(true);
-  }, []);
+
+    if (!inApp) {
+      router.replace(buildInstallPageUrl({
+        source: entrySource,
+        entry_cta: entryCta,
+        from: 'pricing',
+        report_tab: reportTab ?? undefined,
+        report_kind: reportKind ?? undefined,
+      }));
+    }
+  }, [entryCta, entrySource, reportKind, reportTab, router]);
 
   useEffect(() => {
     if (!isEnvironmentReady || trackedPricingViewRef.current) return;
@@ -164,7 +173,7 @@ function PricingContent() {
   }, [entryCta, entrySource, isApp, isEnvironmentReady, reportKind, reportTab]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !isEnvironmentReady || !isApp) return;
     let cancelled = false;
 
     void (async () => {
@@ -191,7 +200,7 @@ function PricingContent() {
     return () => {
       cancelled = true;
     };
-  }, [getErrorMessage, t, user]);
+  }, [getErrorMessage, isApp, isEnvironmentReady, t, user]);
 
   // 앱 IAP: Flutter가 결과를 네이티브 SnackBar로 처리, 웹은 loading 해제만 담당
   useEffect(() => {
@@ -199,6 +208,17 @@ function PricingContent() {
     window.__iapLoadingDone = () => setLoading(false);
     return () => { window.__iapLoadingDone = undefined; };
   }, [isApp]);
+
+  if (!isEnvironmentReady || !isApp) {
+    return (
+      <div className="bg-background-light dark:bg-background-dark min-h-screen flex items-center justify-center px-6">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+          <p className="text-sm text-text-sub">{t('install.redirecting')}</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleSubscribe = async (phoneOverride?: string) => {
     if (!user) return;

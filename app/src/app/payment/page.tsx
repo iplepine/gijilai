@@ -10,6 +10,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { db } from '@/lib/db';
 import { useLocale } from '@/i18n/LocaleProvider';
 import { getApiErrorMessage, readJsonResponse } from '@/lib/api';
+import { buildInstallPageUrl, isAppWebView } from '@/lib/install';
 
 declare global {
   interface PortOnePaymentResult {
@@ -98,19 +99,16 @@ export default function PaymentPage() {
   }, [finalAmount, payMethod, useCoupon]);
 
   useEffect(() => {
-    // 글로벌 사용자는 구독 페이지로 리다이렉트
-    const browserLang = navigator.language.toLowerCase();
-    const savedLocale = document.cookie.match(/gijilai_locale=(\w+)/)?.[1];
-    const locale = savedLocale || (browserLang.startsWith('ko') ? 'ko' : 'en');
-    if (locale !== 'ko') {
-      router.replace('/pricing');
+    const inApp = isAppWebView();
+    setIsApp(inApp);
+
+    if (!inApp) {
+      router.replace(buildInstallPageUrl({
+        source: 'payment',
+        from: 'payment',
+      }));
       return;
     }
-
-    // Flutter WebView 감지
-    const ua = navigator.userAgent.toLowerCase();
-    const isFlutter = ua.includes('gijilai_app') || !!window.PaymentBridge;
-    setIsApp(isFlutter);
 
     // Flutter 결제 콜백
     window.onPaymentComplete = (data: { status?: string }) => {
@@ -148,6 +146,17 @@ export default function PaymentPage() {
       return () => clearInterval(interval);
     }
   }, [status, router, LOADING_MESSAGES.length]);
+
+  if (!isApp) {
+    return (
+      <div className="bg-background-light dark:bg-background-dark min-h-screen flex items-center justify-center px-6">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+          <p className="text-sm text-text-sub">{t('install.redirecting')}</p>
+        </div>
+      </div>
+    );
+  }
 
   const handlePaymentStart = async () => {
     if (!user) return;
