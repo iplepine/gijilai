@@ -34,6 +34,40 @@ function InstallAppContent() {
   const entryCta = searchParams.get('entry_cta') ?? undefined;
   const platform = useMemo(() => detectBrowserPlatform(), []);
   const primaryStoreUrl = useMemo(() => getPrimaryStoreUrl(platform), [platform]);
+  const storeOptions = useMemo(() => {
+    if (platform === 'ios') {
+      return [{
+        key: 'app_store' as const,
+        name: 'App Store',
+        caption: t('install.storeIosCaption'),
+        url: GIJILAI_APP_STORE_URL,
+      }];
+    }
+
+    if (platform === 'android') {
+      return [{
+        key: 'play_store' as const,
+        name: 'Google Play',
+        caption: t('install.storeAndroidCaption'),
+        url: GIJILAI_PLAY_STORE_URL,
+      }];
+    }
+
+    return [
+      {
+        key: 'app_store' as const,
+        name: 'App Store',
+        caption: t('install.storeIosCaption'),
+        url: GIJILAI_APP_STORE_URL,
+      },
+      {
+        key: 'play_store' as const,
+        name: 'Google Play',
+        caption: t('install.storeAndroidCaption'),
+        url: GIJILAI_PLAY_STORE_URL,
+      },
+    ];
+  }, [platform, t]);
 
   useEffect(() => {
     trackEvent('app_install_landing_viewed', {
@@ -50,7 +84,7 @@ function InstallAppContent() {
       platform,
       store,
     });
-    window.location.href = url;
+    window.location.assign(url);
   };
 
   return (
@@ -109,32 +143,23 @@ function InstallAppContent() {
 
           <section className="mt-5 rounded-[28px] border border-beige-main/20 bg-white/80 px-5 py-5 dark:bg-surface-dark/70">
             <h3 className="text-sm font-bold text-text-main dark:text-white">
-              {t('install.availableStores')}
+              {platform === 'other' ? t('install.availableStores') : t('install.recommendedStore')}
             </h3>
             <div className="mt-4 space-y-3">
-              <button
-                type="button"
-                onClick={() => openStore('app_store', GIJILAI_APP_STORE_URL)}
-                className="flex w-full items-center justify-between rounded-2xl border border-gray-200 bg-white px-4 py-4 text-left transition-colors hover:border-primary/30 dark:border-white/10 dark:bg-white/5"
-              >
-                <div>
-                  <p className="text-sm font-bold text-text-main dark:text-white">App Store</p>
-                  <p className="mt-1 text-xs text-text-sub dark:text-gray-300">{t('install.storeIosCaption')}</p>
-                </div>
-                <Icon name="arrow_forward_ios" className="text-text-sub text-sm" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => openStore('play_store', GIJILAI_PLAY_STORE_URL)}
-                className="flex w-full items-center justify-between rounded-2xl border border-gray-200 bg-white px-4 py-4 text-left transition-colors hover:border-primary/30 dark:border-white/10 dark:bg-white/5"
-              >
-                <div>
-                  <p className="text-sm font-bold text-text-main dark:text-white">Google Play</p>
-                  <p className="mt-1 text-xs text-text-sub dark:text-gray-300">{t('install.storeAndroidCaption')}</p>
-                </div>
-                <Icon name="arrow_forward_ios" className="text-text-sub text-sm" />
-              </button>
+              {storeOptions.map((store) => (
+                <button
+                  key={store.key}
+                  type="button"
+                  onClick={() => openStore(store.key, store.url)}
+                  className="flex w-full items-center justify-between rounded-2xl border border-gray-200 bg-white px-4 py-4 text-left transition-colors hover:border-primary/30 dark:border-white/10 dark:bg-white/5"
+                >
+                  <div>
+                    <p className="text-sm font-bold text-text-main dark:text-white">{store.name}</p>
+                    <p className="mt-1 text-xs text-text-sub dark:text-gray-300">{store.caption}</p>
+                  </div>
+                  <Icon name="arrow_forward_ios" className="text-text-sub text-sm" />
+                </button>
+              ))}
             </div>
           </section>
         </main>

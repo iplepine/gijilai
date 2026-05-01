@@ -104,6 +104,7 @@
     "featureReminderTitle": "상담 후 실천까지 앱에서 연결",
     "featureReminderBody": "푸시 알림과 기록 누적으로 다음 상담까지 끊기지 않게 관리할 수 있습니다.",
     "availableStores": "스토어 선택",
+    "recommendedStore": "이 기기에 맞는 스토어",
     "openAppStore": "App Store 열기",
     "openPlayStore": "Google Play 열기",
     "chooseStore": "스토어 선택하기",
