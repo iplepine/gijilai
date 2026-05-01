@@ -1,5 +1,6 @@
 'use client';
 
+import { triggerNativeHaptic } from '@/lib/nativeHaptics';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLocale } from '@/i18n/LocaleProvider';
@@ -23,7 +24,12 @@ export default function BottomNav() {
 
                 if (item.isCenter) {
                     return (
-                        <Link key={item.href} href={item.href} className="app-bottom-nav-center relative -top-6 group w-20 flex justify-center">
+                        <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={() => triggerNativeHaptic('light')}
+                            className="app-bottom-nav-center relative -top-6 group w-20 flex justify-center"
+                        >
                             <div className="w-14 h-14 rounded-full bg-primary text-white shadow-xl shadow-primary/30 flex items-center justify-center transform transition-all group-hover:scale-105 active:scale-95 border-[4px] border-background-light dark:border-background-dark">
                                 <span className="material-symbols-outlined text-white text-[32px]">
                                     {isActive ? 'chat_bubble' : 'add'}
@@ -38,6 +44,7 @@ export default function BottomNav() {
                     <Link
                         key={item.href}
                         href={item.href}
+                        onClick={() => triggerNativeHaptic('light')}
                         className="flex flex-col items-center justify-center gap-1 flex-1 transition-all active:scale-90"
                     >
                         <div className={`p-1.5 rounded-full transition-colors ${isActive ? 'text-primary' : 'text-gray-400'}`}>

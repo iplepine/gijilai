@@ -28,6 +28,7 @@ class NativeCapabilityRegistry {
   const NativeCapabilityRegistry();
 
   static const int contractVersion = 1;
+  static const bool supportsHaptics = true;
 
   static const Map<String, bool> supportedScreens = {
     'login': true,
@@ -48,6 +49,7 @@ class NativeCapabilityRegistry {
     return '''
       {
         contractVersion: $contractVersion,
+        haptics: $supportsHaptics,
         supportedScreens: { $screens }
       }
     ''';
@@ -292,6 +294,10 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       ..addJavaScriptChannel(
         'ReminderBridge',
         onMessageReceived: _onReminderMessage,
+      )
+      ..addJavaScriptChannel(
+        'HapticBridge',
+        onMessageReceived: _onHapticMessage,
       )
       ..addJavaScriptChannel('AuthBridge', onMessageReceived: _onAuthMessage)
       ..addJavaScriptChannel('ShareBridge', onMessageReceived: _onShareMessage)
@@ -811,7 +817,9 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
   Future<void> _initIAP() async {
     final available = await _iap.isAvailable();
-    debugPrint('IAP init: storeAvailable=$available, platform=${Platform.operatingSystem}');
+    debugPrint(
+      'IAP init: storeAvailable=$available, platform=${Platform.operatingSystem}',
+    );
     if (!available) {
       debugPrint('IAP not available');
       FirebaseCrashlytics.instance.log('IAP not available on current device');
@@ -872,6 +880,63 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           e,
           StackTrace.current,
           reason: 'PaymentBridge parse error',
+        ),
+      );
+    }
+  }
+
+  void _onHapticMessage(JavaScriptMessage message) {
+    try {
+      final data = jsonDecode(message.message) as Map<String, dynamic>;
+      final type = data['type']?.toString() ?? 'impact';
+      final style = data['style']?.toString();
+      unawaited(_performHapticFeedback(type: type, style: style));
+    } catch (e) {
+      debugPrint('HapticBridge parse error: $e');
+      unawaited(
+        FirebaseCrashlytics.instance.recordError(
+          e,
+          StackTrace.current,
+          reason: 'HapticBridge parse error',
+        ),
+      );
+    }
+  }
+
+  Future<void> _performHapticFeedback({
+    required String type,
+    String? style,
+  }) async {
+    try {
+      switch (type) {
+        case 'selection':
+          await HapticFeedback.selectionClick();
+          return;
+        case 'vibrate':
+          await HapticFeedback.vibrate();
+          return;
+        case 'impact':
+        default:
+          switch (style) {
+            case 'heavy':
+              await HapticFeedback.heavyImpact();
+              return;
+            case 'medium':
+              await HapticFeedback.mediumImpact();
+              return;
+            case 'light':
+            default:
+              await HapticFeedback.lightImpact();
+              return;
+          }
+      }
+    } catch (e) {
+      debugPrint('Haptic feedback error: $e');
+      unawaited(
+        FirebaseCrashlytics.instance.recordError(
+          e,
+          StackTrace.current,
+          reason: 'Haptic feedback error',
         ),
       );
     }
@@ -1218,9 +1283,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       builder: (dialogContext) {
         return AlertDialog(
           title: const Text('시뮬레이터 결제 테스트'),
-          content: const Text(
-            '로컬 StoreKit 상품 조회가 비어 시뮬레이터 테스트 모드로 전환합니다.',
-          ),
+          content: const Text('로컬 StoreKit 상품 조회가 비어 시뮬레이터 테스트 모드로 전환합니다.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop('cancel'),
@@ -1630,7 +1693,10 @@ class _AppDialogButton extends StatelessWidget {
     return SizedBox(
       height: 48,
       child: FilledButton(
-        onPressed: onPressed,
+        onPressed: () {
+          unawaited(HapticFeedback.lightImpact());
+          onPressed();
+        },
         style: FilledButton.styleFrom(
           backgroundColor: isPrimary ? _primary : const Color(0xFFF0EDE5),
           foregroundColor: isPrimary ? Colors.white : _textSub,
@@ -1765,7 +1831,12 @@ class NativeLoginScreen extends StatelessWidget {
               ],
               const SizedBox(height: 28),
               TextButton(
-                onPressed: isLoading ? null : onEmailPressed,
+                onPressed: isLoading
+                    ? null
+                    : () {
+                        unawaited(HapticFeedback.lightImpact());
+                        onEmailPressed();
+                      },
                 child: const Text(
                   '이메일로 로그인',
                   style: TextStyle(
@@ -1956,7 +2027,12 @@ class _LoginButton extends StatelessWidget {
       width: double.infinity,
       height: 56,
       child: FilledButton(
-        onPressed: enabled ? onPressed : null,
+        onPressed: enabled
+            ? () {
+                unawaited(HapticFeedback.lightImpact());
+                onPressed();
+              }
+            : null,
         style: FilledButton.styleFrom(
           backgroundColor: backgroundColor,
           foregroundColor: foregroundColor,

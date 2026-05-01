@@ -1,5 +1,6 @@
 'use client';
 
+import { triggerNativeHaptic } from '@/lib/nativeHaptics';
 import { useRouter } from 'next/navigation';
 import { ReactNode } from 'react';
 
@@ -19,7 +20,14 @@ export function Navbar({ title, showBack = true, onBackClick, rightElement }: Na
         <div className="absolute left-4">
           {showBack && (
             <button
-              onClick={() => onBackClick ? onBackClick() : router.back()}
+              onClick={() => {
+                triggerNativeHaptic('light');
+                if (onBackClick) {
+                  onBackClick();
+                  return;
+                }
+                router.back();
+              }}
               className="size-10 flex items-center justify-center text-text-main dark:text-white"
               aria-label="뒤로 가기"
             >

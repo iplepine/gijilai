@@ -1,5 +1,6 @@
 'use client';
 
+import { triggerNativeHaptic } from '@/lib/nativeHaptics';
 import { ButtonHTMLAttributes, ReactNode } from 'react';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -22,6 +23,7 @@ export function Button({
   children,
   className = '',
   disabled,
+  onClick,
   ...props
 }: ButtonProps) {
   const baseStyles = `
@@ -65,6 +67,12 @@ export function Button({
         ${className}
       `}
       disabled={disabled}
+      onClick={(event) => {
+        if (!disabled) {
+          triggerNativeHaptic('light');
+        }
+        onClick?.(event);
+      }}
       {...props}
     >
       {icon}
