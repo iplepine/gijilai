@@ -523,6 +523,42 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         root.style.setProperty('--native-safe-area-top', '${topInset}px');
         root.style.setProperty('--native-safe-area-bottom', '${bottomInset}px');
         window.__nativeCapabilities = $nativeCapabilitiesJs;
+
+        if (!window.__nativeDialogTapGuard) {
+          const guard = {
+            activeUntil: 0,
+            block(ms) {
+              this.activeUntil = Math.max(this.activeUntil, Date.now() + ms);
+            },
+            isActive() {
+              return Date.now() <= this.activeUntil;
+            }
+          };
+          window.__nativeDialogTapGuard = guard;
+
+          ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'click'].forEach((eventName) => {
+            document.addEventListener(eventName, (event) => {
+              if (!guard.isActive()) return;
+              event.preventDefault();
+              event.stopImmediatePropagation();
+            }, true);
+          });
+
+          ['alert', 'confirm', 'prompt'].forEach((name) => {
+            const original = window[name];
+            if (typeof original !== 'function' || original.__nativeGuardWrapped) return;
+            const wrapped = function(...args) {
+              guard.block(2500);
+              try {
+                return original.apply(this, args);
+              } finally {
+                guard.block(900);
+              }
+            };
+            wrapped.__nativeGuardWrapped = true;
+            window[name] = wrapped;
+          });
+        }
       })();
     ''');
   }
@@ -1742,8 +1778,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
               bottom: 0,
               child: Offstage(
                 offstage: _showNativeLogin,
-                child: IgnorePointer(
-                  ignoring: _isNativeDialogVisible,
+                child: AbsorbPointer(
+                  absorbing: _isNativeDialogVisible,
                   child: WebViewWidget(controller: controller),
                 ),
               ),
