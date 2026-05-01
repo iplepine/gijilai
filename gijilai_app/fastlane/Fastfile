@@ -403,9 +403,8 @@ platform :ios do
       force: true,
       metadata_path: "./fastlane/metadata/ios",
       app_identifier: PACKAGE_NAME,
-      privacy_url: "https://gijilai.com/legal/privacy",
-      support_url: "https://gijilai.com/legal/support",
-      marketing_url: "https://gijilai.com",
+      ignore_language_directory_validation: true,
+      precheck_include_in_app_purchases: false,
     }
 
     if ios_screenshots_available?

@@ -78,6 +78,7 @@ rm -f /tmp/gijilai_app_store_connect_api_key.json
 - 현재 iOS 릴리스는 `TARGETED_DEVICE_FAMILY = 1`인 iPhone only 타깃으로 제출한다. App Store Connect에 iPad 탭이 보였다면, iPad 지원 제거 후 새 빌드를 다시 업로드해야 반영된다.
 - `fastlane ios deploy_testflight` lane은 App Store Connect API Key를 자동 탐색해서 `upload_to_testflight`에 전달한다. 키를 못 찾으면 명확한 에러로 중단된다.
 - `fastlane ios deploy_appstore` lane은 `fastlane/screenshots/ios`에 스크린샷이 없으면 스크린샷 업로드를 건너뛴다. 첫 제출이거나 App Store Connect에 스크린샷이 아직 없다면 별도로 준비해야 한다.
+- `fastlane ios deploy_appstore` lane은 URL 메타데이터를 `fastlane/metadata/ios/*/{privacy,support,marketing}_url.txt`에서 읽는다. App Store Connect API Key 배포에서는 IAP precheck를 건너뛰고, `fastlane/screenshots/ios/raw` 같은 보조 폴더가 있어도 locale 검증 오류로 중단되지 않게 설정돼 있다.
 - `fastlane ios deploy_testflight` lane에서 내부 빌드 단계의 CocoaPods/Xcode 환경 문제가 나면 위 절차처럼 `flutter build ipa`를 직접 실행한 뒤 `upload_to_testflight`만 호출한다.
 - 업로드 성공 후 App Store Connect에서 빌드 처리가 완료되기까지 몇 분 걸릴 수 있다.
 - 새 빌드를 올릴 때는 `gijilai_app/pubspec.yaml`의 build number를 이전 TestFlight 빌드보다 높여야 한다.
