@@ -450,3 +450,9 @@
 - **결정**: iOS 시뮬레이터 결제 플로우 테스트는 기본 `Runner` 스킴을 바꾸지 않고 `Runner Local StoreKit` 공유 스킴으로 분리한다. 이 스킴은 `gijilai_app/ios/Runner/Configuration.storekit`을 연결해 `gijilai_premium_monthly` 상품을 로컬 StoreKit으로 제공한다.
 - **이유**: 팀은 시뮬레이터에서 상품 조회·구매 UI·취소 같은 앱 내부 흐름을 빠르게 확인해야 하지만, 같은 스킴으로 실기기 샌드박스와 App Store Connect 실상품 테스트도 유지해야 한다. 로컬 StoreKit을 기본 스킴에 고정하면 실기기 디버그에서도 실제 스토어 조회가 가려져 운영 검증과 개발 검증이 섞인다. 전용 스킴으로 분리하면 시뮬레이터 로컬 테스트와 실기기 샌드박스 테스트를 명확히 나눌 수 있다.
 - **대안**: 기본 `Runner` 스킴에 항상 `.storekit` 연결 — 실기기에서 실제 스토어 상품 테스트가 헷갈려 기각. 시뮬레이터에서는 결제를 아예 포기하고 실기기만 사용 — UI/상태 플로우 반복 검증 속도가 너무 느려 기각. 앱 코드에 시뮬레이터 전용 가짜 결제 분기 추가 — 실제 StoreKit 동작과 멀어져 회귀 탐지력이 떨어져 기각.
+
+## 2026-05-01 | iOS 시뮬레이터 결제 테스트는 앱 런타임에서 StoreKit 세션을 자동 시작한다
+
+- **결정**: iOS `Debug` 시뮬레이터 실행에서는 `Runner/AppDelegate.swift`가 번들된 `Configuration.storekit`을 읽어 `StoreKitTest.SKTestSession`을 자동 시작한다. `Runner Local StoreKit` 스킴은 유지하되, `flutter run`이나 수동 설치 빌드처럼 Xcode Launch Action을 거치지 않는 실행 경로도 로컬 상품 조회와 구매 UI를 재현할 수 있게 한다.
+- **이유**: 기존 스킴 기반 설정은 Xcode에서 특정 스킴으로 Run 할 때만 로컬 StoreKit이 붙었다. 하지만 실제 개발 플로우는 `flutter run`, 디버그 빌드 설치, 기본 `Runner` 실행이 섞여 있어, 같은 시뮬레이터에서도 `queryProductDetails`가 비어 `"상품 정보를 찾을 수 없습니다"`가 반복됐다. 런타임 자동 세션은 테스트 방식의 차이로 인한 회귀를 줄이고, 시뮬레이터 결제 플로우를 실행 경로와 무관하게 일관되게 만든다.
+- **대안**: 스킴 선택만 더 엄격하게 강제 — Flutter CLI/수동 설치 경로를 해결하지 못해 기각. 앱 내부 가짜 결제 분기 추가 — 실제 StoreKit 요청/구매 UI를 통과하지 않아 회귀 탐지력이 떨어져 기각. 기본 스킴에만 `.storekit` 연결 — 실기기 디버그에서 실제 스토어 검증과 충돌할 수 있어 기각.
