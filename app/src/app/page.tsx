@@ -237,6 +237,7 @@ export default function HomePage() {
       body,
       activePracticeCount: practices.activeCount,
       pendingPracticeCount: practices.uncheckedCount,
+      userInitiated: false,
     });
   }, [
     loading,

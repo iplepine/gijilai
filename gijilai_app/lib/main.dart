@@ -888,6 +888,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           ?.toInt();
       final title = data['title']?.toString();
       final body = data['body']?.toString();
+      final userInitiated = data['userInitiated'] == true;
       final shouldSchedule =
           enabled && (activePracticeCount == null || activePracticeCount > 0);
 
@@ -897,6 +898,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         title: title,
         body: body,
         storedEnabled: enabled,
+        showFeedback: userInitiated,
       );
     } catch (e) {
       debugPrint('ReminderBridge parse error: $e');

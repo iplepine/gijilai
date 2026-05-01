@@ -47,6 +47,7 @@ export default function NotificationsPage() {
   );
   const hourWheelRef = useRef<HTMLDivElement | null>(null);
   const minuteWheelRef = useRef<HTMLDivElement | null>(null);
+  const reminderSyncUserInitiatedRef = useRef(false);
 
   const [draftHour, draftMinute] = draftReminderTime.split(":");
   const selectedHour = Number.parseInt(draftHour ?? "20", 10);
@@ -127,13 +128,16 @@ export default function NotificationsPage() {
     postPracticeReminderSync({
       enabled: settings.pushEnabled && settings.practiceReminderEnabled,
       time: settings.practiceReminderTime,
+      userInitiated: reminderSyncUserInitiatedRef.current,
     });
+    reminderSyncUserInitiatedRef.current = false;
   }, [loaded, settings]);
 
   const updateSetting = <K extends keyof NotificationSettings>(
     key: K,
     value: NotificationSettings[K],
   ) => {
+    reminderSyncUserInitiatedRef.current = true;
     setSettings((current) => ({ ...current, [key]: value }));
   };
 
@@ -183,6 +187,7 @@ export default function NotificationsPage() {
   };
 
   const saveReminderTime = () => {
+    reminderSyncUserInitiatedRef.current = true;
     updateSetting("practiceReminderTime", draftReminderTime);
     setIsTimePickerOpen(false);
   };

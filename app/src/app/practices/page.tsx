@@ -321,6 +321,7 @@ export default function PracticesPage() {
       body,
       activePracticeCount: practices.length,
       pendingPracticeCount: practiceInsight?.uncheckedToday ?? 0,
+      userInitiated: false,
     });
   }, [
     isLoading,

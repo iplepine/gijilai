@@ -13,6 +13,7 @@ export interface PracticeReminderSyncPayload {
   body?: string;
   activePracticeCount?: number;
   pendingPracticeCount?: number;
+  userInitiated?: boolean;
 }
 
 declare global {
