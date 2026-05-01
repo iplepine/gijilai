@@ -207,6 +207,13 @@ export default function PracticesPage() {
     });
   }, [filteredPractices, todayLogs]);
 
+  const recommendedPractice = useMemo(() => {
+    const uncheckedPractice = filteredPractices.find(
+      (practice) => !todayLogs.some((log) => log.practice_id === practice.id),
+    );
+    return uncheckedPractice ?? filteredPractices[0] ?? null;
+  }, [filteredPractices, todayLogs]);
+
   const practiceInsight = useMemo<PracticeInsight | null>(() => {
     if (filteredPractices.length === 0) return null;
 
@@ -436,6 +443,95 @@ export default function PracticesPage() {
             </div>
           ) : (
             <>
+              {recommendedPractice && (
+                <section className="rounded-3xl border border-primary/15 bg-white dark:bg-surface-dark p-5 space-y-4 shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] font-bold text-primary uppercase tracking-wider">
+                        {t("practices.recommendedEyebrow")}
+                      </p>
+                      <h2 className="mt-1 text-[17px] font-bold text-text-main dark:text-white">
+                        {recommendedPractice.title}
+                      </h2>
+                      <p className="mt-1 text-[12px] leading-relaxed text-text-sub">
+                        {t("practices.recommendedDescription")}
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold text-primary">
+                      {t("practices.recommendedBadge")}
+                    </span>
+                  </div>
+
+                  <div className="rounded-2xl bg-primary/5 p-4">
+                    <p className="text-[13px] leading-relaxed text-text-main dark:text-white">
+                      {recommendedPractice.description}
+                    </p>
+                    {recommendedPractice.encouragement && (
+                      <p className="mt-2 text-[12px] font-medium text-secondary">
+                        {recommendedPractice.encouragement}
+                      </p>
+                    )}
+                  </div>
+
+                  {(() => {
+                    const todayLog = getTodayLog(recommendedPractice.id);
+                    const doneDays = getDoneDays(recommendedPractice.id);
+                    const overdue = doneDays >= recommendedPractice.duration;
+
+                    return overdue ? (
+                      <button
+                        onClick={() =>
+                          setReviewModal({
+                            practice: recommendedPractice,
+                            doneDays,
+                            sessionId: recommendedPractice.session_id,
+                          })
+                        }
+                        className="w-full py-3 rounded-xl bg-secondary/10 text-secondary font-bold text-[13px] flex items-center justify-center gap-1.5 transition-all active:scale-[0.98]"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">
+                          rate_review
+                        </span>
+                        {t("practices.periodComplete")}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() =>
+                          setCheckModal({
+                            practice: recommendedPractice,
+                            existingLog: todayLog,
+                            recentFailCount: getRecentFailCount(
+                              recommendedPractice.id,
+                            ),
+                            sessionId: recommendedPractice.session_id,
+                          })
+                        }
+                        className={`w-full py-3 rounded-xl font-bold text-[13px] flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] ${
+                          todayLog
+                            ? todayLog.done
+                              ? "bg-primary/10 text-primary"
+                              : "bg-orange-50 text-orange-600"
+                            : "bg-primary text-white shadow-sm shadow-primary/20"
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[18px]">
+                          {todayLog
+                            ? todayLog.done
+                              ? "check_circle"
+                              : "schedule"
+                            : "edit_note"}
+                        </span>
+                        {todayLog
+                          ? todayLog.done
+                            ? t("practices.doneToday")
+                            : t("practices.failedToday")
+                          : t("practices.recordToday")}
+                      </button>
+                    );
+                  })()}
+                </section>
+              )}
+
               {practiceInsight && (
                 <section className="bg-white dark:bg-surface-dark rounded-2xl p-5 border border-primary/10 space-y-4">
                   <div className="flex items-start justify-between gap-3">
@@ -524,130 +620,144 @@ export default function PracticesPage() {
               {grouped.map(({ session, practices: sessionPractices }, gi) => (
                 <div key={`${session.id}-${gi}`} className="space-y-3">
                   {/* 세션 헤더 */}
-                  <button
-                    onClick={() => router.push(`/consultations/${session.id}`)}
-                    className="flex items-center gap-2 group"
-                  >
-                    <div className="w-1 h-4 bg-secondary rounded-full" />
-                    <h3 className="text-[14px] font-bold text-text-main dark:text-white group-hover:text-secondary transition-colors">
-                      {session.title}
-                    </h3>
-                    <span className="material-symbols-outlined text-[14px] text-text-sub/50">
-                      chevron_right
-                    </span>
-                  </button>
+                  {(() => {
+                    const visibleSessionPractices = sessionPractices.filter(
+                      (practice) => practice.id !== recommendedPractice?.id,
+                    );
 
-                  {/* 실천 카드들 */}
-                  {[...sessionPractices]
-                    .sort((a, b) => {
-                      const aLog = getTodayLog(a.id);
-                      const bLog = getTodayLog(b.id);
-                      const aOrder = !aLog ? 0 : aLog.done ? 2 : 1;
-                      const bOrder = !bLog ? 0 : bLog.done ? 2 : 1;
-                      return aOrder - bOrder;
-                    })
-                    .map((practice) => {
-                      const todayLog = getTodayLog(practice.id);
-                      const doneDays = getDoneDays(practice.id);
-                      const overdue = doneDays >= practice.duration;
-                      const progress = Math.min(
-                        doneDays / practice.duration,
-                        1,
-                      );
+                    if (visibleSessionPractices.length === 0) {
+                      return null;
+                    }
 
-                      return (
-                        <div
-                          key={practice.id}
-                          className="bg-white dark:bg-surface-dark rounded-2xl p-5 border border-primary/10 space-y-3"
+                    return (
+                      <>
+                        <button
+                          onClick={() => router.push(`/consultations/${session.id}`)}
+                          className="flex items-center gap-2 group"
                         >
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <p className="text-[14px] font-bold text-text-main dark:text-white">
-                                {practice.title}
-                              </p>
-                              <p className="text-[12px] text-text-sub mt-1 leading-relaxed">
-                                {practice.description}
-                              </p>
-                            </div>
-                          </div>
+                          <div className="w-1 h-4 bg-secondary rounded-full" />
+                          <h3 className="text-[14px] font-bold text-text-main dark:text-white group-hover:text-secondary transition-colors">
+                            {session.title}
+                          </h3>
+                          <span className="material-symbols-outlined text-[14px] text-text-sub/50">
+                            chevron_right
+                          </span>
+                        </button>
 
-                          {/* 진행률 */}
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1 h-2 bg-primary/10 rounded-full overflow-hidden">
+                        {/* 실천 카드들 */}
+                        {[...visibleSessionPractices]
+                          .sort((a, b) => {
+                            const aLog = getTodayLog(a.id);
+                            const bLog = getTodayLog(b.id);
+                            const aOrder = !aLog ? 0 : aLog.done ? 2 : 1;
+                            const bOrder = !bLog ? 0 : bLog.done ? 2 : 1;
+                            return aOrder - bOrder;
+                          })
+                          .map((practice) => {
+                            const todayLog = getTodayLog(practice.id);
+                            const doneDays = getDoneDays(practice.id);
+                            const overdue = doneDays >= practice.duration;
+                            const progress = Math.min(
+                              doneDays / practice.duration,
+                              1,
+                            );
+
+                            return (
                               <div
-                                className="h-full bg-primary rounded-full transition-all"
-                                style={{
-                                  width: `${Math.round(progress * 100)}%`,
-                                }}
-                              />
-                            </div>
-                            <span className="text-[11px] font-bold text-primary">
-                              {doneDays}/{practice.duration}
-                              {t("common.days")}
-                            </span>
-                          </div>
+                                key={practice.id}
+                                className="bg-white dark:bg-surface-dark rounded-2xl p-5 border border-primary/10 space-y-3"
+                              >
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1">
+                                    <p className="text-[14px] font-bold text-text-main dark:text-white">
+                                      {practice.title}
+                                    </p>
+                                    <p className="text-[12px] text-text-sub mt-1 leading-relaxed">
+                                      {practice.description}
+                                    </p>
+                                  </div>
+                                </div>
 
-                          {/* 응원 메시지 */}
-                          {practice.encouragement && (
-                            <p className="text-[11px] text-secondary font-medium">
-                              {practice.encouragement}
-                            </p>
-                          )}
+                                {/* 진행률 */}
+                                <div className="flex items-center gap-2">
+                                  <div className="flex-1 h-2 bg-primary/10 rounded-full overflow-hidden">
+                                    <div
+                                      className="h-full bg-primary rounded-full transition-all"
+                                      style={{
+                                        width: `${Math.round(progress * 100)}%`,
+                                      }}
+                                    />
+                                  </div>
+                                  <span className="text-[11px] font-bold text-primary">
+                                    {doneDays}/{practice.duration}
+                                    {t("common.days")}
+                                  </span>
+                                </div>
 
-                          {/* 오늘 체크 / 회고 버튼 */}
-                          {overdue ? (
-                            <button
-                              onClick={() =>
-                                setReviewModal({
-                                  practice,
-                                  doneDays,
-                                  sessionId: practice.session_id,
-                                })
-                              }
-                              className="w-full py-3 rounded-xl bg-secondary/10 text-secondary font-bold text-[13px] flex items-center justify-center gap-1.5 transition-all active:scale-[0.98]"
-                            >
-                              <span className="material-symbols-outlined text-[18px]">
-                                rate_review
-                              </span>
-                              {t("practices.periodComplete")}
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() =>
-                                setCheckModal({
-                                  practice,
-                                  existingLog: todayLog,
-                                  recentFailCount: getRecentFailCount(
-                                    practice.id,
-                                  ),
-                                  sessionId: practice.session_id,
-                                })
-                              }
-                              className={`w-full py-3 rounded-xl font-bold text-[13px] flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] ${
-                                todayLog
-                                  ? todayLog.done
-                                    ? "bg-primary/10 text-primary"
-                                    : "bg-orange-50 text-orange-600"
-                                  : "bg-primary text-white shadow-sm shadow-primary/20"
-                              }`}
-                            >
-                              <span className="material-symbols-outlined text-[18px]">
-                                {todayLog
-                                  ? todayLog.done
-                                    ? "check_circle"
-                                    : "schedule"
-                                  : "edit_note"}
-                              </span>
-                              {todayLog
-                                ? todayLog.done
-                                  ? t("practices.doneToday")
-                                  : t("practices.failedToday")
-                                : t("practices.recordToday")}
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
+                                {/* 응원 메시지 */}
+                                {practice.encouragement && (
+                                  <p className="text-[11px] text-secondary font-medium">
+                                    {practice.encouragement}
+                                  </p>
+                                )}
+
+                                {/* 오늘 체크 / 회고 버튼 */}
+                                {overdue ? (
+                                  <button
+                                    onClick={() =>
+                                      setReviewModal({
+                                        practice,
+                                        doneDays,
+                                        sessionId: practice.session_id,
+                                      })
+                                    }
+                                    className="w-full py-3 rounded-xl bg-secondary/10 text-secondary font-bold text-[13px] flex items-center justify-center gap-1.5 transition-all active:scale-[0.98]"
+                                  >
+                                    <span className="material-symbols-outlined text-[18px]">
+                                      rate_review
+                                    </span>
+                                    {t("practices.periodComplete")}
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() =>
+                                      setCheckModal({
+                                        practice,
+                                        existingLog: todayLog,
+                                        recentFailCount: getRecentFailCount(
+                                          practice.id,
+                                        ),
+                                        sessionId: practice.session_id,
+                                      })
+                                    }
+                                    className={`w-full py-3 rounded-xl font-bold text-[13px] flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] ${
+                                      todayLog
+                                        ? todayLog.done
+                                          ? "bg-primary/10 text-primary"
+                                          : "bg-orange-50 text-orange-600"
+                                        : "bg-primary text-white shadow-sm shadow-primary/20"
+                                    }`}
+                                  >
+                                    <span className="material-symbols-outlined text-[18px]">
+                                      {todayLog
+                                        ? todayLog.done
+                                          ? "check_circle"
+                                          : "schedule"
+                                        : "edit_note"}
+                                    </span>
+                                    {todayLog
+                                      ? todayLog.done
+                                        ? t("practices.doneToday")
+                                        : t("practices.failedToday")
+                                      : t("practices.recordToday")}
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
+                      </>
+                    );
+                  })()}
                 </div>
               ))}
             </>

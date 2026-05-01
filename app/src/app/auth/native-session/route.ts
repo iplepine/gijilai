@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import { type NextRequest, NextResponse } from 'next/server';
 
 type NativeSessionBody = {
-  provider?: 'kakao' | 'google';
+  provider?: 'kakao' | 'google' | 'apple';
   idToken?: string;
   accessToken?: string;
   nonce?: string;

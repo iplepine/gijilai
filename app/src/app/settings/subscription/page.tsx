@@ -90,6 +90,12 @@ type SubscriptionResponse = {
   subscription?: SubscriptionData | null;
 };
 
+type DisplaySubscriptionState =
+  | 'ACTIVE'
+  | 'CANCEL_SCHEDULED'
+  | 'EXPIRED'
+  | 'PAYMENT_REQUIRED';
+
 export default function SubscriptionPage() {
   const { t } = useLocale();
   const router = useRouter();
@@ -103,7 +109,10 @@ export default function SubscriptionPage() {
   const [feedbackDialog, setFeedbackDialog] = useState<FeedbackDialogState | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const getErrorMessage = (error: unknown) => error instanceof Error ? error.message : t('settings.cancelError');
+  const getErrorMessage = useCallback(
+    (error: unknown) => error instanceof Error ? error.message : t('settings.cancelError'),
+    [t],
+  );
   const formatLocalDate = (value: string) => new Date(value).toLocaleDateString('ko-KR');
 
   const loadSubscriptionData = useCallback(async () => {
@@ -123,7 +132,7 @@ export default function SubscriptionPage() {
 
     setSubscription(subData?.subscription ?? null);
     setPayments(paymentData);
-  }, [user]);
+  }, [t, user]);
 
   const getStoreManagementUrl = (source?: string | null): string | undefined => {
     if (source === 'APPLE_IAP') {
@@ -162,7 +171,7 @@ export default function SubscriptionPage() {
         setLoadError(getErrorMessage(error));
       })
       .finally(() => setLoading(false));
-  }, [loadSubscriptionData, user]);
+  }, [getErrorMessage, loadSubscriptionData, user]);
 
   useEffect(() => {
     if (!user) return;
@@ -190,7 +199,7 @@ export default function SubscriptionPage() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleWindowFocus);
     };
-  }, [loadSubscriptionData, user]);
+  }, [getErrorMessage, loadSubscriptionData, user]);
 
   const handleCancelClick = () => {
     if (!subscription) return;
@@ -307,6 +316,37 @@ export default function SubscriptionPage() {
   const isCancelled = !!subscription?.cancelled_at;
   const latestPaidPayment = payments.find((payment) => payment.status === 'PAID');
   const latestPaymentMethod = latestPaidPayment ? getPaymentMethodLabel(latestPaidPayment, t) : null;
+  const displayState: DisplaySubscriptionState | null = !subscription
+    ? null
+    : isCancelled
+      ? 'CANCEL_SCHEDULED'
+      : subscription.status === 'ACTIVE'
+        ? 'ACTIVE'
+        : subscription.status === 'PAST_DUE'
+          ? 'PAYMENT_REQUIRED'
+          : 'EXPIRED';
+  const isStoreManaged = subscription?.source === 'APPLE_IAP' || subscription?.source === 'GOOGLE_PLAY';
+  const statusLabel = displayState === 'ACTIVE'
+    ? t('settings.active')
+    : displayState === 'CANCEL_SCHEDULED'
+      ? t('settings.cancelScheduled')
+      : displayState === 'PAYMENT_REQUIRED'
+        ? t('settings.paymentRequired')
+        : t('settings.expired');
+  const periodLabel = displayState === 'ACTIVE'
+    ? t('settings.nextPaymentDate')
+    : displayState === 'CANCEL_SCHEDULED'
+      ? t('settings.availableUntil')
+      : t('settings.endedOn');
+  const stateDescription = displayState === 'ACTIVE'
+    ? isStoreManaged
+      ? t('settings.activeStoreNotice')
+      : t('settings.activeWebNotice')
+    : displayState === 'CANCEL_SCHEDULED'
+      ? t('settings.cancelledNotice').replace('{date}', periodEnd)
+      : displayState === 'PAYMENT_REQUIRED'
+        ? t('settings.paymentRequiredNotice')
+        : t('settings.expiredNotice');
 
   return (
     <div className="bg-background-light dark:bg-background-dark text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center font-body">
@@ -330,19 +370,21 @@ export default function SubscriptionPage() {
                     <p className="text-lg font-black text-text-main dark:text-white">{planLabel}</p>
                   </div>
                   <span className={`px-3 py-1 rounded-full text-[11px] font-bold ${
-                    isCancelled
+                    displayState === 'CANCEL_SCHEDULED'
                       ? 'bg-amber-100 text-amber-700'
-                      : subscription.status === 'ACTIVE'
+                      : displayState === 'ACTIVE'
                         ? 'bg-green-100 text-green-700'
-                        : 'bg-red-100 text-red-700'
+                        : displayState === 'PAYMENT_REQUIRED'
+                          ? 'bg-orange-100 text-orange-700'
+                          : 'bg-red-100 text-red-700'
                   }`}>
-                    {isCancelled ? t('settings.cancelScheduled') : subscription.status === 'ACTIVE' ? t('settings.active') : subscription.status}
+                    {statusLabel}
                   </span>
                 </div>
 
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-text-sub">{isCancelled ? t('settings.availableUntil') : t('settings.nextPaymentDate')}</span>
+                    <span className="text-text-sub">{periodLabel}</span>
                     <span className="font-bold">{periodEnd}</span>
                   </div>
                   <div className="flex justify-between">
@@ -361,11 +403,20 @@ export default function SubscriptionPage() {
                   )}
                 </div>
 
-                {isCancelled ? (
+                <div className={`rounded-xl p-3 text-xs leading-relaxed ${
+                  displayState === 'ACTIVE'
+                    ? 'bg-green-50 text-green-700'
+                    : displayState === 'CANCEL_SCHEDULED'
+                      ? 'bg-amber-50 text-amber-700'
+                      : displayState === 'PAYMENT_REQUIRED'
+                        ? 'bg-orange-50 text-orange-700'
+                        : 'bg-red-50 text-red-700'
+                }`}>
+                  {stateDescription}
+                </div>
+
+                {displayState === 'CANCEL_SCHEDULED' ? (
                   <div className="space-y-3">
-                    <p className="text-xs text-amber-600 bg-amber-50 p-3 rounded-xl">
-                      {t('settings.cancelledNotice').replace('{date}', periodEnd)}
-                    </p>
                     {subscription.source === 'PORTONE' ? (
                       <Button
                         variant="primary"
@@ -394,7 +445,7 @@ export default function SubscriptionPage() {
                       </div>
                     )}
                   </div>
-                ) : (
+                ) : displayState === 'ACTIVE' ? (
                   <Button
                     variant="secondary"
                     size="sm"
@@ -404,6 +455,26 @@ export default function SubscriptionPage() {
                     className="mt-2"
                   >
                     {cancelling ? t('pricing.processing') : t('settings.cancelSubscription')}
+                  </Button>
+                ) : isStoreManaged ? (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    fullWidth
+                    onClick={() => openStoreManagementPage(subscription.source)}
+                    className="mt-2"
+                  >
+                    {t('settings.openStoreSubscriptions')}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    fullWidth
+                    onClick={() => router.push('/pricing')}
+                    className="mt-2"
+                  >
+                    {t('settings.startSubscription')}
                   </Button>
                 )}
               </section>

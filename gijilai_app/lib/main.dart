@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'dart:ui';
 
 import 'package:app_links/app_links.dart';
+import 'package:crypto/crypto.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
@@ -11,12 +13,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 import 'package:in_app_purchase_storekit/in_app_purchase_storekit.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:url_launcher/url_launcher.dart';
@@ -55,6 +59,10 @@ class NativeCapabilityRegistry {
     ''';
   }
 }
+
+const String _googleWebClientId = String.fromEnvironment(
+  'GOOGLE_WEB_CLIENT_ID',
+);
 
 Future<void> main() async {
   await runZonedGuarded(
@@ -732,16 +740,150 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _startAppleNativeLogin() async {
+    if (_authInProgress) return;
+
+    if (!Platform.isIOS) {
+      await _startNativeOAuth('apple');
+      return;
+    }
+
+    setState(() {
+      _authInProgress = true;
+    });
+
+    try {
+      final rawNonce = _generateNonce();
+      final hashedNonce = sha256.convert(utf8.encode(rawNonce)).toString();
+
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: const [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+        nonce: hashedNonce,
+      );
+
+      final identityToken = credential.identityToken;
+      if (identityToken == null || identityToken.isEmpty) {
+        debugPrint('Apple identity token missing. Falling back to OAuth.');
+        if (mounted) {
+          setState(() {
+            _authInProgress = false;
+          });
+        }
+        _externalAuthInProgress = false;
+        await _startNativeOAuth('apple');
+        return;
+      }
+
+      await _completeNativeSession(
+        provider: 'apple',
+        idToken: identityToken,
+        nonce: rawNonce,
+      );
+    } catch (e) {
+      debugPrint('Apple native login error: $e');
+      _externalAuthInProgress = false;
+      if (mounted) {
+        setState(() {
+          _authInProgress = false;
+        });
+      }
+      _showSnackBar('Apple 로그인을 완료할 수 없습니다', isError: true);
+      unawaited(
+        FirebaseCrashlytics.instance.recordError(
+          e,
+          StackTrace.current,
+          reason: 'Apple native login error',
+        ),
+      );
+    }
+  }
+
+  Future<void> _startGoogleNativeLogin() async {
+    if (_authInProgress) return;
+    setState(() {
+      _authInProgress = true;
+    });
+
+    try {
+      if (_googleWebClientId.isEmpty) {
+        debugPrint('GOOGLE_WEB_CLIENT_ID is missing. Falling back to OAuth.');
+        if (mounted) {
+          setState(() {
+            _authInProgress = false;
+          });
+        }
+        _externalAuthInProgress = false;
+        await _startNativeOAuth('google');
+        return;
+      }
+
+      final googleSignIn = GoogleSignIn(
+        scopes: const ['email', 'profile', 'openid'],
+        serverClientId: _googleWebClientId,
+      );
+
+      final account = await googleSignIn.signIn();
+      if (account == null) {
+        await _finishCancelledAuthHandoff();
+        return;
+      }
+
+      final authentication = await account.authentication;
+      final idToken = authentication.idToken;
+      if (idToken == null || idToken.isEmpty) {
+        debugPrint('Google ID token missing. Falling back to OAuth.');
+        try {
+          await googleSignIn.signOut();
+        } catch (_) {}
+        if (mounted) {
+          setState(() {
+            _authInProgress = false;
+          });
+        }
+        _externalAuthInProgress = false;
+        await _startNativeOAuth('google');
+        return;
+      }
+
+      await _completeNativeSession(
+        provider: 'google',
+        idToken: idToken,
+        accessToken: authentication.accessToken,
+      );
+    } catch (e) {
+      debugPrint('Google native login error: $e');
+      _externalAuthInProgress = false;
+      if (mounted) {
+        setState(() {
+          _authInProgress = false;
+        });
+      }
+      _showSnackBar('Google 로그인을 완료할 수 없습니다', isError: true);
+      unawaited(
+        FirebaseCrashlytics.instance.recordError(
+          e,
+          StackTrace.current,
+          reason: 'Google native login error',
+        ),
+      );
+    }
+  }
+
   Future<void> _completeNativeSession({
     required String provider,
     required String idToken,
     String? accessToken,
+    String? nonce,
   }) async {
     final payload = jsonEncode({
       'provider': provider,
       'idToken': idToken,
       if (accessToken != null && accessToken.isNotEmpty)
         'accessToken': accessToken,
+      if (nonce != null && nonce.isNotEmpty) 'nonce': nonce,
     });
 
     final jsCode =
@@ -793,6 +935,16 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     }
     _externalAuthInProgress = false;
     await _controller!.loadRequest(Uri.parse(MainWebView.targetUrl));
+  }
+
+  String _generateNonce({int length = 32}) {
+    const charset =
+        '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+    final random = Random.secure();
+    return List.generate(
+      length,
+      (_) => charset[random.nextInt(charset.length)],
+    ).join();
   }
 
   Future<void> _resetAuthLoadingAfterCancelledHandoff() async {
@@ -1577,8 +1729,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
               NativeLoginScreen(
                 isLoading: _authInProgress,
                 onKakaoPressed: _startKakaoNativeLogin,
-                onApplePressed: () => _startNativeOAuth('apple'),
-                onGooglePressed: () => _startNativeOAuth('google'),
+                onApplePressed: _startAppleNativeLogin,
+                onGooglePressed: _startGoogleNativeLogin,
                 onEmailPressed: () {
                   setState(() {
                     _showNativeLogin = false;

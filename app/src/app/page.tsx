@@ -205,6 +205,27 @@ export default function HomePage() {
     return { child: childResult };
   }, [mainChild, cbqResponses, latestSurvey, reports]);
 
+  const childTestPending = !temperamentInfo;
+  const parentTestPending =
+    !parentSurvey &&
+    Object.keys(atqResponses).length < PARENT_QUESTIONS.length &&
+    !!temperamentInfo?.child;
+  const hasPracticePriority = practices.uncheckedCount > 0;
+  const hasConsultPriority = showConsultCTA && !!temperamentInfo?.child;
+  const hasTrialPriority = shouldShowTrialEndingCard;
+
+  const primaryAction = childTestPending
+    ? "child_test"
+    : parentTestPending
+      ? "parent_test"
+      : hasPracticePriority
+        ? "practice"
+        : hasConsultPriority
+          ? "consult"
+          : hasTrialPriority
+            ? "trial"
+            : null;
+
   useEffect(() => {
     // Only show onboarding if no child is registered in DB AND no intake info in local store
     if (!loading && user && children.length === 0 && !intake.childName) {
@@ -452,7 +473,7 @@ export default function HomePage() {
                       </span>
                     </div>
                   </div>
-                </div>
+              </div>
                 <p className="text-text-sub dark:text-gray-400 text-sm font-light mt-2 break-keep text-center px-8">
                   {t("home.dailyMessage")}
                 </p>
@@ -460,7 +481,132 @@ export default function HomePage() {
 
               {/* 기능 카드 리스트 */}
               <div className="px-6 flex flex-col gap-5 mt-8">
-                {shouldShowTrialEndingCard && (
+                {primaryAction && (
+                  <div className="bg-[#243A2F] dark:bg-[#1B2B23] rounded-[28px] p-6 shadow-card text-white relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-3xl -mr-12 -mt-12 pointer-events-none" />
+                    <div className="relative z-10">
+                      <span className="text-white/70 text-[11px] font-bold bg-white/10 px-2.5 py-1 rounded-full inline-flex items-center">
+                        {t("home.nextRecommendedAction")}
+                      </span>
+
+                      {primaryAction === "child_test" && (
+                        <div className="mt-4">
+                          <h3 className="text-[22px] font-black leading-snug tracking-tight">
+                            {childName}
+                            {t("home.temperamentTest")}
+                          </h3>
+                          <p className="mt-2 text-sm text-white/85 leading-relaxed break-keep">
+                            {t("home.testDescription")}
+                          </p>
+                          <Link href="/survey/intro" className="block mt-5">
+                            <button className="w-full py-4 rounded-xl bg-white text-primary font-bold text-sm shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                              <span>{t("home.startTest")}</span>
+                              <span className="material-symbols-outlined text-[18px]">
+                                play_arrow
+                              </span>
+                            </button>
+                          </Link>
+                        </div>
+                      )}
+
+                      {primaryAction === "parent_test" && (
+                        <div className="mt-4">
+                          <h3 className="text-[22px] font-black leading-snug tracking-tight">
+                            {t("home.parentStyleTest")}
+                          </h3>
+                          <p className="mt-2 text-sm text-white/85 leading-relaxed break-keep">
+                            {t("home.parentTestDescription")}
+                          </p>
+                          <Link href="/survey?type=PARENT" className="block mt-5">
+                            <button className="w-full py-4 rounded-xl bg-white text-secondary font-bold text-sm shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                              <span>
+                                {Object.keys(atqResponses).length > 0
+                                  ? t("home.continueTest")
+                                  : t("home.startTestButton")}
+                              </span>
+                              <span className="material-symbols-outlined text-[18px]">
+                                play_arrow
+                              </span>
+                            </button>
+                          </Link>
+                        </div>
+                      )}
+
+                      {primaryAction === "practice" && (
+                        <Link href="/practices" className="block mt-4">
+                          <div>
+                            <h3 className="text-[22px] font-black leading-snug tracking-tight">
+                              {t("home.todaysPractice")}
+                            </h3>
+                            <p className="mt-2 text-sm text-white/85 leading-relaxed break-keep">
+                              {t("home.practiceItemsRemaining", {
+                                count: practices.uncheckedCount,
+                              })}
+                            </p>
+                            <div className="mt-4 space-y-2">
+                              {practices.uncheckedItems.slice(0, 2).map((item) => (
+                                <div
+                                  key={item.id}
+                                  className="flex items-center gap-2.5 rounded-xl bg-white/10 px-3 py-3"
+                                >
+                                  <div className="w-4 h-4 rounded border-2 border-white/50 flex-shrink-0" />
+                                  <span className="text-[13px] text-white truncate flex-1">
+                                    {item.title}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </Link>
+                      )}
+
+                      {primaryAction === "consult" && (
+                        <Link href="/consult" className="block mt-4">
+                          <div>
+                            <h3 className="text-[22px] font-black leading-snug tracking-tight">
+                              {t("home.consultCTA")}
+                            </h3>
+                            <p className="mt-2 text-sm text-white/85 leading-relaxed break-keep">
+                              {t("home.consultCTADescription", {
+                                name: childName,
+                              })}
+                            </p>
+                            <div className="mt-5 w-full py-4 rounded-xl bg-white text-[#243A2F] font-bold text-sm shadow-lg flex items-center justify-center gap-2">
+                              <span>{t("home.consultCTA")}</span>
+                              <span className="material-symbols-outlined text-[18px]">
+                                arrow_forward
+                              </span>
+                            </div>
+                          </div>
+                        </Link>
+                      )}
+
+                      {primaryAction === "trial" && trialStatus && (
+                        <div className="mt-4">
+                          <h3 className="text-[22px] font-black leading-snug tracking-tight">
+                            {t("home.trialEndingTitle", {
+                              days: trialStatus.daysRemaining,
+                            })}
+                          </h3>
+                          <p className="mt-2 text-sm text-white/85 leading-relaxed break-keep">
+                            {t("home.trialEndingDesc")}
+                          </p>
+                          <button
+                            onClick={() => router.push("/pricing")}
+                            className="mt-5 w-full py-4 rounded-xl bg-white text-primary font-bold text-sm shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                          >
+                            <span>{t("home.trialEndingCta")}</span>
+                            <span className="material-symbols-outlined text-[18px]">
+                              arrow_forward
+                            </span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {shouldShowTrialEndingCard && primaryAction !== "trial" && (
                   <div className="bg-white dark:bg-surface-dark rounded-2xl p-5 shadow-soft border border-primary/15">
                     <div className="flex items-start gap-3">
                       <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
@@ -492,7 +638,7 @@ export default function HomePage() {
                 )}
 
                 {/* 아이 기질 검사 유도 카드 */}
-                {!temperamentInfo && (
+                {!temperamentInfo && primaryAction !== "child_test" && (
                   <div className="bg-primary dark:bg-surface-dark rounded-2xl p-6 shadow-card relative overflow-hidden mb-2">
                     <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
                     <div className="relative z-10">
@@ -523,7 +669,8 @@ export default function HomePage() {
                 {/* 양육자 검사 유도 카드 */}
                 {!parentSurvey &&
                   Object.keys(atqResponses).length < PARENT_QUESTIONS.length &&
-                  temperamentInfo?.child && (
+                  temperamentInfo?.child &&
+                  primaryAction !== "parent_test" && (
                     <div className="bg-secondary dark:bg-surface-dark rounded-2xl p-6 shadow-card relative overflow-hidden mb-2">
                       <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
                       <div className="relative z-10">
@@ -586,7 +733,7 @@ export default function HomePage() {
                 )}
 
                 {/* 오늘의 실천 카드 */}
-                {practices.uncheckedCount > 0 && (
+                {practices.uncheckedCount > 0 && primaryAction !== "practice" && (
                   <Link href="/practices" className="block">
                     <div className="bg-white dark:bg-surface-dark/50 rounded-2xl p-5 shadow-soft border border-primary/20 active:scale-[0.99] transition-all">
                       <div className="flex items-center gap-3">
@@ -636,7 +783,7 @@ export default function HomePage() {
                 )}
 
                 {/* 상담 유도 카드 — 상담 이력이 없거나 진행 중 실천이 없을 때 */}
-                {showConsultCTA && temperamentInfo?.child && (
+                {showConsultCTA && temperamentInfo?.child && primaryAction !== "consult" && (
                   <Link href="/consult" className="block">
                     <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-surface-dark dark:to-surface-dark rounded-2xl p-5 shadow-soft border border-amber-200/60 dark:border-amber-500/30 active:scale-[0.99] transition-all relative overflow-hidden">
                       <div className="absolute top-0 right-0 w-28 h-28 bg-amber-200/30 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />

@@ -466,9 +466,9 @@ function ConsultContent() {
             setPrescription(data);
             setStep('RESULT');
 
-            // 모든 실천 항목 기본 선택
+            // 첫 번째 실천 항목을 기본 추천으로 선택
             if (Array.isArray(data.actionItems) && data.actionItems.length > 0) {
-                setSelectedActionIndex(null);
+                setSelectedActionIndex(0);
             }
 
             // 세션 + 상담 저장 (실천 항목은 CTA에서 저장)
@@ -617,6 +617,29 @@ function ConsultContent() {
                                     {childName ? t('consult.greetingWithName', { name: childName }) : t('consult.greetingDefault')}<br />{sessionContext ? t('consult.questionContinue') : t('consult.questionFirst')}
                                 </h2>
                                 <p className="text-sm text-text-sub dark:text-gray-400">{sessionContext ? t('consult.subtitleContinue') : t('consult.subtitleFirst')}</p>
+                            </div>
+
+                            <div className="rounded-3xl border border-primary/10 bg-white dark:bg-surface-dark p-5 space-y-4">
+                                <div>
+                                    <p className="text-[14px] font-bold text-text-main dark:text-white">{t('consult.introTitle')}</p>
+                                    <p className="mt-1 text-[12px] leading-relaxed text-text-sub dark:text-gray-400">
+                                        {sessionContext ? t('consult.introDescContinue') : t('consult.introDescFirst')}
+                                    </p>
+                                </div>
+                                <div className="grid gap-3 sm:grid-cols-3">
+                                    <div className="rounded-2xl bg-primary/5 px-4 py-3">
+                                        <p className="text-[11px] font-bold text-primary">{t('consult.introOutcomeLabel')}</p>
+                                        <p className="mt-1 text-[12px] leading-relaxed text-text-main dark:text-white">{t('consult.introOutcomeText')}</p>
+                                    </div>
+                                    <div className="rounded-2xl bg-secondary/5 px-4 py-3">
+                                        <p className="text-[11px] font-bold text-secondary">{t('consult.introTimeLabel')}</p>
+                                        <p className="mt-1 text-[12px] leading-relaxed text-text-main dark:text-white">{t('consult.introTimeText')}</p>
+                                    </div>
+                                    <div className="rounded-2xl bg-beige-main/25 px-4 py-3">
+                                        <p className="text-[11px] font-bold text-text-main dark:text-white">{t('consult.introScopeLabel')}</p>
+                                        <p className="mt-1 text-[12px] leading-relaxed text-text-main dark:text-white">{t('consult.introScopeText')}</p>
+                                    </div>
+                                </div>
                             </div>
 
                             <div>
@@ -936,14 +959,21 @@ function ConsultContent() {
                                     {prescription.actionItems.map((item, i) => {
                                         const isSelected = selectedActionIndex === i;
                                         return (
-                                            <button key={i} type="button" onClick={() => setSelectedActionIndex(isSelected ? null : i)} className={`w-full text-left rounded-2xl p-5 border-2 transition-all active:scale-[0.98] ${isSelected ? 'border-primary bg-primary/5' : 'border-beige-main/20 bg-white dark:bg-surface-dark'}`}>
+                                            <button key={i} type="button" onClick={() => setSelectedActionIndex(i)} className={`w-full text-left rounded-2xl p-5 border-2 transition-all active:scale-[0.98] ${isSelected ? 'border-primary bg-primary/5' : 'border-beige-main/20 bg-white dark:bg-surface-dark'}`}>
                                                 <div className="flex items-start gap-3">
                                                     <span className={`material-symbols-outlined text-[22px] shrink-0 mt-0.5 transition-colors ${isSelected ? 'text-primary fill-1' : 'text-gray-300'}`}>
                                                         {isSelected ? 'check_circle' : 'radio_button_unchecked'}
                                                     </span>
                                                     <div className="flex-1 space-y-2">
                                                         <div className="flex items-center justify-between">
-                                                            <p className="text-[15px] font-bold text-text-main dark:text-white">{item.title}</p>
+                                                            <div className="flex items-center gap-2">
+                                                                <p className="text-[15px] font-bold text-text-main dark:text-white">{item.title}</p>
+                                                                {i === 0 && (
+                                                                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                                                                        {t('consult.recommendedAction')}
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                             <span className="text-[11px] font-bold text-text-sub bg-beige-main/15 px-2 py-0.5 rounded-full shrink-0">{item.duration}{t('common.days')}</span>
                                                         </div>
                                                         {item.trigger && item.action && (
