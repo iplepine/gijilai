@@ -169,6 +169,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   Uri? _pendingAuthCallbackUri;
   DateTime? _lastBackPressedAt;
   bool _showNativeLogin = false;
+  bool _isNativeDialogVisible = false;
   bool _authInProgress = false;
   bool _externalAuthInProgress = false;
 
@@ -342,41 +343,45 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   }
 
   Future<void> _showAppAlertDialog({required String message}) async {
-    await showDialog<void>(
-      context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.42),
-      barrierDismissible: false,
-      builder: (dialogContext) => _AppWebDialog(
-        message: message,
-        actions: [
-          _AppDialogButton(
-            label: '확인',
-            isPrimary: true,
-            onPressed: () => Navigator.of(dialogContext).pop(),
-          ),
-        ],
+    await _withWebInputBlocked(
+      () => showDialog<void>(
+        context: context,
+        barrierColor: Colors.black.withValues(alpha: 0.42),
+        barrierDismissible: false,
+        builder: (dialogContext) => _AppWebDialog(
+          message: message,
+          actions: [
+            _AppDialogButton(
+              label: '확인',
+              isPrimary: true,
+              onPressed: () => Navigator.of(dialogContext).pop(),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Future<bool> _showAppConfirmDialog({required String message}) async {
-    final result = await showDialog<bool>(
-      context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.42),
-      barrierDismissible: false,
-      builder: (dialogContext) => _AppWebDialog(
-        message: message,
-        actions: [
-          _AppDialogButton(
-            label: '취소',
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-          ),
-          _AppDialogButton(
-            label: '확인',
-            isPrimary: true,
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-          ),
-        ],
+    final result = await _withWebInputBlocked(
+      () => showDialog<bool>(
+        context: context,
+        barrierColor: Colors.black.withValues(alpha: 0.42),
+        barrierDismissible: false,
+        builder: (dialogContext) => _AppWebDialog(
+          message: message,
+          actions: [
+            _AppDialogButton(
+              label: '취소',
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+            ),
+            _AppDialogButton(
+              label: '확인',
+              isPrimary: true,
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+            ),
+          ],
+        ),
       ),
     );
     return result ?? false;
@@ -388,54 +393,94 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   }) async {
     final inputController = TextEditingController(text: defaultText ?? '');
     try {
-      final result = await showDialog<String>(
-        context: context,
-        barrierColor: Colors.black.withValues(alpha: 0.42),
-        barrierDismissible: false,
-        builder: (dialogContext) => _AppWebDialog(
-          message: message,
-          content: TextField(
-            controller: inputController,
-            autofocus: true,
-            minLines: 1,
-            maxLines: 3,
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: const Color(0xFFF5F3EF),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: Color(0xFFE1DDD2)),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: Color(0xFFE1DDD2)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(
-                  color: Color(0xFF2F4F3E),
-                  width: 1.4,
+      final result = await _withWebInputBlocked(
+        () => showDialog<String>(
+          context: context,
+          barrierColor: Colors.black.withValues(alpha: 0.42),
+          barrierDismissible: false,
+          builder: (dialogContext) => _AppWebDialog(
+            message: message,
+            content: TextField(
+              controller: inputController,
+              autofocus: true,
+              minLines: 1,
+              maxLines: 3,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: const Color(0xFFF5F3EF),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: Color(0xFFE1DDD2)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: Color(0xFFE1DDD2)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(
+                    color: Color(0xFF2F4F3E),
+                    width: 1.4,
+                  ),
                 ),
               ),
             ),
+            actions: [
+              _AppDialogButton(
+                label: '취소',
+                onPressed: () => Navigator.of(dialogContext).pop(''),
+              ),
+              _AppDialogButton(
+                label: '확인',
+                isPrimary: true,
+                onPressed: () =>
+                    Navigator.of(dialogContext).pop(inputController.text),
+              ),
+            ],
           ),
-          actions: [
-            _AppDialogButton(
-              label: '취소',
-              onPressed: () => Navigator.of(dialogContext).pop(''),
-            ),
-            _AppDialogButton(
-              label: '확인',
-              isPrimary: true,
-              onPressed: () =>
-                  Navigator.of(dialogContext).pop(inputController.text),
-            ),
-          ],
         ),
       );
       return result ?? '';
     } finally {
       inputController.dispose();
+    }
+  }
+
+  Future<T?> _withWebInputBlocked<T>(Future<T?> Function() action) async {
+    await _setWebInputBlocked(true);
+    if (mounted) {
+      setState(() {
+        _isNativeDialogVisible = true;
+      });
+    }
+
+    try {
+      return await action();
+    } finally {
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      if (mounted) {
+        setState(() {
+          _isNativeDialogVisible = false;
+        });
+      }
+      await _setWebInputBlocked(false);
+    }
+  }
+
+  Future<void> _setWebInputBlocked(bool blocked) async {
+    final controller = _controller;
+    if (controller == null) return;
+
+    final value = blocked ? 'none' : '';
+    try {
+      await controller.runJavaScript('''
+        (function() {
+          document.documentElement.style.pointerEvents = '$value';
+          document.body && (document.body.style.pointerEvents = '$value');
+        })();
+      ''');
+    } catch (e) {
+      debugPrint('Web input block script error: $e');
     }
   }
 
@@ -1716,7 +1761,10 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
               bottom: 0,
               child: Offstage(
                 offstage: _showNativeLogin,
-                child: WebViewWidget(controller: controller),
+                child: IgnorePointer(
+                  ignoring: _isNativeDialogVisible,
+                  child: WebViewWidget(controller: controller),
+                ),
               ),
             ),
             if (_showNativeLogin)
