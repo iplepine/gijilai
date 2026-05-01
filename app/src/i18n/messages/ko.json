@@ -94,9 +94,6 @@
   "install": {
     "title": "앱 설치",
     "redirecting": "앱 설치 화면으로 이동하고 있어요.",
-    "badgeIos": "iPhone / iPad 감지됨",
-    "badgeAndroid": "Android 감지됨",
-    "badgeDesktop": "브라우저에서 보고 있어요",
     "headline": "앱에서 바로 이어서 구독해 주세요",
     "description": "지금 기기의 스토어로 이동해 앱을 설치하면 같은 계정으로 로그인한 뒤 결제와 상담 흐름을 이어갈 수 있어요.",
     "featureSubscriptionTitle": "앱에서 바로 구독 시작",

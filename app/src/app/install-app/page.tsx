@@ -30,12 +30,6 @@ function getServerPlatformSnapshot(): BrowserPlatform {
   return 'other';
 }
 
-function getPlatformBadge(platform: BrowserPlatform, t: (key: string) => string) {
-  if (platform === 'ios') return t('install.badgeIos');
-  if (platform === 'android') return t('install.badgeAndroid');
-  return t('install.badgeDesktop');
-}
-
 function getPrimaryButtonLabel(platform: BrowserPlatform, t: (key: string) => string) {
   if (platform === 'ios') return t('install.openAppStore');
   if (platform === 'android') return t('install.openPlayStore');
@@ -117,10 +111,7 @@ function InstallAppContent() {
             <div className="relative px-6 pb-7 pt-6">
               <div className="absolute inset-x-0 top-0 h-32 bg-[linear-gradient(135deg,_rgba(47,79,62,0.14),_rgba(229,161,80,0.18))] dark:bg-[linear-gradient(135deg,_rgba(91,158,96,0.18),_rgba(237,170,84,0.16))]" />
 
-              <div className="relative flex items-start justify-between gap-5">
-                <div className="inline-flex items-center rounded-full border border-primary/15 bg-white/85 px-3 py-1 text-xs font-bold text-primary shadow-sm dark:border-white/10 dark:bg-white/10">
-                  {getPlatformBadge(platform, t)}
-                </div>
+              <div className="relative flex justify-center pt-2">
                 <div className="flex size-20 shrink-0 items-center justify-center rounded-[24px] bg-white shadow-[0_14px_34px_rgba(47,79,62,0.16)] ring-1 ring-primary/10 dark:bg-[#252019] dark:ring-white/10">
                   <Image
                     src="/gijilai_icon.png"

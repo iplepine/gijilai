@@ -94,9 +94,6 @@
   "install": {
     "title": "Install App",
     "redirecting": "Moving you to the app install page.",
-    "badgeIos": "iPhone / iPad detected",
-    "badgeAndroid": "Android detected",
-    "badgeDesktop": "Viewing in browser",
     "headline": "Continue your subscription in the app",
     "description": "Open the store for this device, install the app, then sign in with the same account to continue payment and consultation.",
     "featureSubscriptionTitle": "Start the subscription directly in the app",
