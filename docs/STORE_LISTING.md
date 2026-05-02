@@ -57,10 +57,10 @@ Fastlane으로 대부분 자동화되어 있다.
 작은 변화가 큰 성장으로 이어집니다.
 
 🔒 프리미엄 구독
-• 프리미엄 리포트 무제한
+• 리포트 기반 AI 상담
 • AI 상담 무제한
 • 실천 기록 전체 이력
-• 재검사 쿨다운 없음
+• 다음 상담에 지난 실천 맥락 반영
 • 첫 달 30% 할인
 
 👨‍👩‍👧‍👦 이런 부모님께 추천합니다
@@ -146,10 +146,10 @@ Ask everyday parenting questions and get personalized AI guidance grounded in yo
 Save the advice you received and build small parenting changes into daily routines.
 
 Premium Subscription
-• Unlimited premium reports
+• Report-based AI consultations
 • Unlimited AI consultations
 • Full practice history
-• No reassessment cooldown
+• Past practice context carried into the next consultation
 • 30% off your first month
 
 Contact: devhohouse@gmail.com
