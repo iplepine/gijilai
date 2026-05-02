@@ -222,22 +222,29 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing practice feedback fields' }, { status: 400 });
     }
 
-    const { data: recentLogs } = await supabase
-      .from('practice_logs')
-      .select('id, date, done, practice_attempt_type, child_reaction_type, parent_impression_type, ai_feedback_depth')
-      .eq('practice_id', practiceId)
-      .eq('user_id', session.user.id)
-      .order('date', { ascending: false })
-      .limit(5)
-      .returns<RecentPracticeLogForFeedback[]>();
+    const [recentLogsRes, deepLogsTodayRes] = await Promise.all([
+      supabase
+        .from('practice_logs')
+        .select('id, date, done, practice_attempt_type, child_reaction_type, parent_impression_type, ai_feedback_depth')
+        .eq('practice_id', practiceId)
+        .eq('user_id', session.user.id)
+        .order('date', { ascending: false })
+        .limit(5)
+        .returns<RecentPracticeLogForFeedback[]>(),
+      supabase
+        .from('practice_logs')
+        .select('id, date, done, practice_attempt_type, child_reaction_type, parent_impression_type, ai_feedback_depth')
+        .eq('user_id', session.user.id)
+        .eq('date', log.date)
+        .eq('ai_feedback_depth', 'deep')
+        .neq('id', log.id)
+        .limit(1)
+        .returns<RecentPracticeLogForFeedback[]>(),
+    ]);
 
-    const recentPracticeLogs = recentLogs ?? [];
+    const recentPracticeLogs = recentLogsRes.data ?? [];
     const recentNegativeCount = recentPracticeLogs.filter(isNegativeLog).length;
-    const hasDeepFeedbackToday = recentPracticeLogs.some((recentLog) =>
-      recentLog.id !== log.id
-      && recentLog.date === log.date
-      && recentLog.ai_feedback_depth === 'deep'
-    );
+    const hasDeepFeedbackToday = (deepLogsTodayRes.data ?? []).length > 0;
 
     const shouldUseStaticFeedback = log.child_reaction_type === 'not_tried'
       || log.practice_attempt_type === 'barely_tried';
