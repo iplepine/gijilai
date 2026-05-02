@@ -80,7 +80,7 @@ def android_json_key_path
   env_path = ENV["GOOGLE_PLAY_JSON_KEY_PATH"]
   return env_path if env_path && File.exist?(env_path)
 
-  default_path = File.join(__dir__, "json_key.json")
+  default_path = File.expand_path("json_key.json", __dir__)
   return default_path if File.exist?(default_path)
 
   UI.user_error!("Missing Google Play service account key. Set GOOGLE_PLAY_JSON_KEY_PATH or add fastlane/json_key.json.")
