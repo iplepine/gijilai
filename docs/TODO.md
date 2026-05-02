@@ -20,3 +20,17 @@
 ### 열린 질문
 
 - 현재 없음
+
+## 수익화 구조 변경 시 스토어 정보 동기화
+
+구독 중심 구조를 단품 유료 리포트, 상담 1회권, 체험권 등으로 변경하거나 가격/혜택 문구를 바꾸는 경우 스토어 등록정보도 함께 갱신해야 한다.
+
+### 체크 항목
+
+- [ ] `docs/policies/payment.md`의 가격, 티어, 환불, 구독 라이프사이클 정책 업데이트
+- [ ] `docs/STORE_LISTING.md`의 Google Play / App Store 소개 문구 업데이트
+- [ ] `gijilai_app/fastlane/Fastfile`의 메타데이터 생성 템플릿 업데이트
+- [ ] `gijilai_app/fastlane/metadata/android/*/full_description.txt` 업데이트
+- [ ] `gijilai_app/fastlane/metadata/ios/*/description.txt` 업데이트
+- [ ] 앱 내 `/pricing`, `/settings/subscription`, 환불/해지 안내 문구와 스토어 문구가 서로 충돌하지 않는지 확인
+- [ ] `docs/plan/revenue-trust-conversion-design.md`의 상품 구조와 실험 조건 업데이트
