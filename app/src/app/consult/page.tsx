@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useEffect } from 'react';
+import { Suspense, useCallback, useRef, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/auth/AuthProvider';
@@ -140,6 +140,7 @@ function ConsultContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const sessionIdParam = searchParams.get('sessionId');
+    const replacePracticeIdParam = searchParams.get('replacePracticeId');
     const entrySource = searchParams.get('source') ?? (sessionIdParam ? 'followup' : 'direct');
     const reportTab = searchParams.get('report_tab');
     const reportKind = searchParams.get('report_kind');
@@ -208,6 +209,8 @@ function ConsultContent() {
 
     // INPUT STATE
     const [problemDesc, setProblemDesc] = useState('');
+    const [isProblemInputFocused, setIsProblemInputFocused] = useState(false);
+    const problemInputRef = useRef<HTMLDivElement>(null);
     const [currentTextAnswer, setCurrentTextAnswer] = useState('');
     const [freeTextOptionId, setFreeTextOptionId] = useState<string | null>(null);
 
@@ -226,6 +229,35 @@ function ConsultContent() {
     // 기질 프로필 (초기 로드 시 1회 계산)
     const [childProfile, setChildProfile] = useState<TemperamentProfile | null>(null);
     const [parentProfile, setParentProfile] = useState<TemperamentProfile | null>(null);
+
+    const scrollProblemInputIntoView = useCallback(() => {
+        const input = problemInputRef.current;
+        if (!input) return;
+
+        const scroll = () => {
+            input.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+            });
+        };
+
+        window.requestAnimationFrame(scroll);
+        window.setTimeout(scroll, 180);
+        window.setTimeout(scroll, 360);
+    }, []);
+
+    useEffect(() => {
+        if (!isProblemInputFocused) return;
+
+        scrollProblemInputIntoView();
+        const viewport = window.visualViewport;
+        if (!viewport) return;
+
+        viewport.addEventListener('resize', scrollProblemInputIntoView);
+        return () => {
+            viewport.removeEventListener('resize', scrollProblemInputIntoView);
+        };
+    }, [isProblemInputFocused, scrollProblemInputIntoView]);
 
     // 추가 상담: 세션 컨텍스트 로드
     useEffect(() => {
@@ -526,7 +558,7 @@ function ConsultContent() {
             <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
                 <Navbar title={step === 'RESULT' ? t('consult.heartPrescription') : t('consult.heartInterpreterStation')} />
 
-                <main className="app-fixed-cta-scroll w-full max-w-md flex flex-col flex-1 p-6">
+                <main className="app-fixed-cta-scroll w-full max-w-md flex flex-col flex-1 min-h-0 overflow-y-auto no-scrollbar p-6">
                     {step === 'INPUT' && childLoading && (
                         <div className="flex flex-col items-center justify-center flex-1">
                             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -664,10 +696,12 @@ function ConsultContent() {
                                     </>
                                 )}
 
-                                <div className="relative">
+                                <div ref={problemInputRef} className="relative scroll-mb-40">
                                     <textarea
                                         value={problemDesc}
                                         onChange={(e) => setProblemDesc(e.target.value.slice(0, 500))}
+                                        onFocus={() => setIsProblemInputFocused(true)}
+                                        onBlur={() => setIsProblemInputFocused(false)}
                                         maxLength={500}
                                         placeholder={sessionContext ? t('consult.textareaPlaceholderContinue') : t('consult.textareaPlaceholderFirst')}
                                         className="w-full h-36 p-5 pr-16 text-[15px] leading-relaxed rounded-3xl border border-primary/10 focus:outline-none focus:ring-4 focus:ring-primary/5 resize-none bg-white dark:bg-surface-dark dark:text-white transition-all shadow-inner"
@@ -1028,13 +1062,20 @@ function ConsultContent() {
                                                 duration: item.duration,
                                                 encouragement: item.encouragement || null,
                                             });
+                                            if (replacePracticeIdParam) {
+                                                await supabase
+                                                    .from('practice_items')
+                                                    .update({ status: 'DROPPED' })
+                                                    .eq('id', replacePracticeIdParam)
+                                                    .eq('session_id', sessionId);
+                                            }
                                         }
                                         router.push('/practices');
                                     }}
                                     disabled={selectedActionIndex === null}
                                     className={`w-full py-4 rounded-2xl font-bold text-[15px] transition-all active:scale-[0.98] ${selectedActionIndex !== null ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
                                 >
-                                    {selectedActionIndex !== null ? t('consult.startPractice') : t('consult.selectActionItem')}
+                                    {selectedActionIndex !== null ? (replacePracticeIdParam ? t('consult.replacePractice') : t('consult.startPractice')) : t('consult.selectActionItem')}
                                 </button>
                                 <button
                                     onClick={() => router.push('/')}

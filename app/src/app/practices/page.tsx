@@ -16,9 +16,11 @@ import { Button } from "@/components/ui/Button";
 import { Navbar } from "@/components/layout/Navbar";
 import {
   PracticeCheckModal,
-  type ChildReactionType,
+  type ParentImpressionType,
   type PracticeAiFeedback,
+  type PracticeAttemptType,
   type PracticeCheckSaveResult,
+  type PracticeCheckSavePayload,
 } from "@/components/practices/PracticeCheckModal";
 import { PracticeReviewModal } from "@/components/practices/PracticeReviewModal";
 import { useLocale } from "@/i18n/LocaleProvider";
@@ -55,6 +57,15 @@ const DEFAULT_REMINDER_PREFERENCES: PracticeReminderPreferences = {
   practiceReminderEnabled: true,
   practiceReminderTime: "20:00",
 };
+
+function buildPracticeChangeUrl(sessionId: string, practiceId: string) {
+  const params = new URLSearchParams({
+    sessionId,
+    source: "practice_feedback",
+    replacePracticeId: practiceId,
+  });
+  return `/consult?${params.toString()}`;
+}
 
 export default function PracticesPage() {
   const router = useRouter();
@@ -288,21 +299,57 @@ export default function PracticesPage() {
   };
 
   const handleCheckSave = useCallback(
-    async (
-      done: boolean,
-      memo: string | null,
-      childReactionType?: ChildReactionType | null,
-      childReactionNote?: string | null,
-    ): Promise<PracticeCheckSaveResult | null> => {
+    async (payload: PracticeCheckSavePayload): Promise<PracticeCheckSaveResult | null> => {
       if (!user || !checkModal) return null;
+      const {
+        done,
+        memo,
+        practiceAttemptType,
+        practiceAttemptNote,
+        childReactionType,
+        childReactionNote,
+        parentImpressionType,
+      } = payload;
+      const existingLog = checkModal.existingLog;
+      const feedbackInputsChanged = !!existingLog
+        && checkModal.enableChildReactionFeedback
+        && (
+          existingLog.done !== done
+          || existingLog.practice_attempt_type !== (practiceAttemptType ?? null)
+          || (existingLog.practice_attempt_note ?? null) !== (practiceAttemptNote ?? null)
+          || existingLog.child_reaction_type !== (childReactionType ?? null)
+          || (existingLog.child_reaction_note ?? null) !== (childReactionNote ?? null)
+          || existingLog.parent_impression_type !== (parentImpressionType ?? null)
+        );
       const log = await db.createPracticeLog({
         practice_id: checkModal.practice.id,
         user_id: user.id,
         date: today,
         done,
-        memo,
-        child_reaction_type: childReactionType ?? null,
-        child_reaction_note: childReactionNote ?? null,
+        memo: checkModal.enableChildReactionFeedback ? null : memo,
+        practice_attempt_type: checkModal.enableChildReactionFeedback
+          ? practiceAttemptType ?? null
+          : null,
+        practice_attempt_note: checkModal.enableChildReactionFeedback
+          ? practiceAttemptNote ?? null
+          : null,
+        child_reaction_type: checkModal.enableChildReactionFeedback
+          ? childReactionType ?? null
+          : null,
+        child_reaction_note: checkModal.enableChildReactionFeedback
+          ? childReactionNote ?? null
+          : null,
+        parent_impression_type: checkModal.enableChildReactionFeedback
+          ? parentImpressionType ?? null
+          : null,
+        ...(feedbackInputsChanged
+          ? {
+              ai_feedback: null,
+              ai_feedback_created_at: null,
+              ai_feedback_model: null,
+              ai_feedback_depth: null,
+            }
+          : {}),
       });
 
       let aiFeedback: PracticeAiFeedback | null = null;
@@ -828,16 +875,37 @@ export default function PracticesPage() {
           practiceTitle={checkModal.practice.title}
           existingDone={checkModal.existingLog?.done}
           existingMemo={checkModal.existingLog?.memo}
+          existingPracticeAttemptType={
+            (checkModal.existingLog?.practice_attempt_type ?? null) as PracticeAttemptType | null
+          }
+          existingPracticeAttemptNote={
+            checkModal.existingLog?.practice_attempt_note ?? null
+          }
           existingChildReactionType={
             checkModal.existingLog?.child_reaction_type ?? null
           }
           existingChildReactionNote={checkModal.existingLog?.child_reaction_note}
+          existingParentImpressionType={
+            (checkModal.existingLog?.parent_impression_type ?? null) as ParentImpressionType | null
+          }
           existingAiFeedback={parseAiFeedback(
             checkModal.existingLog?.ai_feedback ?? null,
           )}
           enableChildReactionFeedback={checkModal.enableChildReactionFeedback}
           recentFailCount={checkModal.recentFailCount}
-          sessionId={checkModal.sessionId}
+          onChangePractice={
+            checkModal.sessionId
+              ? () => {
+                  setCheckModal(null);
+                  router.push(
+                    buildPracticeChangeUrl(
+                      checkModal.sessionId ?? "",
+                      checkModal.practice.id,
+                    ),
+                  );
+                }
+              : undefined
+          }
           onSave={handleCheckSave}
           onClose={() => setCheckModal(null)}
         />

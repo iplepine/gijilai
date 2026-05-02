@@ -94,6 +94,22 @@ function getPracticeFeedbackSummary(value: PracticeLogRow['ai_feedback']): strin
     return [insight, adjustment].filter(Boolean).join(' / ') || null;
 }
 
+const PRACTICE_ATTEMPT_LABELS: Record<string, string> = {
+    as_prescribed: '처방 그대로 해봄',
+    changed_words: '말을 바꿔 해봄',
+    shortened: '짧게 줄여 해봄',
+    adapted_to_situation: '상황에 맞게 바꿔 해봄',
+    barely_tried: '거의 해보지 못함',
+};
+
+const PARENT_IMPRESSION_LABELS: Record<string, string> = {
+    this_is_it: '이거다',
+    seems_right: '맞는 것 같음',
+    not_sure: '아직 모르겠음',
+    seems_wrong: '아닌 것 같음',
+    want_to_adjust: '다음엔 바꾸고 싶음',
+};
+
 function formatObservationsForPrompt(observations: ObservationRow[]): string {
     return observations.map((obs) => {
         const date = new Date(obs.created_at).toLocaleDateString('ko-KR');
@@ -182,11 +198,17 @@ ${(sessionContext.practices || []).map((p) => {
     const logs = (sessionContext.logs || []).filter((l) => l.practice_id === p.id);
     const doneDays = logs.filter((l) => l.done).length;
     const recentLog = logs.slice(-1)[0];
+    const attempt = recentLog?.practice_attempt_type
+        ? ` | 최근 시도 방식: ${PRACTICE_ATTEMPT_LABELS[recentLog.practice_attempt_type] ?? recentLog.practice_attempt_type}${recentLog.practice_attempt_note ? ` (${recentLog.practice_attempt_note})` : ''}`
+        : '';
     const childReaction = recentLog?.child_reaction_type
         ? ` | 최근 아이 반응: ${recentLog.child_reaction_type}${recentLog.child_reaction_note ? ` (${recentLog.child_reaction_note})` : ''}`
         : '';
+    const impression = recentLog?.parent_impression_type
+        ? ` | 양육자 인상: ${PARENT_IMPRESSION_LABELS[recentLog.parent_impression_type] ?? recentLog.parent_impression_type}`
+        : '';
     const feedback = recentLog ? getPracticeFeedbackSummary(recentLog.ai_feedback) : null;
-    return `실천: ${p.title} | ${doneDays}/${p.duration}일 실천 (${p.status})${childReaction}${feedback ? ` | 이전 피드백: ${feedback}` : ''}`;
+    return `실천: ${p.title} | ${doneDays}/${p.duration}일 실천 (${p.status})${attempt}${childReaction}${impression}${feedback ? ` | 이전 피드백: ${feedback}` : ''}`;
 }).join('\n')}
 
 ` : ''}**[응답 원칙]**

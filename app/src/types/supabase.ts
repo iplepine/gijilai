@@ -317,10 +317,15 @@ export interface Database {
                     date: string
                     done: boolean
                     memo: string | null
+                    practice_attempt_type: 'as_prescribed' | 'changed_words' | 'shortened' | 'adapted_to_situation' | 'barely_tried' | null
+                    practice_attempt_note: string | null
                     child_reaction_type: 'cooperated' | 'resisted_then_settled' | 'escalated' | 'no_clear_reaction' | 'not_tried' | 'custom' | null
                     child_reaction_note: string | null
+                    parent_impression_type: 'this_is_it' | 'seems_right' | 'not_sure' | 'seems_wrong' | 'want_to_adjust' | null
                     ai_feedback: Json | null
                     ai_feedback_created_at: string | null
+                    ai_feedback_model: string | null
+                    ai_feedback_depth: 'quick' | 'deep' | null
                     created_at: string
                 }
                 Insert: {
@@ -330,10 +335,15 @@ export interface Database {
                     date: string
                     done: boolean
                     memo?: string | null
+                    practice_attempt_type?: 'as_prescribed' | 'changed_words' | 'shortened' | 'adapted_to_situation' | 'barely_tried' | null
+                    practice_attempt_note?: string | null
                     child_reaction_type?: 'cooperated' | 'resisted_then_settled' | 'escalated' | 'no_clear_reaction' | 'not_tried' | 'custom' | null
                     child_reaction_note?: string | null
+                    parent_impression_type?: 'this_is_it' | 'seems_right' | 'not_sure' | 'seems_wrong' | 'want_to_adjust' | null
                     ai_feedback?: Json | null
                     ai_feedback_created_at?: string | null
+                    ai_feedback_model?: string | null
+                    ai_feedback_depth?: 'quick' | 'deep' | null
                     created_at?: string
                 }
                 Update: {
@@ -343,10 +353,15 @@ export interface Database {
                     date?: string
                     done?: boolean
                     memo?: string | null
+                    practice_attempt_type?: 'as_prescribed' | 'changed_words' | 'shortened' | 'adapted_to_situation' | 'barely_tried' | null
+                    practice_attempt_note?: string | null
                     child_reaction_type?: 'cooperated' | 'resisted_then_settled' | 'escalated' | 'no_clear_reaction' | 'not_tried' | 'custom' | null
                     child_reaction_note?: string | null
+                    parent_impression_type?: 'this_is_it' | 'seems_right' | 'not_sure' | 'seems_wrong' | 'want_to_adjust' | null
                     ai_feedback?: Json | null
                     ai_feedback_created_at?: string | null
+                    ai_feedback_model?: string | null
+                    ai_feedback_depth?: 'quick' | 'deep' | null
                     created_at?: string
                 }
             }

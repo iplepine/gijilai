@@ -40,8 +40,11 @@ type SessionContextPractice = {
 type SessionContextLog = {
     practice_id: string;
     done: boolean;
+    practice_attempt_type?: string | null;
+    practice_attempt_note?: string | null;
     child_reaction_type?: string | null;
     child_reaction_note?: string | null;
+    parent_impression_type?: string | null;
     ai_feedback?: unknown;
 };
 
@@ -82,6 +85,22 @@ type PrescriptionResponse = {
         encouragement: string;
     }>;
     sessionTitle?: string;
+};
+
+const PRACTICE_ATTEMPT_LABELS: Record<string, string> = {
+    as_prescribed: '처방 그대로 해봄',
+    changed_words: '말을 바꿔 해봄',
+    shortened: '짧게 줄여 해봄',
+    adapted_to_situation: '상황에 맞게 바꿔 해봄',
+    barely_tried: '거의 해보지 못함',
+};
+
+const PARENT_IMPRESSION_LABELS: Record<string, string> = {
+    this_is_it: '이거다',
+    seems_right: '맞는 것 같음',
+    not_sure: '아직 모르겠음',
+    seems_wrong: '아닌 것 같음',
+    want_to_adjust: '다음엔 바꾸고 싶음',
 };
 
 function isPrescriptionResponse(value: unknown): value is PrescriptionResponse {
@@ -171,9 +190,18 @@ function formatSessionContextForPrompt(sessionContext: SessionContext | null | u
             const recentLog = practiceLogs[practiceLogs.length - 1];
             const review = reviews.find((r) => r.practice_id === p.id);
             context += `- ${p.title} | ${doneDays}/${p.duration}일 실천 (${p.status})`;
+            if (recentLog?.practice_attempt_type) {
+                const attempt = PRACTICE_ATTEMPT_LABELS[recentLog.practice_attempt_type] ?? recentLog.practice_attempt_type;
+                context += ` | 최근 시도 방식: ${attempt}`;
+                if (recentLog.practice_attempt_note) context += ` (${recentLog.practice_attempt_note})`;
+            }
             if (recentLog?.child_reaction_type) {
                 context += ` | 최근 아이 반응: ${recentLog.child_reaction_type}`;
                 if (recentLog.child_reaction_note) context += ` (${recentLog.child_reaction_note})`;
+            }
+            if (recentLog?.parent_impression_type) {
+                const impression = PARENT_IMPRESSION_LABELS[recentLog.parent_impression_type] ?? recentLog.parent_impression_type;
+                context += ` | 양육자 인상: ${impression}`;
             }
             if (recentLog?.ai_feedback && typeof recentLog.ai_feedback === 'object' && !Array.isArray(recentLog.ai_feedback)) {
                 const feedback = recentLog.ai_feedback as Record<string, unknown>;
