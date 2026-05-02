@@ -149,6 +149,9 @@ class MainWebView extends StatefulWidget {
 }
 
 class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
+  static const _permissionsChannel = MethodChannel(
+    'com.devho.gijilai/permissions',
+  );
   static const _supabaseUrl = 'https://gqpedxovfesbusjpjryl.supabase.co';
   static const _iosSubscriptionProductId = 'gijilai_premium_monthly';
   static const _androidSubscriptionProductId = 'monthly_premium';
@@ -265,9 +268,15 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   }
 
   Future<void> _initWebView() async {
-    final controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(const Color(0x00000000));
+    final controller =
+        WebViewController(
+            onPermissionRequest: Platform.isAndroid
+                ? (request) =>
+                      unawaited(_handleWebViewPermissionRequest(request))
+                : null,
+          )
+          ..setJavaScriptMode(JavaScriptMode.unrestricted)
+          ..setBackgroundColor(const Color(0x00000000));
 
     // 기본 UA를 유지하면서 gijilai_app 식별자 추가 (navigator.language 등 보존)
     final defaultUA = await controller.getUserAgent() ?? '';
@@ -316,6 +325,64 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       _controller = controller;
     });
     await _consumePendingAuthCallback();
+  }
+
+  Future<void> _handleWebViewPermissionRequest(
+    WebViewPermissionRequest request,
+  ) async {
+    try {
+      final isMicrophoneOnly =
+          request.types.length == 1 &&
+          request.types.contains(WebViewPermissionResourceType.microphone);
+
+      if (!isMicrophoneOnly) {
+        await request.deny();
+        return;
+      }
+
+      final isGranted = await _requestMicrophonePermission();
+      if (!isGranted) {
+        await request.deny();
+        return;
+      }
+
+      await request.grant();
+    } catch (e, stack) {
+      debugPrint('WebView permission request error: $e');
+      unawaited(
+        FirebaseCrashlytics.instance.recordError(
+          e,
+          stack,
+          reason: 'WebView permission request error',
+        ),
+      );
+      try {
+        await request.deny();
+      } catch (_) {
+        // The platform permission request may already be completed.
+      }
+    }
+  }
+
+  Future<bool> _requestMicrophonePermission() async {
+    if (!Platform.isAndroid) return true;
+
+    try {
+      return await _permissionsChannel.invokeMethod<bool>(
+            'requestMicrophone',
+          ) ??
+          false;
+    } on PlatformException catch (e, stack) {
+      debugPrint('Microphone permission request error: ${e.message}');
+      unawaited(
+        FirebaseCrashlytics.instance.recordError(
+          e,
+          stack,
+          reason: 'Microphone permission request error',
+        ),
+      );
+      return false;
+    }
   }
 
   Future<void> _showJavaScriptAlertDialog(

@@ -65,12 +65,27 @@ function appendTranscript(baseValue: string, transcript: string, maxLength?: num
     return typeof maxLength === 'number' ? nextValue.slice(0, maxLength) : nextValue;
 }
 
+async function requestMicrophoneAccess() {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+        return true;
+    }
+
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach((track) => track.stop());
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 export function VoiceInputButton({ value, onChange, maxLength, className = '' }: VoiceInputButtonProps) {
     const { locale, t } = useLocale();
     const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
     const baseValueRef = useRef(value);
     const [isSupported, setIsSupported] = useState(false);
     const [isMobileInput, setIsMobileInput] = useState(false);
+    const [isStarting, setIsStarting] = useState(false);
     const [isListening, setIsListening] = useState(false);
 
     useEffect(() => {
@@ -91,10 +106,20 @@ export function VoiceInputButton({ value, onChange, maxLength, className = '' }:
         setIsListening(false);
     };
 
-    const startListening = () => {
+    const startListening = async () => {
+        if (isStarting) return;
+
         const SpeechRecognition = getSpeechRecognition();
         if (!SpeechRecognition) {
             alert(t('voice.unsupported'));
+            return;
+        }
+
+        setIsStarting(true);
+        const hasMicrophoneAccess = await requestMicrophoneAccess();
+        if (!hasMicrophoneAccess) {
+            setIsStarting(false);
+            alert(t('voice.error'));
             return;
         }
 
@@ -125,8 +150,15 @@ export function VoiceInputButton({ value, onChange, maxLength, className = '' }:
         };
 
         recognitionRef.current = recognition;
-        recognition.start();
-        setIsListening(true);
+        try {
+            recognition.start();
+            setIsListening(true);
+        } catch {
+            recognitionRef.current = null;
+            alert(t('voice.error'));
+        } finally {
+            setIsStarting(false);
+        }
     };
 
     if (!isMobileInput) return null;
@@ -134,15 +166,15 @@ export function VoiceInputButton({ value, onChange, maxLength, className = '' }:
     return (
         <button
             type="button"
-            onClick={isListening ? stopListening : startListening}
-            disabled={!isSupported}
+            onClick={isListening ? stopListening : () => void startListening()}
+            disabled={!isSupported || isStarting}
             aria-label={isListening ? t('voice.stop') : t('voice.start')}
             title={isSupported ? (isListening ? t('voice.stop') : t('voice.start')) : t('voice.unsupported')}
             className={`inline-flex h-10 w-10 items-center justify-center rounded-full border text-[18px] transition-all active:scale-95 ${
                 isListening
                     ? 'border-red-200 bg-red-50 text-red-500 shadow-lg shadow-red-100'
                     : 'border-primary/15 bg-white/95 text-primary shadow-sm hover:bg-primary/5 dark:bg-surface-dark'
-            } ${!isSupported ? 'cursor-not-allowed opacity-40' : ''} ${className}`}
+            } ${!isSupported || isStarting ? 'cursor-not-allowed opacity-40' : ''} ${className}`}
         >
             <span className="material-symbols-outlined text-[20px] leading-none">
                 {isListening ? 'stop_circle' : 'mic'}
