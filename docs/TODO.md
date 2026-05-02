@@ -6,8 +6,8 @@
 
 ### 구현 항목
 
-- 처방전 JSON 구조 변경: `actionItem` (단수) → `actionItems` (배열, title/description/duration/encouragement)
-- 처방전 생성 프롬프트 업데이트 (액션 아이템 1~3개 + 기간 + 응원 메시지)
+- [x] 처방전 JSON 구조 변경: `actionItem` (단수) → `actionItems` (배열, title/description/duration/encouragement)
+- [x] 처방전 생성 프롬프트 업데이트 (액션 아이템 1~3개 + 기간 + 응원 메시지)
 - [x] 실천 탭 UI (`/practices`)
 - [x] 일일 실천 체크 + 한줄 메모
 - [x] 기간 완료 시 종합 회고
@@ -15,8 +15,8 @@
 - [x] 홈 카드: 진행 중인 실천 넛지
 - [x] 실천 탭 다음 상담용 기록 요약 패널
 - [x] 실천 리마인더 설정 + Flutter 앱 로컬 알림 예약
-- DB 스키마: practices 테이블 설계 (observations 테이블 대체)
+- [x] DB 스키마: `practice_items`, `practice_logs`, `practice_reviews` 테이블 설계 (`docs/migrations/006_consultation_sessions_practices.sql`)
 
 ### 열린 질문
 
-- 리마인더 알림 문구를 아이/실천 항목별로 개인화할지
+- 현재 없음

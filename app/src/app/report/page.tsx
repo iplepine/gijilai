@@ -1489,33 +1489,41 @@ function ReportContent() {
           <div className="max-w-md mx-auto">
             {isParentSurveyComplete ? (
               <div className="m-3 bg-white rounded-[2rem] shadow-2xl border border-slate-100 overflow-hidden">
-                <div className="px-5 py-4 flex gap-3">
-                  <button
-                    onClick={() => {
-                      trackReportCtaClick('share', 'sticky', '/share');
-                      router.push(buildTrackedPath(`/share${(reportId || childReportId) ? `?id=${reportId || childReportId}` : ''}`));
-                    }}
-                    className="flex-1 py-4 rounded-2xl font-black text-base flex items-center justify-center gap-2 active:scale-[0.98] transition-all border-2 border-primary text-primary"
-                  >
-                    <span className="material-symbols-outlined text-[20px]">share</span>
-                    <span>{t('report.shareResults')}</span>
-                  </button>
+                <div className="px-5 pt-4 pb-5 space-y-3">
+                  <div className="space-y-1 text-center">
+                    <p className="text-[11px] font-black uppercase tracking-wider text-primary">
+                      {t('report.nextStepEyebrow')}
+                    </p>
+                    <p className="text-[13px] font-bold leading-relaxed text-slate-600 break-keep">
+                      {t('report.fullReportCtaDesc')}
+                    </p>
+                  </div>
                   <button
                     onClick={() => {
                       trackEvent('report_expand_clicked', {
                         from_tab: activeTab,
-                        to_tab: 'child',
+                        to_tab: 'full_report',
                         child_only: isChildOnly,
                         source: entrySource,
                       });
                       trackReportCtaClick('expand_full_report', 'sticky', '/report');
                       router.replace(buildTrackedPath('/report'));
                     }}
-                    className="flex-1 py-4 rounded-2xl font-black text-white text-base flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+                    className="w-full py-4 rounded-2xl font-black text-white text-base flex items-center justify-center gap-2 active:scale-[0.98] transition-all shadow-lg shadow-primary/20"
                     style={{ backgroundColor: 'var(--primary)' }}
                   >
                     <span>{t('report.viewFullReport')}</span>
                     <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      trackReportCtaClick('share', 'sticky', '/share');
+                      router.push(buildTrackedPath(`/share${(reportId || childReportId) ? `?id=${reportId || childReportId}` : ''}`));
+                    }}
+                    className="w-full py-2.5 rounded-xl font-bold text-[13px] flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all text-slate-500 hover:text-primary"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">share</span>
+                    <span>{t('report.shareResults')}</span>
                   </button>
                 </div>
               </div>
@@ -1540,6 +1548,16 @@ function ReportContent() {
                   >
                     <span>{t('report.continueParentSurvey')}</span>
                     <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      trackReportCtaClick('share', 'sticky', '/share');
+                      router.push(buildTrackedPath(`/share${(reportId || childReportId) ? `?id=${reportId || childReportId}` : ''}`));
+                    }}
+                    className="mt-2 w-full py-2.5 rounded-xl font-bold text-[13px] flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all text-slate-500 hover:text-primary"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">share</span>
+                    <span>{t('report.shareResults')}</span>
                   </button>
                 </div>
               </div>

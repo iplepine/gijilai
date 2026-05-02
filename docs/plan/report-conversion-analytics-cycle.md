@@ -95,6 +95,8 @@ GA4 또는 Firebase Explore에서 아래 3개 퍼널을 기본 저장한다.
 
 실험 이름: `report-next-step-clarity-v1`
 
+상태: 구현됨 (2026-05-02)
+
 가설:
 
 - 리포트 하단 CTA를 `공유`보다 `전체 분석 이어하기` 또는 `프리미엄 시작` 중심으로 재배치하면 다음 행동 전환이 오른다.
@@ -114,4 +116,5 @@ GA4 또는 Firebase Explore에서 아래 3개 퍼널을 기본 저장한다.
 - [ ] Explore에 퍼널 A/B/C 저장
 - [ ] `source`, `report_kind`, `cta_type` 값이 문서와 일치하는지 확인
 - [ ] 첫 주 기준선 수치 기록
-- [ ] 첫 실험안 1개 확정
+- [x] 첫 실험안 1개 확정
+- [x] `report-next-step-clarity-v1` CTA 배치 구현
