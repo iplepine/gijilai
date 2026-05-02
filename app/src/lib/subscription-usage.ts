@@ -6,7 +6,8 @@ export type SubscriptionUsageEventName =
   | 'CONSULT_QUESTIONS_INITIAL'
   | 'CONSULT_QUESTIONS_FOLLOWUP'
   | 'CONSULT_PRESCRIPTION'
-  | 'PRACTICE_HISTORY_VIEW';
+  | 'PRACTICE_HISTORY_VIEW'
+  | 'PRACTICE_AI_FEEDBACK';
 
 type ActiveSubscriptionRow = {
   id: string;

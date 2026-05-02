@@ -40,6 +40,9 @@ type SessionContextPractice = {
 type SessionContextLog = {
     practice_id: string;
     done: boolean;
+    child_reaction_type?: string | null;
+    child_reaction_note?: string | null;
+    ai_feedback?: unknown;
 };
 
 type SessionContextReview = {
@@ -165,8 +168,20 @@ function formatSessionContextForPrompt(sessionContext: SessionContext | null | u
         for (const p of practices) {
             const practiceLogs = logs.filter((l) => l.practice_id === p.id);
             const doneDays = practiceLogs.filter((l) => l.done).length;
+            const recentLog = practiceLogs[practiceLogs.length - 1];
             const review = reviews.find((r) => r.practice_id === p.id);
             context += `- ${p.title} | ${doneDays}/${p.duration}일 실천 (${p.status})`;
+            if (recentLog?.child_reaction_type) {
+                context += ` | 최근 아이 반응: ${recentLog.child_reaction_type}`;
+                if (recentLog.child_reaction_note) context += ` (${recentLog.child_reaction_note})`;
+            }
+            if (recentLog?.ai_feedback && typeof recentLog.ai_feedback === 'object' && !Array.isArray(recentLog.ai_feedback)) {
+                const feedback = recentLog.ai_feedback as Record<string, unknown>;
+                const insight = typeof feedback.reactionInsight === 'string' ? feedback.reactionInsight : '';
+                const adjustment = typeof feedback.tomorrowAdjustment === 'string' ? feedback.tomorrowAdjustment : '';
+                const summary = [insight, adjustment].filter(Boolean).join(' / ');
+                if (summary) context += ` | 이전 피드백: ${summary}`;
+            }
             if (review) context += ` | 회고: ${review.content}`;
             context += `\n`;
         }

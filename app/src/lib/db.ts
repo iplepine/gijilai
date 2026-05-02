@@ -579,7 +579,10 @@ export const db = {
 
   // --- Practice Logs ---
   createPracticeLog: async (
-    log: Omit<PracticeLogData, "id" | "created_at">,
+    log: Omit<
+      PracticeLogData,
+      "id" | "created_at" | "ai_feedback" | "ai_feedback_created_at"
+    > & Partial<Pick<PracticeLogData, "ai_feedback" | "ai_feedback_created_at">>,
   ) => {
     const { data, error } = await supabase
       .from("practice_logs")

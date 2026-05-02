@@ -317,6 +317,10 @@ export interface Database {
                     date: string
                     done: boolean
                     memo: string | null
+                    child_reaction_type: 'cooperated' | 'resisted_then_settled' | 'escalated' | 'no_clear_reaction' | 'not_tried' | 'custom' | null
+                    child_reaction_note: string | null
+                    ai_feedback: Json | null
+                    ai_feedback_created_at: string | null
                     created_at: string
                 }
                 Insert: {
@@ -326,6 +330,10 @@ export interface Database {
                     date: string
                     done: boolean
                     memo?: string | null
+                    child_reaction_type?: 'cooperated' | 'resisted_then_settled' | 'escalated' | 'no_clear_reaction' | 'not_tried' | 'custom' | null
+                    child_reaction_note?: string | null
+                    ai_feedback?: Json | null
+                    ai_feedback_created_at?: string | null
                     created_at?: string
                 }
                 Update: {
@@ -335,6 +343,10 @@ export interface Database {
                     date?: string
                     done?: boolean
                     memo?: string | null
+                    child_reaction_type?: 'cooperated' | 'resisted_then_settled' | 'escalated' | 'no_clear_reaction' | 'not_tried' | 'custom' | null
+                    child_reaction_note?: string | null
+                    ai_feedback?: Json | null
+                    ai_feedback_created_at?: string | null
                     created_at?: string
                 }
             }
@@ -508,7 +520,7 @@ export interface Database {
                     user_id: string
                     subscription_id: string
                     feature: 'AI_CONSULTATION' | 'PRACTICE_HISTORY'
-                    event_name: 'CONSULT_QUESTIONS_INITIAL' | 'CONSULT_QUESTIONS_FOLLOWUP' | 'CONSULT_PRESCRIPTION' | 'PRACTICE_HISTORY_VIEW'
+                    event_name: 'CONSULT_QUESTIONS_INITIAL' | 'CONSULT_QUESTIONS_FOLLOWUP' | 'CONSULT_PRESCRIPTION' | 'PRACTICE_HISTORY_VIEW' | 'PRACTICE_AI_FEEDBACK'
                     resource_type: string | null
                     resource_id: string | null
                     metadata: Json
@@ -519,7 +531,7 @@ export interface Database {
                     user_id: string
                     subscription_id: string
                     feature: 'AI_CONSULTATION' | 'PRACTICE_HISTORY'
-                    event_name: 'CONSULT_QUESTIONS_INITIAL' | 'CONSULT_QUESTIONS_FOLLOWUP' | 'CONSULT_PRESCRIPTION' | 'PRACTICE_HISTORY_VIEW'
+                    event_name: 'CONSULT_QUESTIONS_INITIAL' | 'CONSULT_QUESTIONS_FOLLOWUP' | 'CONSULT_PRESCRIPTION' | 'PRACTICE_HISTORY_VIEW' | 'PRACTICE_AI_FEEDBACK'
                     resource_type?: string | null
                     resource_id?: string | null
                     metadata?: Json
@@ -530,7 +542,7 @@ export interface Database {
                     user_id?: string
                     subscription_id?: string
                     feature?: 'AI_CONSULTATION' | 'PRACTICE_HISTORY'
-                    event_name?: 'CONSULT_QUESTIONS_INITIAL' | 'CONSULT_QUESTIONS_FOLLOWUP' | 'CONSULT_PRESCRIPTION' | 'PRACTICE_HISTORY_VIEW'
+                    event_name?: 'CONSULT_QUESTIONS_INITIAL' | 'CONSULT_QUESTIONS_FOLLOWUP' | 'CONSULT_PRESCRIPTION' | 'PRACTICE_HISTORY_VIEW' | 'PRACTICE_AI_FEEDBACK'
                     resource_type?: string | null
                     resource_id?: string | null
                     metadata?: Json

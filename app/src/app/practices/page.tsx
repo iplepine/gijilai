@@ -14,7 +14,12 @@ import {
 } from "@/lib/db";
 import { Button } from "@/components/ui/Button";
 import { Navbar } from "@/components/layout/Navbar";
-import { PracticeCheckModal } from "@/components/practices/PracticeCheckModal";
+import {
+  PracticeCheckModal,
+  type ChildReactionType,
+  type PracticeAiFeedback,
+  type PracticeCheckSaveResult,
+} from "@/components/practices/PracticeCheckModal";
 import { PracticeReviewModal } from "@/components/practices/PracticeReviewModal";
 import { useLocale } from "@/i18n/LocaleProvider";
 import { getFeatureAccess } from "@/lib/access";
@@ -71,6 +76,7 @@ export default function PracticesPage() {
     existingLog?: PracticeLogData;
     recentFailCount?: number;
     sessionId?: string;
+    enableChildReactionFeedback?: boolean;
   } | null>(null);
   const [reviewModal, setReviewModal] = useState<{
     practice: PracticeItemData;
@@ -264,17 +270,65 @@ export default function PracticesPage() {
     return count;
   };
 
+  const parseAiFeedback = (value: PracticeLogData["ai_feedback"]): PracticeAiFeedback | null => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const candidate = value as Record<string, unknown>;
+    if (
+      typeof candidate.reactionInsight === "string" &&
+      typeof candidate.tomorrowAdjustment === "string" &&
+      typeof candidate.parentEncouragement === "string"
+    ) {
+      return {
+        reactionInsight: candidate.reactionInsight,
+        tomorrowAdjustment: candidate.tomorrowAdjustment,
+        parentEncouragement: candidate.parentEncouragement,
+      };
+    }
+    return null;
+  };
+
   const handleCheckSave = useCallback(
-    async (done: boolean, memo: string | null) => {
-      if (!user || !checkModal) return;
-      await db.createPracticeLog({
+    async (
+      done: boolean,
+      memo: string | null,
+      childReactionType?: ChildReactionType | null,
+      childReactionNote?: string | null,
+    ): Promise<PracticeCheckSaveResult | null> => {
+      if (!user || !checkModal) return null;
+      const log = await db.createPracticeLog({
         practice_id: checkModal.practice.id,
         user_id: user.id,
         date: today,
         done,
         memo,
+        child_reaction_type: childReactionType ?? null,
+        child_reaction_note: childReactionNote ?? null,
       });
+
+      let aiFeedback: PracticeAiFeedback | null = null;
+      if (checkModal.enableChildReactionFeedback && childReactionType) {
+        try {
+          const response = await fetch("/api/consult/practice-feedback", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              logId: log.id,
+              practiceId: checkModal.practice.id,
+            }),
+          });
+          if (response.ok) {
+            const payload = (await response.json()) as {
+              feedback?: PracticeAiFeedback;
+            };
+            aiFeedback = payload.feedback ?? null;
+          }
+        } catch (error) {
+          console.error("Failed to generate practice feedback:", error);
+        }
+      }
+
       await fetchData();
+      return { aiFeedback };
     },
     [checkModal, fetchData, today, user],
   );
@@ -504,6 +558,7 @@ export default function PracticesPage() {
                               recommendedPractice.id,
                             ),
                             sessionId: recommendedPractice.session_id,
+                            enableChildReactionFeedback: true,
                           })
                         }
                         className={`w-full py-3 rounded-xl font-bold text-[13px] flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] ${
@@ -773,6 +828,14 @@ export default function PracticesPage() {
           practiceTitle={checkModal.practice.title}
           existingDone={checkModal.existingLog?.done}
           existingMemo={checkModal.existingLog?.memo}
+          existingChildReactionType={
+            checkModal.existingLog?.child_reaction_type ?? null
+          }
+          existingChildReactionNote={checkModal.existingLog?.child_reaction_note}
+          existingAiFeedback={parseAiFeedback(
+            checkModal.existingLog?.ai_feedback ?? null,
+          )}
+          enableChildReactionFeedback={checkModal.enableChildReactionFeedback}
           recentFailCount={checkModal.recentFailCount}
           sessionId={checkModal.sessionId}
           onSave={handleCheckSave}

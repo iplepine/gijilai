@@ -86,6 +86,14 @@ function getMagicWord(value: ConsultationRow['ai_prescription']): string | null 
     return typeof magicWord === 'string' ? magicWord : null;
 }
 
+function getPracticeFeedbackSummary(value: PracticeLogRow['ai_feedback']): string | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const feedback = value as Record<string, unknown>;
+    const insight = typeof feedback.reactionInsight === 'string' ? feedback.reactionInsight : '';
+    const adjustment = typeof feedback.tomorrowAdjustment === 'string' ? feedback.tomorrowAdjustment : '';
+    return [insight, adjustment].filter(Boolean).join(' / ') || null;
+}
+
 function formatObservationsForPrompt(observations: ObservationRow[]): string {
     return observations.map((obs) => {
         const date = new Date(obs.created_at).toLocaleDateString('ko-KR');
@@ -173,7 +181,12 @@ ${(sessionContext.consultations || []).slice(-2).map((c) => {
 ${(sessionContext.practices || []).map((p) => {
     const logs = (sessionContext.logs || []).filter((l) => l.practice_id === p.id);
     const doneDays = logs.filter((l) => l.done).length;
-    return `실천: ${p.title} | ${doneDays}/${p.duration}일 실천 (${p.status})`;
+    const recentLog = logs.slice(-1)[0];
+    const childReaction = recentLog?.child_reaction_type
+        ? ` | 최근 아이 반응: ${recentLog.child_reaction_type}${recentLog.child_reaction_note ? ` (${recentLog.child_reaction_note})` : ''}`
+        : '';
+    const feedback = recentLog ? getPracticeFeedbackSummary(recentLog.ai_feedback) : null;
+    return `실천: ${p.title} | ${doneDays}/${p.duration}일 실천 (${p.status})${childReaction}${feedback ? ` | 이전 피드백: ${feedback}` : ''}`;
 }).join('\n')}
 
 ` : ''}**[응답 원칙]**
