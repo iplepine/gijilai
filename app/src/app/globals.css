@@ -146,6 +146,17 @@ body {
   color: var(--text-main);
 }
 
+@media (hover: hover) and (pointer: fine) {
+  .consult-choice-option:hover {
+    border-color: var(--secondary);
+    background-color: color-mix(in srgb, var(--secondary) 5%, transparent);
+  }
+
+  .consult-choice-option:hover .consult-choice-option-label {
+    color: var(--secondary);
+  }
+}
+
 /* 다크모드에서 인라인 style 오버라이드 */
 .dark .dark\:\!bg-background-dark {
   background-color: var(--background-dark) !important;
@@ -251,4 +262,13 @@ html[data-native-platform='android'] .app-bottom-nav-center-label {
 
 .app-fixed-cta {
   padding-bottom: calc(var(--safe-area-bottom) + 1rem);
+}
+
+.app-modal-overlay {
+  padding: 1rem;
+  padding-bottom: calc(var(--safe-area-bottom) + 1rem);
+}
+
+.app-modal-panel {
+  max-height: calc(100dvh - var(--safe-area-top) - var(--safe-area-bottom) - 2rem);
 }

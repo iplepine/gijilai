@@ -364,6 +364,10 @@ function ConsultContent() {
             }
             setEmpathy(data.empathy);
             setQuestions(data.questions);
+            setAnswers({});
+            setCurrentTextAnswer('');
+            setFreeTextOptionId(null);
+            setIsFollowUpDone(false);
             setStep('DIAGNOSTIC');
             setCurrentQuestionIndex(0);
         } catch (error) {
@@ -375,6 +379,11 @@ function ConsultContent() {
     };
 
     const handleAnswer = async (questionId: string, answer: string) => {
+        const activeElement = document.activeElement;
+        if (activeElement instanceof HTMLElement) {
+            activeElement.blur();
+        }
+
         const newAnswers = { ...answers, [questionId]: answer };
         setAnswers(newAnswers);
         setFreeTextOptionId(null);
@@ -552,6 +561,11 @@ function ConsultContent() {
     };
 
     const currentQuestion = questions[currentQuestionIndex];
+
+    useEffect(() => {
+        setFreeTextOptionId(null);
+        setCurrentTextAnswer('');
+    }, [currentQuestionIndex]);
 
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center justify-center font-body pb-0">
@@ -765,7 +779,7 @@ function ConsultContent() {
                     )}
 
                     {step === 'DIAGNOSTIC' && currentQuestion && (
-                        <div className="flex flex-col gap-6 w-full animate-in fade-in slide-in-from-right-4 duration-500">
+                        <div key={`${currentQuestionIndex}-${currentQuestion.id}`} className="flex flex-col gap-6 w-full animate-in fade-in slide-in-from-right-4 duration-500">
                             {/* Empathy Box */}
                             {empathy && (
                                 <div className="bg-secondary/10 rounded-3xl p-6 border border-secondary/20 relative animate-in zoom-in-95 duration-700">
@@ -811,68 +825,73 @@ function ConsultContent() {
 
                             {currentQuestion.type === 'CHOICE' ? (
                                 <div className="flex flex-col gap-3">
-                                    {currentQuestion.options?.map((opt, i) => (
-                                        <div key={opt.id || `${currentQuestion.id}-opt-${i}`}>
-                                            <button
-                                                onClick={() => {
-                                                    if (opt.freeText) {
-                                                        setFreeTextOptionId(freeTextOptionId === opt.id ? null : opt.id);
-                                                        setCurrentTextAnswer('');
-                                                    } else {
-                                                        setFreeTextOptionId(null);
-                                                        handleAnswer(currentQuestion.id, opt.text);
-                                                    }
-                                                }}
-                                                className={`w-full text-left p-5 rounded-[1.5rem] border-2 transition-all active:scale-[0.98] group ${
-                                                    freeTextOptionId === opt.id
-                                                        ? 'border-secondary bg-secondary/5'
-                                                        : 'border-primary/5 bg-white dark:bg-surface-dark hover:border-secondary hover:bg-secondary/5'
-                                                }`}
-                                            >
-                                                <div className="font-bold leading-relaxed text-[15px] text-text-main dark:text-white group-hover:text-secondary">
-                                                    {opt.text}
-                                                </div>
-                                            </button>
-                                            {opt.freeText && freeTextOptionId === opt.id && (
-                                                <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
-                                                    <div className="relative">
-                                                        <textarea
-                                                            ref={(el) => {
-                                                                if (el) {
-                                                                    el.focus();
-                                                                    setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+                                    {currentQuestion.options?.map((opt, i) => {
+                                        const optionInteractionId = `${currentQuestionIndex}-${currentQuestion.id}-${opt.id || `opt-${i}`}-${i}`;
+                                        const isFreeTextOptionOpen = freeTextOptionId === optionInteractionId;
+
+                                        return (
+                                            <div key={optionInteractionId}>
+                                                <button
+                                                    onClick={() => {
+                                                        if (opt.freeText) {
+                                                            setFreeTextOptionId(isFreeTextOptionOpen ? null : optionInteractionId);
+                                                            setCurrentTextAnswer('');
+                                                        } else {
+                                                            setFreeTextOptionId(null);
+                                                            handleAnswer(currentQuestion.id, opt.text);
+                                                        }
+                                                    }}
+                                                    className={`consult-choice-option w-full text-left p-5 rounded-[1.5rem] border-2 transition-all active:scale-[0.98] ${
+                                                        isFreeTextOptionOpen
+                                                            ? 'border-secondary bg-secondary/5'
+                                                            : 'border-primary/5 bg-white dark:bg-surface-dark'
+                                                    }`}
+                                                >
+                                                    <div className="consult-choice-option-label font-bold leading-relaxed text-[15px] text-text-main dark:text-white transition-colors">
+                                                        {opt.text}
+                                                    </div>
+                                                </button>
+                                                {opt.freeText && isFreeTextOptionOpen && (
+                                                    <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                                                        <div className="relative">
+                                                            <textarea
+                                                                ref={(el) => {
+                                                                    if (el) {
+                                                                        el.focus();
+                                                                        setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+                                                                    }
+                                                                }}
+                                                                className="w-full h-32 p-5 pr-16 text-[15px] rounded-3xl border border-secondary/30 focus:outline-none focus:ring-4 focus:ring-secondary/10 resize-none bg-white dark:bg-surface-dark dark:text-white transition-all"
+                                                                placeholder={t('consult.freeTextPlaceholder')}
+                                                                value={currentTextAnswer}
+                                                                onChange={(e) => setCurrentTextAnswer(e.target.value.slice(0, 300))}
+                                                            />
+                                                            <VoiceInputButton
+                                                                value={currentTextAnswer}
+                                                                onChange={setCurrentTextAnswer}
+                                                                maxLength={300}
+                                                                className="absolute bottom-4 right-4"
+                                                            />
+                                                        </div>
+                                                        <button
+                                                            onClick={() => {
+                                                                if (currentTextAnswer.trim()) {
+                                                                    handleAnswer(currentQuestion.id, currentTextAnswer);
+                                                                    setCurrentTextAnswer('');
+                                                                    setFreeTextOptionId(null);
+                                                                } else {
+                                                                    alert(t('consult.pleaseEnterAnswer'));
                                                                 }
                                                             }}
-                                                            className="w-full h-32 p-5 pr-16 text-[15px] rounded-3xl border border-secondary/30 focus:outline-none focus:ring-4 focus:ring-secondary/10 resize-none bg-white dark:bg-surface-dark dark:text-white transition-all"
-                                                            placeholder={t('consult.freeTextPlaceholder')}
-                                                            value={currentTextAnswer}
-                                                            onChange={(e) => setCurrentTextAnswer(e.target.value.slice(0, 300))}
-                                                        />
-                                                        <VoiceInputButton
-                                                            value={currentTextAnswer}
-                                                            onChange={setCurrentTextAnswer}
-                                                            maxLength={300}
-                                                            className="absolute bottom-4 right-4"
-                                                        />
+                                                            className="w-full py-4 rounded-2xl bg-primary text-white font-bold transition-all active:scale-95"
+                                                        >
+                                                            {t('consult.nextButton')}
+                                                        </button>
                                                     </div>
-                                                    <button
-                                                        onClick={() => {
-                                                            if (currentTextAnswer.trim()) {
-                                                                handleAnswer(currentQuestion.id, currentTextAnswer);
-                                                                setCurrentTextAnswer('');
-                                                                setFreeTextOptionId(null);
-                                                            } else {
-                                                                alert(t('consult.pleaseEnterAnswer'));
-                                                            }
-                                                        }}
-                                                        className="w-full py-4 rounded-2xl bg-primary text-white font-bold transition-all active:scale-95"
-                                                    >
-                                                        {t('consult.nextButton')}
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             ) : (
                                 <div className="space-y-4">
@@ -1011,9 +1030,15 @@ function ConsultContent() {
                                                             <span className="text-[11px] font-bold text-text-sub bg-beige-main/15 px-2 py-0.5 rounded-full shrink-0">{item.duration}{t('common.days')}</span>
                                                         </div>
                                                         {item.trigger && item.action && (
-                                                            <div className="flex flex-col gap-1 text-[12px]">
-                                                                <span className="text-secondary font-bold">IF <span className="font-normal text-text-main dark:text-gray-200">{item.trigger}</span></span>
-                                                                <span className="text-primary font-bold">THEN <span className="font-normal text-text-main dark:text-gray-200">{item.action}</span></span>
+                                                            <div className="space-y-2 text-[12px]">
+                                                                <div className="border-l-2 border-secondary/50 pl-3">
+                                                                    <p className="text-[10px] font-black text-secondary">{t('consult.practiceWhenLabel')}</p>
+                                                                    <p className="mt-0.5 font-medium leading-relaxed text-text-main dark:text-gray-200">{item.trigger}</p>
+                                                                </div>
+                                                                <div className="border-l-2 border-primary/50 pl-3">
+                                                                    <p className="text-[10px] font-black text-primary">{t('consult.practiceActionLabel')}</p>
+                                                                    <p className="mt-0.5 font-medium leading-relaxed text-text-main dark:text-gray-200">{item.action}</p>
+                                                                </div>
                                                             </div>
                                                         )}
                                                         <p className="text-[13px] text-text-sub leading-relaxed">{item.description}</p>

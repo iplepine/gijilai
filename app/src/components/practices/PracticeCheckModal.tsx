@@ -160,13 +160,13 @@ export function PracticeCheckModal({
 
     return (
         <div className="app-modal-overlay fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in">
-            <div className="app-modal-panel-scroll w-full max-w-sm bg-white dark:bg-surface-dark rounded-3xl shadow-2xl animate-slide-up">
-                <div className="p-6 border-b border-beige-main/10 dark:border-white/5 bg-beige-main/5 dark:bg-white/5">
+            <div className="app-modal-panel flex w-full max-w-sm flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-surface-dark animate-slide-up">
+                <div className="shrink-0 p-6 border-b border-beige-main/10 dark:border-white/5 bg-beige-main/5 dark:bg-white/5">
                     <h4 className="font-bold text-lg text-text-main dark:text-white">{t('practices.todayRecord')}</h4>
                     <p className="text-[13px] text-text-sub mt-1">{practiceTitle}</p>
                 </div>
 
-                <div className="p-6 space-y-5">
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6 space-y-5">
                     <div className="flex gap-3">
                         <button
                             onClick={() => {
@@ -232,7 +232,8 @@ export function PracticeCheckModal({
                                     onChange={(e) => setMemo(e.target.value.slice(0, 200))}
                                     maxLength={200}
                                     placeholder={t('practices.memoPlaceholder')}
-                                    className="w-full h-24 p-4 pr-14 text-[14px] leading-relaxed rounded-lg border border-primary/10 focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none bg-white dark:bg-surface-dark dark:text-white"
+                                    rows={3}
+                                    className="w-full h-28 p-4 pr-14 text-[14px] leading-relaxed rounded-lg border border-primary/10 focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none bg-white dark:bg-surface-dark dark:text-white"
                                 />
                                 <VoiceInputButton
                                     value={memo}
@@ -279,7 +280,8 @@ export function PracticeCheckModal({
                                     onChange={(e) => setPracticeAttemptNote(e.target.value.slice(0, 240))}
                                     maxLength={240}
                                     placeholder={t('practices.attemptPlaceholder')}
-                                    className="w-full h-20 p-4 pr-14 text-[14px] leading-relaxed rounded-lg border border-primary/10 focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none bg-white dark:bg-surface-dark dark:text-white"
+                                    rows={3}
+                                    className="w-full h-28 p-4 pr-14 text-[14px] leading-relaxed rounded-lg border border-primary/10 focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none bg-white dark:bg-surface-dark dark:text-white"
                                 />
                                 <VoiceInputButton
                                     value={practiceAttemptNote}
@@ -322,7 +324,8 @@ export function PracticeCheckModal({
                                     onChange={(e) => setChildReactionNote(e.target.value.slice(0, 200))}
                                     maxLength={200}
                                     placeholder={t('practices.childReactionPlaceholder')}
-                                    className="w-full h-20 p-4 pr-14 text-[14px] leading-relaxed rounded-lg border border-primary/10 focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none bg-white dark:bg-surface-dark dark:text-white"
+                                    rows={3}
+                                    className="w-full h-28 p-4 pr-14 text-[14px] leading-relaxed rounded-lg border border-primary/10 focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none bg-white dark:bg-surface-dark dark:text-white"
                                 />
                                 <VoiceInputButton
                                     value={childReactionNote}
@@ -395,7 +398,7 @@ export function PracticeCheckModal({
                     )}
                 </div>
 
-                <div className="p-4 bg-beige-main/5 dark:bg-white/5 flex gap-3">
+                <div className="shrink-0 p-4 bg-beige-main/5 dark:bg-white/5 flex gap-3 border-t border-beige-main/10 dark:border-white/5">
                     {savedWithFeedback ? (
                         <Button variant="primary" fullWidth onClick={onClose}>
                             {t('common.close')}

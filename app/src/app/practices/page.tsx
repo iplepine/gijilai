@@ -58,6 +58,76 @@ const DEFAULT_REMINDER_PREFERENCES: PracticeReminderPreferences = {
   practiceReminderTime: "20:00",
 };
 
+interface ParsedPracticeDescription {
+  trigger: string | null;
+  action: string | null;
+  body: string;
+}
+
+function parsePracticeDescription(description: string): ParsedPracticeDescription {
+  const match = description.match(
+    /^\[IF\]\s*([^\n]+)\r?\n\[THEN\]\s*([^\n]+)(?:\r?\n){2,}([\s\S]*)$/,
+  );
+
+  if (!match) {
+    return {
+      trigger: null,
+      action: null,
+      body: description,
+    };
+  }
+
+  return {
+    trigger: match[1].trim(),
+    action: match[2].trim(),
+    body: match[3].trim(),
+  };
+}
+
+function PracticeDescription({
+  description,
+  whenLabel,
+  actionLabel,
+}: {
+  description: string;
+  whenLabel: string;
+  actionLabel: string;
+}) {
+  const parsed = parsePracticeDescription(description);
+
+  if (!parsed.trigger || !parsed.action) {
+    return (
+      <p className="text-[13px] leading-relaxed text-text-main dark:text-white">
+        {description}
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="space-y-2">
+        <div className="border-l-2 border-secondary/50 pl-3">
+          <p className="text-[10px] font-black text-secondary">{whenLabel}</p>
+          <p className="mt-0.5 text-[12px] font-medium leading-relaxed text-text-main dark:text-white">
+            {parsed.trigger}
+          </p>
+        </div>
+        <div className="border-l-2 border-primary/50 pl-3">
+          <p className="text-[10px] font-black text-primary">{actionLabel}</p>
+          <p className="mt-0.5 text-[12px] font-medium leading-relaxed text-text-main dark:text-white">
+            {parsed.action}
+          </p>
+        </div>
+      </div>
+      {parsed.body && (
+        <p className="text-[13px] leading-relaxed text-text-main dark:text-white">
+          {parsed.body}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function buildPracticeChangeUrl(sessionId: string, practiceId: string) {
   const params = new URLSearchParams({
     sessionId,
@@ -564,9 +634,11 @@ export default function PracticesPage() {
                   </div>
 
                   <div className="rounded-2xl bg-primary/5 p-4">
-                    <p className="text-[13px] leading-relaxed text-text-main dark:text-white">
-                      {recommendedPractice.description}
-                    </p>
+                    <PracticeDescription
+                      description={recommendedPractice.description}
+                      whenLabel={t("practices.practiceWhenLabel")}
+                      actionLabel={t("practices.practiceActionLabel")}
+                    />
                     {recommendedPractice.encouragement && (
                       <p className="mt-2 text-[12px] font-medium text-secondary">
                         {recommendedPractice.encouragement}
@@ -774,9 +846,13 @@ export default function PracticesPage() {
                                     <p className="text-[14px] font-bold text-text-main dark:text-white">
                                       {practice.title}
                                     </p>
-                                    <p className="text-[12px] text-text-sub mt-1 leading-relaxed">
-                                      {practice.description}
-                                    </p>
+                                    <div className="mt-2">
+                                      <PracticeDescription
+                                        description={practice.description}
+                                        whenLabel={t("practices.practiceWhenLabel")}
+                                        actionLabel={t("practices.practiceActionLabel")}
+                                      />
+                                    </div>
                                   </div>
                                 </div>
 
