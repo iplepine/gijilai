@@ -80,9 +80,15 @@
 
 ## 2026-04-30 | 앱 WebView 하단 탭 safe area는 iOS와 Android를 분리 계산한다
 
-- **결정**: Flutter 앱 쉘은 WebView 문서 루트에 현재 네이티브 플랫폼(`ios`/`android`)을 함께 주입하고, 웹 하단 탭바는 `--native-safe-area-bottom`을 전역 공통값으로 그대로 쓰지 않는다. iOS에서는 홈 인디케이터 보정을 유지하고, Android에서는 하단 inset을 축소한 별도 탭바/스크롤 여백 값을 사용한다.
+- **결정**: Flutter 앱 쉘은 WebView 문서 루트에 현재 네이티브 플랫폼(`ios`/`android`)을 함께 주입하고, 웹 하단 탭바는 플랫폼별 탭바/스크롤 여백 변수를 사용한다. iOS에서는 홈 인디케이터 보정을 유지하고, Android에서도 실제 하단 native inset을 탭 아이콘/라벨/터치 영역의 padding에 반영해 시스템 제스처 영역과 겹치지 않게 한다.
 - **이유**: iOS WebView 겹침을 막기 위해 넣은 native safe area 보정이 Android 하단 탭바 높이에도 그대로 합산되면서, 탭바가 필요 이상으로 떠 보이고 마지막 카드가 가려지는 회귀가 발생했다. 플랫폼별로 하단 보정을 분리하면 iOS 안전영역 대응은 유지하면서 Android 원래 밀도와 스크롤 가시성을 복원할 수 있다.
 - **대안**: 모든 플랫폼에서 동일한 `max(env(...), native inset)` 유지 — iOS 문제는 해결되지만 Android 탭바 높이 회귀가 계속돼 기각. Flutter에서 WebView 전체를 다시 `SafeArea`로 감싸기 — 웹 내부 fixed/sticky 하단 UI 높이와 스크롤 여백 문제를 직접 제어하지 못해 기각.
+
+## 2026-05-03 | Android 하단 탭은 edge-to-edge 배경을 유지하고 터치 영역만 native inset 위로 올린다
+
+- **결정**: Android 앱의 하단 탭바는 edge-to-edge를 끄거나 WebView 전체를 `SafeArea`로 감싸지 않는다. 탭바 배경은 화면 하단까지 확장하고, 탭 아이콘/라벨/중앙 상담 버튼의 실제 터치 영역은 `--native-safe-area-bottom` 기반 padding으로 시스템 내비게이션/제스처 영역을 피한다.
+- **이유**: Android edge-to-edge의 권장 모델은 배경과 divider는 시스템 바 뒤까지 그리되, 텍스트와 버튼 같은 중요한 UI는 inset을 적용하는 방식이다. 기존 Android 탭바 보정은 하단 inset을 `0.25rem`으로 잘라 일부 기기에서 탭 영역이 시스템 제스처 영역과 겹칠 수 있었다.
+- **대안**: 하단 탭 화면에서 edge-to-edge 비활성화 — Android 15 이후 기본 edge-to-edge 흐름과 맞지 않고 화면별 동작이 갈라져 기각. 하단 탭바 전체를 safe area 위로 띄우기 — 배경이 시스템 바 영역까지 이어지지 않아 최신 Android 시각 언어와 맞지 않아 기각.
 
 ---
 

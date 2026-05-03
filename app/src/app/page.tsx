@@ -31,6 +31,7 @@ import {
   readPracticeReminderPreferences,
   type PracticeReminderPreferences,
 } from "@/lib/practiceReminder";
+import { trackEvent } from "@/lib/analytics";
 
 const DEFAULT_REMINDER_PREFERENCES: PracticeReminderPreferences = {
   pushEnabled: true,
@@ -234,6 +235,20 @@ export default function HomePage() {
           : hasTrialPriority
             ? "trial"
             : null;
+
+  const openTrialConversion = (placement: string) => {
+    trackEvent("trial_conversion_cta_clicked", {
+      source: "home",
+      entry_cta: "trial_ending",
+      placement,
+      trial_state: "active",
+      trial_days_remaining: trialStatus?.daysRemaining ?? 0,
+      has_subscription: false,
+      has_practice_priority: hasPracticePriority,
+      has_consult_priority: hasConsultPriority,
+    });
+    router.push("/pricing?source=trial&entry_cta=trial_ending");
+  };
 
   useEffect(() => {
     // Only show onboarding if no child is registered in DB AND no intake info in local store
@@ -589,11 +604,15 @@ export default function HomePage() {
                                 name: childName,
                               })}
                             </p>
-                            <div className="mt-5 w-full py-4 rounded-xl bg-white text-[#243A2F] font-bold text-sm shadow-lg flex items-center justify-center gap-2">
-                              <span>{t("home.consultCTA")}</span>
-                              <span className="material-symbols-outlined text-[18px]">
-                                arrow_forward
-                              </span>
+                            <div className="mt-5 w-full rounded-[22px] bg-white px-5 py-4 text-[#243A2F] shadow-lg active:scale-[0.98] transition-all">
+                              <div className="flex min-w-0 items-center gap-3">
+                                <span className="min-w-0 flex-1 text-left text-sm font-bold leading-snug">
+                                  {t("consult.startConsult")}
+                                </span>
+                                <span className="material-symbols-outlined shrink-0 text-[20px]">
+                                  arrow_forward
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </Link>
@@ -610,7 +629,7 @@ export default function HomePage() {
                             {t("home.trialEndingDesc")}
                           </p>
                           <button
-                            onClick={() => router.push("/pricing")}
+                            onClick={() => openTrialConversion("primary_action")}
                             className="mt-5 w-full py-4 rounded-xl bg-white text-primary font-bold text-sm shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                           >
                             <span>{t("home.trialEndingCta")}</span>
@@ -644,7 +663,7 @@ export default function HomePage() {
                       </div>
                     </div>
                     <button
-                      onClick={() => router.push("/pricing")}
+                      onClick={() => openTrialConversion("secondary_card")}
                       className="mt-4 w-full py-3.5 rounded-xl bg-primary text-white text-[13px] font-bold active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
                     >
                       <span>{t("home.trialEndingCta")}</span>

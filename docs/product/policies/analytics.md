@@ -34,13 +34,21 @@
 | `pricing_viewed` | 가격 페이지 유입 소스와 리포트 연계 전환 확인 | `source`, `entry_cta`, `is_app`, `report_tab`, `report_kind` |
 | `payment_started` | 결제 시도량 및 결제수단 비중 확인 | `source`, `entry_cta`, `pay_method`, `used_coupon`, `final_amount` |
 | `payment_completed` | 결제 완료율 및 쿠폰 효과 확인 | `source`, `entry_cta`, `pay_method`, `used_coupon`, `final_amount` |
-| `consult_started` | 상담 진입량과 후속 상담 비중 확인 | `source`, `has_child_report`, `has_subscription`, `is_followup`, `report_tab`, `report_kind` |
+| `consult_started` | 상담 진입량과 후속 상담 비중 확인 | `source`, `has_child_report`, `has_subscription`, `is_trial`, `is_followup`, `report_tab`, `report_kind` |
+| `consult_completed` | 상담 결과까지 도달했는지 확인 | `source`, `has_subscription`, `is_trial`, `is_followup`, `action_item_count` |
+| `practice_item_saved` | 상담 결과에서 실천 항목을 저장했는지 확인 | `source`, `has_subscription`, `is_trial`, `is_followup`, `action_index`, `duration`, `replaced_practice`, `saved` |
+| `practice_log_saved` | 실천 기록 완료율과 첫 기록 여부 확인 | `done`, `first_log`, `has_full_access`, `with_reaction_feedback`, `child_reaction_type`, `parent_impression_type` |
+| `practice_feedback_viewed` | 기록 후 AI 피드백 노출 여부 확인 | `first_log`, `has_full_access`, `child_reaction_type`, `parent_impression_type` |
+| `practice_review_saved` | 실천 기간 회고 완료 여부 확인 | `done_days`, `review_mode`, `has_full_access` |
+| `followup_context_viewed` | 후속 상담 진입 시 이전 실천 맥락 노출 여부 확인 | `source`, `has_subscription`, `is_trial`, `practice_count`, `log_count`, `review_count` |
+| `trial_conversion_cta_clicked` | 체험 종료/만료 전후 구독 CTA 클릭 확인 | `source`, `entry_cta`, `placement`, `trial_state`, `trial_days_remaining`, `has_subscription`, `has_practice_priority`, `has_consult_priority` |
 
 ## 리포트 전환 핵심 퍼널
 
 - 기본 퍼널: `report_viewed → report_primary_cta_clicked → pricing_viewed → payment_started → payment_completed`
 - 빠른 진단 확장 퍼널: `report_viewed(child_only=true) → report_expand_clicked → survey_module_started(source=report) → survey_flow_completed`
 - 설문 확장 퍼널: `report_primary_cta_clicked(cta_type=continue_parent_survey) → survey_module_started(module=parent, source=report)`
+- 체험 가치 퍼널: `consult_started → consult_completed → practice_item_saved → practice_log_saved → followup_context_viewed → consult_started(is_followup=true)`
 
 ## 운영 질문
 
@@ -48,6 +56,7 @@
 - `child_only` 사용자는 전체 분석으로 확장하는가
 - 어떤 CTA가 가격 페이지 진입과 결제 시작으로 가장 잘 이어지는가
 - 리포트에서 들어온 상담 사용자는 다른 유입 대비 재방문/후속 상담 비중이 높은가
+- 체험 사용자가 첫 상담 이후 실천 저장, 첫 기록, 후속 상담까지 이어지는가
 
 ## 운영 원칙
 

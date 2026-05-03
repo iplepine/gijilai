@@ -27,9 +27,16 @@
 }
 
 html[data-native-platform='android'] {
+  /*
+   * Android WebView can report a 0px bottom inset while running edge-to-edge
+   * with the 3-button system navigation bar. Keep interactive bottom UI above
+   * that bar even when the native inset is unavailable.
+   */
+  --android-system-nav-fallback: 2.75rem;
   --safe-area-top: max(env(safe-area-inset-top, 0px), var(--native-safe-area-top));
-  --bottom-nav-safe-area-bottom: min(var(--safe-area-bottom), 0.25rem);
-  --bottom-nav-content-offset: calc(var(--bottom-nav-safe-area-bottom) + 6.5rem);
+  --safe-area-bottom: max(env(safe-area-inset-bottom, 0px), var(--native-safe-area-bottom), var(--android-system-nav-fallback));
+  --bottom-nav-safe-area-bottom: var(--safe-area-bottom);
+  --bottom-nav-content-offset: calc(var(--bottom-nav-safe-area-bottom) + 7.25rem);
 }
 
 /*
@@ -240,6 +247,17 @@ html[data-native-platform='android'] .app-bottom-nav-center {
 
 html[data-native-platform='android'] .app-bottom-nav-center-label {
   bottom: -1.125rem;
+}
+
+html[data-native-platform='android'] .consult-problem-textarea {
+  height: 11.25rem !important;
+  padding-top: 1.25rem !important;
+  padding-bottom: 2rem !important;
+  line-height: 1.65 !important;
+}
+
+html[data-native-platform='android'] .consult-problem-voice-button {
+  bottom: 1.25rem !important;
 }
 
 .app-bottom-nav-scroll {

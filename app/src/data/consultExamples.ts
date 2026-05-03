@@ -1,3 +1,5 @@
+import type { Locale } from '@/i18n/config';
+
 type AgeGroup = '0-2' | '3-5' | '6-9' | '10-13';
 type Gender = 'male' | 'female';
 
@@ -6,7 +8,9 @@ export interface ConsultExample {
   text: string;
 }
 
-const examples: Record<AgeGroup, Record<Gender, ConsultExample[]>> = {
+type ConsultExampleSet = Record<AgeGroup, Record<Gender, ConsultExample[]>>;
+
+const examplesKo: ConsultExampleSet = {
   '0-2': {
     male: [
       { label: '높은 데서 뛰어내려요', text: '소파나 식탁에서 뛰어내리는 걸 즐기고, 하지 말라고 하면 더 신나서 해요' },
@@ -113,6 +117,118 @@ const examples: Record<AgeGroup, Record<Gender, ConsultExample[]>> = {
   },
 };
 
+const examplesEn: ConsultExampleSet = {
+  '0-2': {
+    male: [
+      { label: 'Jumps from high places', text: 'He enjoys jumping off the sofa or table, and when I tell him not to, he gets even more excited.' },
+      { label: 'Tosses and turns at night', text: 'He moves around so much while sleeping that he often falls off the bed.' },
+      { label: 'Won\'t sit during meals', text: 'When changing diapers or eating, he cannot stay in one place and keeps running away.' },
+      { label: 'Throws toys hard', text: 'He has started throwing toys hard at the wall or floor.' },
+      { label: 'Fine motor feels delayed', text: 'He is 24 months old and cannot stack five blocks yet. I am worried his fine motor development may be delayed.' },
+      { label: 'Puts everything in his mouth', text: 'He is 26 months old and still puts every object in his mouth.' },
+      { label: 'Lies down and cries', text: 'When he cannot get what he wants, he lies on the floor and cries loudly.' },
+      { label: 'Stomps too loudly', text: 'He stomps on his heels so loudly that floor noise has become a daily battle.' },
+      { label: 'Regressed after sibling', text: 'After his baby sister was born, he suddenly started acting like a baby and wants to use a bottle.' },
+      { label: 'Hides from strangers', text: 'When he sees strangers, he becomes very wary and hides.' },
+    ],
+    female: [
+      { label: 'Only goes to mom', text: 'Her stranger anxiety is so strong that she refuses to be held by anyone except mom.' },
+      { label: 'Cries at loud sounds', text: 'She cries intensely at sounds like the vacuum or doorbell, so it is hard to do things around the house.' },
+      { label: 'Separation anxiety is strong', text: 'If mom disappears from view for even a second, her separation anxiety gets very intense.' },
+      { label: 'Refuses solid food', text: 'She keeps her mouth shut and refuses solid food. Mealtime feels painful.' },
+      { label: 'Struggles in new places', text: 'When we go somewhere unfamiliar, it takes her more than an hour to adjust.' },
+      { label: 'Sucks her finger too much', text: 'She sucks her finger so hard every night that the skin becomes irritated.' },
+      { label: 'Afraid of the toilet', text: 'She is scared of the flushing sound, so toilet training is not going well.' },
+      { label: 'Very picky eating', text: 'Her picky eating is so strong that she only wants certain side dishes.' },
+      { label: 'Attached to one toy', text: 'If she does not have a specific comfort toy, she cannot go out or fall asleep.' },
+      { label: 'Wakes up crying at night', text: 'She suddenly wakes up at night and cries intensely. I do not know why.' },
+    ],
+  },
+  '3-5': {
+    male: [
+      { label: 'Pushes friends', text: 'His preschool teacher contacted me because he pushes friends or takes toys from them.' },
+      { label: 'Does not play with friends', text: 'He gets overly absorbed in one specific toy and does not seem to know how to play with other children.' },
+      { label: 'Cries when he loses', text: 'He is so competitive that when he loses a game, he cries and melts down.' },
+      { label: 'Hits when angry', text: 'When he gets angry, his hands move before his words. I worry people will label him as a bad child.' },
+      { label: 'Started lying', text: 'He has started telling obvious lies that make things go his way.' },
+      { label: 'Never yields', text: 'He always tries to take friends\' toys and does not yield at all.' },
+      { label: 'Bath time is a battle', text: 'Every bath is a battle. He is very afraid of the shower sound.' },
+      { label: 'Only wants rough play', text: 'He cannot play alone and asks for rough physical play all day, which is exhausting.' },
+      { label: 'Breaks things when frustrated', text: 'When blocks do not stack the way he wants, he gets upset and knocks everything down.' },
+      { label: 'Slow to adjust to preschool', text: 'He adjusts slowly to group settings, so I am wondering whether preschool is right for him.' },
+    ],
+    female: [
+      { label: 'Clings to one friend', text: 'She only wants to play with one specific friend and gets very jealous when that friend plays with someone else.' },
+      { label: 'Struggles to share', text: 'She has a strong sense of ownership over her things and finds it hard to share with friends.' },
+      { label: 'Hurt by teacher\'s expression', text: 'Even a neutral expression from the teacher hurts her feelings, and she says she does not want to go to preschool.' },
+      { label: 'Morning clothing battles', text: 'She has very strong opinions about clothes and hairstyles, so every morning becomes a struggle.' },
+      { label: 'Worried about exclusion', text: 'I am worried she may be left out because cliques are forming among her friends.' },
+      { label: 'Cries at daycare every day', text: 'She cries and refuses to separate from me at the daycare door. It has been every day for a year.' },
+      { label: 'Cannot say what she thinks', text: 'She cannot speak up in front of friends and just holds everything in.' },
+      { label: 'Insists on certain clothes', text: 'She insists on pink and dresses, and refuses other colors or active clothes.' },
+      { label: 'Upset when friends leave', text: 'When friends leave first, she becomes very sad and clingy.' },
+      { label: 'Very jealous of sibling', text: 'After her younger sibling was born, her jealousy became intense. She sobs whenever I hold the baby.' },
+    ],
+  },
+  '6-9': {
+    male: [
+      { label: 'Cannot sit through class', text: 'He finds it very hard to sit still for 40 minutes during class.' },
+      { label: 'Forgets supplies every day', text: 'He does not write in his planner and forgets to bring school supplies almost every day.' },
+      { label: 'Only wants games', text: 'He is so into games that when I ask him to study, he gets irritated first.' },
+      { label: 'Plays too roughly', text: 'He plays so roughly with older kids at the playground that I worry he will get hurt.' },
+      { label: 'Cannot focus on homework', text: 'When I ask him to do homework, he cannot focus for even five minutes and leaves his seat.' },
+      { label: 'Copies swear words', text: 'He seems to be using swear words and rough language with friends that he saw on YouTube.' },
+      { label: 'Does not follow rules', text: 'Even when told not to run in the hallway, he runs every day and gets corrected by the teacher.' },
+      { label: 'Does not care about grades', text: 'Even when his spelling test score is low, he does not seem upset at all and stays cheerful.' },
+      { label: 'Fights over small things', text: 'He keeps turning small things into competitions and fights with friends.' },
+      { label: 'Writes too carelessly', text: 'His handwriting is very messy, and he rushes through writing without care.' },
+    ],
+    female: [
+      { label: 'Excluded from group chat', text: 'I heard her friends left only her out of a group chat, and I am worried she will be hurt.' },
+      { label: 'Cries over one mistake', text: 'If she gets even one spelling word wrong, she cries and blames herself. Her perfectionism feels intense.' },
+      { label: 'Afraid to present', text: 'She talks well at home, but she is very afraid of presenting at school.' },
+      { label: 'Cares about brands', text: 'She has started caring about the brands her friends wear or use for school supplies.' },
+      { label: 'Upset about teacher favoritism', text: 'She says her homeroom teacher likes another student more and does not want to go to school.' },
+      { label: 'Big fight with best friend', text: 'She had a big fight with her best friend and declared the friendship over. She has been crying all day.' },
+      { label: 'Stomachaches from stress', text: 'When tutoring homework increases, she keeps saying her stomach hurts. It seems psychological.' },
+      { label: 'Worries all night over friends', text: 'She is so sensitive to notes from friends that one small comment keeps her worried all night.' },
+      { label: 'Only follows friends', text: 'When choosing after-school activities, she only wants to do what her friends are doing.' },
+      { label: 'Not enough one-on-one time', text: 'I have been busy caring for her younger sibling, and she says she misses one-on-one time with me.' },
+    ],
+  },
+  '10-13': {
+    male: [
+      { label: 'Refuses to talk', text: 'He refuses to talk with us and slams his door. When I ask questions, he only says "I do not know."' },
+      { label: 'Only watches YouTube', text: 'His grades suddenly dropped, and he spends all day watching YouTube Shorts.' },
+      { label: 'Rough language got worse', text: 'I heard him using swear words and rough language when talking with friends.' },
+      { label: 'Secret game purchases', text: 'He secretly played games all night and even bought game items without telling us.' },
+      { label: 'Does not want to wash', text: 'He is entering puberty but finds washing so bothersome that hygiene becomes a daily argument.' },
+      { label: 'Career conflict, no studying', text: 'Because we disagree about his future path, his motivation to study has dropped sharply.' },
+      { label: 'I do not know where he goes', text: 'When he comes home, he eats a snack and immediately goes out again, and I do not know where or what he is doing.' },
+      { label: 'Family talks stopped', text: 'He has become uninterested in family matters and only wants time alone, so family conversations have stopped.' },
+      { label: 'Cannot control allowance', text: 'As soon as he receives allowance, he spends it all and cannot control his spending.' },
+      { label: 'Skipped tutoring for PC room', text: 'I found out he skipped tutoring and went to a PC room. I do not know how to talk to him about it.' },
+    ],
+    female: [
+      { label: 'Lost confidence in looks', text: 'She has lost confidence in her appearance, avoids photos, and does not want to look in the mirror.' },
+      { label: 'Very sensitive to social media', text: 'One social media comment can change her whole mood, and she seems very conscious of what friends think.' },
+      { label: 'Talks back constantly', text: 'She sees my advice only as interference and talks back about everything.' },
+      { label: 'Only follows peers', text: 'She tries so hard to follow peer culture that I worry she is losing her own sense of self.' },
+      { label: 'Does not share feelings', text: 'She was hurt in a friendship but does not talk about her feelings and keeps it all inside.' },
+      { label: 'Too focused on a crush', text: 'She is so focused on someone she likes that she cannot concentrate on studying.' },
+      { label: 'Test anxiety is strong', text: 'During exam periods, she becomes anxious and has trouble sleeping.' },
+      { label: 'Embarrassed by body changes', text: 'She seems embarrassed by puberty-related body changes and has lost confidence.' },
+      { label: 'Only stays in her room', text: 'She wants to stay only in her room and avoids spending time with the family.' },
+      { label: 'Mood swings are intense', text: 'Her mood swings have become intense, and she gets angry or cries over small things.' },
+    ],
+  },
+};
+
+const examplesByLocale: Record<Locale, ConsultExampleSet> = {
+  ko: examplesKo,
+  en: examplesEn,
+};
+
 function getAgeGroup(birthDate: string): AgeGroup {
   const birth = new Date(birthDate);
   const now = new Date();
@@ -134,10 +250,15 @@ function shuffle<T>(arr: T[]): T[] {
   return shuffled;
 }
 
-export function getRandomExamples(birthDate?: string, gender?: string, count = 5): ConsultExample[] {
+export function getRandomExamples(
+  birthDate?: string,
+  gender?: string,
+  count = 5,
+  locale: Locale = 'ko'
+): ConsultExample[] {
   const ageGroup = birthDate ? getAgeGroup(birthDate) : '3-5';
   const g: Gender = gender?.toLowerCase() === 'female' ? 'female' : 'male';
 
-  const pool = examples[ageGroup][g];
+  const pool = examplesByLocale[locale][ageGroup][g];
   return shuffle(pool).slice(0, count);
 }

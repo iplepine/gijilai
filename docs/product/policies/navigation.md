@@ -66,11 +66,13 @@
 - Flutter 앱 WebView의 루트(`/`) 진입 시 로그인 세션이 없으면 웹 랜딩 화면을 먼저 보여준다. 로그인 세션이 있으면 홈을 그대로 렌더링한다.
 - 앱 로그인은 랜딩 CTA 이후 `/login`에서 네이티브 로그인 화면 오버레이로 시작한다.
 - 앱 설치 유도 화면(`/install-app`)과 앱 설치/다운로드 CTA는 웹 브라우저 전용이다. 네이티브 앱 WebView에서는 렌더링하지 않고, `/install-app`이 앱 안에서 열리면 `from` 값에 따라 `/pricing`, `/payment`, 또는 홈으로 되돌린다.
-- 노치/상태표시줄 대응은 웹 CSS `env(safe-area-inset-*)`와 Flutter WebView가 주입하는 `--native-safe-area-top/bottom`을 함께 사용한다.
+- 노치/상태표시줄/시스템 제스처 영역 대응은 웹 CSS `env(safe-area-inset-*)`와 Flutter WebView가 주입하는 `--native-safe-area-top/bottom`을 함께 사용한다.
+- Android edge-to-edge WebView에서 native bottom inset이 `0px`로 보고되는 3-button navigation 환경이 있으므로, 하단 탭/고정 CTA는 Android 전용 fallback bottom inset을 함께 적용해 OS 내비게이션 버튼과 겹치지 않게 한다.
 - Flutter 앱은 WebView 문서마다 `window.__nativeCapabilities`를 주입해 현재 앱이 네이티브로 지원하는 화면 집합을 명시한다.
 - 웹은 `isAppWebView()` 같은 단순 앱 여부만으로 네이티브 분기를 결정하지 않고, `window.__nativeCapabilities.supportedScreens`를 우선 확인한다.
 - 로그인 외 네이티브 전환 후보 화면(`/payment`, `/settings/subscription`, `/settings/notifications`, `/settings/profile`)은 capability가 없는 앱 버전과 모바일 웹에서 기존 웹 라우트를 fallback으로 유지한다.
 - `Navbar` 기반 일반 스크롤 화면은 `app-page-scroll`로 하단 safe area + 여유 패딩을 공통 적용한다.
+- 하단 탭바는 edge-to-edge 배경을 유지하되 탭 아이콘/라벨/중앙 버튼의 실제 터치 영역은 native bottom inset을 반영한 `app-bottom-nav` padding 위에 둔다.
 - 하단 고정 CTA가 있는 화면은 본문에 `app-fixed-cta-scroll`, 하단 컨테이너에 `app-fixed-cta`를 사용해 마지막 입력 필드와 버튼이 시스템 내비게이션 영역에 가려지지 않게 한다.
 - 하단 고정 CTA 높이가 일반 CTA보다 큰 화면은 `app-large-fixed-cta-scroll`처럼 CTA 실측 높이에 맞춘 공통 변형을 사용한다.
 - 바텀시트/모달은 페이지 스크롤 유틸리티의 보호를 받지 않으므로 오버레이에 `app-modal-overlay`, 패널에 `app-modal-panel` 또는 `app-modal-panel-scroll`을 사용한다.

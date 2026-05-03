@@ -396,13 +396,18 @@ export const db = {
     if (error) throw error;
   },
 
-  getRecentObservations: async (userId: string, limit: number = 5) => {
-    const { data, error } = await supabase
+  getRecentObservations: async (
+    userId: string,
+    limit: number = 5,
+    childId?: string,
+  ) => {
+    let query = supabase
       .from("observations")
       .select("*")
       .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(limit);
+      .order("created_at", { ascending: false });
+    if (childId) query = query.eq("child_id", childId);
+    const { data, error } = await query.limit(limit);
     if (error) throw error;
     return data as ObservationData[];
   },

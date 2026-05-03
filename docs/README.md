@@ -11,6 +11,7 @@
 | `go-to-market/` | 수익 모델, 퍼널 지표, 성장 가설 |
 | `operations/` | 출시 준비, 아키텍처, 배포, 마이그레이션, 외부 서비스 |
 | `decisions/` | 주요 의사결정과 보류 사항 |
+| `work/` | 현재 goal, roadmap, active task |
 | `archive/` | 더 이상 표준 문서가 아니지만 보존할 자료 |
 
 ## 주요 문서
@@ -24,6 +25,7 @@
 - `go-to-market/FUNNEL_METRICS.md`: 핵심 퍼널과 측정 기준
 - `operations/RELEASE_READINESS.md`: 출시 전 확인 항목
 - `decisions/DECISIONS.md`: 결정 사항과 열린 질문
+- `work/README.md`: 현재 목표, 로드맵, 작업 티켓
 
 ## 기존 문서 정리 위치
 

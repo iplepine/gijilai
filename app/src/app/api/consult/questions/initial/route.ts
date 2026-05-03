@@ -5,6 +5,12 @@ import { createClient } from '@/lib/supabaseServer';
 import { getConsultModel } from '@/lib/consult-model';
 import { getServerFeatureAccess } from '@/lib/access';
 import { recordSubscriptionUsageEvent } from '@/lib/subscription-usage';
+import { validateConsultProblemInput } from '@/lib/consultInputValidation';
+import {
+  getOwnedConsultChild,
+  resolveConsultTemperamentProfile,
+  type ConsultTemperamentProfile,
+} from '@/lib/consultTemperamentContext';
 import type { Database } from '@/types/supabase';
 
 type ObservationRow = Database['public']['Tables']['observations']['Row'];
@@ -12,17 +18,7 @@ type SessionRow = Database['public']['Tables']['consultation_sessions']['Row'];
 type ConsultationRow = Database['public']['Tables']['consultations']['Row'];
 type PracticeItemRow = Database['public']['Tables']['practice_items']['Row'];
 type PracticeLogRow = Database['public']['Tables']['practice_logs']['Row'];
-type TemperamentProfile = {
-    label: string;
-    keywords: string[];
-    description: string;
-    scores: {
-        NS: number;
-        HA: number;
-        RD: number;
-        P: number;
-    };
-};
+type TemperamentProfile = ConsultTemperamentProfile;
 type SessionContextPayload = {
     session?: SessionRow | null;
     consultations?: ConsultationRow[];
@@ -31,6 +27,7 @@ type SessionContextPayload = {
 };
 type InitialQuestionRequest = {
     problem?: string;
+    childId?: string | null;
     childName?: string;
     childBirthDate?: string;
     childGender?: 'male' | 'female' | string;
@@ -139,6 +136,7 @@ export async function POST(request: Request) {
 
     const {
       problem,
+      childId,
       childName,
       childBirthDate,
       childGender,
@@ -148,10 +146,33 @@ export async function POST(request: Request) {
       sessionContext,
     } = await parseJsonBody<InitialQuestionRequest>(request);
 
+    const ownedChild = await getOwnedConsultChild(supabase, session.user.id, childId);
+    if (childId && !ownedChild) {
+      return NextResponse.json(
+        { error: 'Invalid child id', code: 'INVALID_CHILD_ID' },
+        { status: 403 }
+      );
+    }
+
+    const effectiveChildProfile = await resolveConsultTemperamentProfile(supabase, {
+      userId: session.user.id,
+      type: 'CHILD',
+      childId: ownedChild?.id ?? childId,
+      fallback: childProfile,
+    });
+    const effectiveParentProfile = await resolveConsultTemperamentProfile(supabase, {
+      userId: session.user.id,
+      type: 'PARENT',
+      fallback: parentProfile,
+    });
+    const effectiveChildName = ownedChild?.name ?? childName;
+    const effectiveChildBirthDate = ownedChild?.birthDate ?? childBirthDate;
+    const effectiveChildGender = ownedChild?.gender ?? childGender;
+
     // 나이 계산
     let childAge = '';
-    if (childBirthDate) {
-      const birth = new Date(childBirthDate);
+    if (effectiveChildBirthDate) {
+      const birth = new Date(effectiveChildBirthDate);
       const today = new Date();
       const totalMonths = (today.getFullYear() - birth.getFullYear()) * 12 + (today.getMonth() - birth.getMonth());
       if (totalMonths <= 36) {
@@ -163,25 +184,36 @@ export async function POST(request: Request) {
       }
     }
 
-    if (!problem) {
+    if (typeof problem !== 'string') {
       return NextResponse.json(
         { error: 'Missing required field: problem' },
         { status: 400 }
       );
     }
 
-    const nameContext = childName ? `${childName}(${childAge || '나이 미상'}${childGender === 'male' ? ', 남아' : childGender === 'female' ? ', 여아' : ''}) 아이의 양육자이고, ` : '';
+    const problemValidation = validateConsultProblemInput(problem);
+    if (!problemValidation.ok) {
+      return NextResponse.json(
+        {
+          error: 'Invalid consultation input',
+          code: problemValidation.code,
+        },
+        { status: 400 }
+      );
+    }
+
+    const nameContext = effectiveChildName ? `${effectiveChildName}(${childAge || '나이 미상'}${effectiveChildGender === 'male' ? ', 남아' : effectiveChildGender === 'female' ? ', 여아' : ''}) 아이의 양육자이고, ` : '';
 
     const systemPrompt = `당신은 아동 심리 및 기질 역동 분석 전문가입니다.
 사용자의 육아 고민 상황을 듣고, 양육자의 마음을 어루만져주는 공감 멘트와 상황 분석을 위해 확인해야 할 '기초 질문' 정확히 4개를 생성하세요.
 
 **[기질 프로필]**
-${childProfile ? `- 아이 기질 유형: ${childProfile.label} (${childProfile.keywords.join(', ')})
-  - 설명: ${childProfile.description}
-  - 차원별 점수 (0~100): 자극추구=${childProfile.scores.NS}, 위험회피=${childProfile.scores.HA}, 사회적민감성=${childProfile.scores.RD}, 지속성=${childProfile.scores.P}` : '- 아이 기질: 검사 데이터 없음'}
-${parentProfile ? `- 양육자 기질 유형: ${parentProfile.label} (${parentProfile.keywords.join(', ')})
-  - 설명: ${parentProfile.description}
-  - 차원별 점수 (0~100): 자극추구=${parentProfile.scores.NS}, 위험회피=${parentProfile.scores.HA}, 사회적민감성=${parentProfile.scores.RD}, 지속성=${parentProfile.scores.P}` : '- 양육자 기질: 검사 데이터 없음'}
+${effectiveChildProfile ? `- 아이 기질 유형: ${effectiveChildProfile.label} (${effectiveChildProfile.keywords.join(', ')})
+  - 설명: ${effectiveChildProfile.description}
+  - 차원별 점수 (0~100): 자극추구=${effectiveChildProfile.scores.NS}, 위험회피=${effectiveChildProfile.scores.HA}, 사회적민감성=${effectiveChildProfile.scores.RD}, 지속성=${effectiveChildProfile.scores.P}` : '- 아이 기질: 검사 데이터 없음'}
+${effectiveParentProfile ? `- 양육자 기질 유형: ${effectiveParentProfile.label} (${effectiveParentProfile.keywords.join(', ')})
+  - 설명: ${effectiveParentProfile.description}
+  - 차원별 점수 (0~100): 자극추구=${effectiveParentProfile.scores.NS}, 위험회피=${effectiveParentProfile.scores.HA}, 사회적민감성=${effectiveParentProfile.scores.RD}, 지속성=${effectiveParentProfile.scores.P}` : '- 양육자 기질: 검사 데이터 없음'}
 
 ${recentObservations && recentObservations.length > 0 ? `**[최근 양육 관찰 기록]**
 양육자가 최근 기록한 아이와의 상호작용입니다. 이 맥락을 참고하여 질문을 생성하세요.

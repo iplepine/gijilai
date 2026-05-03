@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
 import { Locale, defaultLocale } from './config';
 import ko from './messages/ko.json';
 import en from './messages/en.json';
@@ -47,7 +47,14 @@ function getNestedValue(obj: LocaleMessageTree, path: string): string | undefine
 }
 
 export function LocaleProvider({ children }: { children: ReactNode }) {
-  const [locale] = useState<Locale>(() => detectLocale());
+  const [locale, setLocale] = useState<Locale>(defaultLocale);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setLocale(detectLocale());
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const t = useCallback((key: string, params?: Record<string, string | number>): string => {
     let value = getNestedValue(messages[locale], key) ?? getNestedValue(messages[defaultLocale], key) ?? key;

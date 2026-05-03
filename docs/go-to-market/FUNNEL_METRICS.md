@@ -26,6 +26,15 @@
 3. `survey_module_started(source=report)`
 4. `survey_flow_completed`
 
+## 체험 가치 퍼널
+
+1. `consult_started`
+2. `consult_completed`
+3. `practice_item_saved`
+4. `practice_log_saved(first_log=true)`
+5. `followup_context_viewed`
+6. `consult_started(is_followup=true)`
+
 ## 운영 리듬
 
 - 매주 한 가지 이탈 구간만 선택한다.
@@ -41,4 +50,4 @@
 
 ## 상세 근거
 
-운영 사이클은 `../plan/report-conversion-analytics-cycle.md`, 이벤트 정의는 `../product/policies/analytics.md`를 기준으로 한다.
+운영 사이클은 `REPORT_CONVERSION_ANALYTICS_CYCLE.md`, 이벤트 정의는 `../product/policies/analytics.md`를 기준으로 한다.

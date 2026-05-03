@@ -7,22 +7,32 @@ export function HomeLoadingScreen() {
     const { t } = useLocale();
 
     return (
-        <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center justify-center font-body">
-            <div className="w-full max-w-md min-h-screen flex flex-col shadow-2xl relative">
-                <header className="app-top-bar sticky top-0 z-40 border-b border-gray-100 bg-background-light/80 backdrop-blur-xl dark:border-gray-800 dark:bg-background-dark/80">
-                    <div className="app-top-bar-inner flex items-center justify-between px-4">
-                        <div className="flex items-center gap-3">
-                            <Image src="/gijilai_icon.png" alt={t('common.appName')} width={28} height={28} className="rounded-lg object-contain" />
-                            <span className="text-xl font-logo tracking-wide text-primary dark:text-white pt-0.5">{t('common.appName')}</span>
-                        </div>
-                        <div className="w-14 h-6 bg-gray-100 dark:bg-surface-dark rounded-full animate-pulse" />
+        <div className="min-h-screen bg-background-light text-text-main dark:bg-background-dark dark:text-gray-100 font-body">
+            <div className="mx-auto flex min-h-screen w-full max-w-md flex-col items-center justify-center px-8 text-center shadow-2xl">
+                <div className="flex flex-col items-center">
+                    <div className="h-28 w-28 overflow-hidden rounded-[2rem] shadow-[0_18px_44px_rgba(47,79,62,0.16)]">
+                        <Image
+                            src="/gijilai_icon.png"
+                            alt={t('common.appName')}
+                            width={112}
+                            height={112}
+                            priority
+                            className="h-full w-full object-cover"
+                        />
                     </div>
-                </header>
-                <main className="flex-1 flex flex-col items-center pt-12 px-6">
-                    <div className="w-32 h-32 rounded-full bg-gray-100 dark:bg-surface-dark animate-pulse" />
-                    <div className="w-24 h-4 bg-gray-100 dark:bg-surface-dark rounded-full mt-8 animate-pulse" />
-                    <div className="w-40 h-3 bg-gray-50 dark:bg-surface-dark/50 rounded-full mt-3 animate-pulse" />
-                </main>
+                    <h1 className="mt-7 text-[28px] font-black tracking-normal text-primary dark:text-white">
+                        {t('common.appName')}
+                    </h1>
+                    <p className="mt-2 text-sm font-semibold leading-relaxed text-text-sub dark:text-gray-400">
+                        {t('common.splashTagline')}
+                    </p>
+                    <div className="mt-10 h-1 w-32 overflow-hidden rounded-full bg-primary/10 dark:bg-white/10">
+                        <div className="h-full w-2/3 rounded-full bg-secondary animate-pulse" />
+                    </div>
+                    <p className="mt-4 text-[12px] font-bold text-text-sub/70 dark:text-gray-500">
+                        {t('common.loading')}
+                    </p>
+                </div>
             </div>
         </div>
     );

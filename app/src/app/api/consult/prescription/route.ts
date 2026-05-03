@@ -5,6 +5,11 @@ import { createClient } from '@/lib/supabaseServer';
 import { getConsultModel } from '@/lib/consult-model';
 import { getServerFeatureAccess } from '@/lib/access';
 import { recordSubscriptionUsageEvent } from '@/lib/subscription-usage';
+import {
+    getOwnedConsultChild,
+    resolveConsultTemperamentProfile,
+    type ConsultTemperamentProfile,
+} from '@/lib/consultTemperamentContext';
 
 type ObservationPromptItem = {
     created_at: string;
@@ -86,6 +91,8 @@ type PrescriptionResponse = {
     }>;
     sessionTitle?: string;
 };
+
+type TemperamentProfile = ConsultTemperamentProfile;
 
 const PRACTICE_ATTEMPT_LABELS: Record<string, string> = {
     as_prescribed: '처방 그대로 해봄',
@@ -238,6 +245,7 @@ export async function POST(request: Request) {
             problem,
             questions,
             answers,
+            childId,
             childProfile,
             parentProfile,
             childName,
@@ -249,18 +257,9 @@ export async function POST(request: Request) {
             problem?: string;
             questions?: QuestionPromptItem[];
             answers?: Record<string, string>;
-            childProfile?: {
-                label: string;
-                keywords: string[];
-                description: string;
-                scores: { NS: number; HA: number; RD: number; P: number };
-            } | null;
-            parentProfile?: {
-                label: string;
-                keywords: string[];
-                description: string;
-                scores: { NS: number; HA: number; RD: number; P: number };
-            } | null;
+            childId?: string | null;
+            childProfile?: TemperamentProfile | null;
+            parentProfile?: TemperamentProfile | null;
             childName?: string;
             childBirthDate?: string;
             childGender?: string;
@@ -270,18 +269,9 @@ export async function POST(request: Request) {
             problem?: string;
             questions?: QuestionPromptItem[];
             answers?: Record<string, string>;
-            childProfile?: {
-                label: string;
-                keywords: string[];
-                description: string;
-                scores: { NS: number; HA: number; RD: number; P: number };
-            } | null;
-            parentProfile?: {
-                label: string;
-                keywords: string[];
-                description: string;
-                scores: { NS: number; HA: number; RD: number; P: number };
-            } | null;
+            childId?: string | null;
+            childProfile?: TemperamentProfile | null;
+            parentProfile?: TemperamentProfile | null;
             childName?: string;
             childBirthDate?: string;
             childGender?: string;
@@ -289,10 +279,33 @@ export async function POST(request: Request) {
             sessionContext?: SessionContext | null;
         }>(request);
 
+        const ownedChild = await getOwnedConsultChild(supabase, session.user.id, childId);
+        if (childId && !ownedChild) {
+            return NextResponse.json(
+                { error: 'Invalid child id', code: 'INVALID_CHILD_ID' },
+                { status: 403 }
+            );
+        }
+
+        const effectiveChildProfile = await resolveConsultTemperamentProfile(supabase, {
+            userId: session.user.id,
+            type: 'CHILD',
+            childId: ownedChild?.id ?? childId,
+            fallback: childProfile,
+        });
+        const effectiveParentProfile = await resolveConsultTemperamentProfile(supabase, {
+            userId: session.user.id,
+            type: 'PARENT',
+            fallback: parentProfile,
+        });
+        const effectiveChildName = ownedChild?.name ?? childName;
+        const effectiveChildBirthDate = ownedChild?.birthDate ?? childBirthDate;
+        const effectiveChildGender = ownedChild?.gender ?? childGender;
+
         // 나이 계산
         let childAge = '';
-        if (childBirthDate) {
-          const birth = new Date(childBirthDate);
+        if (effectiveChildBirthDate) {
+          const birth = new Date(effectiveChildBirthDate);
           const today = new Date();
           const totalMonths = (today.getFullYear() - birth.getFullYear()) * 12 + (today.getMonth() - birth.getMonth());
           if (totalMonths <= 36) {
@@ -311,7 +324,7 @@ export async function POST(request: Request) {
             );
         }
 
-        const nameContext = childName ? `${childName}(${childAge || '나이 미상'}${childGender === 'male' ? ', 남아' : childGender === 'female' ? ', 여아' : ''})` : '아이';
+        const nameContext = effectiveChildName ? `${effectiveChildName}(${childAge || '나이 미상'}${effectiveChildGender === 'male' ? ', 남아' : effectiveChildGender === 'female' ? ', 여아' : ''})` : '아이';
         const isFollowUp = !!sessionContext;
 
         const systemPrompt = `당신은 기질(TCI) 기반의 분석 전문가이자 따뜻한 마음 통역사입니다.
@@ -319,12 +332,12 @@ export async function POST(request: Request) {
 
 **[분석 재료]**
 - 대상: ${nameContext}
-${childProfile ? `- 아이 기질 유형: ${childProfile.label} (${childProfile.keywords.join(', ')})
-  - 설명: ${childProfile.description}
-  - 차원별 점수 (0~100): 자극추구=${childProfile.scores.NS}, 위험회피=${childProfile.scores.HA}, 사회적민감성=${childProfile.scores.RD}, 지속성=${childProfile.scores.P}` : '- 아이 기질: 검사 데이터 없음 (보편적 아동 기질로 분석)'}
-${parentProfile ? `- 양육자 기질 유형: ${parentProfile.label} (${parentProfile.keywords.join(', ')})
-  - 설명: ${parentProfile.description}
-  - 차원별 점수 (0~100): 자극추구=${parentProfile.scores.NS}, 위험회피=${parentProfile.scores.HA}, 사회적민감성=${parentProfile.scores.RD}, 지속성=${parentProfile.scores.P}` : '- 양육자 기질: 검사 데이터 없음 (보편적 양육자 기질로 분석)'}
+${effectiveChildProfile ? `- 아이 기질 유형: ${effectiveChildProfile.label} (${effectiveChildProfile.keywords.join(', ')})
+  - 설명: ${effectiveChildProfile.description}
+  - 차원별 점수 (0~100): 자극추구=${effectiveChildProfile.scores.NS}, 위험회피=${effectiveChildProfile.scores.HA}, 사회적민감성=${effectiveChildProfile.scores.RD}, 지속성=${effectiveChildProfile.scores.P}` : '- 아이 기질: 검사 데이터 없음 (보편적 아동 기질로 분석)'}
+${effectiveParentProfile ? `- 양육자 기질 유형: ${effectiveParentProfile.label} (${effectiveParentProfile.keywords.join(', ')})
+  - 설명: ${effectiveParentProfile.description}
+  - 차원별 점수 (0~100): 자극추구=${effectiveParentProfile.scores.NS}, 위험회피=${effectiveParentProfile.scores.HA}, 사회적민감성=${effectiveParentProfile.scores.RD}, 지속성=${effectiveParentProfile.scores.P}` : '- 양육자 기질: 검사 데이터 없음 (보편적 양육자 기질로 분석)'}
 - 고민 상황: ${problem}
 - 문진 질문과 답변:
 ${questions && questions.length > 0 ? questions.map((q) => `  Q: ${q.text}\n  A: ${answers[q.id] || '(미응답)'}`).join('\n') : JSON.stringify(answers)}${recentObservations && recentObservations.length > 0 ? `

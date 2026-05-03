@@ -16,6 +16,11 @@ import { useLocale } from '@/i18n/LocaleProvider';
 import { trackEvent } from '@/lib/analytics';
 import { getApiErrorMessage, readJsonResponse } from '@/lib/api';
 import { isAppWebView } from '@/lib/install';
+import {
+    MIN_CONSULT_PROBLEM_LENGTH,
+    validateConsultProblemInput,
+    type ConsultInputValidationCode,
+} from '@/lib/consultInputValidation';
 
 type Step = 'INPUT' | 'DIAGNOSTIC' | 'RESULT';
 
@@ -129,6 +134,10 @@ interface TemperamentProfile {
 type SessionContextData = Awaited<ReturnType<typeof db.getSessionWithConsultations>>;
 type ChildSummary = Pick<ChildProfile, 'id' | 'name' | 'birth_date' | 'gender'>;
 
+function truncateText(value: string, maxLength = 64) {
+    return value.length > maxLength ? `${value.slice(0, maxLength)}...` : value;
+}
+
 export default function ConsultPage() {
     return (
         <Suspense>
@@ -155,22 +164,38 @@ function ConsultContent() {
     // 세션 상태
     const [sessionContext, setSessionContext] = useState<SessionContextData | null>(null);
     const [sessionId, setSessionId] = useState<string | null>(sessionIdParam);
+    const [sessionContextLoading, setSessionContextLoading] = useState(!!sessionIdParam);
     const [validChildId, setValidChildId] = useState<string | null>(null);
     const [childLoading, setChildLoading] = useState(true);
     const [hasChildReport, setHasChildReport] = useState(true);
+    const sessionChildId = sessionContext?.session.child_id ?? null;
 
     useEffect(() => {
         if (!user) { setChildLoading(false); return; }
+        if (sessionContextLoading) return;
         setChildLoading(true);
         supabase.from('children').select('id, name, birth_date, gender').eq('parent_id', user.id).then(async ({ data }) => {
             const children = (data || []) as ChildSummary[];
             if (children.length === 0) {
                 setChildName(intake.childName || null);
+                setChildBirthDate(intake.birthDate || undefined);
+                setChildGender(intake.gender || undefined);
                 setValidChildId(null);
+                setHasChildReport(false);
                 setChildLoading(false);
             } else {
-                const selected = selectedChildId ? children.find(c => c.id === selectedChildId) : children[0];
-                const child = selected || children[0];
+                const requestedChildId = sessionChildId || selectedChildId;
+                const selected = requestedChildId ? children.find(c => c.id === requestedChildId) : children[0];
+                const child = selected || (!sessionChildId ? children[0] : null);
+                if (!child) {
+                    setChildName(null);
+                    setChildBirthDate(undefined);
+                    setChildGender(undefined);
+                    setValidChildId(null);
+                    setHasChildReport(false);
+                    setChildLoading(false);
+                    return;
+                }
                 setChildName(child.name);
                 setChildBirthDate(child.birth_date);
                 setChildGender(child.gender);
@@ -185,12 +210,12 @@ function ConsultContent() {
                 setChildLoading(false);
             }
         });
-    }, [user, selectedChildId, intake.childName]);
+    }, [user, selectedChildId, sessionChildId, sessionContextLoading, intake.childName, intake.birthDate, intake.gender]);
 
     const [examples, setExamples] = useState<ReturnType<typeof getRandomExamples>>([]);
     useEffect(
-        () => setExamples(getRandomExamples(childBirthDate, childGender, 5)),
-        [childBirthDate, childGender]
+        () => setExamples(getRandomExamples(childBirthDate, childGender, 5, locale)),
+        [childBirthDate, childGender, locale]
     );
 
     const [step, setStep] = useState<Step>('INPUT');
@@ -201,6 +226,8 @@ function ConsultContent() {
     const access = getFeatureAccess({ userCreatedAt: user?.created_at, hasSubscription });
     const trial = access.trial;
     const hasFullAccess = access.hasFullAccess;
+    const isTrialActive = !hasSubscription && !!trial?.isActive;
+    const trialState = hasSubscription ? 'subscribed' : trial?.isActive ? 'active' : trial ? 'expired' : 'unknown';
     useEffect(() => {
         if (!user) return;
         db.getActiveSubscription(user.id).catch(() => null).then(sub => {
@@ -210,6 +237,7 @@ function ConsultContent() {
 
     // INPUT STATE
     const [problemDesc, setProblemDesc] = useState('');
+    const [problemInputError, setProblemInputError] = useState<string | null>(null);
     const [isProblemInputFocused, setIsProblemInputFocused] = useState(false);
     const problemInputRef = useRef<HTMLDivElement>(null);
     const [currentTextAnswer, setCurrentTextAnswer] = useState('');
@@ -227,6 +255,7 @@ function ConsultContent() {
     const [selectedActionIndex, setSelectedActionIndex] = useState<number | null>(null);
     const [savedConsultId, setSavedConsultId] = useState<string | null>(null);
     const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+    const trackedFollowupContextRef = useRef(false);
 
     // 기질 프로필 (초기 로드 시 1회 계산)
     const [childProfile, setChildProfile] = useState<TemperamentProfile | null>(null);
@@ -268,6 +297,41 @@ function ConsultContent() {
         window.setTimeout(scroll, 360);
     }, []);
 
+    const getProblemInputErrorMessage = useCallback((code: ConsultInputValidationCode) => {
+        if (code === 'empty') return t('consult.pleaseDescribeProblem');
+        if (code === 'too_short') return t('consult.problemInputTooShort');
+        return t('consult.problemInputInvalid');
+    }, [t]);
+
+    const updateProblemDesc = useCallback((value: string) => {
+        setProblemDesc(value.slice(0, 500));
+        if (problemInputError) setProblemInputError(null);
+    }, [problemInputError]);
+    const trimmedProblemDesc = problemDesc.trim();
+    const selectedProblemExampleText = examples.find((ex) => trimmedProblemDesc === ex.text.trim())?.text ?? null;
+    const hasProblemDesc = problemDesc.length > 0;
+    const shouldShowMoreDetailHint = trimmedProblemDesc.length > 0 && trimmedProblemDesc.length < MIN_CONSULT_PROBLEM_LENGTH;
+
+    const openPricing = useCallback((entryCta: string, placement: string) => {
+        trackEvent('trial_conversion_cta_clicked', {
+            source: entrySource,
+            entry_cta: entryCta,
+            placement,
+            trial_state: trialState,
+            trial_days_remaining: trial?.daysRemaining ?? 0,
+            has_subscription: hasSubscription,
+        });
+        router.push(`/pricing?source=consult&entry_cta=${entryCta}`);
+    }, [entrySource, hasSubscription, router, trial?.daysRemaining, trialState]);
+
+    const selectProblemExample = useCallback((text: string) => {
+        updateProblemDesc(text);
+    }, [updateProblemDesc]);
+
+    const clearProblemDesc = useCallback(() => {
+        updateProblemDesc('');
+    }, [updateProblemDesc]);
+
     useEffect(() => {
         if (!isProblemInputFocused) return;
 
@@ -283,7 +347,14 @@ function ConsultContent() {
 
     // 추가 상담: 세션 컨텍스트 로드
     useEffect(() => {
-        if (!sessionIdParam) return;
+        if (!sessionIdParam) {
+            setSessionContext(null);
+            setSessionId(null);
+            setSessionContextLoading(false);
+            trackedFollowupContextRef.current = false;
+            return;
+        }
+        setSessionContextLoading(true);
         (async () => {
             try {
                 const ctx = await db.getSessionWithConsultations(sessionIdParam);
@@ -291,9 +362,83 @@ function ConsultContent() {
                 setSessionId(sessionIdParam);
             } catch (e) {
                 console.error('Failed to load session context:', e);
+                setSessionContext(null);
+                setSessionId(null);
+            } finally {
+                setSessionContextLoading(false);
             }
         })();
     }, [sessionIdParam]);
+
+    const followupContextSummary = useCallback(() => {
+        if (!sessionContext) return null;
+
+        const logs = [...(sessionContext.logs || [])].sort((a, b) => a.date.localeCompare(b.date));
+        const practices = sessionContext.practices || [];
+        const reviews = sessionContext.reviews || [];
+        const latestLog = logs[logs.length - 1];
+        const latestPractice = latestLog
+            ? practices.find((practice) => practice.id === latestLog.practice_id)
+            : practices[practices.length - 1];
+        const latestReview = latestPractice
+            ? reviews.find((review) => review.practice_id === latestPractice.id)
+            : null;
+        const doneDays = latestPractice
+            ? logs.filter((log) => log.practice_id === latestPractice.id && log.done).length
+            : 0;
+        const childReactionLabels: Record<string, string> = {
+            cooperated: t('practices.reactionCooperated'),
+            resisted_then_settled: t('practices.reactionSettled'),
+            escalated: t('practices.reactionEscalated'),
+            no_clear_reaction: t('practices.reactionNoClear'),
+            not_tried: t('practices.reactionNotTried'),
+            custom: t('practices.reactionCustom'),
+        };
+        const parentImpressionLabels: Record<string, string> = {
+            this_is_it: t('practices.impressionThisIsIt'),
+            seems_right: t('practices.impressionSeemsRight'),
+            not_sure: t('practices.impressionNotSure'),
+            seems_wrong: t('practices.impressionSeemsWrong'),
+            want_to_adjust: t('practices.impressionWantToAdjust'),
+        };
+        const reaction = latestLog?.child_reaction_note
+            || (latestLog?.child_reaction_type ? childReactionLabels[latestLog.child_reaction_type] : null)
+            || (latestLog ? (latestLog.done ? t('consult.followupContextDone') : t('consult.followupContextSkipped')) : t('consult.followupContextNoLogs'));
+        const nextFocus = latestReview?.content
+            ? t('consult.followupContextNextReview', { review: truncateText(latestReview.content, 46) })
+            : latestLog?.parent_impression_type
+                ? t('consult.followupContextNextImpression', {
+                    impression: parentImpressionLabels[latestLog.parent_impression_type] || latestLog.parent_impression_type,
+                })
+                : t('consult.followupContextNextDefault');
+
+        return {
+            practice: latestPractice
+                ? t('consult.followupContextPracticeSummary', {
+                    title: latestPractice.title,
+                    done: doneDays,
+                    duration: latestPractice.duration,
+                })
+                : t('consult.followupContextNoLogs'),
+            reaction,
+            nextFocus,
+        };
+    }, [sessionContext, t]);
+
+    const followupSummary = followupContextSummary();
+
+    useEffect(() => {
+        if (!sessionContext || trackedFollowupContextRef.current) return;
+        trackedFollowupContextRef.current = true;
+        trackEvent('followup_context_viewed', {
+            source: entrySource,
+            has_subscription: hasSubscription,
+            is_trial: isTrialActive,
+            practice_count: sessionContext.practices?.length ?? 0,
+            log_count: sessionContext.logs?.length ?? 0,
+            review_count: sessionContext.reviews?.length ?? 0,
+        });
+    }, [entrySource, hasSubscription, isTrialActive, sessionContext]);
 
     useEffect(() => {
         (async () => {
@@ -327,12 +472,14 @@ function ConsultContent() {
 
     const handleStartDiagnostic = async () => {
         if (!hasFullAccess) {
-            router.push(`/pricing?source=consult&entry_cta=consult_gate`);
+            openPricing('consult_gate', 'consult_input_gate');
             return;
         }
 
-        if (!problemDesc.trim()) {
-            alert(t('consult.pleaseDescribeProblem'));
+        const inputValidation = validateConsultProblemInput(problemDesc);
+        if (!inputValidation.ok) {
+            setProblemInputError(getProblemInputErrorMessage(inputValidation.code));
+            scrollProblemInputIntoView();
             return;
         }
 
@@ -341,6 +488,7 @@ function ConsultContent() {
             source: entrySource,
             has_child_report: hasChildReport,
             has_subscription: hasSubscription,
+            is_trial: isTrialActive,
             is_followup: !!sessionIdParam,
             report_tab: reportTab ?? undefined,
             report_kind: reportKind ?? undefined,
@@ -351,7 +499,7 @@ function ConsultContent() {
             let recentObservations: ObservationData[] = [];
             if (user) {
                 try {
-                    recentObservations = await db.getRecentObservations(user.id, 5);
+                    recentObservations = await db.getRecentObservations(user.id, 5, validChildId ?? undefined);
                 } catch {
                     // 관찰 기록 조회 실패 시 빈 배열로 진행
                 }
@@ -362,6 +510,7 @@ function ConsultContent() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     problem: fullProblem,
+                    childId: validChildId,
                     childName: childName || intake.childName,
                     childBirthDate: childBirthDate || intake.birthDate,
                     childGender: childGender || intake.gender,
@@ -373,7 +522,7 @@ function ConsultContent() {
             });
 
             if (res.status === 402 || res.status === 403) {
-                router.push('/pricing');
+                openPricing('consult_gate', 'initial_question_gate');
                 return;
             }
             const data = await readJsonResponse<{ empathy?: string; questions?: Question[]; error?: string }>(res);
@@ -424,7 +573,7 @@ function ConsultContent() {
 
     const handleCheckFollowUp = async (currentAnswers: Record<string, string>) => {
         if (!hasFullAccess) {
-            router.push('/pricing');
+            openPricing('consult_gate', 'followup_question_gate');
             return;
         }
         setIsLoading(true);
@@ -440,7 +589,7 @@ function ConsultContent() {
             });
 
             if (res.status === 402 || res.status === 403) {
-                router.push('/pricing');
+                openPricing('consult_gate', 'followup_question_gate');
                 return;
             }
 
@@ -481,7 +630,7 @@ function ConsultContent() {
 
     const handleGeneratePrescription = async (allAnswers: Record<string, string>) => {
         if (!hasFullAccess) {
-            router.push('/pricing');
+            openPricing('consult_gate', 'prescription_gate');
             return;
         }
         setIsLoading(true);
@@ -491,7 +640,7 @@ function ConsultContent() {
             let recentObservations: ObservationData[] = [];
             if (user) {
                 try {
-                    recentObservations = await db.getRecentObservations(user.id, 5);
+                    recentObservations = await db.getRecentObservations(user.id, 5, validChildId ?? undefined);
                 } catch {
                     // 관찰 기록 조회 실패 시 빈 배열로 진행
                 }
@@ -504,6 +653,7 @@ function ConsultContent() {
                     problem: fullProblem,
                     questions: questions.map(q => ({ id: q.id, text: q.text })),
                     answers: allAnswers,
+                    childId: validChildId,
                     childProfile,
                     parentProfile,
                     childName: childName || intake.childName,
@@ -515,7 +665,7 @@ function ConsultContent() {
             });
 
             if (res.status === 402 || res.status === 403) {
-                router.push('/pricing');
+                openPricing('consult_gate', 'prescription_gate');
                 return;
             }
             const data = await readJsonResponse<Prescription & { error?: string }>(res);
@@ -528,6 +678,15 @@ function ConsultContent() {
             }
             setPrescription(data);
             setStep('RESULT');
+            trackEvent('consult_completed', {
+                source: entrySource,
+                has_subscription: hasSubscription,
+                is_trial: isTrialActive,
+                is_followup: !!sessionIdParam,
+                report_tab: reportTab ?? undefined,
+                report_kind: reportKind ?? undefined,
+                action_item_count: data.actionItems?.length ?? 0,
+            });
 
             // 첫 번째 실천 항목을 기본 추천으로 선택
             if (Array.isArray(data.actionItems) && data.actionItems.length > 0) {
@@ -677,6 +836,28 @@ function ConsultContent() {
                                             })}
                                         </div>
                                     )}
+                                    {followupSummary && (
+                                        <div className="rounded-2xl bg-white/80 dark:bg-white/5 border border-secondary/10 p-4 space-y-3">
+                                            <div className="flex items-center gap-1.5 text-secondary">
+                                                <span className="material-symbols-outlined text-[16px]">auto_awesome</span>
+                                                <p className="text-[12px] font-black">{t('consult.followupContextTitle')}</p>
+                                            </div>
+                                            <div className="grid gap-2 text-[12px]">
+                                                <div>
+                                                    <p className="text-[10px] font-black text-text-sub uppercase tracking-wider">{t('consult.followupContextPreviousLabel')}</p>
+                                                    <p className="mt-0.5 font-medium leading-relaxed text-text-main dark:text-gray-200">{followupSummary.practice}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-black text-text-sub uppercase tracking-wider">{t('consult.followupContextReactionLabel')}</p>
+                                                    <p className="mt-0.5 font-medium leading-relaxed text-text-main dark:text-gray-200">{followupSummary.reaction}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-black text-text-sub uppercase tracking-wider">{t('consult.followupContextNextLabel')}</p>
+                                                    <p className="mt-0.5 font-medium leading-relaxed text-text-main dark:text-gray-200">{followupSummary.nextFocus}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
@@ -715,19 +896,24 @@ function ConsultContent() {
                                     <>
                                         <p className="text-[12px] text-text-sub dark:text-gray-500 mb-2">{t('consult.exampleHint')}</p>
                                         <div className="flex flex-wrap gap-2 mb-4">
-                                            {examples.map(ex => (
-                                                <button
-                                                    key={ex.label}
-                                                    onClick={() => setProblemDesc(prev => prev ? `${prev}\n${ex.text}` : ex.text)}
-                                                    className={`px-3 py-2 rounded-xl text-[13px] transition-all border active:scale-95 shadow-sm ${
-                                                        problemDesc.includes(ex.text)
-                                                            ? 'bg-primary/10 text-primary border-primary/30 font-bold'
-                                                            : 'bg-white dark:bg-surface-dark text-text-sub border-primary/10 hover:border-primary/30 hover:bg-primary/5'
-                                                    }`}
-                                                >
-                                                    {ex.label}
-                                                </button>
-                                            ))}
+                                            {examples.map(ex => {
+                                                const isSelected = selectedProblemExampleText === ex.text;
+                                                return (
+                                                    <button
+                                                        key={ex.label}
+                                                        type="button"
+                                                        aria-pressed={isSelected}
+                                                        onClick={() => selectProblemExample(ex.text)}
+                                                        className={`px-3 py-2 rounded-xl text-[13px] transition-all border active:scale-95 shadow-sm ${
+                                                            isSelected
+                                                                ? 'bg-primary text-white border-primary font-bold shadow-primary/15'
+                                                                : 'bg-white dark:bg-surface-dark text-text-sub border-primary/10 hover:border-primary/30 hover:bg-primary/5'
+                                                        }`}
+                                                    >
+                                                        {ex.label}
+                                                    </button>
+                                                );
+                                            })}
                                         </div>
                                     </>
                                 )}
@@ -735,33 +921,54 @@ function ConsultContent() {
                                 <div ref={problemInputRef} className="relative scroll-mb-40">
                                     <textarea
                                         value={problemDesc}
-                                        onChange={(e) => setProblemDesc(e.target.value.slice(0, 500))}
+                                        onChange={(e) => updateProblemDesc(e.target.value)}
                                         onFocus={() => setIsProblemInputFocused(true)}
                                         onBlur={() => setIsProblemInputFocused(false)}
                                         maxLength={500}
                                         placeholder={sessionContext ? t('consult.textareaPlaceholderContinue') : t('consult.textareaPlaceholderFirst')}
-                                        className="w-full h-36 p-5 pr-16 text-[15px] leading-relaxed rounded-3xl border border-primary/10 focus:outline-none focus:ring-4 focus:ring-primary/5 resize-none bg-white dark:bg-surface-dark dark:text-white transition-all shadow-inner"
+                                        className={`consult-problem-textarea w-full h-36 px-5 pt-5 pb-12 pr-16 text-[15px] leading-relaxed rounded-3xl border focus:outline-none focus:ring-4 resize-none bg-white dark:bg-surface-dark dark:text-white transition-all shadow-inner ${
+                                            problemInputError
+                                                ? 'border-red-300 focus:ring-red-100 dark:border-red-500/60 dark:focus:ring-red-500/10'
+                                                : 'border-primary/10 focus:ring-primary/5'
+                                        }`}
                                     />
                                     <VoiceInputButton
                                         value={problemDesc}
-                                        onChange={setProblemDesc}
+                                        onChange={updateProblemDesc}
                                         maxLength={500}
-                                        className="absolute bottom-4 right-4"
+                                        className="consult-problem-voice-button absolute bottom-4 right-4"
                                     />
                                 </div>
-                                <div className="flex items-center justify-between mt-2 px-1">
-                                    <p className={`text-[12px] transition-opacity duration-300 ${
-                                        problemDesc.length > 0 && problemDesc.length < 30
-                                            ? 'text-text-sub dark:text-gray-500 opacity-100'
-                                            : 'opacity-0'
-                                    }`}>
-                                        {t('consult.moreDetailHint')}
+                                {problemInputError && (
+                                    <div className="mt-3 rounded-2xl border border-red-100 bg-red-50/80 px-4 py-3 text-left dark:border-red-500/20 dark:bg-red-500/10">
+                                        <p className="text-[13px] font-bold leading-relaxed text-red-700 dark:text-red-200">
+                                            {problemInputError}
+                                        </p>
+                                        <p className="mt-1 text-[12px] leading-relaxed text-red-600/80 dark:text-red-200/75">
+                                            {t('consult.problemInputExample')}
+                                        </p>
+                                    </div>
+                                )}
+                                <div className="flex items-center justify-between gap-3 mt-2 px-1">
+                                    <p className="min-h-4 flex-1 truncate text-[12px] text-text-sub dark:text-gray-500">
+                                        {shouldShowMoreDetailHint ? t('consult.moreDetailHint') : ''}
                                     </p>
-                                    <span className={`text-[11px] tabular-nums ${
-                                        problemDesc.length >= 500 ? 'text-red-400' : 'text-text-muted dark:text-gray-500'
-                                    }`}>
-                                        {problemDesc.length}/500
-                                    </span>
+                                    <div className="flex shrink-0 items-center gap-3">
+                                        {hasProblemDesc && (
+                                            <button
+                                                type="button"
+                                                onClick={clearProblemDesc}
+                                                className="text-[12px] font-bold text-text-sub transition-colors hover:text-primary dark:text-gray-400"
+                                            >
+                                                {t('consult.clearProblemInput')}
+                                            </button>
+                                        )}
+                                        <span className={`text-[11px] tabular-nums ${
+                                            problemDesc.length >= 500 ? 'text-red-400' : 'text-text-muted dark:text-gray-500'
+                                        }`}>
+                                            {problemDesc.length}/500
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -786,9 +993,9 @@ function ConsultContent() {
                                 </p>
                             )}
                             <button
-                                onClick={hasFullAccess ? handleStartDiagnostic : () => router.push('/pricing')}
-                                disabled={(hasFullAccess && problemDesc.trim().length < 30) || isLoading}
-                                className={`w-full py-5 rounded-2xl text-white font-bold text-lg transition-all flex items-center justify-center gap-2 active:scale-[0.98] ${((hasFullAccess && problemDesc.trim().length < 30) || isLoading)
+                                onClick={hasFullAccess ? handleStartDiagnostic : () => openPricing('consult_gate', 'consult_input_sticky')}
+                                disabled={(hasFullAccess && problemDesc.trim().length < MIN_CONSULT_PROBLEM_LENGTH) || isLoading}
+                                className={`w-full py-5 rounded-2xl text-white font-bold text-lg transition-all flex items-center justify-center gap-2 active:scale-[0.98] ${((hasFullAccess && problemDesc.trim().length < MIN_CONSULT_PROBLEM_LENGTH) || isLoading)
                                     ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                                     : 'bg-primary hover:bg-primary-dark shadow-xl shadow-primary/20'
                                     }`}
@@ -1075,7 +1282,17 @@ function ConsultContent() {
 
                             {/* 다음 행동 유도 */}
                             <div className="space-y-3 mt-2">
-                                {!hasSubscription && (
+                                {isTrialActive && (
+                                    <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4 text-left">
+                                        <p className="text-[13px] font-black text-text-main dark:text-white">
+                                            {t('consult.trialPracticeNudgeTitle')}
+                                        </p>
+                                        <p className="mt-1 text-[12px] leading-relaxed text-text-sub">
+                                            {t('consult.trialPracticeNudgeDesc', { days: trial?.daysRemaining ?? 0 })}
+                                        </p>
+                                    </div>
+                                )}
+                                {!hasSubscription && !isTrialActive && (
                                     <div className="rounded-2xl bg-primary p-5 text-white shadow-card relative overflow-hidden text-left">
                                         <div className="absolute top-0 right-0 w-28 h-28 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
                                         <div className="relative z-10 space-y-4">
@@ -1085,7 +1302,7 @@ function ConsultContent() {
                                                 <p className="text-[13px] leading-relaxed text-white/85 break-keep">{t('consult.resultPremiumDesc')}</p>
                                             </div>
                                             <button
-                                                onClick={() => router.push('/pricing')}
+                                                onClick={() => openPricing('consult_result_continue', 'consult_result')}
                                                 className="w-full h-12 rounded-xl bg-white text-primary text-[14px] font-black active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
                                             >
                                                 <span>{t('consult.resultPremiumCta')}</span>
@@ -1096,28 +1313,44 @@ function ConsultContent() {
                                 )}
                                 <button
                                     onClick={async () => {
-                                        if (user && sessionId && savedConsultId && prescription?.actionItems && selectedActionIndex !== null) {
-                                            const item = prescription.actionItems[selectedActionIndex];
-                                            const fullDescription = item.trigger && item.action
-                                                ? `[IF] ${item.trigger}\n[THEN] ${item.action}\n\n${item.description}`
-                                                : item.description;
-                                            await supabase.from('practice_items').insert({
-                                                session_id: sessionId,
-                                                consultation_id: savedConsultId,
-                                                title: item.title,
-                                                description: fullDescription,
-                                                duration: item.duration,
-                                                encouragement: item.encouragement || null,
-                                            });
-                                            if (replacePracticeIdParam) {
-                                                await supabase
-                                                    .from('practice_items')
-                                                    .update({ status: 'DROPPED' })
-                                                    .eq('id', replacePracticeIdParam)
-                                                    .eq('session_id', sessionId);
+                                        try {
+                                            if (user && sessionId && savedConsultId && prescription?.actionItems && selectedActionIndex !== null) {
+                                                const item = prescription.actionItems[selectedActionIndex];
+                                                const fullDescription = item.trigger && item.action
+                                                    ? `[IF] ${item.trigger}\n[THEN] ${item.action}\n\n${item.description}`
+                                                    : item.description;
+                                                const { data: savedPractice, error: saveError } = await supabase.from('practice_items').insert({
+                                                    session_id: sessionId,
+                                                    consultation_id: savedConsultId,
+                                                    title: item.title,
+                                                    description: fullDescription,
+                                                    duration: item.duration,
+                                                    encouragement: item.encouragement || null,
+                                                }).select('id').single();
+                                                if (saveError) throw saveError;
+                                                trackEvent('practice_item_saved', {
+                                                    source: 'consult_result',
+                                                    has_subscription: hasSubscription,
+                                                    is_trial: isTrialActive,
+                                                    is_followup: !!sessionIdParam,
+                                                    action_index: selectedActionIndex,
+                                                    duration: item.duration,
+                                                    replaced_practice: !!replacePracticeIdParam,
+                                                    saved: !!savedPractice?.id,
+                                                });
+                                                if (replacePracticeIdParam) {
+                                                    await supabase
+                                                        .from('practice_items')
+                                                        .update({ status: 'DROPPED' })
+                                                        .eq('id', replacePracticeIdParam)
+                                                        .eq('session_id', sessionId);
+                                                }
                                             }
+                                            router.push('/practices');
+                                        } catch (error) {
+                                            console.error('Failed to save practice item:', error);
+                                            alert(t('consult.practiceSaveError'));
                                         }
-                                        router.push('/practices');
                                     }}
                                     disabled={selectedActionIndex === null}
                                     className={`w-full py-4 rounded-2xl font-bold text-[15px] transition-all active:scale-[0.98] ${selectedActionIndex !== null ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}

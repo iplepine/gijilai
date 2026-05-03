@@ -130,7 +130,7 @@ class GijilaiApp extends StatelessWidget {
       builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
         value: overlayStyle,
         child: ColoredBox(
-          color: Colors.white,
+          color: const Color(0xFFF9F8F6),
           child: child ?? const SizedBox.shrink(),
         ),
       ),
@@ -143,7 +143,10 @@ class GijilaiApp extends StatelessWidget {
 class MainWebView extends StatefulWidget {
   const MainWebView({super.key});
 
-  static const targetUrl = 'https://gijilai.com/';
+  static const targetUrl = String.fromEnvironment(
+    'GIJILAI_WEB_URL',
+    defaultValue: 'https://gijilai.com/',
+  );
 
   @override
   State<MainWebView> createState() => _MainWebViewState();
@@ -153,7 +156,6 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   static const _permissionsChannel = MethodChannel(
     'com.devho.gijilai/permissions',
   );
-  static const _supabaseUrl = 'https://gqpedxovfesbusjpjryl.supabase.co';
   static const _iosSubscriptionProductId = 'gijilai_premium_monthly';
   static const _androidSubscriptionProductId = 'monthly_premium';
   static const _practiceReminderNotificationId = 1001;
@@ -177,6 +179,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   bool _isNativeDialogVisible = false;
   bool _authInProgress = false;
   bool _externalAuthInProgress = false;
+  bool _hasRenderedFirstPage = false;
 
   String get _subscriptionProductId => Platform.isIOS
       ? _iosSubscriptionProductId
@@ -561,9 +564,11 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         uri.path == '/login' &&
         _nativeCapabilities.supportsScreen('login');
 
-    if (shouldShowLogin != _showNativeLogin && mounted) {
+    if (mounted &&
+        (shouldShowLogin != _showNativeLogin || !_hasRenderedFirstPage)) {
       setState(() {
         _showNativeLogin = shouldShowLogin;
+        _hasRenderedFirstPage = true;
       });
     }
   }
@@ -698,10 +703,11 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
     _pendingAuthCallbackUri = null;
     _externalAuthInProgress = false;
-    final webCallback = Uri.https(
-      'gijilai.com',
-      '/auth/callback',
-      uri.queryParameters,
+    final targetUri = Uri.parse(MainWebView.targetUrl);
+    final webCallback = targetUri.replace(
+      path: '/auth/callback',
+      queryParameters: uri.queryParameters,
+      fragment: null,
     );
     await controller.loadRequest(webCallback);
     if (mounted) {
@@ -741,10 +747,13 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
   Future<bool> _launchExternalUrl(Uri uri) async {
     try {
-      final launched = await launchUrl(
-        uri,
-        mode: LaunchMode.externalApplication,
-      );
+      final browserMode = uri.scheme == 'http' || uri.scheme == 'https'
+          ? LaunchMode.inAppBrowserView
+          : LaunchMode.externalApplication;
+      var launched = await launchUrl(uri, mode: browserMode);
+      if (!launched && browserMode != LaunchMode.externalApplication) {
+        launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
       if (!launched) {
         throw Exception('Unable to launch external URL: $uri');
       }
@@ -768,66 +777,45 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       _authInProgress = true;
     });
 
-    if (await _startOAuthThroughWebAuth(provider)) {
+    if (await _startOAuthThroughWebAuth(provider, attempts: 8)) {
       _externalAuthInProgress = true;
       return;
     }
 
-    _externalAuthInProgress = true;
-
-    try {
-      final authorizeUri = Uri.parse('$_supabaseUrl/auth/v1/authorize').replace(
-        queryParameters: {
-          'provider': provider,
-          'redirect_to': 'gijilai://auth/callback',
-          if (provider == 'apple') 'scopes': 'name email',
-          if (provider == 'kakao') 'scopes': 'profile_nickname',
-        },
-      );
-
-      final launched = await _launchExternalUrl(authorizeUri);
-      if (!launched) {
-        await _finishCancelledAuthHandoff(showMessage: true);
-      }
-    } catch (e) {
-      debugPrint('Native OAuth start error: $e');
-      _externalAuthInProgress = false;
-      if (mounted) {
-        setState(() {
-          _authInProgress = false;
-        });
-      }
-      _showSnackBar('로그인을 시작할 수 없습니다', isError: true);
-      unawaited(
-        FirebaseCrashlytics.instance.recordError(
-          e,
-          StackTrace.current,
-          reason: 'Native OAuth start error',
-        ),
-      );
-    }
+    debugPrint('Web OAuth handoff hook was not ready.');
+    await _finishCancelledAuthHandoff(showMessage: true);
   }
 
-  Future<bool> _startOAuthThroughWebAuth(String provider) async {
+  Future<bool> _startOAuthThroughWebAuth(
+    String provider, {
+    int attempts = 1,
+  }) async {
     final controller = _controller;
     if (controller == null) return false;
 
-    try {
-      final raw = await controller.runJavaScriptReturningResult('''
-        (() => {
-          if (window.__startNativeOAuthProvider) {
-            window.__startNativeOAuthProvider('${_escapeForJs(provider)}');
-            return 'started';
-          }
-          return '';
-        })();
-      ''');
-      final result = raw.toString().replaceAll('"', '');
-      return result == 'started';
-    } catch (e) {
-      debugPrint('Web OAuth handoff unavailable: $e');
-      return false;
+    for (var attempt = 0; attempt < attempts; attempt += 1) {
+      try {
+        final raw = await controller.runJavaScriptReturningResult('''
+          (() => {
+            if (window.__startNativeOAuthProvider) {
+              window.__startNativeOAuthProvider('${_escapeForJs(provider)}');
+              return 'started';
+            }
+            return '';
+          })();
+        ''');
+        final result = raw.toString().replaceAll('"', '');
+        if (result == 'started') return true;
+      } catch (e) {
+        debugPrint('Web OAuth handoff unavailable: $e');
+      }
+
+      if (attempt < attempts - 1) {
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+      }
     }
+
+    return false;
   }
 
   Future<void> _startKakaoNativeLogin() async {
@@ -1081,7 +1069,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   }
 
   Future<void> _resetAuthLoadingAfterCancelledHandoff() async {
-    await Future<void>.delayed(const Duration(milliseconds: 700));
+    await Future<void>.delayed(const Duration(seconds: 2));
     if (!_externalAuthInProgress || _pendingAuthCallbackUri != null) return;
 
     await _finishCancelledAuthHandoff();
@@ -1836,8 +1824,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         : MediaQuery.viewPaddingOf(context).top;
     if (controller == null) {
       return const Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(child: CircularProgressIndicator()),
+        backgroundColor: Color(0xFFF9F8F6),
+        body: _AppSplashScreen(),
       );
     }
 
@@ -1848,7 +1836,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         await _handleBackPressed(controller);
       },
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFF9F8F6),
         body: Stack(
           children: [
             Positioned(
@@ -1876,7 +1864,115 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
                   });
                 },
               ),
+            Positioned.fill(
+              child: IgnorePointer(
+                ignoring: _hasRenderedFirstPage,
+                child: AnimatedOpacity(
+                  opacity: _hasRenderedFirstPage ? 0 : 1,
+                  duration: const Duration(milliseconds: 320),
+                  curve: Curves.easeOutCubic,
+                  child: const _AppSplashScreen(),
+                ),
+              ),
+            ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AppSplashScreen extends StatelessWidget {
+  const _AppSplashScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(color: Color(0xFFF9F8F6)),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            children: [
+              const Spacer(flex: 3),
+              Container(
+                width: 112,
+                height: 112,
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(32),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF2F4F3E).withValues(alpha: 0.14),
+                      blurRadius: 34,
+                      offset: const Offset(0, 18),
+                    ),
+                  ],
+                ),
+                child: Image.asset(
+                  'assets/gijilai_icon.png',
+                  fit: BoxFit.cover,
+                ),
+              ),
+              const SizedBox(height: 26),
+              const Text(
+                '기질아이',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Color(0xFF2F4F3E),
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                '아이를 이해하는 따뜻한 시작',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Color(0xFF6E7A75),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0,
+                ),
+              ),
+              const SizedBox(height: 42),
+              SizedBox(
+                width: 132,
+                height: 4,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2F4F3E).withValues(alpha: 0.10),
+                    ),
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.18, end: 0.82),
+                      duration: const Duration(milliseconds: 1200),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, value, child) {
+                        return Align(
+                          alignment: Alignment.centerLeft,
+                          child: FractionallySizedBox(
+                            widthFactor: value,
+                            heightFactor: 1,
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE5A150),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const Spacer(flex: 4),
+            ],
+          ),
         ),
       ),
     );

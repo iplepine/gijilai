@@ -38,6 +38,7 @@ import {
   readPracticeReminderPreferences,
   type PracticeReminderPreferences,
 } from "@/lib/practiceReminder";
+import { trackEvent } from "@/lib/analytics";
 
 interface PracticeWithSession extends PracticeItemData {
   consultation_sessions: SessionData;
@@ -419,6 +420,11 @@ export default function PracticesPage() {
         parentImpressionType,
       } = payload;
       const existingLog = checkModal.existingLog;
+      const previousLogCount = allLogs.filter(
+        (log) =>
+          log.practice_id === checkModal.practice.id &&
+          (!existingLog || log.id !== existingLog.id),
+      ).length;
       const feedbackInputsChanged = !!existingLog
         && checkModal.enableChildReactionFeedback
         && (
@@ -459,6 +465,14 @@ export default function PracticesPage() {
             }
           : {}),
       });
+      trackEvent("practice_log_saved", {
+        done,
+        first_log: previousLogCount === 0,
+        has_full_access: hasFullAccess,
+        with_reaction_feedback: !!checkModal.enableChildReactionFeedback,
+        parent_impression_type: parentImpressionType ?? undefined,
+        child_reaction_type: childReactionType ?? undefined,
+      });
 
       let aiFeedback: PracticeAiFeedback | null = null;
       if (checkModal.enableChildReactionFeedback && childReactionType) {
@@ -481,11 +495,19 @@ export default function PracticesPage() {
           console.error("Failed to generate practice feedback:", error);
         }
       }
+      if (aiFeedback) {
+        trackEvent("practice_feedback_viewed", {
+          first_log: previousLogCount === 0,
+          has_full_access: hasFullAccess,
+          child_reaction_type: childReactionType,
+          parent_impression_type: parentImpressionType ?? undefined,
+        });
+      }
 
       await fetchData();
       return { aiFeedback };
     },
-    [checkModal, fetchData, today, user],
+    [allLogs, checkModal, fetchData, hasFullAccess, today, user],
   );
 
   const handleReviewSave = useCallback(
@@ -499,9 +521,14 @@ export default function PracticesPage() {
       await db.updatePracticeItem(reviewModal.practice.id, {
         status: "COMPLETED",
       });
+      trackEvent("practice_review_saved", {
+        done_days: reviewModal.doneDays,
+        review_mode: reviewModal.reviewMode ?? "complete",
+        has_full_access: hasFullAccess,
+      });
       await fetchData();
     },
-    [fetchData, reviewModal, user],
+    [fetchData, hasFullAccess, reviewModal, user],
   );
 
   const handleReviewResolveSession = useCallback(async () => {
@@ -657,6 +684,10 @@ export default function PracticesPage() {
   ) => {
     const todayLog = getTodayLog(practice.id);
     const featured = options?.featured;
+    const hasPreviousLogs = allLogs.some(
+      (log) => log.practice_id === practice.id && (!todayLog || log.id !== todayLog.id),
+    );
+    const enableReactionFeedback = !!featured && hasPreviousLogs;
     const actionClassName = featured
       ? "w-full py-3 rounded-xl font-bold text-[13px] flex items-center justify-center gap-1.5 transition-all active:scale-[0.98]"
       : "w-full py-3 rounded-xl font-bold text-[13px] flex items-center justify-center gap-1.5 transition-all active:scale-[0.98]";
@@ -722,7 +753,7 @@ export default function PracticesPage() {
                 existingLog: todayLog,
                 recentFailCount: getRecentFailCount(practice.id),
                 sessionId: practice.session_id,
-                enableChildReactionFeedback: featured,
+                enableChildReactionFeedback: enableReactionFeedback,
               })
             }
             className={`${actionClassName} bg-primary text-white shadow-sm shadow-primary/20`}
@@ -757,7 +788,7 @@ export default function PracticesPage() {
             existingLog: todayLog,
             recentFailCount: getRecentFailCount(practice.id),
             sessionId: practice.session_id,
-            enableChildReactionFeedback: featured,
+            enableChildReactionFeedback: enableReactionFeedback,
           })
         }
         className={`${actionClassName} ${
