@@ -18,10 +18,14 @@ export function isAppWebView(userAgent?: string) {
     PaymentBridge?: unknown;
     __nativeCapabilities?: unknown;
   };
+  const nativePlatform = document.documentElement.dataset.nativePlatform;
+
   return (
     readUserAgent(userAgent).includes('gijilai_app') ||
     typeof appWindow.PaymentBridge !== 'undefined' ||
-    typeof appWindow.__nativeCapabilities !== 'undefined'
+    typeof appWindow.__nativeCapabilities !== 'undefined' ||
+    nativePlatform === 'ios' ||
+    nativePlatform === 'android'
   );
 }
 

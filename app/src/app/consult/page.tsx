@@ -233,7 +233,23 @@ function ConsultContent() {
     const [parentProfile, setParentProfile] = useState<TemperamentProfile | null>(null);
 
     useEffect(() => {
-        setShowInstallPrompt(!isAppWebView());
+        if (isAppWebView()) {
+            setShowInstallPrompt(false);
+            return;
+        }
+
+        // Native WebView context can be injected after the React page mounts.
+        const revealTimer = window.setTimeout(() => {
+            setShowInstallPrompt(!isAppWebView());
+        }, 1000);
+        const verifyTimer = window.setTimeout(() => {
+            if (isAppWebView()) setShowInstallPrompt(false);
+        }, 2500);
+
+        return () => {
+            window.clearTimeout(revealTimer);
+            window.clearTimeout(verifyTimer);
+        };
     }, []);
 
     const scrollProblemInputIntoView = useCallback(() => {

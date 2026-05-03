@@ -38,6 +38,9 @@ Thumbs.db
 # Testing
 coverage/
 
+# Local agent artifacts
+.codex-artifacts/
+
 # Misc
 *.log
 *.tsbuildinfo
