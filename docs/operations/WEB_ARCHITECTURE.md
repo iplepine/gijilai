@@ -275,5 +275,5 @@ Next.js 웹 앱(`app/`)의 모듈 구조, 책임 분리, 의존 방향, 상태 �
 
 - 시스템 전체 구조: [ARCHITECTURE.md](ARCHITECTURE.md)
 - 코드 규칙: [CONVENTIONS.md](CONVENTIONS.md)
-- 비즈니스 정책: [policies/index.md](policies/index.md)
-- 결정 이력: [ADR.md](ADR.md)
+- 비즈니스 정책: [policies/index.md](../product/policies/index.md)
+- 결정 이력: [ADR.md](../decisions/ADR.md)

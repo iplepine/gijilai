@@ -6,7 +6,7 @@ Date: 2026-05-01
 ## 1. 목적
 
 이 문서는 `/report`를 본 사용자가 실제로 다음 행동으로 넘어가는지 측정하고, 그 결과를 바탕으로 개선 실험을 반복하는 운영 사이클을 정의한다.
-대상은 Firebase Analytics / GA4 웹 이벤트이며, 구현 이벤트 정의는 [docs/policies/analytics.md](../policies/analytics.md)를 따른다.
+대상은 Firebase Analytics / GA4 웹 이벤트이며, 구현 이벤트 정의는 [docs/product/policies/analytics.md](../product/policies/analytics.md)를 따른다.
 
 ## 2. 확인할 질문
 

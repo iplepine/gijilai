@@ -15,7 +15,7 @@
 - [x] 홈 카드: 진행 중인 실천 넛지
 - [x] 실천 탭 다음 상담용 기록 요약 패널
 - [x] 실천 리마인더 설정 + Flutter 앱 로컬 알림 예약
-- [x] DB 스키마: `practice_items`, `practice_logs`, `practice_reviews` 테이블 설계 (`docs/migrations/006_consultation_sessions_practices.sql`)
+- [x] DB 스키마: `practice_items`, `practice_logs`, `practice_reviews` 테이블 설계 (`docs/operations/migrations/006_consultation_sessions_practices.sql`)
 
 ### 열린 질문
 
@@ -27,10 +27,10 @@
 
 ### 체크 항목
 
-- [ ] `docs/policies/payment.md`의 가격, 티어, 환불, 구독 라이프사이클 정책 업데이트
+- [ ] `docs/product/policies/payment.md`의 가격, 티어, 환불, 구독 라이프사이클 정책 업데이트
 - [ ] `docs/STORE_LISTING.md`의 Google Play / App Store 소개 문구 업데이트
 - [ ] `gijilai_app/fastlane/Fastfile`의 메타데이터 생성 템플릿 업데이트
 - [ ] `gijilai_app/fastlane/metadata/android/*/full_description.txt` 업데이트
 - [ ] `gijilai_app/fastlane/metadata/ios/*/description.txt` 업데이트
 - [ ] 앱 내 `/pricing`, `/settings/subscription`, 환불/해지 안내 문구와 스토어 문구가 서로 충돌하지 않는지 확인
-- [ ] `docs/plan/revenue-trust-conversion-design.md`의 상품 구조와 실험 조건 업데이트
+- [ ] `docs/go-to-market/REVENUE_TRUST_CONVERSION_DESIGN.md`의 상품 구조와 실험 조건 업데이트

@@ -40,7 +40,7 @@ Date: 2026-03-25
 - `app/src/lib/subscription.ts` — 구독 상태 조회, 기능 접근 권한 판단 로직
 - `app/src/app/pricing/page.tsx` — 요금제 선택 페이지 (건별/월구독/연구독)
 - `app/src/app/settings/subscription/page.tsx` — 구독 관리 페이지 (현재 플랜, 해지, 결제 이력)
-- `docs/migrations/007_subscriptions_payments.sql` — subscriptions, payments 테이블
+- `docs/operations/migrations/007_subscriptions_payments.sql` — subscriptions, payments 테이블
 
 ### 3.2 수정 컴포넌트
 
@@ -56,7 +56,7 @@ Date: 2026-03-25
 - `app/src/app/layout.tsx` — 포트원 V2 SDK 스크립트 주입 (`https://cdn.portone.io/v2/browser-sdk.js`)
 - `app/src/components/layout/BottomNav.tsx` — 구독 배지 표시 (선택적)
 - `app/package.json` — `@portone/server-sdk` 추가, `stripe`, `@stripe/stripe-js`, `@stripe/react-stripe-js` 제거
-- `docs/policies/payment.md` — 새 결제 정책 반영
+- `docs/product/policies/payment.md` — 새 결제 정책 반영
 
 ### 3.3 변경 없음 (명시적 보존)
 

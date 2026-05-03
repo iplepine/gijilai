@@ -9,7 +9,7 @@ Date: 2026-03-25
 
 ## Current State
 
-### 기존 정책 (docs/policies/)
+### 기존 정책 (docs/product/policies/)
 - **결제**: 포트원 V2 (NHN KCP + 토스페이 + 네이버페이). 구독제 전용 (건별 결제 폐지)
 - **무료/유료**: 리포트는 전체 동일. 구독은 전부 무제한
 - **쿨다운**: 무료 7일, 유료 24시간
@@ -70,7 +70,7 @@ Date: 2026-03-25
 - 구독 관리 페이지 (`/settings/subscription`)
 - 웹훅 기반 결제 검증
 - DB 스키마 (subscriptions, payments)
-- **상세 스펙**: `docs/spec/payment-portone-v2.md` (작성 완료)
+- **상세 스펙**: `docs/operations/spec/payment-portone-v2.md` (작성 완료)
 
 ### Phase 2: i18n + 글로벌 결제
 - locale 감지 (브라우저 언어 → cookie 저장)

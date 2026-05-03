@@ -13,18 +13,18 @@
 
 | 서비스 | 역할 | 주요 사용 영역 | 관리자 문서 |
 |--------|------|----------------|-------------|
-| Vercel | 웹 호스팅 / 배포 / 환경변수 | Next.js 웹 앱 배포 | [ADMIN-LINKS.md](ADMIN-LINKS.md) |
-| Supabase | DB / Auth / Storage | 사용자 데이터, 세션, 파일 저장 | [ADMIN-LINKS.md](ADMIN-LINKS.md) |
-| Firebase | 웹 분석 / 모바일 분석 / FCM / Crashlytics | 웹 퍼널 추적, 앱 푸시, 앱 크래시 | [ADMIN-LINKS.md](ADMIN-LINKS.md) |
-| OpenAI | AI 리포트 / AI 상담 생성 | 리포트, 상담 질문, 처방전 | [ADMIN-LINKS.md](ADMIN-LINKS.md) |
-| PortOne | 결제 오케스트레이션 | 웹 구독 결제, 웹훅 | [ADMIN-LINKS.md](ADMIN-LINKS.md) |
-| Stripe | 해외 결제 PG | 해외 구독 결제 | [ADMIN-LINKS.md](ADMIN-LINKS.md) |
-| NHN KCP | 국내 카드 PG | 한국 카드 결제 | [ADMIN-LINKS.md](ADMIN-LINKS.md) |
-| KG 이니시스 | 국내 카드 PG | 한국 카드 결제 | [ADMIN-LINKS.md](ADMIN-LINKS.md) |
-| Kakao Developers | 카카오 로그인 / 공유 | 소셜 로그인, 공유 SDK | [ADMIN-LINKS.md](ADMIN-LINKS.md) |
-| Google Cloud Console | Google OAuth | 구글 로그인 | [ADMIN-LINKS.md](ADMIN-LINKS.md) |
-| Apple Developer | Sign in with Apple / App IDs | Apple 로그인, App Store 로그인 요구사항 | [ADMIN-LINKS.md](ADMIN-LINKS.md) |
-| GitHub | 소스 저장소 / 협업 | 코드 저장, 배포 연계 | [ADMIN-LINKS.md](ADMIN-LINKS.md) |
+| Vercel | 웹 호스팅 / 배포 / 환경변수 | Next.js 웹 앱 배포 | [ADMIN_LINKS.md](ADMIN_LINKS.md) |
+| Supabase | DB / Auth / Storage | 사용자 데이터, 세션, 파일 저장 | [ADMIN_LINKS.md](ADMIN_LINKS.md) |
+| Firebase | 웹 분석 / 모바일 분석 / FCM / Crashlytics | 웹 퍼널 추적, 앱 푸시, 앱 크래시 | [ADMIN_LINKS.md](ADMIN_LINKS.md) |
+| OpenAI | AI 리포트 / AI 상담 생성 | 리포트, 상담 질문, 처방전 | [ADMIN_LINKS.md](ADMIN_LINKS.md) |
+| PortOne | 결제 오케스트레이션 | 웹 구독 결제, 웹훅 | [ADMIN_LINKS.md](ADMIN_LINKS.md) |
+| Stripe | 해외 결제 PG | 해외 구독 결제 | [ADMIN_LINKS.md](ADMIN_LINKS.md) |
+| NHN KCP | 국내 카드 PG | 한국 카드 결제 | [ADMIN_LINKS.md](ADMIN_LINKS.md) |
+| KG 이니시스 | 국내 카드 PG | 한국 카드 결제 | [ADMIN_LINKS.md](ADMIN_LINKS.md) |
+| Kakao Developers | 카카오 로그인 / 공유 | 소셜 로그인, 공유 SDK | [ADMIN_LINKS.md](ADMIN_LINKS.md) |
+| Google Cloud Console | Google OAuth | 구글 로그인 | [ADMIN_LINKS.md](ADMIN_LINKS.md) |
+| Apple Developer | Sign in with Apple / App IDs | Apple 로그인, App Store 로그인 요구사항 | [ADMIN_LINKS.md](ADMIN_LINKS.md) |
+| GitHub | 소스 저장소 / 협업 | 코드 저장, 배포 연계 | [ADMIN_LINKS.md](ADMIN_LINKS.md) |
 
 ## 서비스별 상세
 
@@ -45,11 +45,11 @@
 - `app/src/lib/supabaseServer.ts`
 - `app/src/lib/db.ts`
 - `app/src/types/supabase.ts`
-- `docs/migrations/`
+- `docs/operations/migrations/`
 - **데이터 영역**
 - 사용자 프로필, 자녀, 설문, 리포트, 상담, 실천, 구독/결제
 - **운영 포인트**
-- RLS/테이블 변경 시 `docs/migrations/`와 타입 정의 동기화 필요
+- RLS/테이블 변경 시 `docs/operations/migrations/`와 타입 정의 동기화 필요
 - Auth 세션 문제는 OAuth provider 설정과 리다이렉트 URL을 함께 점검
 - 이메일/비밀번호 회원가입은 즉시 가입 정책으로 운영한다. Supabase Auth의 email confirmation은 비활성화해야 한다.
 - 비밀번호 재설정처럼 실제 메일 발송이 필요한 기능을 켤 때는 Supabase Auth의 Custom SMTP를 설정해야 내장 메일러의 낮은 rate limit을 피할 수 있음.
@@ -69,7 +69,7 @@
 - **운영 포인트**
 - 웹은 `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID`가 필요
 - 모바일 iOS는 dSYM 업로드 스크립트가 있어야 Crashlytics 심볼이 정상 해석됨
-- 이벤트 스키마 변경 시 [docs/policies/analytics.md](policies/analytics.md)도 같이 갱신
+- 이벤트 스키마 변경 시 [docs/product/policies/analytics.md](../product/policies/analytics.md)도 같이 갱신
 
 ### OpenAI
 
@@ -91,8 +91,8 @@
 - `app/src/lib/portone.ts`
 - `app/src/lib/subscription.ts`
 - `app/src/app/api/payment/`
-- `docs/spec/payment-portone-v2.md`
-- `docs/policies/payment.md`
+- `docs/operations/spec/payment-portone-v2.md`
+- `docs/product/policies/payment.md`
 - **운영 포인트**
 - 결제 이슈는 PortOne 로그와 서버 `payments`/`subscriptions` 상태를 같이 봐야 함
 - PG사별 이슈가 있을 수 있어 PortOne 문제와 실제 PG 문제를 분리해서 확인
@@ -211,7 +211,7 @@
 ## 관련 문서
 
 - [ARCHITECTURE.md](ARCHITECTURE.md)
-- [ADMIN-LINKS.md](ADMIN-LINKS.md)
-- [policies/analytics.md](policies/analytics.md)
-- [policies/payment.md](policies/payment.md)
+- [ADMIN_LINKS.md](ADMIN_LINKS.md)
+- [policies/analytics.md](../product/policies/analytics.md)
+- [policies/payment.md](../product/policies/payment.md)
 - [spec/payment-portone-v2.md](spec/payment-portone-v2.md)
