@@ -5,6 +5,7 @@ import { FirebaseAnalytics } from "@/components/analytics/FirebaseAnalytics";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { ReferralHandler } from "@/components/layout/ReferralHandler";
 import { SurveyRestoreProvider } from "@/components/layout/SurveyRestoreProvider";
+import { TapFeedback } from "@/components/layout/TapFeedback";
 import { LocaleProvider } from "@/i18n/LocaleProvider";
 import "./globals.css";
 
@@ -107,6 +108,7 @@ export default function RootLayout({
               <FirebaseAnalytics />
               <ReferralHandler />
               <SurveyRestoreProvider />
+              <TapFeedback />
               {children}
             </div>
           </LocaleProvider>

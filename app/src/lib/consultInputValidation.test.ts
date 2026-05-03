@@ -86,7 +86,15 @@ describe('validateConsultProblemInput', () => {
 
   describe('threshold behavior', () => {
     test('exports the current minimum length used by the consult CTA', () => {
-      expect(MIN_CONSULT_PROBLEM_LENGTH).toBe(30);
+      expect(MIN_CONSULT_PROBLEM_LENGTH).toBe(20);
+    });
+
+    test('accepts consultation concern at the 20 character minimum', () => {
+      expect(validateConsultProblemInput('아이가등원할때마다많이울고계속또떼를써요')).toEqual({ ok: true });
+    });
+
+    test('rejects consultation concern below the 20 character minimum', () => {
+      expectInvalid('아이가등원할때마다많이울고계속떼를써요', 'too_short');
     });
 
     test('does not let numbers alone satisfy the meaningful text requirement', () => {

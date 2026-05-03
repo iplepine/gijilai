@@ -27,6 +27,18 @@
 - 정책 변경은 `docs/product/policies/`와 함께 갱신한다.
 - 배포 요청은 `PROJECT_WORKFLOW.md`의 `배포 명령 처리` 규칙을 따른다.
 
+## Android 에뮬레이터 로컬 QA
+
+macOS/Apple Silicon 환경에서 Android Emulator GUI 경로가 `adb: device offline`
+상태로 내려가는 경우가 있어, Flutter WebView 로컬 QA는 안정화 스크립트를 우선 사용한다.
+
+1. 웹 앱 서버 실행: `cd app && npm run dev -- --port 3000`
+2. Android 앱 로컬 실행: `cd gijilai_app && ./scripts/run_android_local.sh`
+
+에뮬레이터만 필요하면 `cd gijilai_app && ./scripts/start_stable_android_emulator.sh`를 사용한다.
+이 스크립트는 `small_phone`을 `-no-window -no-audio -no-snapshot -gpu swiftshader -port 5554`로 실행하고,
+기기 로케일을 기본 `ko-KR`로 맞춘다.
+
 ## 검증 기록
 
 작업 후 최종 보고에 아래를 남긴다.

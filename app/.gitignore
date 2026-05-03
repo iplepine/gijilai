@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+/evals/**/runs/
+/evals/**/cases.local.json
 
 # next.js
 /.next/

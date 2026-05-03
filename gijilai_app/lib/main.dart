@@ -16,7 +16,6 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
-import 'package:in_app_purchase_storekit/in_app_purchase_storekit.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:share_plus/share_plus.dart';
@@ -69,10 +68,6 @@ Future<void> main() async {
   await runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
-      if (Platform.isIOS && !kReleaseMode) {
-        await InAppPurchaseStoreKitPlatform.enableStoreKit1();
-        InAppPurchaseStoreKitPlatform.registerPlatform();
-      }
       await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
       KakaoSdk.init(nativeAppKey: '8d63a45bb147379940cda43c72e841d6');
       await Firebase.initializeApp(
@@ -180,6 +175,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   bool _authInProgress = false;
   bool _externalAuthInProgress = false;
   bool _hasRenderedFirstPage = false;
+  bool _isWebPageLoading = false;
+  int _webPageLoadProgress = 0;
 
   String get _subscriptionProductId => Platform.isIOS
       ? _iosSubscriptionProductId
@@ -296,9 +293,17 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       ..setNavigationDelegate(
         NavigationDelegate(
           onNavigationRequest: _handleNavigationRequest,
+          onPageStarted: _handlePageStarted,
+          onProgress: _handleLoadProgress,
           onPageFinished: _handlePageFinished,
           onWebResourceError: (WebResourceError error) {
             debugPrint('WebView error: ${error.description}');
+            if (mounted) {
+              setState(() {
+                _isWebPageLoading = false;
+                _webPageLoadProgress = 0;
+              });
+            }
             unawaited(
               FirebaseCrashlytics.instance.recordError(
                 Exception('WebView error: ${error.description}'),
@@ -554,6 +559,24 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     return NavigationDecision.navigate;
   }
 
+  void _handlePageStarted(String url) {
+    if (!mounted) return;
+
+    setState(() {
+      _isWebPageLoading = true;
+      _webPageLoadProgress = 0;
+    });
+  }
+
+  void _handleLoadProgress(int progress) {
+    if (!mounted) return;
+
+    setState(() {
+      _isWebPageLoading = progress < 100;
+      _webPageLoadProgress = progress.clamp(0, 100);
+    });
+  }
+
   void _handlePageFinished(String url) {
     unawaited(_syncWebAppContext());
 
@@ -564,9 +587,10 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         uri.path == '/login' &&
         _nativeCapabilities.supportsScreen('login');
 
-    if (mounted &&
-        (shouldShowLogin != _showNativeLogin || !_hasRenderedFirstPage)) {
+    if (mounted) {
       setState(() {
+        _isWebPageLoading = false;
+        _webPageLoadProgress = 100;
         _showNativeLogin = shouldShowLogin;
         _hasRenderedFirstPage = true;
       });
@@ -1864,6 +1888,15 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
                   });
                 },
               ),
+            Positioned(
+              top: topInset,
+              left: 0,
+              right: 0,
+              child: _WebLoadProgressBar(
+                visible: _hasRenderedFirstPage && _isWebPageLoading,
+                progress: _webPageLoadProgress,
+              ),
+            ),
             Positioned.fill(
               child: IgnorePointer(
                 ignoring: _hasRenderedFirstPage,
@@ -1876,6 +1909,37 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WebLoadProgressBar extends StatelessWidget {
+  const _WebLoadProgressBar({required this.visible, required this.progress});
+
+  final bool visible;
+  final int progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final normalizedProgress = progress <= 0
+        ? 0.08
+        : (progress.clamp(8, 100) / 100).toDouble();
+
+    return IgnorePointer(
+      child: AnimatedOpacity(
+        opacity: visible ? 1 : 0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOutCubic,
+        child: SizedBox(
+          height: 3,
+          child: LinearProgressIndicator(
+            value: normalizedProgress,
+            minHeight: 3,
+            backgroundColor: const Color(0xFFE8E4D9),
+            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF2F4F3E)),
+          ),
         ),
       ),
     );

@@ -15,7 +15,9 @@
 1. `goals/active/`에서 지금 왜 이 일을 하는지 확인한다.
 2. `roadmaps/active/`에서 이번 사이클의 순서를 확인한다.
 3. `tasks/active/`에서 지금 실제로 끝낼 작업을 확인한다.
-4. 완료된 작업은 `tasks/done/`으로 옮기고 roadmap 진행률을 갱신한다.
+4. 상담 결과 품질을 튜닝할 때는 `prompt-tuning/consultation-result-tuning.md`를 확인한다.
+5. 상담/문진해설 프롬프트 변경 전후를 비교할 때는 `prompt-tuning/consultation-before-after.md`를 확인한다.
+6. 완료된 작업은 `tasks/done/`으로 옮기고 roadmap 진행률을 갱신한다.
 
 ## 운영 규칙
 

@@ -1,4 +1,4 @@
-export const MIN_CONSULT_PROBLEM_LENGTH = 30;
+export const MIN_CONSULT_PROBLEM_LENGTH = 20;
 
 export type ConsultInputValidationCode = 'empty' | 'too_short' | 'gibberish';
 

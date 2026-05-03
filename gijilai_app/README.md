@@ -1,16 +1,53 @@
 # gijilai_app
 
-A new Flutter project.
+Flutter WebView shell for Gijilai.
 
-## Getting Started
+## Local Android QA
 
-This project is a starting point for a Flutter application.
+The app's default WebView URL is `https://gijilai.com/`. To install the Android
+debug app with that default URL, start an emulator and run:
 
-A few resources to get you started if this is your first Flutter project:
+```bash
+./scripts/install_android_default.sh
+```
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+This intentionally does not pass `GIJILAI_WEB_URL`, so
+`lib/main.dart` falls back to the app default.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+For local web QA, pass the host dev server URL through the Android emulator's
+host alias.
+
+From the web app directory, start the local Next.js server:
+
+```bash
+cd ../app
+npm run dev -- --port 3000
+```
+
+Then run the Android app against that local server:
+
+```bash
+./scripts/run_android_local.sh
+```
+
+The script starts `small_phone` as:
+
+```bash
+emulator @small_phone -no-window -no-audio -no-snapshot -gpu swiftshader -port 5554
+```
+
+It also passes `GIJILAI_WEB_URL=http://10.0.2.2:3000/` to Flutter so the
+Android WebView loads the host machine's local web app.
+
+To only start the emulator:
+
+```bash
+./scripts/start_stable_android_emulator.sh
+```
+
+Useful overrides:
+
+```bash
+AVD_NAME=small_phone ANDROID_DEVICE_LOCALE=ko-KR ./scripts/start_stable_android_emulator.sh
+GIJILAI_WEB_PORT=3001 ./scripts/run_android_local.sh
+```

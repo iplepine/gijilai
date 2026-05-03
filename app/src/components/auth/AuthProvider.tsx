@@ -144,7 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const signInWithKakao = useCallback(async () => {
         await signInWithOAuthProvider('kakao', setIsLoadingKakao, {
-            scopes: 'profile_nickname',
+            scopes: 'profile_nickname account_email',
         });
     }, [signInWithOAuthProvider]);
 
