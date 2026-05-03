@@ -18,6 +18,7 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 import 'package:in_app_purchase_storekit/in_app_purchase_storekit.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
@@ -163,6 +164,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   static const _nativeCapabilities = NativeCapabilityRegistry();
 
   WebViewController? _controller;
+  PackageInfo? _packageInfo;
   StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
   StreamSubscription<Uri>? _appLinkSubscription;
   final InAppPurchase _iap = InAppPurchase.instance;
@@ -578,6 +580,14 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         : Platform.isAndroid
         ? 'android'
         : 'other';
+    final packageInfo = _packageInfo ??= await PackageInfo.fromPlatform();
+    final nativeAppInfoJs = jsonEncode({
+      'platform': platform,
+      'version': packageInfo.version,
+      'buildNumber': packageInfo.buildNumber,
+      'packageName': packageInfo.packageName,
+      'appName': packageInfo.appName,
+    });
 
     final nativeCapabilitiesJs = _nativeCapabilities
         .toJavaScriptObjectLiteral();
@@ -587,9 +597,12 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         const root = document.documentElement;
         if (!root) return;
         root.dataset.nativePlatform = '$platform';
+        root.dataset.nativeAppVersion = '${packageInfo.version}';
+        root.dataset.nativeAppBuildNumber = '${packageInfo.buildNumber}';
         root.style.setProperty('--native-safe-area-top', '${topInset}px');
         root.style.setProperty('--native-safe-area-bottom', '${bottomInset}px');
         window.__nativeCapabilities = $nativeCapabilitiesJs;
+        window.__nativeAppInfo = $nativeAppInfoJs;
 
         if (!window.__nativeDialogTapGuard) {
           const guard = {

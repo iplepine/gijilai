@@ -10,6 +10,7 @@ import BottomNav from '@/components/layout/BottomNav';
 import { Navbar } from '@/components/layout/Navbar';
 import Link from 'next/link';
 import { useLocale } from '@/i18n/LocaleProvider';
+import { getRuntimeAppInfo, type RuntimeAppInfo } from '@/lib/appInfo';
 
 export default function ProfilePage() {
     const { t } = useLocale();
@@ -21,6 +22,7 @@ export default function ProfilePage() {
     const [children, setChildren] = useState<ChildProfile[]>([]);
     const [loading, setLoading] = useState(true);
     const [deleting, setDeleting] = useState(false);
+    const [appInfo, setAppInfo] = useState<RuntimeAppInfo>(() => getRuntimeAppInfo());
 
     useEffect(() => {
         async function fetchData() {
@@ -42,6 +44,20 @@ export default function ProfilePage() {
         }
         fetchData();
     }, [user, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        const syncAppInfo = () => setAppInfo(getRuntimeAppInfo());
+        syncAppInfo();
+        const timers = [
+            window.setTimeout(syncAppInfo, 500),
+            window.setTimeout(syncAppInfo, 1500),
+        ];
+        window.addEventListener('focus', syncAppInfo);
+        return () => {
+            timers.forEach((timer) => window.clearTimeout(timer));
+            window.removeEventListener('focus', syncAppInfo);
+        };
+    }, []);
 
     const handleLogout = async () => {
         if (confirm(t('settings.logoutConfirm'))) {
@@ -82,6 +98,16 @@ export default function ProfilePage() {
             </div>
         );
     }
+
+    const platformLabel =
+        appInfo.platform === 'ios'
+            ? t('settings.platformIos')
+            : appInfo.platform === 'android'
+                ? t('settings.platformAndroid')
+                : t('settings.platformWeb');
+    const versionLabel = appInfo.buildNumber
+        ? `${appInfo.version} (${appInfo.buildNumber})`
+        : appInfo.version;
 
     return (
         <div className="bg-background-light dark:bg-background-dark text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center justify-center font-body pb-0">
@@ -193,7 +219,7 @@ export default function ProfilePage() {
                     </section>
 
                     {/* Account Actions Section */}
-                    <section className="pt-4 pb-12 flex flex-col gap-2">
+                    <section className="pt-4 flex flex-col gap-2">
                         <button
                             onClick={handleLogout}
                             className="w-full h-14 bg-white dark:bg-surface-dark text-gray-500 dark:text-gray-400 font-bold rounded-2xl border border-gray-100 dark:border-gray-800 active:scale-[0.98] transition-all"
@@ -207,6 +233,20 @@ export default function ProfilePage() {
                         >
                             {t('settings.deleteAccount')}
                         </button>
+                    </section>
+
+                    <section className="pb-12 text-center text-[11px] leading-relaxed text-gray-400 dark:text-gray-600">
+                        <p className="font-bold">{t('settings.versionInfo')}</p>
+                        <p>
+                            {appInfo.isNativeApp
+                                ? t('settings.nativeAppVersion', {
+                                    platform: platformLabel,
+                                    version: versionLabel,
+                                })
+                                : t('settings.webAppVersion', {
+                                    version: versionLabel,
+                                })}
+                        </p>
                     </section>
                 </main>
 
