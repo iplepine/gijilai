@@ -690,7 +690,7 @@ function ReportContent() {
   return (
     <div className="bg-background-light dark:bg-background-dark text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center font-body">
       <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
-        <main className={`flex-1 overflow-y-auto no-scrollbar ${isChildOnly ? 'pb-40' : 'app-bottom-nav-scroll'}`}>
+        <main className={`flex-1 overflow-y-auto no-scrollbar ${isChildOnly ? 'app-large-fixed-cta-scroll' : 'app-bottom-nav-scroll'}`}>
           {/* Header Overlay */}
           <div className="relative z-10">
             {/* 히어로 이미지 */}
@@ -1485,7 +1485,7 @@ function ReportContent() {
       </div>
 
       {isChildOnly && (
-        <div className="fixed bottom-0 left-0 right-0 z-50">
+        <div className="app-fixed-cta fixed bottom-0 left-0 right-0 z-50">
           <div className="max-w-md mx-auto">
             {isParentSurveyComplete ? (
               <div className="m-3 bg-white rounded-[2rem] shadow-2xl border border-slate-100 overflow-hidden">

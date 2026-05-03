@@ -15,6 +15,7 @@ import { createPerfTracker } from "@/lib/perf";
 import { supabase } from "@/lib/supabase";
 import type { Database } from "@/types/supabase";
 import { extractMagicWord, type HomeMagicWord } from "@/lib/home";
+import { getPracticeLifecycle } from "@/lib/practiceLifecycle";
 
 type ConsultationPreviewRow = Pick<
   Database["public"]["Tables"]["consultations"]["Row"],
@@ -23,8 +24,11 @@ type ConsultationPreviewRow = Pick<
 
 type DashboardPractices = {
   activeCount: number;
+  reminderActiveCount: number;
   uncheckedCount: number;
   uncheckedItems: PracticeItemData[];
+  attentionCount: number;
+  attentionItems: PracticeItemData[];
 };
 
 type HomeDashboardState = {
@@ -41,8 +45,11 @@ type HomeDashboardState = {
 
 const INITIAL_PRACTICES: DashboardPractices = {
   activeCount: 0,
+  reminderActiveCount: 0,
   uncheckedCount: 0,
   uncheckedItems: [],
+  attentionCount: 0,
+  attentionItems: [],
 };
 
 const INITIAL_STATE: HomeDashboardState = {
@@ -95,12 +102,37 @@ export function useHomeDashboard(params: {
           hasSubscription: !!subscription,
         });
 
-        const checkedPracticeIds = new Set(
-          todayLogs.map((log) => log.practice_id),
+        const activePracticeIds = activePractices.map((practice) => practice.id);
+        let activePracticeLogs: PracticeLogData[] = todayLogs;
+        if (activePracticeIds.length > 0) {
+          const { data: logsData } = await supabase
+            .from("practice_logs")
+            .select("practice_id, date, done")
+            .in("practice_id", activePracticeIds);
+          activePracticeLogs = (logsData || []) as PracticeLogData[];
+        }
+        perf.mark("practice_logs_query", {
+          activePracticeLogs: activePracticeLogs.length,
+        });
+
+        const checkedPracticeIds = new Set(todayLogs.map((log) => log.practice_id));
+        const lifecycleByPracticeId = new Map(
+          activePractices.map((practice) => [
+            practice.id,
+            getPracticeLifecycle(practice, activePracticeLogs),
+          ]),
         );
-        const uncheckedItems = activePractices.filter(
-          (practice) => !checkedPracticeIds.has(practice.id),
-        );
+        const attentionItems = activePractices.filter((practice) => {
+          const status = lifecycleByPracticeId.get(practice.id)?.status;
+          return status !== "ACTIVE";
+        });
+        const reminderActiveItems = activePractices.filter((practice) => {
+          const status = lifecycleByPracticeId.get(practice.id)?.status;
+          return status === "ACTIVE";
+        });
+        const uncheckedItems = reminderActiveItems.filter((practice) => {
+          return !checkedPracticeIds.has(practice.id);
+        });
         const hasActivePractices = activePractices.length > 0;
 
         let showConsultCTA = false;
@@ -115,9 +147,7 @@ export function useHomeDashboard(params: {
 
         let allMagicWords: HomeMagicWord[] = [];
         const activeConsultationIds = [
-          ...new Set(
-            activePractices.map((practice) => practice.consultation_id),
-          ),
+          ...new Set(activePractices.map((practice) => practice.consultation_id)),
         ];
         if (activeConsultationIds.length > 0) {
           const { data: activeConsults } = await supabase
@@ -157,8 +187,11 @@ export function useHomeDashboard(params: {
           surveys: data.surveys,
           practices: {
             activeCount: activePractices.length,
+            reminderActiveCount: reminderActiveItems.length,
             uncheckedCount: uncheckedItems.length,
             uncheckedItems,
+            attentionCount: attentionItems.length,
+            attentionItems,
           },
           showConsultCTA,
           allMagicWords,

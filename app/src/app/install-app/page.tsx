@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useMemo, useSyncExternalStore } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/Button';
@@ -12,6 +12,7 @@ import {
   GIJILAI_APP_STORE_URL,
   GIJILAI_PLAY_STORE_URL,
   getPrimaryStoreUrl,
+  isAppWebView,
   type BrowserPlatform,
 } from '@/lib/install';
 import { useLocale } from '@/i18n/LocaleProvider';
@@ -30,21 +31,42 @@ function getServerPlatformSnapshot(): BrowserPlatform {
   return 'other';
 }
 
+function getNativeAppSnapshot() {
+  return isAppWebView();
+}
+
+function getServerNativeAppSnapshot() {
+  return true;
+}
+
 function getPrimaryButtonLabel(platform: BrowserPlatform, t: (key: string) => string) {
   if (platform === 'ios') return t('install.openAppStore');
   if (platform === 'android') return t('install.openPlayStore');
   return t('install.chooseStore');
 }
 
+function getNativeAppFallbackPath(from: string | null) {
+  if (from === 'pricing') return '/pricing';
+  if (from === 'payment') return '/payment';
+  return '/';
+}
+
 function InstallAppContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { t } = useLocale();
   const source = searchParams.get('source') ?? 'direct';
   const entryCta = searchParams.get('entry_cta') ?? undefined;
+  const from = searchParams.get('from');
   const platform = useSyncExternalStore(
     subscribeToPlatformChange,
     getBrowserPlatformSnapshot,
     getServerPlatformSnapshot,
+  );
+  const isNativeApp = useSyncExternalStore(
+    subscribeToPlatformChange,
+    getNativeAppSnapshot,
+    getServerNativeAppSnapshot,
   );
   const primaryStoreUrl = useMemo(() => getPrimaryStoreUrl(platform), [platform]);
   const desktopStoreOptions = useMemo(() => {
@@ -65,6 +87,13 @@ function InstallAppContent() {
   }, [t]);
 
   useEffect(() => {
+    if (isNativeApp) {
+      router.replace(getNativeAppFallbackPath(from));
+    }
+  }, [from, isNativeApp, router]);
+
+  useEffect(() => {
+    if (isNativeApp) return;
     if (platform !== detectBrowserPlatform()) return;
 
     trackEvent('app_install_landing_viewed', {
@@ -72,7 +101,7 @@ function InstallAppContent() {
       entry_cta: entryCta,
       platform,
     });
-  }, [entryCta, platform, source]);
+  }, [entryCta, isNativeApp, platform, source]);
 
   const openStore = (store: StoreKey, url: string) => {
     trackEvent('app_install_store_clicked', {
@@ -100,6 +129,17 @@ function InstallAppContent() {
       block: 'start',
     });
   };
+
+  if (isNativeApp) {
+    return (
+      <div className="bg-background-light dark:bg-background-dark min-h-screen flex items-center justify-center px-6">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+          <p className="text-sm text-text-sub">{t('common.loading')}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-background-light dark:bg-background-dark text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center font-body">
@@ -192,7 +232,7 @@ function InstallAppContent() {
           )}
         </main>
 
-        <div className="app-fixed fixed bottom-0 left-0 right-0 z-30 bg-gradient-to-t from-[#F9F8F6] via-[#F9F8F6]/96 to-transparent dark:from-[#161311] dark:via-[#161311]/96">
+        <div className="app-fixed-cta fixed bottom-0 left-0 right-0 z-30 bg-gradient-to-t from-[#F9F8F6] via-[#F9F8F6]/96 to-transparent dark:from-[#161311] dark:via-[#161311]/96">
           <div className="mx-auto flex w-full max-w-md flex-col gap-3 px-6 pt-6">
             <Button
               fullWidth

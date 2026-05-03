@@ -530,8 +530,8 @@ export default function SubscriptionPage() {
       </div>
 
       {isCancelDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 px-4 pb-4 sm:items-center sm:pb-0">
-          <div className="w-full max-w-sm rounded-3xl bg-white p-5 shadow-2xl dark:bg-surface-dark">
+        <div className="app-modal-overlay fixed inset-0 z-50 flex items-end justify-center bg-black/45 sm:items-center">
+          <div className="app-modal-panel w-full max-w-sm rounded-3xl bg-white p-5 shadow-2xl dark:bg-surface-dark">
             <div className="mb-5 flex items-start justify-between gap-4">
               <div className="space-y-1">
                 <h2 className="text-lg font-bold text-text-main dark:text-white">
@@ -577,8 +577,8 @@ export default function SubscriptionPage() {
       )}
 
       {feedbackDialog && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 px-4 pb-4 sm:items-center sm:pb-0">
-          <div className="w-full max-w-sm rounded-3xl bg-white p-5 shadow-2xl dark:bg-surface-dark">
+        <div className="app-modal-overlay fixed inset-0 z-50 flex items-end justify-center bg-black/45 sm:items-center">
+          <div className="app-modal-panel w-full max-w-sm rounded-3xl bg-white p-5 shadow-2xl dark:bg-surface-dark">
             <div className="mb-5 space-y-1">
               <h2 className="text-lg font-bold text-text-main dark:text-white">
                 {feedbackDialog.title}

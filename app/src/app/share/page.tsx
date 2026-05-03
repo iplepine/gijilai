@@ -194,7 +194,7 @@ function SharePageContent() {
       <div className="w-full max-w-md bg-background-light dark:bg-background-dark min-h-screen flex flex-col shadow-2xl relative">
         <Navbar title={t('share.title')} showBack onBackClick={() => router.back()} />
 
-        <main className="flex-1 px-6 py-8 space-y-8 pb-24">
+        <main className="app-page-scroll flex-1 px-6 py-8 space-y-8">
           {/* 결과 카드 */}
           <div className="rounded-2xl overflow-hidden bg-white dark:bg-surface-dark shadow-card border border-primary/5 dark:border-white/5">
             <div

@@ -359,7 +359,7 @@ function SurveyContent() {
         {/* Question Content */}
         <div
           key={`${currentModule}-${currentIndex}`}
-          className="flex-1 px-5 py-4 w-full pb-24 animate-fade-in overflow-y-auto no-scrollbar"
+          className="app-fixed-cta-scroll flex-1 px-5 py-4 w-full animate-fade-in overflow-y-auto no-scrollbar"
         >
           {/* Context Card */}
           <div className="mb-4 animate-fade-in-up">
@@ -421,7 +421,7 @@ function SurveyContent() {
         </div>
 
         {/* Bottom Navigation (Safe Area) */}
-        <div className="absolute bottom-0 left-0 right-0 bg-white/80 dark:bg-surface-dark/80 backdrop-blur-md border-t border-beige-main/20 px-4 py-3 pb-6 sm:pb-3 z-20">
+        <div className="app-fixed-cta absolute bottom-0 left-0 right-0 bg-white/80 dark:bg-surface-dark/80 backdrop-blur-md border-t border-beige-main/20 px-4 py-3 z-20">
           <div className="max-w-2xl mx-auto flex justify-between items-center">
             <Button variant="ghost" size="sm" onClick={handlePrev} className="text-text-sub hover:text-text-main" icon={<Icon name="arrow_back" size="sm" />}>
               {t('common.previous')}

@@ -352,11 +352,11 @@ export default function NotificationsPage() {
 
       {isTimePickerOpen && (
         <div
-          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in"
+          className="app-modal-overlay fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in"
           onClick={() => setIsTimePickerOpen(false)}
         >
           <div
-            className="flex max-h-[min(78vh,42rem)] w-full max-w-sm flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-surface-dark animate-slide-up"
+            className="app-modal-panel flex max-h-[min(78vh,42rem)] w-full max-w-sm flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-surface-dark animate-slide-up"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex flex-col gap-3 border-b border-beige-main/10 bg-beige-main/5 px-6 py-5 dark:border-white/5 dark:bg-white/5 sm:flex-row sm:items-center sm:justify-between">

@@ -145,10 +145,10 @@ export function DatePicker({ value, onChange, label, error }: DatePickerProps) {
 
       {/* Custom Picker Modal */}
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
+        <div className="app-modal-overlay fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in">
           <div
             ref={modalRef}
-            className="w-full max-w-sm bg-white dark:bg-surface-dark rounded-3xl shadow-2xl overflow-hidden animate-slide-up"
+            className="app-modal-panel w-full max-w-sm bg-white dark:bg-surface-dark rounded-3xl shadow-2xl overflow-hidden animate-slide-up"
           >
             {/* Header */}
             <div className="p-6 border-b border-beige-main/10 dark:border-white/5 flex items-center justify-between bg-beige-main/5 dark:bg-white/5">

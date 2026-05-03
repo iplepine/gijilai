@@ -210,7 +210,16 @@ export default function HomePage() {
     !parentSurvey &&
     Object.keys(atqResponses).length < PARENT_QUESTIONS.length &&
     !!temperamentInfo?.child;
-  const hasPracticePriority = practices.uncheckedCount > 0;
+  const hasPracticePriority =
+    practices.attentionCount > 0 || practices.uncheckedCount > 0;
+  const practicePriorityItems =
+    practices.attentionCount > 0
+      ? practices.attentionItems
+      : practices.uncheckedItems;
+  const practicePriorityCount =
+    practices.attentionCount > 0
+      ? practices.attentionCount
+      : practices.uncheckedCount;
   const hasConsultPriority = showConsultCTA && !!temperamentInfo?.child;
   const hasTrialPriority = shouldShowTrialEndingCard;
 
@@ -252,18 +261,21 @@ export default function HomePage() {
       : t("home.practiceReminderBodyDefault", { time: reminderTime });
 
     postPracticeReminderSync({
-      enabled: preferences.pushEnabled && preferences.practiceReminderEnabled,
+      enabled:
+        preferences.pushEnabled &&
+        preferences.practiceReminderEnabled &&
+        practices.reminderActiveCount > 0,
       time: preferences.practiceReminderTime,
       title,
       body,
-      activePracticeCount: practices.activeCount,
+      activePracticeCount: practices.reminderActiveCount,
       pendingPracticeCount: practices.uncheckedCount,
       userInitiated: false,
     });
   }, [
     loading,
     locale,
-    practices.activeCount,
+    practices.reminderActiveCount,
     practices.uncheckedCount,
     practices.uncheckedItems,
     t,
@@ -536,15 +548,21 @@ export default function HomePage() {
                         <Link href="/practices" className="block mt-4">
                           <div>
                             <h3 className="text-[22px] font-black leading-snug tracking-tight">
-                              {t("home.todaysPractice")}
+                              {practices.attentionCount > 0
+                                ? t("home.practiceAttentionTitle")
+                                : t("home.todaysPractice")}
                             </h3>
                             <p className="mt-2 text-sm text-white/85 leading-relaxed break-keep">
-                              {t("home.practiceItemsRemaining", {
-                                count: practices.uncheckedCount,
-                              })}
+                              {practices.attentionCount > 0
+                                ? t("home.practiceAttentionDescription", {
+                                    count: practicePriorityCount,
+                                  })
+                                : t("home.practiceItemsRemaining", {
+                                    count: practicePriorityCount,
+                                  })}
                             </p>
                             <div className="mt-4 space-y-2">
-                              {practices.uncheckedItems.slice(0, 2).map((item) => (
+                              {practicePriorityItems.slice(0, 2).map((item) => (
                                 <div
                                   key={item.id}
                                   className="flex items-center gap-2.5 rounded-xl bg-white/10 px-3 py-3"
@@ -733,7 +751,7 @@ export default function HomePage() {
                 )}
 
                 {/* 오늘의 실천 카드 */}
-                {practices.uncheckedCount > 0 && primaryAction !== "practice" && (
+                {hasPracticePriority && primaryAction !== "practice" && (
                   <Link href="/practices" className="block">
                     <div className="bg-white dark:bg-surface-dark/50 rounded-2xl p-5 shadow-soft border border-primary/20 active:scale-[0.99] transition-all">
                       <div className="flex items-center gap-3">
@@ -744,21 +762,27 @@ export default function HomePage() {
                         </div>
                         <div className="flex-1">
                           <h3 className="text-[14px] font-bold text-text-main dark:text-white">
-                            {t("home.todaysPractice")}
+                            {practices.attentionCount > 0
+                              ? t("home.practiceAttentionTitle")
+                              : t("home.todaysPractice")}
                           </h3>
                           <p className="text-[11px] text-text-sub dark:text-gray-400">
-                            {t("home.practiceItemsRemaining", {
-                              count: practices.uncheckedCount,
-                            })}
+                            {practices.attentionCount > 0
+                              ? t("home.practiceAttentionDescription", {
+                                  count: practicePriorityCount,
+                                })
+                              : t("home.practiceItemsRemaining", {
+                                  count: practicePriorityCount,
+                                })}
                           </p>
                         </div>
                         <span className="material-symbols-outlined text-[18px] text-primary/50">
                           arrow_forward
                         </span>
                       </div>
-                      {practices.uncheckedItems.length > 0 && (
+                      {practicePriorityItems.length > 0 && (
                         <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/50 space-y-2">
-                          {practices.uncheckedItems.slice(0, 3).map((item) => (
+                          {practicePriorityItems.slice(0, 3).map((item) => (
                             <div
                               key={item.id}
                               className="flex items-center gap-2.5"
@@ -769,10 +793,10 @@ export default function HomePage() {
                               </span>
                             </div>
                           ))}
-                          {practices.uncheckedItems.length > 3 && (
+                          {practicePriorityItems.length > 3 && (
                             <p className="text-[11px] text-text-sub dark:text-gray-500 pl-6.5">
                               {t("home.moreItems", {
-                                count: practices.uncheckedItems.length - 3,
+                                count: practicePriorityItems.length - 3,
                               })}
                             </p>
                           )}
@@ -849,9 +873,9 @@ export default function HomePage() {
 
         {/* Modal Sections */}
         {showOnboarding && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center px-4 py-4">
+          <div className="app-modal-overlay fixed inset-0 z-[60] flex items-center justify-center">
             <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-md"></div>
-            <div className="relative bg-white dark:bg-slate-900 w-full max-w-sm max-h-[calc(100dvh-2rem)] rounded-[2rem] overflow-y-auto shadow-2xl animate-in fade-in zoom-in duration-500">
+            <div className="app-modal-panel-scroll relative bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2rem] shadow-2xl animate-in fade-in zoom-in duration-500">
               <div className="absolute top-0 right-0 w-40 h-40 bg-primary/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
               <div className="absolute bottom-0 left-0 w-32 h-32 bg-secondary/10 rounded-full -ml-16 -mb-16 blur-2xl"></div>
 
@@ -932,12 +956,12 @@ export default function HomePage() {
         )}
 
         {showSurveyIntro && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center">
             <div
               className="absolute inset-0 bg-black/60 backdrop-blur-sm"
               onClick={() => setShowSurveyIntro(false)}
             ></div>
-            <div className="relative bg-background-light dark:bg-surface-dark w-full max-w-sm rounded-[2rem] p-6 shadow-2xl animate-in fade-in zoom-in duration-300">
+            <div className="app-modal-panel relative bg-background-light dark:bg-surface-dark w-full max-w-sm rounded-[2rem] p-6 shadow-2xl animate-in fade-in zoom-in duration-300">
               <div className="flex flex-col items-center text-center">
                 <div className="w-20 h-20 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center mb-5 shadow-lg animate-bounce-subtle">
                   <Image

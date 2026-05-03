@@ -152,7 +152,7 @@ export default function PaymentPage() {
       <div className="bg-background-light dark:bg-background-dark min-h-screen flex items-center justify-center px-6">
         <div className="flex flex-col items-center gap-4 text-center">
           <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-          <p className="text-sm text-text-sub">{t('install.redirecting')}</p>
+          <p className="text-sm text-text-sub">{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -297,10 +297,10 @@ export default function PaymentPage() {
             </div>
           </div>
         ) : (
-          <div className="flex-1 flex flex-col pb-32">
+          <div className="flex-1 flex flex-col">
             <Navbar title={t('payment.analysisPayment')} showBack />
 
-            <div className="flex-1 overflow-y-auto px-6 pt-10 pb-10 space-y-10 w-full">
+            <div className="app-fixed-cta-scroll flex-1 overflow-y-auto px-6 pt-10 space-y-10 w-full">
               {/* Header */}
               <section className="text-center space-y-3">
                 <div className="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-bold uppercase tracking-widest">
@@ -399,7 +399,7 @@ export default function PaymentPage() {
 
             {/* CTA */}
             {status === 'idle' && (
-              <div className="absolute bottom-0 left-0 right-0 p-6 bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl border-t border-beige-main/20 z-30">
+              <div className="app-fixed-cta absolute bottom-0 left-0 right-0 p-6 bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl border-t border-beige-main/20 z-30">
                 <Button variant="primary" size="lg" fullWidth onClick={handlePaymentStart} className="h-16 rounded-2xl text-lg font-bold shadow-glow">
                   {finalAmount === 0
                     ? t('payment.freeWithCoupon')

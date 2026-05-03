@@ -363,7 +363,7 @@ export default function RecordPage() {
                 {/* 작성 바텀시트 모달 */}
                 {showModal && (
                     <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-300">
-                        <div className="w-full max-w-md bg-white dark:bg-background-dark rounded-t-[2rem] max-h-[85vh] flex flex-col animate-in slide-in-from-bottom-10 duration-500 shadow-2xl relative overflow-hidden">
+                        <div className="app-bottom-sheet-panel w-full max-w-md bg-white dark:bg-background-dark rounded-t-[2rem] flex flex-col animate-in slide-in-from-bottom-10 duration-500 shadow-2xl relative overflow-hidden">
                             {/* 핸들바 + 닫기 */}
                             <div className="sticky top-0 bg-white dark:bg-background-dark pt-3 pb-4 px-7 z-10">
                                 <div className="w-10 h-1 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto mb-4"></div>
@@ -378,7 +378,7 @@ export default function RecordPage() {
                                 </div>
                             </div>
 
-                            <div className="px-7 pb-24 overflow-y-auto flex-1">
+                            <div className="app-bottom-sheet-scroll px-7 overflow-y-auto flex-1">
                                 {/* 아이 선택 (2명 이상일 때만) */}
                                 {children.length > 1 && (
                                     <div className="flex gap-2 mb-5">
@@ -493,7 +493,7 @@ export default function RecordPage() {
                             </div>
 
                             {/* 하단 고정 저장 버튼 */}
-                            <div className="sticky bottom-0 px-7 py-4 bg-white dark:bg-background-dark border-t border-slate-100 dark:border-slate-800 ">
+                            <div className="app-bottom-sheet-actions sticky bottom-0 px-7 pt-4 bg-white dark:bg-background-dark border-t border-slate-100 dark:border-slate-800 ">
                                 <button
                                     onClick={handleSave}
                                     disabled={isSubmitting}

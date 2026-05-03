@@ -14,8 +14,15 @@ export function isAppWebView(userAgent?: string) {
     return readUserAgent(userAgent).includes('gijilai_app');
   }
 
-  const appWindow = window as Window & { PaymentBridge?: unknown };
-  return readUserAgent(userAgent).includes('gijilai_app') || typeof appWindow.PaymentBridge !== 'undefined';
+  const appWindow = window as Window & {
+    PaymentBridge?: unknown;
+    __nativeCapabilities?: unknown;
+  };
+  return (
+    readUserAgent(userAgent).includes('gijilai_app') ||
+    typeof appWindow.PaymentBridge !== 'undefined' ||
+    typeof appWindow.__nativeCapabilities !== 'undefined'
+  );
 }
 
 export function detectBrowserPlatform(userAgent?: string): BrowserPlatform {

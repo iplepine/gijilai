@@ -260,6 +260,11 @@ html[data-native-platform='android'] .app-bottom-nav-center-label {
   scroll-padding-bottom: calc(var(--safe-area-bottom) + 8rem);
 }
 
+.app-large-fixed-cta-scroll {
+  padding-bottom: calc(var(--safe-area-bottom) + 13rem);
+  scroll-padding-bottom: calc(var(--safe-area-bottom) + 13rem);
+}
+
 .app-fixed-cta {
   padding-bottom: calc(var(--safe-area-bottom) + 1rem);
 }
@@ -271,4 +276,22 @@ html[data-native-platform='android'] .app-bottom-nav-center-label {
 
 .app-modal-panel {
   max-height: calc(100dvh - var(--safe-area-top) - var(--safe-area-bottom) - 2rem);
+}
+
+.app-modal-panel-scroll {
+  max-height: calc(100dvh - var(--safe-area-top) - var(--safe-area-bottom) - 2rem);
+  overflow-y: auto;
+}
+
+.app-bottom-sheet-panel {
+  max-height: calc(100dvh - var(--safe-area-top) - var(--safe-area-bottom));
+}
+
+.app-bottom-sheet-scroll {
+  padding-bottom: calc(var(--safe-area-bottom) + 1.5rem);
+  scroll-padding-bottom: calc(var(--safe-area-bottom) + 1.5rem);
+}
+
+.app-bottom-sheet-actions {
+  padding-bottom: calc(var(--safe-area-bottom) + 1rem);
 }

@@ -15,6 +15,7 @@ import { getRandomExamples } from '@/data/consultExamples';
 import { useLocale } from '@/i18n/LocaleProvider';
 import { trackEvent } from '@/lib/analytics';
 import { getApiErrorMessage, readJsonResponse } from '@/lib/api';
+import { isAppWebView } from '@/lib/install';
 
 type Step = 'INPUT' | 'DIAGNOSTIC' | 'RESULT';
 
@@ -225,10 +226,15 @@ function ConsultContent() {
     const [prescription, setPrescription] = useState<Prescription | null>(null);
     const [selectedActionIndex, setSelectedActionIndex] = useState<number | null>(null);
     const [savedConsultId, setSavedConsultId] = useState<string | null>(null);
+    const [showInstallPrompt, setShowInstallPrompt] = useState(false);
 
     // 기질 프로필 (초기 로드 시 1회 계산)
     const [childProfile, setChildProfile] = useState<TemperamentProfile | null>(null);
     const [parentProfile, setParentProfile] = useState<TemperamentProfile | null>(null);
+
+    useEffect(() => {
+        setShowInstallPrompt(!isAppWebView());
+    }, []);
 
     const scrollProblemInputIntoView = useCallback(() => {
         const input = problemInputRef.current;
@@ -1154,7 +1160,7 @@ function ConsultContent() {
                 </main>
 
                 {/* 앱 다운로드 유도 섹션 (결과 확인 후) */}
-                {step === 'RESULT' && (
+                {step === 'RESULT' && showInstallPrompt && (
                     <div className="px-6 pb-36">
                         <div className="bg-secondary/10 dark:bg-secondary/20 rounded-[2.5rem] p-8 text-center relative overflow-hidden border border-secondary/20">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-secondary/10 blur-3xl rounded-full"></div>

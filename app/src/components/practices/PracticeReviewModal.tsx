@@ -11,16 +11,42 @@ interface PracticeReviewModalProps {
     doneDays: number;
     totalDays: number;
     sessionId?: string;
+    reviewMode?: 'complete' | 'due' | 'stale';
     onSave: (content: string) => Promise<void>;
+    onResolveSession?: () => Promise<void>;
     onClose: () => void;
 }
 
-export function PracticeReviewModal({ practiceTitle, doneDays, totalDays, sessionId, onSave, onClose }: PracticeReviewModalProps) {
+export function PracticeReviewModal({
+    practiceTitle,
+    doneDays,
+    totalDays,
+    sessionId,
+    reviewMode = 'complete',
+    onSave,
+    onResolveSession,
+    onClose,
+}: PracticeReviewModalProps) {
     const router = useRouter();
     const { t } = useLocale();
     const [content, setContent] = useState('');
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
+    const [resolving, setResolving] = useState(false);
+    const [actionError, setActionError] = useState<string | null>(null);
+    const preferAdjustment = reviewMode !== 'complete';
+    const title =
+        reviewMode === 'stale'
+            ? t('practices.staleReviewTitle')
+            : reviewMode === 'due'
+                ? t('practices.reviewDueModalTitle')
+                : t('practices.reviewTitle');
+    const question =
+        reviewMode === 'stale'
+            ? t('practices.staleReviewQuestion')
+            : reviewMode === 'due'
+                ? t('practices.reviewDueQuestion')
+                : t('practices.reviewQuestion');
 
     const handleSave = async () => {
         if (!content.trim()) {
@@ -36,32 +62,107 @@ export function PracticeReviewModal({ practiceTitle, doneDays, totalDays, sessio
         }
     };
 
+    const handleResolveSession = async () => {
+        if (!onResolveSession) return;
+        setActionError(null);
+        setResolving(true);
+        try {
+            await onResolveSession();
+            onClose();
+        } catch (error) {
+            console.error('Failed to resolve consultation session:', error);
+            setActionError(t('practices.reviewNextStepError'));
+        } finally {
+            setResolving(false);
+        }
+    };
+
+    const goToAdjustmentConsult = () => {
+        onClose();
+        router.push(sessionId ? `/consult?sessionId=${sessionId}` : '/consult');
+    };
+
+    const goToNewConcernConsult = () => {
+        onClose();
+        router.push('/consult?source=practice_review_shift');
+    };
+
     if (saved) {
         return (
-            <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
-                <div className="w-full max-w-sm bg-white dark:bg-surface-dark rounded-3xl shadow-2xl overflow-hidden animate-slide-up">
+            <div className="app-modal-overlay fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in">
+                <div className="app-modal-panel w-full max-w-sm bg-white dark:bg-surface-dark rounded-3xl shadow-2xl overflow-hidden animate-slide-up">
                     <div className="p-8 text-center space-y-4">
                         <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
                             <span className="material-symbols-outlined text-[32px] text-primary fill-1">celebration</span>
                         </div>
                         <div>
-                            <h4 className="font-bold text-lg text-text-main dark:text-white">{t('practices.reviewComplete', { days: String(doneDays) })}</h4>
+                            <h4 className="font-bold text-lg text-text-main dark:text-white">
+                                {reviewMode === 'complete'
+                                    ? t('practices.reviewComplete', { days: String(doneDays) })
+                                    : t('practices.reviewSavedTitle')}
+                            </h4>
                             <p className="text-[13px] text-text-sub mt-2 leading-relaxed">
-                                {t('practices.reviewCompleteDesc')}
+                                {t('practices.reviewNextStepDesc')}
                             </p>
                         </div>
                     </div>
                     <div className="p-4 bg-beige-main/5 dark:bg-white/5 flex flex-col gap-2">
-                        <Button
-                            variant="primary"
-                            fullWidth
-                            onClick={() => {
-                                onClose();
-                                router.push(sessionId ? `/consult?sessionId=${sessionId}` : '/consult');
-                            }}
+                        {preferAdjustment ? (
+                            <>
+                                <Button
+                                    variant="primary"
+                                    fullWidth
+                                    onClick={goToAdjustmentConsult}
+                                >
+                                    {t('practices.reviewAdjustConsultCta')}
+                                </Button>
+                                {onResolveSession && (
+                                    <Button
+                                        variant="secondary"
+                                        fullWidth
+                                        onClick={handleResolveSession}
+                                        disabled={resolving}
+                                    >
+                                        {resolving
+                                            ? t('common.saving')
+                                            : t('practices.reviewResolveSessionCta')}
+                                    </Button>
+                                )}
+                            </>
+                        ) : (
+                            <>
+                                {onResolveSession && (
+                                    <Button
+                                        variant="primary"
+                                        fullWidth
+                                        onClick={handleResolveSession}
+                                        disabled={resolving}
+                                    >
+                                        {resolving
+                                            ? t('common.saving')
+                                            : t('practices.reviewResolveSessionCta')}
+                                    </Button>
+                                )}
+                                <Button
+                                    variant={onResolveSession ? 'secondary' : 'primary'}
+                                    fullWidth
+                                    onClick={goToAdjustmentConsult}
+                                >
+                                    {t('practices.reviewAdjustConsultCta')}
+                                </Button>
+                            </>
+                        )}
+                        <button
+                            onClick={goToNewConcernConsult}
+                            className="w-full py-3 text-[13px] font-bold text-secondary transition-all active:scale-[0.98]"
                         >
-                            {t('practices.nextConsult')}
-                        </Button>
+                            {t('practices.reviewNewConcernCta')}
+                        </button>
+                        {actionError && (
+                            <p className="text-center text-[12px] font-medium text-red-500">
+                                {actionError}
+                            </p>
+                        )}
                         <button
                             onClick={onClose}
                             className="w-full py-3 text-[13px] font-bold text-text-sub transition-all active:scale-[0.98]"
@@ -75,10 +176,10 @@ export function PracticeReviewModal({ practiceTitle, doneDays, totalDays, sessio
     }
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-fade-in">
-            <div className="w-full max-w-sm bg-white dark:bg-surface-dark rounded-3xl shadow-2xl overflow-hidden animate-slide-up">
+        <div className="app-modal-overlay fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in">
+            <div className="app-modal-panel w-full max-w-sm bg-white dark:bg-surface-dark rounded-3xl shadow-2xl overflow-hidden animate-slide-up">
                 <div className="p-6 border-b border-beige-main/10 dark:border-white/5 bg-secondary/5">
-                    <h4 className="font-bold text-lg text-text-main dark:text-white">{t('practices.reviewTitle')}</h4>
+                    <h4 className="font-bold text-lg text-text-main dark:text-white">{title}</h4>
                     <p className="text-[13px] text-text-sub mt-1">{practiceTitle}</p>
                     <div className="flex items-center gap-2 mt-3">
                         <div className="flex-1 h-2 bg-primary/10 rounded-full overflow-hidden">
@@ -93,7 +194,7 @@ export function PracticeReviewModal({ practiceTitle, doneDays, totalDays, sessio
 
                 <div className="p-6">
                     <label className="block text-[13px] font-bold text-text-main dark:text-white mb-3">
-                        {t('practices.reviewQuestion')}
+                        {question}
                     </label>
                     <div className="relative">
                         <textarea

@@ -214,7 +214,7 @@ function PricingContent() {
       <div className="bg-background-light dark:bg-background-dark min-h-screen flex items-center justify-center px-6">
         <div className="flex flex-col items-center gap-4 text-center">
           <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-          <p className="text-sm text-text-sub">{t('install.redirecting')}</p>
+          <p className="text-sm text-text-sub">{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -475,7 +475,7 @@ function PricingContent() {
       <div className="w-full max-w-md min-h-screen flex flex-col shadow-2xl">
         <Navbar title={t('pricing.title')} showBack />
 
-        <div className="flex-1 overflow-y-auto px-5 pt-7 pb-32 space-y-6">
+        <div className="app-fixed-cta-scroll flex-1 overflow-y-auto px-5 pt-7 space-y-6">
           {subscriptionLookupError && (
             <section className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-left">
               <p className="text-sm font-semibold text-amber-900">{t('common.error')}</p>
@@ -583,10 +583,10 @@ function PricingContent() {
         </div>
 
         {isBuyerPhoneDialogOpen && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 px-4 pb-4 sm:items-center sm:pb-0">
+          <div className="app-modal-overlay fixed inset-0 z-50 flex items-end justify-center bg-black/45 sm:items-center">
             <form
               onSubmit={handleBuyerPhoneSubmit}
-              className="w-full max-w-sm rounded-3xl bg-white p-5 shadow-2xl dark:bg-surface-dark"
+              className="app-modal-panel w-full max-w-sm rounded-3xl bg-white p-5 shadow-2xl dark:bg-surface-dark"
             >
               <div className="mb-5 flex items-start justify-between gap-4">
                 <div className="space-y-1">
@@ -652,7 +652,7 @@ function PricingContent() {
         )}
 
         {/* CTA */}
-        <div className="absolute bottom-0 left-0 right-0 px-5 pt-4 pb-6 bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl border-t border-beige-main/20 z-30 max-w-md mx-auto w-full">
+        <div className="app-fixed-cta absolute bottom-0 left-0 right-0 px-5 pt-4 bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl border-t border-beige-main/20 z-30 max-w-md mx-auto w-full">
           <Button
             variant="primary"
             size="lg"

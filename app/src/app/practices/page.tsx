@@ -27,6 +27,11 @@ import { useLocale } from "@/i18n/LocaleProvider";
 import { getFeatureAccess } from "@/lib/access";
 import { getLocalDateString } from "@/lib/date";
 import {
+  getPracticeLifecycle,
+  type PracticeLifecycle,
+  type PracticeLifecycleStatus,
+} from "@/lib/practiceLifecycle";
+import {
   formatPracticeReminderTime,
   isAppWebView,
   postPracticeReminderSync,
@@ -163,6 +168,7 @@ export default function PracticesPage() {
     practice: PracticeItemData;
     doneDays: number;
     sessionId?: string;
+    reviewMode?: "complete" | "due" | "stale";
   } | null>(null);
 
   const fetchData = useCallback(async () => {
@@ -262,6 +268,41 @@ export default function PracticesPage() {
     [practices, selectedChildId],
   );
 
+  const checkedTodayIds = useMemo(
+    () => new Set(todayLogs.map((log) => log.practice_id)),
+    [todayLogs],
+  );
+
+  const lifecycleByPracticeId = useMemo(
+    () =>
+      new Map(
+        filteredPractices.map((practice) => [
+          practice.id,
+          getPracticeLifecycle(practice, allLogs, today),
+        ]),
+      ),
+    [allLogs, filteredPractices, today],
+  );
+
+  const getLifecycle = useCallback(
+    (practice: PracticeItemData): PracticeLifecycle =>
+      lifecycleByPracticeId.get(practice.id) ??
+      getPracticeLifecycle(practice, allLogs, today),
+    [allLogs, lifecycleByPracticeId, today],
+  );
+
+  const getLifecyclePriority = useCallback(
+    (practice: PracticeItemData) => {
+      const lifecycle = getLifecycle(practice);
+      if (lifecycle.status === "DUE_FOR_REVIEW") return 0;
+      if (lifecycle.status === "STALE") return 1;
+      if (lifecycle.status === "NEEDS_RECONNECT") return 2;
+      if (!checkedTodayIds.has(practice.id)) return 3;
+      return 4;
+    },
+    [checkedTodayIds, getLifecycle],
+  );
+
   const grouped = useMemo(() => {
     const groupedMap = new Map<string, GroupedPractices>();
 
@@ -282,24 +323,23 @@ export default function PracticesPage() {
     }
 
     return [...groupedMap.values()].sort((a, b) => {
-      const aHasUnchecked = a.practices.some(
-        (practice) => !todayLogs.find((log) => log.practice_id === practice.id),
-      );
-      const bHasUnchecked = b.practices.some(
-        (practice) => !todayLogs.find((log) => log.practice_id === practice.id),
-      );
-      if (aHasUnchecked && !bHasUnchecked) return -1;
-      if (!aHasUnchecked && bHasUnchecked) return 1;
-      return 0;
+      const aPriority = Math.min(...a.practices.map(getLifecyclePriority));
+      const bPriority = Math.min(...b.practices.map(getLifecyclePriority));
+      return aPriority - bPriority;
     });
-  }, [filteredPractices, todayLogs]);
+  }, [filteredPractices, getLifecyclePriority]);
 
   const recommendedPractice = useMemo(() => {
+    const attentionPractice = [...filteredPractices]
+      .sort((a, b) => getLifecyclePriority(a) - getLifecyclePriority(b))
+      .find((practice) => getLifecycle(practice).status !== "ACTIVE");
+    if (attentionPractice) return attentionPractice;
+
     const uncheckedPractice = filteredPractices.find(
-      (practice) => !todayLogs.some((log) => log.practice_id === practice.id),
+      (practice) => !checkedTodayIds.has(practice.id),
     );
     return uncheckedPractice ?? filteredPractices[0] ?? null;
-  }, [filteredPractices, todayLogs]);
+  }, [checkedTodayIds, filteredPractices, getLifecycle, getLifecyclePriority]);
 
   const practiceInsight = useMemo<PracticeInsight | null>(() => {
     if (filteredPractices.length === 0) return null;
@@ -317,8 +357,6 @@ export default function PracticesPage() {
         .filter((log) => log.memo && log.memo.trim().length > 0)
         .sort((a, b) => b.date.localeCompare(a.date))[0]
         ?.memo?.trim() || null;
-    const checkedTodayIds = new Set(todayLogs.map((log) => log.practice_id));
-
     return {
       totalLogs: visibleLogs.length,
       doneLogs,
@@ -328,17 +366,17 @@ export default function PracticesPage() {
           ? Math.round((doneLogs / visibleLogs.length) * 100)
           : 0,
       uncheckedToday: filteredPractices.filter(
-        (practice) => !checkedTodayIds.has(practice.id),
+        (practice) =>
+          getLifecycle(practice).status === "ACTIVE" &&
+          !checkedTodayIds.has(practice.id),
       ).length,
       recentMemo,
     };
-  }, [allLogs, filteredPractices, todayLogs]);
+  }, [allLogs, checkedTodayIds, filteredPractices, getLifecycle]);
 
   const getTodayLog = (practiceId: string) =>
     todayLogs.find((l) => l.practice_id === practiceId);
 
-  const getDoneDays = (practiceId: string) =>
-    allLogs.filter((l) => l.practice_id === practiceId && l.done).length;
   const getRecentFailCount = (practiceId: string) => {
     const logs = allLogs
       .filter((l) => l.practice_id === practiceId)
@@ -466,13 +504,56 @@ export default function PracticesPage() {
     [fetchData, reviewModal, user],
   );
 
+  const handleReviewResolveSession = useCallback(async () => {
+    if (!user || !reviewModal?.sessionId) return;
+
+    await db.updateSession(reviewModal.sessionId, {
+      status: "RESOLVED",
+    });
+
+    const { data: activePractices, error } = await supabase
+      .from("practice_items")
+      .select("id")
+      .eq("session_id", reviewModal.sessionId)
+      .eq("status", "ACTIVE");
+
+    if (error) throw error;
+
+    const activePracticeIds = (activePractices || []).map(
+      (practice) => practice.id,
+    );
+    if (activePracticeIds.length > 0) {
+      const { error: updateError } = await supabase
+        .from("practice_items")
+        .update({ status: "DROPPED" })
+        .in("id", activePracticeIds);
+      if (updateError) throw updateError;
+    }
+
+    await fetchData();
+  }, [fetchData, reviewModal?.sessionId, user]);
+
+  const handleExtendPractice = useCallback(
+    async (practice: PracticeItemData, lifecycle: PracticeLifecycle) => {
+      if (!user || !lifecycle.canExtend) return;
+      await db.updatePracticeItem(practice.id, {
+        duration: lifecycle.extensionDuration,
+      });
+      await fetchData();
+    },
+    [fetchData, user],
+  );
+
   useEffect(() => {
     if (isLoading || !isAppWebView()) return;
 
-    const uncheckedPractice = practices.find(
-      (practice) => !todayLogs.some((log) => log.practice_id === practice.id),
+    const reminderPractices = practices.filter(
+      (practice) => getLifecycle(practice).status === "ACTIVE",
     );
-    const fallbackPractice = uncheckedPractice ?? practices[0];
+    const uncheckedPractice = reminderPractices.find(
+      (practice) => !checkedTodayIds.has(practice.id),
+    );
+    const fallbackPractice = uncheckedPractice ?? reminderPractices[0];
     const reminderTime = formatPracticeReminderTime(
       reminderPreferences.practiceReminderTime,
       locale,
@@ -493,22 +574,24 @@ export default function PracticesPage() {
     postPracticeReminderSync({
       enabled:
         reminderPreferences.pushEnabled &&
-        reminderPreferences.practiceReminderEnabled,
+        reminderPreferences.practiceReminderEnabled &&
+        reminderPractices.length > 0,
       time: reminderPreferences.practiceReminderTime,
       title,
       body,
-      activePracticeCount: practices.length,
+      activePracticeCount: reminderPractices.length,
       pendingPracticeCount: practiceInsight?.uncheckedToday ?? 0,
       userInitiated: false,
     });
   }, [
+    checkedTodayIds,
+    getLifecycle,
     isLoading,
     locale,
     practiceInsight?.uncheckedToday,
     practices,
     reminderPreferences,
     t,
-    todayLogs,
   ]);
 
   const reminderEnabled =
@@ -523,6 +606,179 @@ export default function PracticesPage() {
     : !reminderPreferences.practiceReminderEnabled
       ? t("practices.reminderOff")
       : t("practices.reminderDailyAt", { time: reminderTimeLabel });
+  const recommendedLifecycle = recommendedPractice
+    ? getLifecycle(recommendedPractice)
+    : null;
+
+  const getStatusBadge = (status: PracticeLifecycleStatus) => {
+    if (status === "DUE_FOR_REVIEW" || status === "STALE") {
+      return t("practices.reviewStatusBadge");
+    }
+    if (status === "NEEDS_RECONNECT") {
+      return t("practices.reconnectStatusBadge");
+    }
+    return t("practices.activeStatusBadge");
+  };
+
+  const getReviewMode = (
+    status: PracticeLifecycleStatus,
+  ): "complete" | "due" | "stale" => {
+    if (status === "STALE") return "stale";
+    if (status === "DUE_FOR_REVIEW") return "due";
+    return "complete";
+  };
+
+  const getAttentionMessage = (
+    lifecycle: PracticeLifecycle,
+    duration: number,
+  ) => {
+    if (lifecycle.status === "DUE_FOR_REVIEW") {
+      return t("practices.dueForReviewDesc", {
+        duration,
+      });
+    }
+    if (lifecycle.status === "STALE") {
+      return t("practices.staleDesc", {
+        days: lifecycle.inactiveDays,
+      });
+    }
+    if (lifecycle.status === "NEEDS_RECONNECT") {
+      return t("practices.needsReconnectDesc", {
+        days: lifecycle.inactiveDays,
+      });
+    }
+    return null;
+  };
+
+  const renderPracticeActions = (
+    practice: PracticeItemData,
+    lifecycle: PracticeLifecycle,
+    options?: { featured?: boolean },
+  ) => {
+    const todayLog = getTodayLog(practice.id);
+    const featured = options?.featured;
+    const actionClassName = featured
+      ? "w-full py-3 rounded-xl font-bold text-[13px] flex items-center justify-center gap-1.5 transition-all active:scale-[0.98]"
+      : "w-full py-3 rounded-xl font-bold text-[13px] flex items-center justify-center gap-1.5 transition-all active:scale-[0.98]";
+
+    if (lifecycle.status === "DUE_FOR_REVIEW" || lifecycle.status === "STALE") {
+      return (
+        <div className="space-y-2">
+          <button
+            onClick={() =>
+              setReviewModal({
+                practice,
+                doneDays: lifecycle.doneDays,
+                sessionId: practice.session_id,
+                reviewMode: getReviewMode(lifecycle.status),
+              })
+            }
+            className={`${actionClassName} bg-secondary/10 text-secondary`}
+          >
+            <span className="material-symbols-outlined text-[18px]">
+              rate_review
+            </span>
+            {t("practices.reviewDueCta")}
+          </button>
+          <div className="grid grid-cols-2 gap-2">
+            {lifecycle.canExtend && (
+              <button
+                onClick={() => handleExtendPractice(practice, lifecycle)}
+                className="py-3 rounded-xl bg-primary/10 text-primary font-bold text-[12px] flex items-center justify-center gap-1.5 transition-all active:scale-[0.98]"
+              >
+                <span className="material-symbols-outlined text-[17px]">
+                  more_time
+                </span>
+                {t("practices.extendPracticeCta")}
+              </button>
+            )}
+            {practice.session_id && (
+              <button
+                onClick={() =>
+                  router.push(buildPracticeChangeUrl(practice.session_id, practice.id))
+                }
+                className={`py-3 rounded-xl bg-orange-50 text-orange-600 font-bold text-[12px] flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] ${
+                  lifecycle.canExtend ? "" : "col-span-2"
+                }`}
+              >
+                <span className="material-symbols-outlined text-[17px]">
+                  alt_route
+                </span>
+                {t("practices.changePracticeShort")}
+              </button>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (lifecycle.status === "NEEDS_RECONNECT") {
+      return (
+        <div className="space-y-2">
+          <button
+            onClick={() =>
+              setCheckModal({
+                practice,
+                existingLog: todayLog,
+                recentFailCount: getRecentFailCount(practice.id),
+                sessionId: practice.session_id,
+                enableChildReactionFeedback: featured,
+              })
+            }
+            className={`${actionClassName} bg-primary text-white shadow-sm shadow-primary/20`}
+          >
+            <span className="material-symbols-outlined text-[18px]">
+              edit_note
+            </span>
+            {t("practices.resumePractice")}
+          </button>
+          {practice.session_id && (
+            <button
+              onClick={() =>
+                router.push(buildPracticeChangeUrl(practice.session_id, practice.id))
+              }
+              className="w-full py-3 rounded-xl bg-orange-50 text-orange-600 font-bold text-[12px] flex items-center justify-center gap-1.5 transition-all active:scale-[0.98]"
+            >
+              <span className="material-symbols-outlined text-[17px]">
+                alt_route
+              </span>
+              {t("practices.changePracticeShort")}
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <button
+        onClick={() =>
+          setCheckModal({
+            practice,
+            existingLog: todayLog,
+            recentFailCount: getRecentFailCount(practice.id),
+            sessionId: practice.session_id,
+            enableChildReactionFeedback: featured,
+          })
+        }
+        className={`${actionClassName} ${
+          todayLog
+            ? todayLog.done
+              ? "bg-primary/10 text-primary"
+              : "bg-orange-50 text-orange-600"
+            : "bg-primary text-white shadow-sm shadow-primary/20"
+        }`}
+      >
+        <span className="material-symbols-outlined text-[18px]">
+          {todayLog ? (todayLog.done ? "check_circle" : "schedule") : "edit_note"}
+        </span>
+        {todayLog
+          ? todayLog.done
+            ? t("practices.doneToday")
+            : t("practices.failedToday")
+          : t("practices.recordToday")}
+      </button>
+    );
+  };
 
   return (
     <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center font-body">
@@ -614,26 +870,43 @@ export default function PracticesPage() {
             </div>
           ) : (
             <>
-              {recommendedPractice && (
+              {recommendedPractice && recommendedLifecycle && (
                 <section className="rounded-3xl border border-primary/15 bg-white dark:bg-surface-dark p-5 space-y-4 shadow-sm">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-[11px] font-bold text-primary uppercase tracking-wider">
-                        {t("practices.recommendedEyebrow")}
+                        {recommendedLifecycle.status === "NEEDS_RECONNECT"
+                          ? t("practices.recommendedReconnectEyebrow")
+                          : recommendedLifecycle.status !== "ACTIVE"
+                            ? t("practices.recommendedAttentionEyebrow")
+                            : t("practices.recommendedEyebrow")}
                       </p>
                       <h2 className="mt-1 text-[17px] font-bold text-text-main dark:text-white">
                         {recommendedPractice.title}
                       </h2>
                       <p className="mt-1 text-[12px] leading-relaxed text-text-sub">
-                        {t("practices.recommendedDescription")}
+                        {recommendedLifecycle.status !== "ACTIVE"
+                          ? t("practices.recommendedAttentionDescription")
+                          : t("practices.recommendedDescription")}
                       </p>
                     </div>
                     <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold text-primary">
-                      {t("practices.recommendedBadge")}
+                      {getStatusBadge(recommendedLifecycle.status)}
                     </span>
                   </div>
 
                   <div className="rounded-2xl bg-primary/5 p-4">
+                    {getAttentionMessage(
+                      recommendedLifecycle,
+                      recommendedPractice.duration,
+                    ) && (
+                      <p className="mb-3 rounded-xl bg-white/70 px-3 py-2 text-[12px] font-medium leading-relaxed text-text-main dark:bg-white/5 dark:text-white">
+                        {getAttentionMessage(
+                          recommendedLifecycle,
+                          recommendedPractice.duration,
+                        )}
+                      </p>
+                    )}
                     <PracticeDescription
                       description={recommendedPractice.description}
                       whenLabel={t("practices.practiceWhenLabel")}
@@ -646,63 +919,9 @@ export default function PracticesPage() {
                     )}
                   </div>
 
-                  {(() => {
-                    const todayLog = getTodayLog(recommendedPractice.id);
-                    const doneDays = getDoneDays(recommendedPractice.id);
-                    const overdue = doneDays >= recommendedPractice.duration;
-
-                    return overdue ? (
-                      <button
-                        onClick={() =>
-                          setReviewModal({
-                            practice: recommendedPractice,
-                            doneDays,
-                            sessionId: recommendedPractice.session_id,
-                          })
-                        }
-                        className="w-full py-3 rounded-xl bg-secondary/10 text-secondary font-bold text-[13px] flex items-center justify-center gap-1.5 transition-all active:scale-[0.98]"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">
-                          rate_review
-                        </span>
-                        {t("practices.periodComplete")}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() =>
-                          setCheckModal({
-                            practice: recommendedPractice,
-                            existingLog: todayLog,
-                            recentFailCount: getRecentFailCount(
-                              recommendedPractice.id,
-                            ),
-                            sessionId: recommendedPractice.session_id,
-                            enableChildReactionFeedback: true,
-                          })
-                        }
-                        className={`w-full py-3 rounded-xl font-bold text-[13px] flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] ${
-                          todayLog
-                            ? todayLog.done
-                              ? "bg-primary/10 text-primary"
-                              : "bg-orange-50 text-orange-600"
-                            : "bg-primary text-white shadow-sm shadow-primary/20"
-                        }`}
-                      >
-                        <span className="material-symbols-outlined text-[18px]">
-                          {todayLog
-                            ? todayLog.done
-                              ? "check_circle"
-                              : "schedule"
-                            : "edit_note"}
-                        </span>
-                        {todayLog
-                          ? todayLog.done
-                            ? t("practices.doneToday")
-                            : t("practices.failedToday")
-                          : t("practices.recordToday")}
-                      </button>
-                    );
-                  })()}
+                  {renderPracticeActions(recommendedPractice, recommendedLifecycle, {
+                    featured: true,
+                  })}
                 </section>
               )}
 
@@ -820,20 +1039,15 @@ export default function PracticesPage() {
 
                         {/* 실천 카드들 */}
                         {[...visibleSessionPractices]
-                          .sort((a, b) => {
-                            const aLog = getTodayLog(a.id);
-                            const bLog = getTodayLog(b.id);
-                            const aOrder = !aLog ? 0 : aLog.done ? 2 : 1;
-                            const bOrder = !bLog ? 0 : bLog.done ? 2 : 1;
-                            return aOrder - bOrder;
-                          })
+                          .sort(
+                            (a, b) =>
+                              getLifecyclePriority(a) - getLifecyclePriority(b),
+                          )
                           .map((practice) => {
-                            const todayLog = getTodayLog(practice.id);
-                            const doneDays = getDoneDays(practice.id);
-                            const overdue = doneDays >= practice.duration;
-                            const progress = Math.min(
-                              doneDays / practice.duration,
-                              1,
+                            const lifecycle = getLifecycle(practice);
+                            const attentionMessage = getAttentionMessage(
+                              lifecycle,
+                              practice.duration,
                             );
 
                             return (
@@ -846,6 +1060,11 @@ export default function PracticesPage() {
                                     <p className="text-[14px] font-bold text-text-main dark:text-white">
                                       {practice.title}
                                     </p>
+                                    {lifecycle.status !== "ACTIVE" && (
+                                      <span className="mt-2 inline-flex rounded-full bg-secondary/10 px-2.5 py-1 text-[10px] font-bold text-secondary">
+                                        {getStatusBadge(lifecycle.status)}
+                                      </span>
+                                    )}
                                     <div className="mt-2">
                                       <PracticeDescription
                                         description={practice.description}
@@ -862,15 +1081,21 @@ export default function PracticesPage() {
                                     <div
                                       className="h-full bg-primary rounded-full transition-all"
                                       style={{
-                                        width: `${Math.round(progress * 100)}%`,
+                                        width: `${Math.round(lifecycle.progress * 100)}%`,
                                       }}
                                     />
                                   </div>
                                   <span className="text-[11px] font-bold text-primary">
-                                    {doneDays}/{practice.duration}
+                                    {lifecycle.doneDays}/{practice.duration}
                                     {t("common.days")}
                                   </span>
                                 </div>
+
+                                {attentionMessage && (
+                                  <p className="rounded-xl bg-secondary/5 px-3 py-2 text-[12px] font-medium leading-relaxed text-text-main dark:bg-white/5 dark:text-white">
+                                    {attentionMessage}
+                                  </p>
+                                )}
 
                                 {/* 응원 메시지 */}
                                 {practice.encouragement && (
@@ -880,56 +1105,7 @@ export default function PracticesPage() {
                                 )}
 
                                 {/* 오늘 체크 / 회고 버튼 */}
-                                {overdue ? (
-                                  <button
-                                    onClick={() =>
-                                      setReviewModal({
-                                        practice,
-                                        doneDays,
-                                        sessionId: practice.session_id,
-                                      })
-                                    }
-                                    className="w-full py-3 rounded-xl bg-secondary/10 text-secondary font-bold text-[13px] flex items-center justify-center gap-1.5 transition-all active:scale-[0.98]"
-                                  >
-                                    <span className="material-symbols-outlined text-[18px]">
-                                      rate_review
-                                    </span>
-                                    {t("practices.periodComplete")}
-                                  </button>
-                                ) : (
-                                  <button
-                                    onClick={() =>
-                                      setCheckModal({
-                                        practice,
-                                        existingLog: todayLog,
-                                        recentFailCount: getRecentFailCount(
-                                          practice.id,
-                                        ),
-                                        sessionId: practice.session_id,
-                                      })
-                                    }
-                                    className={`w-full py-3 rounded-xl font-bold text-[13px] flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] ${
-                                      todayLog
-                                        ? todayLog.done
-                                          ? "bg-primary/10 text-primary"
-                                          : "bg-orange-50 text-orange-600"
-                                        : "bg-primary text-white shadow-sm shadow-primary/20"
-                                    }`}
-                                  >
-                                    <span className="material-symbols-outlined text-[18px]">
-                                      {todayLog
-                                        ? todayLog.done
-                                          ? "check_circle"
-                                          : "schedule"
-                                        : "edit_note"}
-                                    </span>
-                                    {todayLog
-                                      ? todayLog.done
-                                        ? t("practices.doneToday")
-                                        : t("practices.failedToday")
-                                      : t("practices.recordToday")}
-                                  </button>
-                                )}
+                                {renderPracticeActions(practice, lifecycle)}
                               </div>
                             );
                           })}
@@ -994,7 +1170,11 @@ export default function PracticesPage() {
           doneDays={reviewModal.doneDays}
           totalDays={reviewModal.practice.duration}
           sessionId={reviewModal.sessionId}
+          reviewMode={reviewModal.reviewMode}
           onSave={handleReviewSave}
+          onResolveSession={
+            reviewModal.sessionId ? handleReviewResolveSession : undefined
+          }
           onClose={() => setReviewModal(null)}
         />
       )}

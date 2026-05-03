@@ -77,7 +77,7 @@ export default function IntakePage() {
       <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
         <Navbar title={t('intake.title')} showBack />
 
-        <div className="flex-1 overflow-y-auto px-6 py-10 space-y-12 w-full pb-32">
+        <div className="app-fixed-cta-scroll flex-1 overflow-y-auto px-6 py-10 space-y-12 w-full">
           {/* Intro */}
           <section className="text-center space-y-2">
             <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -227,7 +227,7 @@ export default function IntakePage() {
         </div>
 
         {/* Submit Button */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl border-t border-beige-main/20 z-30">
+        <div className="app-fixed-cta absolute bottom-0 left-0 right-0 p-6 bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl border-t border-beige-main/20 z-30">
           <Button variant="primary" size="lg" fullWidth onClick={handleSubmit} className="h-16 rounded-2xl text-lg font-bold shadow-glow">
             {t('intake.submitButton')}
           </Button>
