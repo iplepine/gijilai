@@ -1,10 +1,5 @@
 import { NextResponse } from 'next/server';
 
-type ApiErrorPayload = {
-  error?: string;
-  message?: string;
-};
-
 export class InvalidJsonBodyError extends Error {
   constructor() {
     super('Invalid JSON request body');

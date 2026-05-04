@@ -32,8 +32,8 @@
 | `report_primary_cta_clicked` | 리포트에서 다음 행동 CTA 클릭률 확인 | `cta_type`, `placement`, `report_tab`, `report_kind`, `child_only`, `source` |
 | `report_expand_clicked` | `child_only` 사용자가 전체 리포트로 확장하는 비율 확인 | `from_tab`, `to_tab`, `child_only`, `source` |
 | `pricing_viewed` | 가격 페이지 유입 소스와 리포트 연계 전환 확인 | `source`, `entry_cta`, `is_app`, `report_tab`, `report_kind` |
-| `payment_started` | 결제 시도량 및 결제수단 비중 확인 | `source`, `entry_cta`, `pay_method`, `used_coupon`, `final_amount` |
-| `payment_completed` | 결제 완료율 및 쿠폰 효과 확인 | `source`, `entry_cta`, `pay_method`, `used_coupon`, `final_amount` |
+| `payment_started` | 결제 시도량 및 결제수단 비중 확인 | `source`, `entry_cta`, `pay_method`, `used_coupon`, `final_amount`, `report_tab`, `report_kind` |
+| `payment_completed` | 결제 완료율 및 쿠폰 효과 확인 | `source`, `entry_cta`, `pay_method`, `used_coupon`, `final_amount`, `report_tab`, `report_kind` |
 | `consult_started` | 상담 진입량과 후속 상담 비중 확인 | `source`, `has_child_report`, `has_subscription`, `is_trial`, `is_followup`, `report_tab`, `report_kind` |
 | `consult_completed` | 상담 결과까지 도달했는지 확인 | `source`, `has_subscription`, `is_trial`, `is_followup`, `action_item_count` |
 | `practice_item_saved` | 상담 결과에서 실천 항목을 저장했는지 확인 | `source`, `has_subscription`, `is_trial`, `is_followup`, `action_index`, `duration`, `replaced_practice`, `saved` |
@@ -42,11 +42,14 @@
 | `practice_review_saved` | 실천 기간 회고 완료 여부 확인 | `done_days`, `review_mode`, `has_full_access` |
 | `followup_context_viewed` | 후속 상담 진입 시 이전 실천 맥락 노출 여부 확인 | `source`, `has_subscription`, `is_trial`, `practice_count`, `log_count`, `review_count` |
 | `trial_conversion_cta_clicked` | 체험 종료/만료 전후 구독 CTA 클릭 확인 | `source`, `entry_cta`, `placement`, `trial_state`, `trial_days_remaining`, `has_subscription`, `has_practice_priority`, `has_consult_priority` |
+| `app_install_landing_viewed` | 웹 브라우저에서 앱 설치 유도 화면 도달 확인 | `source`, `entry_cta`, `report_tab`, `report_kind`, `platform` |
+| `app_install_store_clicked` | 설치 유도 화면에서 스토어 이동 클릭 확인 | `source`, `entry_cta`, `report_tab`, `report_kind`, `platform`, `store` |
+| `app_install_store_picker_clicked` | 데스크톱/기타 브라우저에서 스토어 선택 영역 노출 클릭 확인 | `source`, `entry_cta`, `report_tab`, `report_kind`, `platform` |
 
 ## 리포트 전환 핵심 퍼널
 
 - 기본 퍼널: `report_viewed → report_primary_cta_clicked → pricing_viewed → payment_started → payment_completed`
-- 빠른 진단 확장 퍼널: `report_viewed(child_only=true) → report_expand_clicked → survey_module_started(source=report) → survey_flow_completed`
+- 빠른 아이 리포트 확장 퍼널: `report_viewed(child_only=true) → report_expand_clicked → survey_module_started(source=report) → survey_flow_completed`
 - 설문 확장 퍼널: `report_primary_cta_clicked(cta_type=continue_parent_survey) → survey_module_started(module=parent, source=report)`
 - 체험 가치 퍼널: `consult_started → consult_completed → practice_item_saved → practice_log_saved → followup_context_viewed → consult_started(is_followup=true)`
 
@@ -63,6 +66,7 @@
 - 신규 기능 추가 시 가능하면 `page_view`만으로 끝내지 말고, 사용자의 핵심 행동을 별도 이벤트로 분리한다.
 - 이벤트명은 소문자 스네이크 케이스를 사용한다.
 - `login_attempt`, `login_success`의 `provider` 값은 `kakao`, `google`, `apple`, `email`만 사용한다.
+- 가격/설치/결제 진입 `source`는 `home`, `report`, `consult`, `practices`, `subscription_settings`, `pricing_complete`, `payment`, `legacy_payment`, `direct`처럼 화면/흐름 단위의 낮은 카디널리티 값만 사용한다.
 - 파라미터는 비교 가능한 값 위주로 유지하고, 자유서술형 텍스트는 전송하지 않는다.
 - `source`, `cta_type`, `placement`, `report_kind` 같은 분류 파라미터는 저카디널리티 값만 허용한다.
 - 개인식별 가능 정보(이름, 고민 원문, 리포트 본문)는 이벤트에 포함하지 않는다.

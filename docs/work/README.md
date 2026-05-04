@@ -1,6 +1,6 @@
 # 작업 관리
 
-마지막 갱신일: 2026-05-03
+마지막 갱신일: 2026-05-04
 
 ## 현재 집중
 
@@ -8,7 +8,11 @@
 
 현재 active roadmap: `R-001-consult-report-conversion`
 
-현재 active task: `GJ-001-consult-input-validation`
+현재 active task: 없음
+
+다음 후보 task: 없음
+
+운영 후속 확인: 배포 환경 이벤트 수집 확인
 
 ## 읽는 순서
 

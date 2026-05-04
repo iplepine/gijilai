@@ -471,7 +471,7 @@ export default function SubscriptionPage() {
                     variant="primary"
                     size="sm"
                     fullWidth
-                    onClick={() => router.push('/pricing')}
+                    onClick={() => router.push('/pricing?source=subscription_settings&entry_cta=reactivate_subscription')}
                     className="mt-2"
                   >
                     {t('settings.startSubscription')}
@@ -483,7 +483,7 @@ export default function SubscriptionPage() {
             <section className="text-center space-y-4 py-12">
               <Icon name="credit_card_off" className="text-text-sub/30 text-5xl" size="lg" />
               <p className="text-text-sub text-sm">{t('settings.noSubscription')}</p>
-              <Button variant="primary" onClick={() => router.push('/pricing')}>
+              <Button variant="primary" onClick={() => router.push('/pricing?source=subscription_settings&entry_cta=start_subscription')}>
                 {t('settings.startSubscription')}
               </Button>
             </section>

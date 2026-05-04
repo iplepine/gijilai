@@ -4,7 +4,7 @@ ID: `G-001-paid-conversion-trust`
 
 상태: `Active`
 
-마지막 갱신일: 2026-05-03
+마지막 갱신일: 2026-05-04
 
 ## 목표
 
@@ -20,7 +20,8 @@ ID: `G-001-paid-conversion-trust`
 |---|---:|---:|---|
 | `report_viewed -> pricing_viewed` | 측정 가능 | 미확정 | `Assumption` |
 | `pricing_viewed -> payment_started` | 측정 가능 | 미확정 | `Assumption` |
-| 상담 입력 검증 실패가 자연스럽게 안내됨 | 100% | 진행 중 | `Signal` |
+| 상담 입력 검증 실패가 자연스럽게 안내됨 | 100% | 완료 | `Signal` |
+| 리포트/가격/결제 이벤트 기준 | 문서와 코드 일치 | 완료 | `Signal` |
 
 ## 범위
 
@@ -53,6 +54,6 @@ ID: `G-001-paid-conversion-trust`
 
 ## 다음 판단
 
-판단할 것: 상담 입력 검증과 리포트 CTA 정리가 실제 결제 퍼널 측정 준비로 이어졌는가?
+판단할 것: 배포 환경에서 리포트 CTA, 가격 페이지 진입, 결제 시작 이벤트가 실제 수집되는가?
 
 판단일: 2026-05-10

@@ -53,11 +53,13 @@ GA4 또는 Firebase Explore에서 아래 3개 퍼널을 기본 저장한다.
 - `survey_module_started(source=report, module=parent)`
 - `survey_flow_completed`
 
-### 퍼널 C. 리포트 → 상담
+### 퍼널 C. 리포트 → 프리미엄 → 상담
 
 - `report_viewed`
-- `report_primary_cta_clicked(cta_type=start_consult 또는 start_trial)`
-- `consult_started(source=report)`
+- `report_primary_cta_clicked(cta_type=start_trial)`
+- `pricing_viewed(source=report)`
+- `payment_started(source=report)`
+- `consult_started(source=report)` 또는 `consult_started(source=consult, entry_cta=consult_gate)`
 
 ## 5. 주간 운영 루프
 
@@ -114,7 +116,7 @@ GA4 또는 Firebase Explore에서 아래 3개 퍼널을 기본 저장한다.
 
 - [ ] 이벤트가 배포 환경에서 실제 수집되는지 Firebase DebugView로 확인
 - [ ] Explore에 퍼널 A/B/C 저장
-- [ ] `source`, `report_kind`, `cta_type` 값이 문서와 일치하는지 확인
+- [x] `source`, `report_kind`, `cta_type` 값이 문서와 일치하는지 확인
 - [ ] 첫 주 기준선 수치 기록
 - [x] 첫 실험안 1개 확정
 - [x] `report-next-step-clarity-v1` CTA 배치 구현

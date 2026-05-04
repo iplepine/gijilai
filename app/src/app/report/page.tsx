@@ -684,7 +684,7 @@ function ReportContent() {
     }
   }, [childAnswerMap, childName, childScores, childType.keywords, childType.label, fetchReport, normalizeReportTextForName, parentAnswerMap, parentScores, parentType.keywords, parentType.label, parentingResponses, styleScores, t]);
 
-  // 아이 진단 탭: 리포트 없으면 자동 생성 (서버가 캐시/생성 분기)
+  // 아이 기질 탭: 리포트 없으면 자동 생성 (서버가 캐시/생성 분기)
   useEffect(() => {
     const hasCbq = Object.keys(childAnswerMap).length > 0
       || !!savedChildScores
@@ -1508,7 +1508,7 @@ function ReportContent() {
                           </section>
                         )}
 
-                        {/* 6. 양육 스타일 진단 */}
+                        {/* 6. 양육 스타일 점검 */}
                         {harmonyAiReport.parentingAudit && (
                           <section className="bg-white dark:bg-surface-dark rounded-2xl px-6 py-5 shadow-card border border-beige-main/10 space-y-3">
                             <p className="text-[12px] font-black text-text-main dark:text-white flex items-center gap-1.5">

@@ -272,10 +272,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   Future<void> _initWebView() async {
     final controller =
         WebViewController(
-            onPermissionRequest: Platform.isAndroid
-                ? (request) =>
-                      unawaited(_handleWebViewPermissionRequest(request))
-                : null,
+            onPermissionRequest: (request) =>
+                unawaited(_handleWebViewPermissionRequest(request)),
           )
           ..setJavaScriptMode(JavaScriptMode.unrestricted)
           ..setBackgroundColor(const Color(0x00000000));
@@ -1721,6 +1719,9 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
       if (data['success'] == true) {
         _showSnackBar('구독이 시작되었습니다!');
+        await _controller!.runJavaScript(
+          'window.__iapPaymentCompleted && window.__iapPaymentCompleted();',
+        );
         // WebView 새로고침으로 구독 상태 반영
         await _controller!.loadRequest(Uri.parse(MainWebView.targetUrl));
       } else {

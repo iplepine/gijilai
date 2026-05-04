@@ -19,7 +19,9 @@
 4. `payment_started`
 5. `payment_completed`
 
-## 빠른 진단 확장 퍼널
+`pricing_viewed`, `payment_started`, `payment_completed`는 `source`, `entry_cta`, `report_tab`, `report_kind`를 유지해 리포트 하단 CTA와 가격/결제 단계를 연결한다.
+
+## 빠른 아이 리포트 확장 퍼널
 
 1. `report_viewed(child_only=true)`
 2. `report_expand_clicked`

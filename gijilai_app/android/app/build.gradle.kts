@@ -55,6 +55,10 @@ android {
             signingConfig = signingConfigs.getByName("release")
         }
     }
+
+    lint {
+        disable += "Instantiatable"
+    }
 }
 
 flutter {

@@ -90,7 +90,15 @@ export function PracticeReviewModal({
     if (saved) {
         return (
             <div className="app-modal-overlay fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in">
-                <div className="app-modal-panel w-full max-w-sm bg-white dark:bg-surface-dark rounded-3xl shadow-2xl overflow-hidden animate-slide-up">
+                <div className="app-modal-panel relative w-full max-w-sm bg-white dark:bg-surface-dark rounded-3xl shadow-2xl overflow-hidden animate-slide-up">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        aria-label={t('common.close')}
+                        className="absolute right-4 top-4 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full text-text-sub transition-colors hover:bg-black/5 hover:text-text-main dark:hover:bg-white/10"
+                    >
+                        <span className="material-symbols-outlined text-[20px]">close</span>
+                    </button>
                     <div className="p-8 text-center space-y-4">
                         <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
                             <span className="material-symbols-outlined text-[32px] text-primary fill-1">celebration</span>
@@ -116,6 +124,9 @@ export function PracticeReviewModal({
                                 >
                                     {t('practices.reviewAdjustConsultCta')}
                                 </Button>
+                                <p className="px-2 text-center text-[12px] leading-relaxed text-text-sub">
+                                    {t('practices.reviewAdjustConsultDesc')}
+                                </p>
                                 {onResolveSession && (
                                     <Button
                                         variant="secondary"
@@ -150,6 +161,9 @@ export function PracticeReviewModal({
                                 >
                                     {t('practices.reviewAdjustConsultCta')}
                                 </Button>
+                                <p className="px-2 text-center text-[12px] leading-relaxed text-text-sub">
+                                    {t('practices.reviewAdjustConsultDesc')}
+                                </p>
                             </>
                         )}
                         <button
@@ -163,12 +177,6 @@ export function PracticeReviewModal({
                                 {actionError}
                             </p>
                         )}
-                        <button
-                            onClick={onClose}
-                            className="w-full py-3 text-[13px] font-bold text-text-sub transition-all active:scale-[0.98]"
-                        >
-                            {t('practices.later')}
-                        </button>
                     </div>
                 </div>
             </div>

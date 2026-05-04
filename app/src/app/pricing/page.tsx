@@ -20,6 +20,7 @@ declare global {
     };
     PaymentBridge?: { postMessage: (msg: string) => void };
     __iapLoadingDone?: () => void;
+    __iapPaymentCompleted?: () => void;
   }
 }
 
@@ -206,8 +207,23 @@ function PricingContent() {
   useEffect(() => {
     if (!isApp) return;
     window.__iapLoadingDone = () => setLoading(false);
-    return () => { window.__iapLoadingDone = undefined; };
-  }, [isApp]);
+    window.__iapPaymentCompleted = () => {
+      trackEvent('payment_completed', {
+        source: entrySource,
+        entry_cta: entryCta,
+        pay_method: 'APPLE_GOOGLE',
+        used_coupon: isFirstSubscription,
+        final_amount: currentPrice,
+        report_tab: reportTab ?? undefined,
+        report_kind: reportKind ?? undefined,
+      });
+      setLoading(false);
+    };
+    return () => {
+      window.__iapLoadingDone = undefined;
+      window.__iapPaymentCompleted = undefined;
+    };
+  }, [currentPrice, entryCta, entrySource, isApp, isFirstSubscription, reportKind, reportTab]);
 
   if (!isEnvironmentReady || !isApp) {
     return (
@@ -232,6 +248,8 @@ function PricingContent() {
         pay_method: 'APPLE_GOOGLE',
         used_coupon: isFirstSubscription,
         final_amount: currentPrice,
+        report_tab: reportTab ?? undefined,
+        report_kind: reportKind ?? undefined,
       });
       setLoading(true);
       window.PaymentBridge.postMessage(JSON.stringify({
@@ -259,6 +277,8 @@ function PricingContent() {
       pay_method: payMethod,
       used_coupon: isFirstSubscription,
       final_amount: currentPrice,
+      report_tab: reportTab ?? undefined,
+      report_kind: reportKind ?? undefined,
     });
     setLoading(true);
 
@@ -285,6 +305,12 @@ function PricingContent() {
       const redirectUrl = new URL('/pricing/complete', window.location.origin);
       redirectUrl.searchParams.set('locale', locale);
       redirectUrl.searchParams.set('payMethod', payMethod);
+      redirectUrl.searchParams.set('source', entrySource);
+      if (entryCta) redirectUrl.searchParams.set('entry_cta', entryCta);
+      if (reportTab) redirectUrl.searchParams.set('report_tab', reportTab);
+      if (reportKind) redirectUrl.searchParams.set('report_kind', reportKind);
+      redirectUrl.searchParams.set('used_coupon', String(isFirstSubscription));
+      redirectUrl.searchParams.set('final_amount', String(currentPrice));
 
       const issueParams: PortOneIssueBillingKeyParams = {
         storeId,
@@ -344,6 +370,8 @@ function PricingContent() {
         pay_method: payMethod,
         used_coupon: isFirstSubscription,
         final_amount: currentPrice,
+        report_tab: reportTab ?? undefined,
+        report_kind: reportKind ?? undefined,
       });
 
       router.refresh();

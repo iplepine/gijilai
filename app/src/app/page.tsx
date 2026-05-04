@@ -247,7 +247,7 @@ export default function HomePage() {
       has_practice_priority: hasPracticePriority,
       has_consult_priority: hasConsultPriority,
     });
-    router.push("/pricing?source=trial&entry_cta=trial_ending");
+    router.push("/pricing?source=home&entry_cta=trial_ending");
   };
 
   useEffect(() => {
@@ -350,7 +350,7 @@ export default function HomePage() {
           userCreatedAt={user?.created_at}
           subscription={subscription}
           onSubscriptionClick={() => router.push("/settings/subscription")}
-          onPricingClick={() => router.push("/pricing")}
+          onPricingClick={() => router.push("/pricing?source=home&entry_cta=header_badge")}
         />
 
         <main className="app-bottom-nav-scroll flex-1 overflow-y-auto no-scrollbar">

@@ -78,7 +78,17 @@ export default function PaymentPage() {
   const [isApp, setIsApp] = useState(false);
   const [availableCoupon, setAvailableCoupon] = useState<Coupon | null>(null);
   const [useCoupon, setUseCoupon] = useState(false);
+  const [entryParams, setEntryParams] = useState<{
+    source: string;
+    entryCta?: string;
+    reportTab?: string;
+    reportKind?: string;
+  }>({ source: 'legacy_payment' });
   const payMethod: PayMethodOption = 'INICIS_CARD';
+  const entrySource = entryParams.source;
+  const entryCta = entryParams.entryCta;
+  const reportTab = entryParams.reportTab;
+  const reportKind = entryParams.reportKind;
 
   const LOADING_MESSAGES = [
     { icon: 'analytics', text: t('payment.analyzingTempData') },
@@ -89,14 +99,28 @@ export default function PaymentPage() {
 
   const finalAmount = useCoupon && availableCoupon ? Math.max(0, 1980 - availableCoupon.discount_amount) : 1980;
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setEntryParams({
+      source: params.get('source') ?? 'legacy_payment',
+      entryCta: params.get('entry_cta') ?? undefined,
+      reportTab: params.get('report_tab') ?? undefined,
+      reportKind: params.get('report_kind') ?? undefined,
+    });
+  }, []);
+
   const handlePaymentSuccess = useCallback(() => {
     trackEvent('payment_completed', {
+      source: entrySource,
+      entry_cta: entryCta,
       pay_method: payMethod,
       final_amount: finalAmount,
       used_coupon: useCoupon,
+      report_tab: reportTab,
+      report_kind: reportKind,
     });
     setStatus('analyzing');
-  }, [finalAmount, payMethod, useCoupon]);
+  }, [entryCta, entrySource, finalAmount, payMethod, reportKind, reportTab, useCoupon]);
 
   useEffect(() => {
     const inApp = isAppWebView();
@@ -162,9 +186,13 @@ export default function PaymentPage() {
     if (!user) return;
 
     trackEvent('payment_started', {
+      source: entrySource,
+      entry_cta: entryCta,
       pay_method: payMethod,
       used_coupon: useCoupon,
       final_amount: finalAmount,
+      report_tab: reportTab,
+      report_kind: reportKind,
     });
 
     // 쿠폰으로 전액 할인
@@ -383,7 +411,7 @@ export default function PaymentPage() {
                   <p className="text-xs font-bold text-primary mb-1">{t('payment.moreBenefits')}</p>
                   <p className="text-[11px] text-text-sub mb-3">{t('payment.subscribeDesc')}</p>
                   <button
-                    onClick={() => router.push('/pricing')}
+                    onClick={() => router.push('/pricing?source=legacy_payment&entry_cta=subscription_upsell')}
                     className="text-xs font-bold text-primary underline underline-offset-2"
                   >
                     {t('payment.viewPlans')}

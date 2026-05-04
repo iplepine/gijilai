@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
 import { useLocale } from '@/i18n/LocaleProvider';
 import { getApiErrorMessage, readJsonResponse } from '@/lib/api';
+import { trackEvent } from '@/lib/analytics';
 
 type CompleteStatus = 'loading' | 'success' | 'error';
 
@@ -28,6 +29,12 @@ function PricingCompleteContent() {
       const billingKey = searchParams.get('billingKey');
       const payMethod = searchParams.get('payMethod') || 'INICIS_CARD';
       const requestLocale = searchParams.get('locale') || locale;
+      const entrySource = searchParams.get('source') ?? 'direct';
+      const entryCta = searchParams.get('entry_cta') ?? undefined;
+      const reportTab = searchParams.get('report_tab') ?? undefined;
+      const reportKind = searchParams.get('report_kind') ?? undefined;
+      const usedCoupon = searchParams.get('used_coupon') === 'true';
+      const finalAmount = Number(searchParams.get('final_amount') ?? 0) || undefined;
 
       if (code) {
         setErrorMessage(message || code);
@@ -56,6 +63,15 @@ function PricingCompleteContent() {
         if (!response.ok) {
           throw new Error(getApiErrorMessage(data, '구독 생성 실패'));
         }
+        trackEvent('payment_completed', {
+          source: entrySource,
+          entry_cta: entryCta,
+          pay_method: payMethod,
+          used_coupon: usedCoupon,
+          final_amount: finalAmount,
+          report_tab: reportTab,
+          report_kind: reportKind,
+        });
         setStatus('success');
         setTimeout(() => router.replace('/settings/subscription'), 1200);
       } catch (error: unknown) {
@@ -97,7 +113,7 @@ function PricingCompleteContent() {
             <h2 className="text-2xl font-bold text-slate-800 dark:text-white">{t('payment.paymentError')}</h2>
             <p className="text-slate-500 text-sm break-keep">{errorMessage || t('settings.cancelError')}</p>
           </div>
-          <Button variant="secondary" onClick={() => router.replace('/pricing')}>
+          <Button variant="secondary" onClick={() => router.replace('/pricing?source=pricing_complete&entry_cta=retry_subscription')}>
             {t('payment.backToPayment')}
           </Button>
         </div>

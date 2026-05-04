@@ -76,7 +76,7 @@
 - 로그인 외 네이티브 전환 후보 화면(`/payment`, `/settings/subscription`, `/settings/notifications`, `/settings/profile`)은 capability가 없는 앱 버전과 모바일 웹에서 기존 웹 라우트를 fallback으로 유지한다.
 - `Navbar` 기반 일반 스크롤 화면은 `app-page-scroll`로 하단 safe area + 여유 패딩을 공통 적용한다.
 - 하단 탭바는 edge-to-edge 배경을 유지하되 탭 아이콘/라벨/중앙 버튼의 실제 터치 영역은 native bottom inset을 반영한 `app-bottom-nav` padding 위에 둔다.
-- 하단 고정 CTA가 있는 화면은 본문에 `app-fixed-cta-scroll`, 하단 컨테이너에 `app-fixed-cta`를 사용해 마지막 입력 필드와 버튼이 시스템 내비게이션 영역에 가려지지 않게 한다.
+- 하단 고정 CTA가 있는 화면은 본문에 `app-fixed-cta-scroll`, 하단 컨테이너에 `app-fixed-cta`를 사용해 마지막 입력 필드와 버튼이 시스템 내비게이션 영역에 가려지지 않게 한다. 입력 포커스 중 모바일 키보드가 올라오면 `visualViewport`로 계산한 `--keyboard-inset-bottom`을 함께 반영해 CTA가 키보드 위에 자연스럽게 붙도록 한다.
 - 하단 고정 CTA 높이가 일반 CTA보다 큰 화면은 `app-large-fixed-cta-scroll`처럼 CTA 실측 높이에 맞춘 공통 변형을 사용한다.
 - 바텀시트/모달은 페이지 스크롤 유틸리티의 보호를 받지 않으므로 오버레이에 `app-modal-overlay`, 패널에 `app-modal-panel` 또는 `app-modal-panel-scroll`을 사용한다.
 - 화면 하단에 붙는 작성 바텀시트는 `app-bottom-sheet-panel`, `app-bottom-sheet-scroll`, `app-bottom-sheet-actions`를 함께 사용해 저장 버튼과 마지막 입력 필드가 시스템 내비게이션 영역에 가려지지 않게 한다.

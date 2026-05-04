@@ -57,6 +57,8 @@ function InstallAppContent() {
   const { t } = useLocale();
   const source = searchParams.get('source') ?? 'direct';
   const entryCta = searchParams.get('entry_cta') ?? undefined;
+  const reportTab = searchParams.get('report_tab') ?? undefined;
+  const reportKind = searchParams.get('report_kind') ?? undefined;
   const from = searchParams.get('from');
   const platform = useSyncExternalStore(
     subscribeToPlatformChange,
@@ -99,14 +101,18 @@ function InstallAppContent() {
     trackEvent('app_install_landing_viewed', {
       source,
       entry_cta: entryCta,
+      report_tab: reportTab,
+      report_kind: reportKind,
       platform,
     });
-  }, [entryCta, isNativeApp, platform, source]);
+  }, [entryCta, isNativeApp, platform, reportKind, reportTab, source]);
 
   const openStore = (store: StoreKey, url: string) => {
     trackEvent('app_install_store_clicked', {
       source,
       entry_cta: entryCta,
+      report_tab: reportTab,
+      report_kind: reportKind,
       platform,
       store,
     });
@@ -122,6 +128,8 @@ function InstallAppContent() {
     trackEvent('app_install_store_picker_clicked', {
       source,
       entry_cta: entryCta,
+      report_tab: reportTab,
+      report_kind: reportKind,
       platform,
     });
     document.getElementById('install-store-options')?.scrollIntoView({

@@ -40,6 +40,16 @@ interface SpeechRecognitionErrorEventLike {
     error: string;
 }
 
+type VoiceInputErrorCode =
+    | 'not-allowed'
+    | 'audio-capture'
+    | 'network'
+    | 'service-not-allowed'
+    | 'language-not-supported'
+    | 'no-speech'
+    | 'aborted'
+    | 'unknown';
+
 interface VoiceInputButtonProps {
     value: string;
     onChange: (value: string) => void;
@@ -65,17 +75,62 @@ function appendTranscript(baseValue: string, transcript: string, maxLength?: num
     return typeof maxLength === 'number' ? nextValue.slice(0, maxLength) : nextValue;
 }
 
-async function requestMicrophoneAccess() {
+function normalizeMediaError(error: unknown): VoiceInputErrorCode {
+    if (error instanceof DOMException) {
+        if (error.name === 'NotAllowedError' || error.name === 'SecurityError') return 'not-allowed';
+        if (
+            error.name === 'NotFoundError'
+            || error.name === 'DevicesNotFoundError'
+            || error.name === 'NotReadableError'
+            || error.name === 'TrackStartError'
+            || error.name === 'OverconstrainedError'
+        ) return 'audio-capture';
+        if (error.name === 'AbortError') return 'aborted';
+    }
+
+    return 'unknown';
+}
+
+function normalizeSpeechRecognitionError(error: string): VoiceInputErrorCode {
+    if (
+        error === 'not-allowed'
+        || error === 'audio-capture'
+        || error === 'network'
+        || error === 'service-not-allowed'
+        || error === 'language-not-supported'
+        || error === 'no-speech'
+        || error === 'aborted'
+    ) {
+        return error;
+    }
+
+    return 'unknown';
+}
+
+function getVoiceErrorMessage(t: (key: string) => string, code: VoiceInputErrorCode) {
+    if (code === 'not-allowed') return t('voice.errorPermissionDenied');
+    if (code === 'audio-capture') return t('voice.errorAudioCapture');
+    if (code === 'network') return t('voice.errorNetwork');
+    if (code === 'service-not-allowed') return t('voice.errorServiceNotAllowed');
+    if (code === 'language-not-supported') return t('voice.errorLanguageNotSupported');
+    if (code === 'no-speech') return t('voice.errorNoSpeech');
+    if (code === 'aborted') return t('voice.errorAborted');
+    return t('voice.errorUnknown');
+}
+
+async function requestMicrophoneAccess(): Promise<{ ok: true } | { ok: false; code: VoiceInputErrorCode }> {
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
-        return true;
+        return { ok: true };
     }
 
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         stream.getTracks().forEach((track) => track.stop());
-        return true;
-    } catch {
-        return false;
+        return { ok: true };
+    } catch (error) {
+        const code = normalizeMediaError(error);
+        console.warn('Voice input getUserMedia failed:', code, error);
+        return { ok: false, code };
     }
 }
 
@@ -116,10 +171,10 @@ export function VoiceInputButton({ value, onChange, maxLength, className = '' }:
         }
 
         setIsStarting(true);
-        const hasMicrophoneAccess = await requestMicrophoneAccess();
-        if (!hasMicrophoneAccess) {
+        const microphoneAccess = await requestMicrophoneAccess();
+        if (!microphoneAccess.ok) {
             setIsStarting(false);
-            alert(t('voice.error'));
+            alert(getVoiceErrorMessage(t, microphoneAccess.code));
             return;
         }
 
@@ -138,9 +193,9 @@ export function VoiceInputButton({ value, onChange, maxLength, className = '' }:
         };
 
         recognition.onerror = (event) => {
-            if (event.error !== 'no-speech') {
-                alert(t('voice.error'));
-            }
+            const code = normalizeSpeechRecognitionError(event.error);
+            console.warn('SpeechRecognition error:', event.error);
+            alert(getVoiceErrorMessage(t, code));
             stopListening();
         };
 
@@ -155,7 +210,8 @@ export function VoiceInputButton({ value, onChange, maxLength, className = '' }:
             setIsListening(true);
         } catch {
             recognitionRef.current = null;
-            alert(t('voice.error'));
+            console.warn('SpeechRecognition start failed');
+            alert(t('voice.errorUnknown'));
         } finally {
             setIsStarting(false);
         }

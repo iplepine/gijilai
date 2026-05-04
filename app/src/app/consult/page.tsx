@@ -18,12 +18,12 @@ import { trackEvent } from '@/lib/analytics';
 import { getApiErrorMessage, readJsonResponse } from '@/lib/api';
 import { isAppWebView } from '@/lib/install';
 import {
-    MIN_CONSULT_PROBLEM_LENGTH,
     validateConsultProblemInput,
     type ConsultInputValidationCode,
 } from '@/lib/consultInputValidation';
 
 type Step = 'INPUT' | 'DIAGNOSTIC' | 'RESULT';
+type QuestionNavDirection = 'next' | 'prev';
 
 interface QuestionOption {
     id: string;
@@ -250,6 +250,7 @@ function ConsultContent() {
     const [empathy, setEmpathy] = useState('');
     const [questions, setQuestions] = useState<Question[]>([]);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+    const [questionNavDirection, setQuestionNavDirection] = useState<QuestionNavDirection>('next');
     const [answers, setAnswers] = useState<Record<string, string>>({});
     const [isFollowUpDone, setIsFollowUpDone] = useState(false);
 
@@ -313,7 +314,10 @@ function ConsultContent() {
     const trimmedProblemDesc = problemDesc.trim();
     const selectedProblemExampleText = examples.find((ex) => trimmedProblemDesc === ex.text.trim())?.text ?? null;
     const hasProblemDesc = problemDesc.length > 0;
-    const shouldShowMoreDetailHint = trimmedProblemDesc.length > 0 && trimmedProblemDesc.length < MIN_CONSULT_PROBLEM_LENGTH;
+    const problemInputValidationPreview = hasProblemDesc ? validateConsultProblemInput(problemDesc) : null;
+    const shouldShowMoreDetailHint =
+        problemInputValidationPreview?.ok === false
+        && problemInputValidationPreview.code === 'too_short';
 
     const openPricing = useCallback((entryCta: string, placement: string) => {
         trackEvent('trial_conversion_cta_clicked', {
@@ -347,6 +351,43 @@ function ConsultContent() {
             viewport.removeEventListener('resize', scrollProblemInputIntoView);
         };
     }, [isProblemInputFocused, scrollProblemInputIntoView]);
+
+    useEffect(() => {
+        const root = document.documentElement;
+        const viewport = window.visualViewport;
+
+        const updateKeyboardInset = () => {
+            const activeElement = document.activeElement;
+            const isTextInput = activeElement instanceof HTMLElement
+                && (activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'INPUT');
+
+            if (!viewport || !isTextInput) {
+                root.style.setProperty('--keyboard-inset-bottom', '0px');
+                return;
+            }
+
+            const keyboardInset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+            root.style.setProperty('--keyboard-inset-bottom', `${Math.round(keyboardInset)}px`);
+        };
+
+        const clearKeyboardInset = () => {
+            window.setTimeout(updateKeyboardInset, 80);
+        };
+
+        window.addEventListener('focusin', updateKeyboardInset);
+        window.addEventListener('focusout', clearKeyboardInset);
+        viewport?.addEventListener('resize', updateKeyboardInset);
+        viewport?.addEventListener('scroll', updateKeyboardInset);
+        updateKeyboardInset();
+
+        return () => {
+            window.removeEventListener('focusin', updateKeyboardInset);
+            window.removeEventListener('focusout', clearKeyboardInset);
+            viewport?.removeEventListener('resize', updateKeyboardInset);
+            viewport?.removeEventListener('scroll', updateKeyboardInset);
+            root.style.setProperty('--keyboard-inset-bottom', '0px');
+        };
+    }, []);
 
     // 추가 상담: 세션 컨텍스트 로드
     useEffect(() => {
@@ -544,6 +585,7 @@ function ConsultContent() {
             setFreeTextOptionId(null);
             setIsFollowUpDone(false);
             setStep('DIAGNOSTIC');
+            setQuestionNavDirection('next');
             setCurrentQuestionIndex(0);
         } catch (error) {
             console.error(error);
@@ -565,6 +607,7 @@ function ConsultContent() {
         setFreeTextOptionId(null);
 
         if (currentQuestionIndex < questions.length - 1) {
+            setQuestionNavDirection('next');
             setCurrentQuestionIndex(prev => prev + 1);
         } else {
             // Check if we need follow-up
@@ -622,6 +665,7 @@ function ConsultContent() {
                 setEmpathy(data.followUpReason || t('consult.followUpDefault'));
                 setQuestions(prev => [...prev, ...followUpQuestions]);
                 setIsFollowUpDone(true);
+                setQuestionNavDirection('next');
                 setCurrentQuestionIndex(prev => prev + 1);
             } else {
                 await handleGeneratePrescription(currentAnswers);
@@ -908,18 +952,33 @@ function ConsultContent() {
                                         {sessionContext ? t('consult.introDescContinue') : t('consult.introDescFirst')}
                                     </p>
                                 </div>
-                                <div className="grid gap-3 sm:grid-cols-3">
-                                    <div className="rounded-2xl bg-primary/5 px-4 py-3">
-                                        <p className="text-[11px] font-bold text-primary">{t('consult.introOutcomeLabel')}</p>
-                                        <p className="mt-1 text-[12px] leading-relaxed text-text-main dark:text-white">{t('consult.introOutcomeText')}</p>
+                                <div className="grid gap-2.5">
+                                    <div className="flex items-start gap-3 rounded-2xl bg-primary/5 px-4 py-3.5">
+                                        <span className="material-symbols-outlined mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/80 text-[18px] text-primary shadow-sm dark:bg-white/10">
+                                            psychology
+                                        </span>
+                                        <div className="min-w-0">
+                                            <p className="text-[12px] font-bold text-primary">{t('consult.introOutcomeLabel')}</p>
+                                            <p className="mt-0.5 text-[13px] leading-relaxed text-text-main dark:text-white">{t('consult.introOutcomeText')}</p>
+                                        </div>
                                     </div>
-                                    <div className="rounded-2xl bg-secondary/5 px-4 py-3">
-                                        <p className="text-[11px] font-bold text-secondary">{t('consult.introTimeLabel')}</p>
-                                        <p className="mt-1 text-[12px] leading-relaxed text-text-main dark:text-white">{t('consult.introTimeText')}</p>
+                                    <div className="flex items-start gap-3 rounded-2xl bg-secondary/5 px-4 py-3.5">
+                                        <span className="material-symbols-outlined mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/80 text-[18px] text-secondary shadow-sm dark:bg-white/10">
+                                            timer
+                                        </span>
+                                        <div className="min-w-0">
+                                            <p className="text-[12px] font-bold text-secondary">{t('consult.introTimeLabel')}</p>
+                                            <p className="mt-0.5 text-[13px] leading-relaxed text-text-main dark:text-white">{t('consult.introTimeText')}</p>
+                                        </div>
                                     </div>
-                                    <div className="rounded-2xl bg-beige-main/25 px-4 py-3">
-                                        <p className="text-[11px] font-bold text-text-main dark:text-white">{t('consult.introScopeLabel')}</p>
-                                        <p className="mt-1 text-[12px] leading-relaxed text-text-main dark:text-white">{t('consult.introScopeText')}</p>
+                                    <div className="flex items-start gap-3 rounded-2xl bg-beige-main/25 px-4 py-3.5">
+                                        <span className="material-symbols-outlined mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/80 text-[18px] text-text-main shadow-sm dark:bg-white/10 dark:text-white">
+                                            health_and_safety
+                                        </span>
+                                        <div className="min-w-0">
+                                            <p className="text-[12px] font-bold text-text-main dark:text-white">{t('consult.introScopeLabel')}</p>
+                                            <p className="mt-0.5 text-[13px] leading-relaxed text-text-main dark:text-white">{t('consult.introScopeText')}</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -983,7 +1042,7 @@ function ConsultContent() {
                                     </div>
                                 )}
                                 <div className="flex items-center justify-between gap-3 mt-2 px-1">
-                                    <p className="min-h-4 flex-1 truncate text-[12px] text-text-sub dark:text-gray-500">
+                                    <p className="min-h-4 flex-1 truncate text-[12px] text-text-sub dark:text-gray-500" aria-live="polite">
                                         {shouldShowMoreDetailHint ? t('consult.moreDetailHint') : ''}
                                     </p>
                                     <div className="flex shrink-0 items-center gap-3">
@@ -1027,8 +1086,8 @@ function ConsultContent() {
                             )}
                             <button
                                 onClick={hasFullAccess ? handleStartDiagnostic : () => openPricing('consult_gate', 'consult_input_sticky')}
-                                disabled={(hasFullAccess && problemDesc.trim().length < MIN_CONSULT_PROBLEM_LENGTH) || isLoading}
-                                className={`w-full py-5 rounded-2xl text-white font-bold text-lg transition-all flex items-center justify-center gap-2 active:scale-[0.98] ${((hasFullAccess && problemDesc.trim().length < MIN_CONSULT_PROBLEM_LENGTH) || isLoading)
+                                disabled={isLoading}
+                                className={`w-full py-5 rounded-2xl text-white font-bold text-lg transition-all flex items-center justify-center gap-2 active:scale-[0.98] ${isLoading
                                     ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                                     : 'bg-primary hover:bg-primary-dark shadow-xl shadow-primary/20'
                                     }`}
@@ -1041,7 +1100,7 @@ function ConsultContent() {
                     )}
 
                     {step === 'DIAGNOSTIC' && currentQuestion && (
-                        <div key={`${currentQuestionIndex}-${currentQuestion.id}`} className="flex flex-col gap-6 w-full animate-in fade-in slide-in-from-right-4 duration-500">
+                        <div key={`${currentQuestionIndex}-${currentQuestion.id}`} className={`question-slide question-slide-${questionNavDirection} flex flex-col gap-6 w-full`}>
                             {/* Empathy Box */}
                             {empathy && (
                                 <div className="bg-secondary/10 rounded-3xl p-6 border border-secondary/20 relative animate-in zoom-in-95 duration-700">
@@ -1058,6 +1117,7 @@ function ConsultContent() {
                                         {currentQuestionIndex > 0 && (
                                             <button
                                                 onClick={() => {
+                                                    setQuestionNavDirection('prev');
                                                     setCurrentQuestionIndex(prev => prev - 1);
                                                     setFreeTextOptionId(null);
                                                     setCurrentTextAnswer('');

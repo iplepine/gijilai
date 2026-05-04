@@ -39,6 +39,8 @@ describe('consultPromptBuilders', () => {
 
         expect(prompt.systemPrompt).toContain('기초 질문');
         expect(prompt.systemPrompt).toContain('아이 기질 유형: 신중한 관찰가');
+        expect(prompt.systemPrompt).toContain('가장 바라는 변화나 목표 행동');
+        expect(prompt.systemPrompt).toContain('표면 문제와 부모가 원하는 변화를 구분');
         expect(prompt.userMessage).toContain('서아');
         expect(prompt.userMessage).toContain('현재 고민 상황');
     });
@@ -50,6 +52,7 @@ describe('consultPromptBuilders', () => {
         });
 
         expect(prompt.systemPrompt).toContain('needsFollowUp');
+        expect(prompt.systemPrompt).toContain('나아졌다고 느끼는 모습');
         expect(prompt.userMessage).toContain('현관에서만 심해요');
     });
 
@@ -74,6 +77,11 @@ describe('consultPromptBuilders', () => {
         expect(prompt.systemPrompt).toContain('등원할 때마다 현관에서 울고');
         expect(prompt.systemPrompt).toContain('Q: 언제 가장 심해지나요?');
         expect(prompt.systemPrompt).toContain('이 처방이 왜 나왔는지');
+        expect(prompt.systemPrompt).toContain('부모 목표 검토 원칙');
+        expect(prompt.systemPrompt).toContain('부모님의 목표가 틀렸다는 뜻은 아니지만');
+        expect(prompt.systemPrompt).toContain('부모님이 바라는 변화');
+        expect(prompt.systemPrompt).toContain('부모 감정/이미 시도한 방법 인정');
+        expect(prompt.systemPrompt).toContain('이 답변은 ~을 보여줍니다');
         expect(prompt.systemPrompt).toContain('기질 라벨은 선택 사항');
         expect(prompt.systemPrompt).toContain('감정 단정 금지');
         expect(prompt.systemPrompt).toContain('해당 문항의 answer에 직접 포함된 단서');

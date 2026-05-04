@@ -15,6 +15,7 @@ import { CHILD_QUESTIONS, PARENT_QUESTIONS, PARENTING_STYLE_QUESTIONS } from '@/
 import { useLocale } from '@/i18n/LocaleProvider';
 
 type SurveyModule = 'child' | 'parent' | 'parenting';
+type QuestionNavDirection = 'next' | 'prev';
 
 function SurveyContent() {
   const router = useRouter();
@@ -61,6 +62,7 @@ function SurveyContent() {
   const [showExitModal, setShowExitModal] = useState(false);
   const [isCalculating, setIsCalculating] = useState(false);
   const [isAdvancing, setIsAdvancing] = useState(false);
+  const [questionNavDirection, setQuestionNavDirection] = useState<QuestionNavDirection>('next');
   const startedModulesRef = useRef<Set<SurveyModule>>(new Set());
   const responseCountRef = useRef(0);
 
@@ -73,6 +75,7 @@ function SurveyContent() {
       parentSkipCheckedRef.current = true;
       const timer = setTimeout(() => {
         // 바로 양육태도로 스킵
+        setQuestionNavDirection('next');
         setCurrentModule('parenting');
         setCurrentIndex(0);
       }, 0);
@@ -89,6 +92,7 @@ function SurveyContent() {
           if (Object.keys(dbAnswers).length >= PARENT_QUESTIONS.length) {
             // DB에서 복원하고 양육태도로 스킵
             restoreSurveyFromDB({ atqResponses: dbAnswers });
+            setQuestionNavDirection('next');
             setCurrentModule('parenting');
             setCurrentIndex(0);
           }
@@ -201,6 +205,7 @@ function SurveyContent() {
 
   const goToNext = () => {
     if (currentIndex < questions.length - 1) {
+      setQuestionNavDirection('next');
       setCurrentIndex((prev) => prev + 1);
     } else {
       trackEvent('survey_module_completed', {
@@ -242,18 +247,21 @@ function SurveyContent() {
     setTimeout(() => {
       goToNext();
       setIsAdvancing(false);
-    }, 300);
+    }, 220);
   };
 
   const handlePrev = useCallback(() => {
     if (currentIndex > 0) {
+      setQuestionNavDirection('prev');
       setCurrentIndex((prev) => prev - 1);
     } else {
       // 모듈 간 뒤로가기
       if (currentModule === 'parent') {
+        setQuestionNavDirection('prev');
         setCurrentModule('child');
         setCurrentIndex(CHILD_QUESTIONS.length - 1);
       } else if (currentModule === 'parenting') {
+        setQuestionNavDirection('prev');
         setCurrentModule('parent');
         setCurrentIndex(PARENT_QUESTIONS.length - 1);
       } else {
@@ -265,10 +273,12 @@ function SurveyContent() {
   const handleTransitionConfirm = () => {
     setShowTransitionModal(false);
     if (transitionType === 'toParent') {
+      setQuestionNavDirection('next');
       setCurrentModule('parent');
       setCurrentIndex(0);
       window.scrollTo(0, 0);
     } else if (transitionType === 'toParenting') {
+      setQuestionNavDirection('next');
       setCurrentModule('parenting');
       setCurrentIndex(0);
       window.scrollTo(0, 0);
@@ -369,7 +379,7 @@ function SurveyContent() {
         {/* Question Content */}
         <div
           key={`${currentModule}-${currentIndex}`}
-          className="app-fixed-cta-scroll flex-1 px-5 py-4 w-full animate-fade-in overflow-y-auto no-scrollbar"
+          className={`question-slide question-slide-${questionNavDirection} app-fixed-cta-scroll flex-1 px-5 py-4 w-full overflow-y-auto no-scrollbar`}
         >
           {/* Context Card */}
           <div className="mb-4 animate-fade-in-up">

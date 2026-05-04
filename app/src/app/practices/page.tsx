@@ -709,7 +709,7 @@ export default function PracticesPage() {
             <span className="material-symbols-outlined text-[18px]">
               rate_review
             </span>
-            {t("practices.reviewDueCta")}
+            {t(lifecycle.status === "STALE" ? "practices.reviewStaleCta" : "practices.reviewDueCta")}
           </button>
           <div className="grid grid-cols-2 gap-2">
             {lifecycle.canExtend && (
@@ -859,7 +859,7 @@ export default function PracticesPage() {
               <Button
                 variant="primary"
                 size="sm"
-                onClick={() => router.push("/pricing")}
+                onClick={() => router.push("/pricing?source=practices&entry_cta=practice_history_lock")}
                 className="shrink-0 rounded-xl px-4"
               >
                 {t("consult.subscribeCta")}
