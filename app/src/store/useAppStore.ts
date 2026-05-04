@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { IntakeFormData, AnalysisResult } from '@/types';
 
+export type SurveyResponseModule = 'child' | 'parent' | 'parenting';
+
 interface AppState {
   // Intake Form
   intake: IntakeFormData;
@@ -36,6 +38,7 @@ interface AppState {
   // Reset all
   resetAll: () => void;
   resetSurveyOnly: () => void;
+  resetSurveyModule: (module: SurveyResponseModule) => void;
 }
 
 const initialIntake: IntakeFormData = {
@@ -115,6 +118,14 @@ export const useAppStore = create<AppState>()(
           parentingResponses: {},
           analysisResult: null,
         }),
+      resetSurveyModule: (module) =>
+        set((state) => ({
+          surveyProgress: 0,
+          cbqResponses: module === 'child' ? {} : state.cbqResponses,
+          atqResponses: module === 'parent' ? {} : state.atqResponses,
+          parentingResponses: module === 'parenting' ? {} : state.parentingResponses,
+          analysisResult: null,
+        })),
     }),
     {
       name: 'temperament-storage',

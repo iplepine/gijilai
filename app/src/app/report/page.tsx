@@ -61,6 +61,77 @@ ChartJS.register(
   Legend,
 );
 
+function getReportTabFromParam(tabParam: string | null): ReportTab {
+  if (tabParam === 'parent') return 'parent';
+  if (tabParam === 'parenting') return 'parenting';
+  return 'child';
+}
+
+type ChildReportStreamModule =
+  | { module: 'intro'; data: Pick<ChildAiReport, 'title' | 'intro'> }
+  | { module: 'dimensions'; data: { dimensions?: NonNullable<NonNullable<ChildAiReport['analysis']>['dimensions']> } }
+  | { module: 'insight'; data: { insight?: NonNullable<ChildAiReport['analysis']>['insight'] } }
+  | { module: 'strengths'; data: { strengths?: string } }
+  | { module: 'parentingTips'; data: Pick<ChildAiReport, 'parentingTips'> }
+  | { module: 'scripts'; data: Pick<ChildAiReport, 'scripts' | 'shareText'> };
+type ReanalysisTarget = 'child' | 'parent' | 'harmony';
+type HarmonyRefreshSource = 'child' | 'parent' | null;
+
+function getHarmonyRefreshSource(refreshParam: string | null): HarmonyRefreshSource {
+  if (refreshParam === 'child' || refreshParam === 'parent') return refreshParam;
+  return null;
+}
+
+function applyChildReportStreamModule(report: ChildAiReport, item: ChildReportStreamModule): ChildAiReport {
+  if (item.module === 'intro') {
+    return { ...report, title: item.data.title, intro: item.data.intro };
+  }
+
+  if (item.module === 'dimensions') {
+    return {
+      ...report,
+      analysis: { ...report.analysis, dimensions: item.data.dimensions },
+    };
+  }
+
+  if (item.module === 'insight') {
+    return {
+      ...report,
+      analysis: { ...report.analysis, insight: item.data.insight },
+    };
+  }
+
+  if (item.module === 'strengths') {
+    return {
+      ...report,
+      analysis: { ...report.analysis, strengths: item.data.strengths },
+    };
+  }
+
+  if (item.module === 'parentingTips') {
+    return { ...report, parentingTips: item.data.parentingTips };
+  }
+
+  return { ...report, scripts: item.data.scripts, shareText: item.data.shareText };
+}
+
+function parseSseBlock(block: string) {
+  let event = 'message';
+  let data = '';
+
+  block.split(/\r?\n/).forEach((line) => {
+    if (line.startsWith('event:')) {
+      event = line.slice('event:'.length).trim();
+      return;
+    }
+    if (line.startsWith('data:')) {
+      data += line.slice('data:'.length).trim();
+    }
+  });
+
+  return { event, data };
+}
+
 function ReportContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -72,7 +143,7 @@ function ReportContent() {
 
   const { user } = useAuth();
   const { t, locale } = useLocale();
-  const [activeTab, setActiveTab] = useState<ReportTab>('child');
+  const [activeTab, setActiveTab] = useState<ReportTab>(() => getReportTabFromParam(tabParam));
   const {
     intake,
     setIntake,
@@ -80,7 +151,7 @@ function ReportContent() {
     atqResponses,
     parentingResponses,
     selectedChildId,
-    resetSurveyOnly,
+    resetSurveyModule,
   } = useAppStore();
 
   const [childAiReport, setChildAiReport] = useState<ChildAiReport | null>(null);
@@ -88,12 +159,14 @@ function ReportContent() {
   const [harmonyAiReport, setHarmonyAiReport] = useState<HarmonyAiReport | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRestartDialogOpen, setIsRestartDialogOpen] = useState(false);
+  const [restartTarget, setRestartTarget] = useState<ReanalysisTarget>('child');
   const [isStartingFreshSurvey, setIsStartingFreshSurvey] = useState(false);
   const [reportLoadingStep, setReportLoadingStep] = useState(0);
   const generatingRef = useRef<Set<string>>(new Set());
   const refreshedReportTypesRef = useRef<Set<string>>(new Set());
   const [reportDates, setReportDates] = useState<ReportDates>({});
   const [hasSubscription, setHasSubscription] = useState(false);
+  const [harmonyRefreshSource, setHarmonyRefreshSource] = useState<HarmonyRefreshSource>(() => getHarmonyRefreshSource(reportRefreshParam));
 
   // DB에서 로드된 {t('common.points')}수 데이터 (상세 보기용)
   const [savedChildScores, setSavedChildScores] = useState<TemperamentScores | null>(null);
@@ -104,16 +177,8 @@ function ReportContent() {
   const reportId = searchParams.get('id');
 
   useEffect(() => {
-    if (tabParam === 'parent') {
-      setActiveTab('parent');
-    } else if (tabParam === 'child') {
-      setActiveTab('child');
-    } else if (tabParam === 'parenting') {
-      setActiveTab('parenting');
-    } else if (!tabParam) {
-      setActiveTab('child');
-    }
-  }, [tabParam, parentingResponses]);
+    setActiveTab(getReportTabFromParam(tabParam));
+  }, [tabParam]);
 
   useEffect(() => {
     if (!user) return;
@@ -411,6 +476,11 @@ function ReportContent() {
     refreshedReportTypesRef.current.clear();
   }, [reportRefreshParam]);
 
+  useEffect(() => {
+    const refreshSource = getHarmonyRefreshSource(reportRefreshParam);
+    if (refreshSource) setHarmonyRefreshSource(refreshSource);
+  }, [reportRefreshParam]);
+
   const shouldRefreshReportType = useCallback((type: 'CHILD' | 'PARENT' | 'HARMONY') => {
     const matches =
       reportRefreshParam === 'all'
@@ -427,21 +497,27 @@ function ReportContent() {
     return true;
   }, [reportRefreshParam]);
 
+  const openRestartDialog = useCallback((target: ReanalysisTarget) => {
+    setRestartTarget(target);
+    setIsRestartDialogOpen(true);
+  }, []);
+
   const handleFreshSurveyRestart = useCallback(async () => {
     setIsStartingFreshSurvey(true);
     try {
-      resetSurveyOnly();
+      const surveyType = restartTarget === 'child' ? 'CHILD' : 'PARENT';
+      resetSurveyModule(restartTarget === 'child' ? 'child' : 'parent');
       useSurveyStore.getState().resetSurvey();
 
       if (user) {
-        await db.startFreshSurveyResponses(user.id, currentChild?.id ?? selectedChildId);
+        await db.startFreshSurveyResponses(user.id, currentChild?.id ?? selectedChildId, [surveyType]);
       }
 
-      const nextFlow = isChildOnly ? 'quick' : 'full';
-      const refreshTarget = isChildOnly ? 'child' : 'all';
-      const destination = `/survey?flow=${nextFlow}&restart=report&refresh=${refreshTarget}`;
+      const destination = restartTarget === 'child'
+        ? '/survey?type=CHILD&flow=quick&restart=report&restart_scope=child&refresh=child'
+        : '/survey?type=PARENT&flow=quick&restart=report&restart_scope=parent&refresh=parent';
 
-      trackReportCtaClick('restart_survey_for_reanalysis', 'footer', destination);
+      trackReportCtaClick(`restart_${restartTarget}_survey_for_reanalysis`, 'footer', destination);
       router.replace(buildTrackedPath(destination));
     } catch (error) {
       console.error('Failed to start fresh survey:', error);
@@ -451,8 +527,8 @@ function ReportContent() {
   }, [
     buildTrackedPath,
     currentChild?.id,
-    isChildOnly,
-    resetSurveyOnly,
+    resetSurveyModule,
+    restartTarget,
     router,
     selectedChildId,
     t,
@@ -527,6 +603,91 @@ function ReportContent() {
 
     return { report: data.report, reportId: data.reportId, createdAt: data.createdAt };
   }, [currentChild?.id, intake, isValidReport, selectedChildId]);
+
+  const fetchChildReportStream = useCallback(async (
+    payload: ReportApiPayload & { type: 'CHILD' },
+    onModule: (item: ChildReportStreamModule) => void,
+  ): Promise<ReportApiResult | null> => {
+    const resolvedChildId = currentChild?.id ?? selectedChildId;
+    const perf = createPerfTracker('fetchReportStream', {
+      type: payload.type,
+      childId: resolvedChildId ?? null,
+      refresh: !!payload.refresh,
+    });
+
+    const res = await fetch('/api/llm/report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...payload, intake, childId: resolvedChildId, stream: true }),
+    });
+    perf.mark('network_headers', {
+      ok: res.ok,
+      status: res.status,
+    });
+
+    if (!res.ok || !res.body) {
+      const errBody = await res.json().catch(() => ({}));
+      console.error('[fetchReportStream] CHILD failed:', res.status, errBody);
+      throw new Error('Report stream failed');
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let result: ReportApiResult | null = null;
+
+    const handleBlock = (block: string) => {
+      const { event, data } = parseSseBlock(block);
+      if (!data) return;
+
+      const parsed = JSON.parse(data);
+      if (event === 'module') {
+        onModule(parsed as ChildReportStreamModule);
+        return;
+      }
+
+      if (event === 'cached' || event === 'completed') {
+        if (parsed.report) {
+          result = {
+            report: parsed.report,
+            reportId: parsed.reportId,
+            createdAt: parsed.createdAt,
+          };
+        }
+        if (event === 'completed') {
+          perf.mark('stream_completed', { cached: !!parsed.cached });
+          console.log(
+            `[fetchReportStream] CHILD: cached=${parsed.cached}, createdAt=${parsed.createdAt}, timings=${JSON.stringify(parsed.timings ?? null)}`
+          );
+        }
+        return;
+      }
+
+      if (event === 'error') {
+        throw new Error(typeof parsed.error === 'string' ? parsed.error : 'Report stream failed');
+      }
+    };
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      let delimiterIndex = buffer.indexOf('\n\n');
+      while (delimiterIndex >= 0) {
+        const block = buffer.slice(0, delimiterIndex);
+        buffer = buffer.slice(delimiterIndex + 2);
+        handleBlock(block);
+        delimiterIndex = buffer.indexOf('\n\n');
+      }
+    }
+
+    buffer += decoder.decode();
+    if (buffer.trim()) handleBlock(buffer);
+    perf.mark('response_parsed');
+
+    return result;
+  }, [currentChild?.id, intake, selectedChildId]);
 
   const prefersFreshChildResponses =
     (reportRefreshParam === 'all' || reportRefreshParam === 'child')
@@ -605,29 +766,59 @@ function ReportContent() {
 
   const generateChildAIReport = useCallback(async (refresh = false) => {
     if (generatingRef.current.has('CHILD')) return;
+    const previousChildReport = childAiReport;
+    const previousChildReportDate = reportDates.child;
+    const previousChildReportId = childReportId;
     generatingRef.current.add('CHILD');
     setIsGenerating(true);
     try {
       const answers = Object.entries(childAnswerMap).map(([id, score]) => ({ questionId: id, score: score as number }));
-      const result = await fetchReport({
+      setReportDates(prev => {
+        const next = { ...prev };
+        delete next.child;
+        return next;
+      });
+      setChildAiReport({ analysis: {} });
+      const result = await fetchChildReportStream({
         userName: childName || '아이',
         scores: childScores, type: 'CHILD', answers,
         refresh,
         childType: { label: childType.label, keywords: childType.keywords, desc: childType.desc }
+      }, (item) => {
+        setChildAiReport((current) => normalizeReportTextForName(
+          applyChildReportStreamModule(current ?? { analysis: {} }, item),
+          childName,
+        ));
       });
       if (result) {
         setChildAiReport(normalizeReportTextForName(asChildAiReport(result.report), childName));
         if (result.reportId) setChildReportId(result.reportId);
         setReportDates(prev => ({ ...prev, child: result.createdAt }));
+        if (refresh) setHarmonyRefreshSource('child');
       }
     } catch (error) {
       console.error(error);
+      if (previousChildReport) {
+        setChildAiReport(previousChildReport);
+      } else {
+        setChildAiReport(null);
+      }
+      setReportDates(prev => {
+        const next = { ...prev };
+        if (previousChildReportDate) {
+          next.child = previousChildReportDate;
+        } else {
+          delete next.child;
+        }
+        return next;
+      });
+      setChildReportId(previousChildReportId);
       alert(t('report.generationError'));
     } finally {
       generatingRef.current.delete('CHILD');
       setIsGenerating(generatingRef.current.size > 0);
     }
-  }, [childAnswerMap, childName, childScores, childType.desc, childType.keywords, childType.label, fetchReport, normalizeReportTextForName, t]);
+  }, [childAiReport, childAnswerMap, childName, childReportId, childScores, childType.desc, childType.keywords, childType.label, fetchChildReportStream, normalizeReportTextForName, reportDates.child, t]);
 
   const generateParentAIReport = useCallback(async (refresh = false) => {
     if (generatingRef.current.has('PARENT')) return;
@@ -644,6 +835,7 @@ function ReportContent() {
       if (result) {
         setParentAiReport(asParentAiReport(result.report));
         setReportDates(prev => ({ ...prev, parent: result.createdAt }));
+        if (refresh) setHarmonyRefreshSource('parent');
       }
     } catch (error) {
       console.error(error);
@@ -674,15 +866,60 @@ function ReportContent() {
       if (result) {
         setHarmonyAiReport(normalizeReportTextForName(asHarmonyAiReport(result.report), childName));
         setReportDates(prev => ({ ...prev, parenting: result.createdAt }));
+        return true;
       }
     } catch (error) {
       console.error(error);
       alert(t('report.harmonyError'));
+      return false;
     } finally {
       generatingRef.current.delete('HARMONY');
       setIsGenerating(generatingRef.current.size > 0);
     }
+    return false;
   }, [childAnswerMap, childName, childScores, childType.keywords, childType.label, fetchReport, normalizeReportTextForName, parentAnswerMap, parentScores, parentType.keywords, parentType.label, parentingResponses, styleScores, t]);
+
+  const handleHarmonyRefresh = useCallback(async () => {
+    if (!isStyleSurveyComplete) {
+      if (confirm(t('report.styleSurveyNeeded'))) {
+        const destination = '/survey?type=STYLE';
+        trackReportCtaClick('continue_parenting_style_for_harmony_refresh', 'footer', destination);
+        router.push(buildTrackedPath(destination));
+      }
+      return;
+    }
+
+    setIsRestartDialogOpen(false);
+    setActiveTab('parenting');
+    const previousHarmonyReport = harmonyAiReport;
+    const previousHarmonyDate = reportDates.parenting;
+    setHarmonyAiReport(null);
+    trackReportCtaClick('refresh_harmony_after_reanalysis', 'footer', '/report?tab=parenting&refresh=parenting');
+    const refreshed = await generateHarmonyAIReport(true);
+    if (refreshed) {
+      setHarmonyRefreshSource(null);
+    } else {
+      setHarmonyAiReport(previousHarmonyReport);
+      setReportDates(prev => {
+        const next = { ...prev };
+        if (previousHarmonyDate) {
+          next.parenting = previousHarmonyDate;
+        } else {
+          delete next.parenting;
+        }
+        return next;
+      });
+    }
+  }, [buildTrackedPath, generateHarmonyAIReport, harmonyAiReport, isStyleSurveyComplete, reportDates.parenting, router, t, trackReportCtaClick]);
+
+  const handleRestartAnalysisConfirm = useCallback(async () => {
+    if (restartTarget === 'harmony') {
+      await handleHarmonyRefresh();
+      return;
+    }
+
+    await handleFreshSurveyRestart();
+  }, [handleFreshSurveyRestart, handleHarmonyRefresh, restartTarget]);
 
   // 아이 기질 탭: 리포트 없으면 자동 생성 (서버가 캐시/생성 분기)
   useEffect(() => {
@@ -690,10 +927,10 @@ function ReportContent() {
       || !!savedChildScores
       || !!currentChildReportScores
       || !!currentChildSurveyScores;
-    if (!isGenerating && !reportId && hasCbq && !childAiReport) {
+    if (activeTab === 'child' && !isGenerating && !reportId && hasCbq && !childAiReport) {
       void generateChildAIReport(shouldRefreshReportType('CHILD'));
     }
-  }, [childAiReport, childAnswerMap, currentChildReportScores, currentChildSurveyScores, generateChildAIReport, isGenerating, reportId, savedChildScores, shouldRefreshReportType]);
+  }, [activeTab, childAiReport, childAnswerMap, currentChildReportScores, currentChildSurveyScores, generateChildAIReport, isGenerating, reportId, savedChildScores, shouldRefreshReportType]);
 
   // 양육자 탭 진입 시 자동 생성
   useEffect(() => {
@@ -724,6 +961,7 @@ function ReportContent() {
   }, [harmonyAiReport, activeTab]);
 
   const isRadarLoading = activeTab === 'parenting' && !harmonyAiReport;
+  const shouldShowHarmonyRefreshNotice = !isChildOnly && !!harmonyRefreshSource;
 
   const radarData = {
     labels: [
@@ -934,6 +1172,33 @@ function ReportContent() {
           </div>
 
           <div className="max-w-2xl mx-auto px-6 space-y-8 relative z-20">
+            {shouldShowHarmonyRefreshNotice && (
+              <section className="bg-amber-50 dark:bg-amber-950/30 rounded-2xl px-5 py-4 shadow-card border border-amber-200/70 dark:border-amber-800/50 space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="size-9 rounded-full bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+                    <Icon name="sync" size="sm" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[13px] font-black text-amber-900 dark:text-amber-200">
+                      {t('report.harmonyRefreshNoticeTitle')}
+                    </p>
+                    <p className="text-[12px] leading-relaxed text-amber-800/80 dark:text-amber-100/75 break-keep">
+                      {t(harmonyRefreshSource === 'child' ? 'report.harmonyRefreshNoticeChildDesc' : 'report.harmonyRefreshNoticeParentDesc')}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="secondary"
+                  fullWidth
+                  disabled={isGenerating}
+                  onClick={handleHarmonyRefresh}
+                  className="h-11 rounded-xl border-none bg-white dark:bg-surface-dark text-amber-900 dark:text-amber-100 shadow-sm"
+                >
+                  {t('report.refreshHarmonyCta')}
+                </Button>
+              </section>
+            )}
+
             {activeTab === 'child' ? (
               !isChildSurveyComplete ? (
                 /* Child Survey Onboarding */
@@ -1112,6 +1377,17 @@ function ReportContent() {
                         </section>
                       )}
 
+                      {isGenerating && !reportDates.child && (
+                        <section className="bg-white dark:bg-surface-dark rounded-2xl px-6 py-5 shadow-card border border-beige-main/10">
+                          <p className="text-[12px] font-black text-primary mb-2.5 flex items-center gap-1.5">
+                            <Icon name="auto_awesome" size="sm" /> {t('report.analyzingChild')}
+                          </p>
+                          <p className="text-[14px] text-text-sub dark:text-slate-400 leading-[1.8] break-keep">
+                            {childLoadingSteps[reportLoadingStep % childLoadingSteps.length]}
+                          </p>
+                        </section>
+                      )}
+
                       {/* 분석 날짜 & 다시 분석하기 */}
                       {reportDates.child && (
                         <div className="flex items-center justify-between pt-4">
@@ -1119,7 +1395,7 @@ function ReportContent() {
                             {new Date(reportDates.child).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })} {t('common.analysis')}
                           </p>
                           <button
-                            onClick={() => setIsRestartDialogOpen(true)}
+                            onClick={() => openRestartDialog('child')}
                             disabled={isGenerating || isStartingFreshSurvey}
                             className="text-[11px] text-text-sub/50 hover:text-primary font-medium transition-colors disabled:opacity-40"
                           >
@@ -1139,7 +1415,7 @@ function ReportContent() {
                   )}
 
                   {/* Footer Actions */}
-                  {!isChildOnly && childAiReport && (
+                  {!isChildOnly && childAiReport && reportDates.child && (
                     <div className="flex flex-col gap-4 pt-10 pb-10 text-center">
                       <MedicalDisclaimer title={t('report.medicalDisclaimerTitle')} body={t('report.medicalDisclaimerBody')} />
                       {showPremiumCta && <PremiumContinuationCard />}
@@ -1310,7 +1586,7 @@ function ReportContent() {
                           {new Date(reportDates.parent).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })} 분석
                         </p>
                         <button
-                          onClick={() => setIsRestartDialogOpen(true)}
+                          onClick={() => openRestartDialog('parent')}
                           disabled={isGenerating || isStartingFreshSurvey}
                           className="text-[11px] text-text-sub/50 hover:text-primary font-medium transition-colors disabled:opacity-40"
                         >
@@ -1547,7 +1823,7 @@ function ReportContent() {
                           {new Date(reportDates.parenting).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })} 분석
                         </p>
                         <button
-                          onClick={() => setIsRestartDialogOpen(true)}
+                          onClick={() => openRestartDialog('harmony')}
                           disabled={isGenerating || isStartingFreshSurvey}
                           className="text-[11px] text-text-sub/50 hover:text-primary font-medium transition-colors disabled:opacity-40"
                         >
@@ -1594,15 +1870,27 @@ function ReportContent() {
 
       {isRestartDialogOpen && (
         <ConfirmDialog
-          title={t('report.restartAnalysisDialogTitle')}
-          description={t('report.restartAnalysisDialogDescription')}
+          title={t(
+            restartTarget === 'child'
+              ? 'report.restartChildAnalysisDialogTitle'
+              : restartTarget === 'parent'
+                ? 'report.restartParentAnalysisDialogTitle'
+                : 'report.restartHarmonyAnalysisDialogTitle'
+          )}
+          description={t(
+            restartTarget === 'child'
+              ? 'report.restartChildAnalysisDialogDescription'
+              : restartTarget === 'parent'
+                ? 'report.restartParentAnalysisDialogDescription'
+                : 'report.restartHarmonyAnalysisDialogDescription'
+          )}
           cancelLabel={t('common.cancel')}
-          confirmLabel={t('report.restartAnalysisConfirm')}
-          isConfirming={isStartingFreshSurvey}
+          confirmLabel={t(restartTarget === 'harmony' ? 'report.restartHarmonyAnalysisConfirm' : 'report.restartAnalysisConfirm')}
+          isConfirming={isStartingFreshSurvey || (restartTarget === 'harmony' && isGenerating)}
           onCancel={() => {
-            if (!isStartingFreshSurvey) setIsRestartDialogOpen(false);
+            if (!isStartingFreshSurvey && !(restartTarget === 'harmony' && isGenerating)) setIsRestartDialogOpen(false);
           }}
-          onConfirm={handleFreshSurveyRestart}
+          onConfirm={handleRestartAnalysisConfirm}
         />
       )}
 

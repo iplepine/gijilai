@@ -159,6 +159,7 @@ export const db = {
   startFreshSurveyResponses: async (
     userId: string,
     childId?: string | null,
+    types: Array<"CHILD" | "PARENT" | "PARENTING_STYLE"> = ["CHILD", "PARENT", "PARENTING_STYLE"],
   ) => {
     const blankSurvey = {
       answers: {},
@@ -167,26 +168,14 @@ export const db = {
       status: "IN_PROGRESS" as const,
     };
 
-    const { error } = await supabase.from("surveys").insert([
-      {
-        user_id: userId,
-        child_id: childId ?? null,
-        type: "CHILD" as const,
-        ...blankSurvey,
-      },
-      {
-        user_id: userId,
-        child_id: null,
-        type: "PARENT" as const,
-        ...blankSurvey,
-      },
-      {
-        user_id: userId,
-        child_id: childId ?? null,
-        type: "PARENTING_STYLE" as const,
-        ...blankSurvey,
-      },
-    ]);
+    const rows = types.map((type) => ({
+      user_id: userId,
+      child_id: type === "PARENT" ? null : childId ?? null,
+      type,
+      ...blankSurvey,
+    }));
+
+    const { error } = await supabase.from("surveys").insert(rows);
 
     if (error) throw error;
   },

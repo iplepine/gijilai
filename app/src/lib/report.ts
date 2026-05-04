@@ -80,6 +80,7 @@ export type HarmonyParentingAudit = {
 };
 
 export type ChildAiReport = {
+    title?: string;
     intro?: string;
     analysis?: {
         dimensions?: Partial<Record<ReportScoreKey, string>>;
@@ -88,6 +89,7 @@ export type ChildAiReport = {
     };
     parentingTips?: ParentingTip[];
     scripts?: ScriptTip[];
+    shareText?: string;
 };
 
 export type ParentAiReport = {

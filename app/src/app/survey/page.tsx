@@ -15,6 +15,7 @@ import { CHILD_QUESTIONS, PARENT_QUESTIONS, PARENTING_STYLE_QUESTIONS } from '@/
 import { useLocale } from '@/i18n/LocaleProvider';
 
 type SurveyModule = 'child' | 'parent' | 'parenting';
+type RestartScope = 'child' | 'parent' | null;
 type QuestionNavDirection = 'next' | 'prev';
 
 function getInitialModule(typeParam: string | null): SurveyModule {
@@ -42,12 +43,18 @@ function getFirstUnansweredIndex(
   return firstUnanswered === -1 ? Math.max(questions.length - 1, 0) : firstUnanswered;
 }
 
+function getRestartScope(value: string | null): RestartScope {
+  if (value === 'child' || value === 'parent') return value;
+  return null;
+}
+
 function SurveyContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const typeParam = searchParams.get('type'); // 'CHILD' | 'PARENT' | 'STYLE'
   const flowParam = searchParams.get('flow');
   const refreshParam = searchParams.get('refresh');
+  const restartScope = getRestartScope(searchParams.get('restart_scope'));
   const entrySource = searchParams.get('source') ?? 'direct';
   const reportTab = searchParams.get('report_tab');
   const reportKind = searchParams.get('report_kind');
@@ -77,6 +84,7 @@ function SurveyContent() {
     || refreshParam === 'parenting'
       ? `&refresh=${refreshParam}`
       : '';
+  const reportReturnQuery = reportRefreshQuery ? `?${reportRefreshQuery.slice(1)}` : '';
   const [currentIndex, setCurrentIndex] = useState(() => getFirstUnansweredIndex(
     getInitialModule(typeParam),
     {
@@ -246,13 +254,25 @@ function SurveyContent() {
 
       // Current module finished
       if (currentModule === 'child') {
-        if (surveyFlow === 'full') {
+        if (restartScope === 'child') {
+          const destination = reportKind === 'child_only'
+            ? `/report?child_only=true${reportRefreshQuery}`
+            : `/report?tab=child${reportRefreshQuery}`;
+          router.replace(destination);
+        } else if (surveyFlow === 'full') {
           setTransitionType('toParent');
           setShowTransitionModal(true);
+        } else if (reportKind === 'full') {
+          router.replace(`/report?tab=child${reportRefreshQuery}`);
         } else {
           router.replace(`/report?child_only=true${reportRefreshQuery}`);
         }
       } else if (currentModule === 'parent') {
+        if (restartScope === 'parent') {
+          setIsCalculating(true);
+          setTimeout(() => router.replace(`/report?tab=parent${reportRefreshQuery}`), 2000);
+          return;
+        }
         // 양육자 기질 완료 시 양육 태도 안내 다이얼로그 노출
         setTransitionType('toParenting');
         setShowTransitionModal(true);
@@ -319,7 +339,7 @@ function SurveyContent() {
       });
       setIsCalculating(true);
       setTimeout(() => {
-        router.replace(reportRefreshQuery ? `/report?${reportRefreshQuery.slice(1)}` : '/report');
+        router.replace(reportReturnQuery ? `/report${reportReturnQuery}` : '/report');
       }, 2000);
     }
     setTransitionType(null);
