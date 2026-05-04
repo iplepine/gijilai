@@ -742,6 +742,17 @@ function ConsultContent() {
     };
 
     const currentQuestion = questions[currentQuestionIndex];
+    const hasUnsavedConsultProgress = step !== 'RESULT' && (
+        isLoading
+        || problemDesc.trim().length > 0
+        || questions.length > 0
+        || Object.keys(answers).length > 0
+        || currentTextAnswer.trim().length > 0
+    );
+    const handleHomeNavigationRequest = useCallback(() => {
+        if (!hasUnsavedConsultProgress) return true;
+        return window.confirm(t('consult.confirmLeaveForHome'));
+    }, [hasUnsavedConsultProgress, t]);
 
     useEffect(() => {
         setFreeTextOptionId(null);
@@ -751,7 +762,10 @@ function ConsultContent() {
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center justify-center font-body pb-0">
             <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
-                <Navbar title={step === 'RESULT' ? t('consult.heartPrescription') : t('consult.heartInterpreterStation')} />
+                <Navbar
+                    title={step === 'RESULT' ? t('consult.heartPrescription') : t('consult.heartInterpreterStation')}
+                    onHomeClick={handleHomeNavigationRequest}
+                />
 
                 <main className="app-fixed-cta-scroll w-full max-w-md flex flex-col flex-1 min-h-0 overflow-y-auto no-scrollbar p-6">
                     {step === 'INPUT' && childLoading && (

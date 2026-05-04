@@ -30,7 +30,8 @@
     "pleaseWait": "잠시만 기다려주세요",
     "select": "선택해주세요",
     "question": "질문",
-    "answer": "답변"
+    "answer": "답변",
+    "homeAriaLabel": "홈으로 이동"
   },
   "voice": {
     "start": "음성 입력 시작",
@@ -391,7 +392,8 @@
     "deleteRecord": "기록 삭제",
     "confirmDeleteSession": "이 고민과 관련된 모든 상담·실천 기록이 삭제돼요.\n정말 삭제할까요?",
     "confirmDeleteConsult": "이 상담 기록을 삭제할까요?",
-    "confirmDropPractices": "진행 중인 실천이 {count}개 있어요.\n\n{names}\n\n실천도 함께 종료할까요?"
+    "confirmDropPractices": "진행 중인 실천이 {count}개 있어요.\n\n{names}\n\n실천도 함께 종료할까요?",
+    "confirmLeaveForHome": "상담을 나가면 현재 입력 중인 내용이 사라질 수 있어요.\n홈으로 이동할까요?"
   },
   "settings": {
     "title": "설정",

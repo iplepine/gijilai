@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import { HomeLogoButton } from '@/components/layout/HomeLogoButton';
 import { db, SubscriptionData } from '@/lib/db';
 import { useLocale } from '@/i18n/LocaleProvider';
 
@@ -23,10 +23,12 @@ export function HomeHeader({
     return (
         <header className="app-top-bar sticky top-0 z-40 border-b border-gray-100 bg-background-light/80 backdrop-blur-xl dark:border-gray-800 dark:bg-background-dark/80">
             <div className="app-top-bar-inner flex items-center justify-between px-4">
-                <div className="flex items-center gap-3">
-                    <Image src="/gijilai_icon.png" alt={t('common.appName')} width={28} height={28} className="rounded-lg object-contain" />
-                    <span className="text-xl font-logo tracking-wide text-primary dark:text-white pt-0.5">{t('common.appName')}</span>
-                </div>
+                <HomeLogoButton
+                    variant="brand"
+                    className="gap-3"
+                    imageClassName="size-7 rounded-lg object-contain"
+                    textClassName="text-xl font-logo tracking-wide text-primary dark:text-white pt-0.5"
+                />
                 {subscription ? (
                     <button
                         onClick={onSubscriptionClick}

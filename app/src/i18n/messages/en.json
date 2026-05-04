@@ -30,7 +30,8 @@
     "pleaseWait": "Please wait",
     "select": "Please select",
     "question": "Question",
-    "answer": "Answer"
+    "answer": "Answer",
+    "homeAriaLabel": "Go to home"
   },
   "voice": {
     "start": "Start voice input",
@@ -390,7 +391,8 @@
     "deleteRecord": "Delete record",
     "confirmDeleteSession": "All consultation and practice records related to this concern will be deleted.\nAre you sure?",
     "confirmDeleteConsult": "Delete this consultation record?",
-    "confirmDropPractices": "You have {count} active practices.\n\n{names}\n\nEnd practices too?"
+    "confirmDropPractices": "You have {count} active practices.\n\n{names}\n\nEnd practices too?",
+    "confirmLeaveForHome": "Leaving now may discard what you are entering in this consultation.\nGo home?"
   },
   "settings": {
     "title": "Settings",

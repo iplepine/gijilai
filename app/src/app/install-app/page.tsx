@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useSyncExternalStore } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Image from 'next/image';
+import { HomeLogoButton } from '@/components/layout/HomeLogoButton';
 import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
@@ -153,12 +153,10 @@ function InstallAppContent() {
 
               <div className="relative flex justify-center pt-2">
                 <div className="flex size-20 shrink-0 items-center justify-center rounded-[24px] bg-white shadow-[0_14px_34px_rgba(47,79,62,0.16)] ring-1 ring-primary/10 dark:bg-[#252019] dark:ring-white/10">
-                  <Image
-                    src="/gijilai_icon.png"
-                    alt={t('common.appName')}
-                    width={54}
-                    height={54}
-                    className="rounded-2xl object-contain"
+                  <HomeLogoButton
+                    className="justify-center"
+                    imageClassName="rounded-2xl object-contain"
+                    imageSize={54}
                     priority
                   />
                 </div>

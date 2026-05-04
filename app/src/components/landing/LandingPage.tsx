@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { trackEvent } from '@/lib/analytics';
 import { Icon } from '@/components/ui/Icon';
 import { Button } from '@/components/ui/Button';
+import { HomeLogoButton } from '@/components/layout/HomeLogoButton';
 import { useLocale } from '@/i18n/LocaleProvider';
 
 const CHILD_TYPES = [
@@ -262,7 +263,12 @@ export default function LandingPage() {
                 <div className="container max-w-6xl mx-auto space-y-8">
                     <div className="flex flex-col md:flex-row justify-between items-center gap-8">
                         <div className="flex flex-col items-center md:items-start gap-3">
-                            <span className="text-2xl font-logo tracking-[0.3em] text-primary dark:text-white uppercase">{t('common.appName')}</span>
+                            <HomeLogoButton
+                                variant="brand"
+                                className="gap-0"
+                                imageClassName="hidden"
+                                textClassName="text-2xl font-logo tracking-[0.3em] text-primary dark:text-white uppercase"
+                            />
                             <p className="text-[11px] text-text-sub text-center md:text-left leading-relaxed max-w-xs uppercase tracking-tighter">
                                 &copy; 2026 GIJILAI. ALL RIGHTS RESERVED.<br />
                                 {t('landing.footerDisclaimer')}
