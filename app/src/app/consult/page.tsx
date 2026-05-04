@@ -633,6 +633,7 @@ function ConsultContent() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     problem: fullProblem,
+                    firstRoundQuestions: questions.map(q => ({ id: q.id, text: q.text })),
                     firstRoundAnswers: currentAnswers
                 }),
             });

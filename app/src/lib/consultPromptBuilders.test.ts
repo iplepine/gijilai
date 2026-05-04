@@ -39,8 +39,9 @@ describe('consultPromptBuilders', () => {
 
         expect(prompt.systemPrompt).toContain('기초 질문');
         expect(prompt.systemPrompt).toContain('아이 기질 유형: 신중한 관찰가');
-        expect(prompt.systemPrompt).toContain('가장 바라는 변화나 목표 행동');
-        expect(prompt.systemPrompt).toContain('표면 문제와 부모가 원하는 변화를 구분');
+        expect(prompt.systemPrompt).toContain('서로 다른 정보 축');
+        expect(prompt.systemPrompt).toContain('체크리스트로 사용하지 마세요');
+        expect(prompt.systemPrompt).toContain('처방에 꼭 필요할 때만');
         expect(prompt.userMessage).toContain('서아');
         expect(prompt.userMessage).toContain('현재 고민 상황');
     });
@@ -49,10 +50,15 @@ describe('consultPromptBuilders', () => {
         const prompt = buildFollowUpConsultQuestionsPrompt({
             problem: '등원 때 울어요.',
             firstRoundAnswers: { q1: '현관에서만 심해요' },
+            firstRoundQuestions: [{ id: 'q1', text: '언제 가장 힘들어지나요?' }],
         });
 
         expect(prompt.systemPrompt).toContain('needsFollowUp');
+        expect(prompt.systemPrompt).toContain('중복 질문 금지');
+        expect(prompt.systemPrompt).toContain('절대 생성하지 마세요');
         expect(prompt.systemPrompt).toContain('나아졌다고 느끼는 모습');
+        expect(prompt.userMessage).toContain('1차 문진 질문과 답변');
+        expect(prompt.userMessage).toContain('언제 가장 힘들어지나요?');
         expect(prompt.userMessage).toContain('현관에서만 심해요');
     });
 
