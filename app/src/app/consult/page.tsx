@@ -953,31 +953,37 @@ function ConsultContent() {
                                     </p>
                                 </div>
                                 <div className="grid gap-2.5">
-                                    <div className="flex items-start gap-3 rounded-2xl bg-primary/5 px-4 py-3.5">
-                                        <span className="material-symbols-outlined mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/80 text-[18px] text-primary shadow-sm dark:bg-white/10">
-                                            psychology
-                                        </span>
-                                        <div className="min-w-0">
-                                            <p className="text-[12px] font-bold text-primary">{t('consult.introOutcomeLabel')}</p>
-                                            <p className="mt-0.5 text-[13px] leading-relaxed text-text-main dark:text-white">{t('consult.introOutcomeText')}</p>
+                                    <div className="rounded-2xl bg-primary/5 px-4 py-4">
+                                        <div className="mx-auto flex w-full max-w-[30rem] items-center gap-3">
+                                            <span className="material-symbols-outlined flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/80 text-[19px] text-primary shadow-sm dark:bg-white/10">
+                                                psychology
+                                            </span>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-[12px] font-bold text-primary">{t('consult.introOutcomeLabel')}</p>
+                                                <p className="mt-0.5 break-keep text-[13px] leading-relaxed text-text-main dark:text-white">{t('consult.introOutcomeText')}</p>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="flex items-start gap-3 rounded-2xl bg-secondary/5 px-4 py-3.5">
-                                        <span className="material-symbols-outlined mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/80 text-[18px] text-secondary shadow-sm dark:bg-white/10">
-                                            timer
-                                        </span>
-                                        <div className="min-w-0">
-                                            <p className="text-[12px] font-bold text-secondary">{t('consult.introTimeLabel')}</p>
-                                            <p className="mt-0.5 text-[13px] leading-relaxed text-text-main dark:text-white">{t('consult.introTimeText')}</p>
+                                    <div className="rounded-2xl bg-secondary/5 px-4 py-4">
+                                        <div className="mx-auto flex w-full max-w-[30rem] items-center gap-3">
+                                            <span className="material-symbols-outlined flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/80 text-[19px] text-secondary shadow-sm dark:bg-white/10">
+                                                timer
+                                            </span>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-[12px] font-bold text-secondary">{t('consult.introTimeLabel')}</p>
+                                                <p className="mt-0.5 break-keep text-[13px] leading-relaxed text-text-main dark:text-white">{t('consult.introTimeText')}</p>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="flex items-start gap-3 rounded-2xl bg-beige-main/25 px-4 py-3.5">
-                                        <span className="material-symbols-outlined mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/80 text-[18px] text-text-main shadow-sm dark:bg-white/10 dark:text-white">
-                                            health_and_safety
-                                        </span>
-                                        <div className="min-w-0">
-                                            <p className="text-[12px] font-bold text-text-main dark:text-white">{t('consult.introScopeLabel')}</p>
-                                            <p className="mt-0.5 text-[13px] leading-relaxed text-text-main dark:text-white">{t('consult.introScopeText')}</p>
+                                    <div className="rounded-2xl bg-beige-main/25 px-4 py-4">
+                                        <div className="mx-auto flex w-full max-w-[30rem] items-center gap-3">
+                                            <span className="material-symbols-outlined flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/80 text-[19px] text-text-main shadow-sm dark:bg-white/10 dark:text-white">
+                                                health_and_safety
+                                            </span>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-[12px] font-bold text-text-main dark:text-white">{t('consult.introScopeLabel')}</p>
+                                                <p className="mt-0.5 break-keep text-[13px] leading-relaxed text-text-main dark:text-white">{t('consult.introScopeText')}</p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
