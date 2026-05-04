@@ -4,6 +4,7 @@ import React, { useMemo, useState, useEffect, useRef, Suspense, useCallback } fr
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAppStore } from '@/store/useAppStore';
+import { useSurveyStore } from '@/store/surveyStore';
 import { CHILD_QUESTIONS, PARENT_QUESTIONS, PARENTING_STYLE_QUESTIONS } from '@/data/questions';
 import BottomNav from '@/components/layout/BottomNav';
 import {
@@ -19,6 +20,7 @@ import { Radar } from 'react-chartjs-2';
 import Link from 'next/link';
 import { Icon } from '@/components/ui/Icon';
 import { Button } from '@/components/ui/Button';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { MedicalDisclaimer } from '@/components/ui/MedicalDisclaimer';
 import { trackEvent } from '@/lib/analytics';
 import { db, type ChildProfile, type ReportData, type SurveyData } from '@/lib/db';
@@ -65,18 +67,30 @@ function ReportContent() {
   const isChildOnly = searchParams.get('child_only') === 'true';
   const entrySource = searchParams.get('source') ?? (searchParams.get('id') ? 'saved_report' : 'direct');
   const reportKind = isChildOnly ? 'child_only' : 'full';
+  const reportRefreshParam = searchParams.get('refresh');
 
   const { user } = useAuth();
   const { t, locale } = useLocale();
   const [activeTab, setActiveTab] = useState<ReportTab>('child');
-  const { intake, setIntake, cbqResponses, atqResponses, parentingResponses, selectedChildId } = useAppStore();
+  const {
+    intake,
+    setIntake,
+    cbqResponses,
+    atqResponses,
+    parentingResponses,
+    selectedChildId,
+    resetSurveyOnly,
+  } = useAppStore();
 
   const [childAiReport, setChildAiReport] = useState<ChildAiReport | null>(null);
   const [parentAiReport, setParentAiReport] = useState<ParentAiReport | null>(null);
   const [harmonyAiReport, setHarmonyAiReport] = useState<HarmonyAiReport | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isRestartDialogOpen, setIsRestartDialogOpen] = useState(false);
+  const [isStartingFreshSurvey, setIsStartingFreshSurvey] = useState(false);
   const [reportLoadingStep, setReportLoadingStep] = useState(0);
   const generatingRef = useRef<Set<string>>(new Set());
+  const refreshedReportTypesRef = useRef<Set<string>>(new Set());
   const [reportDates, setReportDates] = useState<ReportDates>({});
   const [hasSubscription, setHasSubscription] = useState(false);
 
@@ -382,6 +396,59 @@ function ReportContent() {
   }, [activeTab, entrySource, isChildOnly, reportId, reportKind]);
 
   useEffect(() => {
+    refreshedReportTypesRef.current.clear();
+  }, [reportRefreshParam]);
+
+  const shouldRefreshReportType = useCallback((type: 'CHILD' | 'PARENT' | 'HARMONY') => {
+    const matches =
+      reportRefreshParam === 'all'
+      || (reportRefreshParam === 'child' && type === 'CHILD')
+      || (reportRefreshParam === 'parent' && type === 'PARENT')
+      || (reportRefreshParam === 'parenting' && type === 'HARMONY');
+
+    if (!matches) return false;
+
+    const refreshKey = `${reportRefreshParam}:${type}`;
+    if (refreshedReportTypesRef.current.has(refreshKey)) return false;
+
+    refreshedReportTypesRef.current.add(refreshKey);
+    return true;
+  }, [reportRefreshParam]);
+
+  const handleFreshSurveyRestart = useCallback(async () => {
+    setIsStartingFreshSurvey(true);
+    try {
+      resetSurveyOnly();
+      useSurveyStore.getState().resetSurvey();
+
+      if (user) {
+        await db.startFreshSurveyResponses(user.id, currentChild?.id ?? selectedChildId);
+      }
+
+      const nextFlow = isChildOnly ? 'quick' : 'full';
+      const refreshTarget = isChildOnly ? 'child' : 'all';
+      const destination = `/survey?flow=${nextFlow}&restart=report&refresh=${refreshTarget}`;
+
+      trackReportCtaClick('restart_survey_for_reanalysis', 'footer', destination);
+      router.replace(buildTrackedPath(destination));
+    } catch (error) {
+      console.error('Failed to start fresh survey:', error);
+      alert(t('report.restartAnalysisError'));
+      setIsStartingFreshSurvey(false);
+    }
+  }, [
+    buildTrackedPath,
+    currentChild?.id,
+    isChildOnly,
+    resetSurveyOnly,
+    router,
+    selectedChildId,
+    t,
+    trackReportCtaClick,
+    user,
+  ]);
+
+  useEffect(() => {
     trackEvent('report_viewed', {
       tab: activeTab,
       report_kind: reportKind,
@@ -449,21 +516,30 @@ function ReportContent() {
     return { report: data.report, reportId: data.reportId, createdAt: data.createdAt };
   }, [currentChild?.id, intake, isValidReport, selectedChildId]);
 
+  const prefersFreshChildResponses =
+    (reportRefreshParam === 'all' || reportRefreshParam === 'child')
+    && Object.keys(cbqResponses).length > 0;
+  const prefersFreshParentResponses =
+    (reportRefreshParam === 'all' || reportRefreshParam === 'parent')
+    && Object.keys(atqResponses).length > 0;
+
   const childScores = useMemo(() => {
+    if (prefersFreshChildResponses) return TemperamentScorer.calculate(CHILD_QUESTIONS, cbqResponses);
     if (savedChildScores) return savedChildScores;
     if (currentChildReportScores) return currentChildReportScores;
     if (currentChildSurveyScores) return currentChildSurveyScores;
     if (currentChildSurveyAnswers) return TemperamentScorer.calculate(CHILD_QUESTIONS, currentChildSurveyAnswers);
     return TemperamentScorer.calculate(CHILD_QUESTIONS, cbqResponses);
-  }, [cbqResponses, currentChildReportScores, currentChildSurveyAnswers, currentChildSurveyScores, savedChildScores]);
+  }, [cbqResponses, currentChildReportScores, currentChildSurveyAnswers, currentChildSurveyScores, prefersFreshChildResponses, savedChildScores]);
 
   const parentScores = useMemo(() => {
+    if (prefersFreshParentResponses) return TemperamentScorer.calculate(PARENT_QUESTIONS, atqResponses);
     if (savedParentScores) return savedParentScores;
     if (currentParentReportScores) return currentParentReportScores;
     if (currentParentSurveyScores) return currentParentSurveyScores;
     if (currentParentSurveyAnswers) return TemperamentScorer.calculate(PARENT_QUESTIONS, currentParentSurveyAnswers);
     return TemperamentScorer.calculate(PARENT_QUESTIONS, atqResponses);
-  }, [atqResponses, currentParentReportScores, currentParentSurveyAnswers, currentParentSurveyScores, savedParentScores]);
+  }, [atqResponses, currentParentReportScores, currentParentSurveyAnswers, currentParentSurveyScores, prefersFreshParentResponses, savedParentScores]);
 
   const styleScores = useMemo<ParentingStyleScores>(() => {
     const scores = { Efficacy: 0, Autonomy: 0, Responsiveness: 0 };
@@ -487,8 +563,8 @@ function ReportContent() {
   }, [parentingResponses]);
 
   const childType = useMemo(() => TemperamentClassifier.analyzeChild(childScores), [childScores]);
-  const childAnswerMap = currentChildSurveyAnswers ?? cbqResponses;
-  const parentAnswerMap = currentParentSurveyAnswers ?? atqResponses;
+  const childAnswerMap = prefersFreshChildResponses ? cbqResponses : currentChildSurveyAnswers ?? cbqResponses;
+  const parentAnswerMap = prefersFreshParentResponses ? atqResponses : currentParentSurveyAnswers ?? atqResponses;
 
   const isStyleSurveyComplete = useMemo(() => {
     return PARENTING_STYLE_QUESTIONS.every(q => !!parentingResponses[q.id.toString()]);
@@ -497,20 +573,22 @@ function ReportContent() {
   const parentType = useMemo(() => TemperamentClassifier.analyzeParent(parentScores), [parentScores]);
 
   const isChildSurveyComplete = useMemo(() => {
+    if (prefersFreshChildResponses) return Object.keys(cbqResponses).length > 0;
     return !!savedChildScores
       || !!currentChildReportScores
       || !!currentChildSurveyScores
       || !!currentChildSurveyAnswers
       || Object.keys(cbqResponses).length > 0;
-  }, [cbqResponses, currentChildReportScores, currentChildSurveyAnswers, currentChildSurveyScores, savedChildScores]);
+  }, [cbqResponses, currentChildReportScores, currentChildSurveyAnswers, currentChildSurveyScores, prefersFreshChildResponses, savedChildScores]);
 
   const hasParentScores = useMemo(() => {
+    if (prefersFreshParentResponses) return Object.keys(atqResponses).length > 0;
     return !!savedParentScores
       || !!currentParentReportScores
       || !!currentParentSurveyScores
       || !!currentParentSurveyAnswers
       || Object.keys(atqResponses).length > 0;
-  }, [atqResponses, currentParentReportScores, currentParentSurveyAnswers, currentParentSurveyScores, savedParentScores]);
+  }, [atqResponses, currentParentReportScores, currentParentSurveyAnswers, currentParentSurveyScores, prefersFreshParentResponses, savedParentScores]);
   const isParentSurveyComplete = hasParentScores;
 
   const generateChildAIReport = useCallback(async (refresh = false) => {
@@ -601,24 +679,24 @@ function ReportContent() {
       || !!currentChildReportScores
       || !!currentChildSurveyScores;
     if (!isGenerating && !reportId && hasCbq && !childAiReport) {
-      void generateChildAIReport();
+      void generateChildAIReport(shouldRefreshReportType('CHILD'));
     }
-  }, [childAiReport, childAnswerMap, currentChildReportScores, currentChildSurveyScores, generateChildAIReport, isGenerating, reportId, savedChildScores]);
+  }, [childAiReport, childAnswerMap, currentChildReportScores, currentChildSurveyScores, generateChildAIReport, isGenerating, reportId, savedChildScores, shouldRefreshReportType]);
 
   // 양육자 탭 진입 시 자동 생성
   useEffect(() => {
     if (activeTab === 'parent' && !isGenerating && !reportId && hasParentScores && !parentAiReport) {
-      void generateParentAIReport();
+      void generateParentAIReport(shouldRefreshReportType('PARENT'));
     }
-  }, [activeTab, generateParentAIReport, hasParentScores, isGenerating, parentAiReport, reportId]);
+  }, [activeTab, generateParentAIReport, hasParentScores, isGenerating, parentAiReport, reportId, shouldRefreshReportType]);
 
   // 기질맞춤양육 탭 진입 시 자동 생성
   useEffect(() => {
     const styleComplete = PARENTING_STYLE_QUESTIONS.every(q => !!parentingResponses[q.id.toString()]);
     if (activeTab === 'parenting' && !isGenerating && !reportId && !harmonyAiReport && styleComplete) {
-      void generateHarmonyAIReport();
+      void generateHarmonyAIReport(shouldRefreshReportType('HARMONY'));
     }
-  }, [activeTab, generateHarmonyAIReport, harmonyAiReport, isGenerating, parentingResponses, reportId]);
+  }, [activeTab, generateHarmonyAIReport, harmonyAiReport, isGenerating, parentingResponses, reportId, shouldRefreshReportType]);
 
   // Radar chart loading animation
   const [animatedRadar, setAnimatedRadar] = useState<number[][]>([[50,50,50,50],[50,50,50,50]]);
@@ -1029,8 +1107,8 @@ function ReportContent() {
                             {new Date(reportDates.child).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })} {t('common.analysis')}
                           </p>
                           <button
-                            onClick={() => { setChildAiReport(null); void generateChildAIReport(true); }}
-                            disabled={isGenerating}
+                            onClick={() => setIsRestartDialogOpen(true)}
+                            disabled={isGenerating || isStartingFreshSurvey}
                             className="text-[11px] text-text-sub/50 hover:text-primary font-medium transition-colors disabled:opacity-40"
                           >
                             {t('common.reanalyze')}
@@ -1214,11 +1292,11 @@ function ReportContent() {
                           {new Date(reportDates.parent).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })} 분석
                         </p>
                         <button
-                          onClick={() => { setParentAiReport(null); void generateParentAIReport(true); }}
-                          disabled={isGenerating}
+                          onClick={() => setIsRestartDialogOpen(true)}
+                          disabled={isGenerating || isStartingFreshSurvey}
                           className="text-[11px] text-text-sub/50 hover:text-primary font-medium transition-colors disabled:opacity-40"
                         >
-                          다시 분석하기
+                          {t('common.reanalyze')}
                         </button>
                       </div>
                     )}
@@ -1445,11 +1523,11 @@ function ReportContent() {
                           {new Date(reportDates.parenting).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })} 분석
                         </p>
                         <button
-                          onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }); setHarmonyAiReport(null); void generateHarmonyAIReport(true); }}
-                          disabled={isGenerating}
+                          onClick={() => setIsRestartDialogOpen(true)}
+                          disabled={isGenerating || isStartingFreshSurvey}
                           className="text-[11px] text-text-sub/50 hover:text-primary font-medium transition-colors disabled:opacity-40"
                         >
-                          다시 분석하기
+                          {t('common.reanalyze')}
                         </button>
                       </div>
                     )}
@@ -1483,6 +1561,20 @@ function ReportContent() {
         </main>
         <BottomNav />
       </div>
+
+      {isRestartDialogOpen && (
+        <ConfirmDialog
+          title={t('report.restartAnalysisDialogTitle')}
+          description={t('report.restartAnalysisDialogDescription')}
+          cancelLabel={t('common.cancel')}
+          confirmLabel={t('report.restartAnalysisConfirm')}
+          isConfirming={isStartingFreshSurvey}
+          onCancel={() => {
+            if (!isStartingFreshSurvey) setIsRestartDialogOpen(false);
+          }}
+          onConfirm={handleFreshSurveyRestart}
+        />
+      )}
 
       {isChildOnly && (
         <div className="app-fixed-cta fixed bottom-0 left-0 right-0 z-50">

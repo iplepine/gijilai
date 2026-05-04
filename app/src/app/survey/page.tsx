@@ -20,6 +20,7 @@ function SurveyContent() {
   const searchParams = useSearchParams();
   const typeParam = searchParams.get('type'); // 'CHILD' | 'PARENT' | 'STYLE'
   const flowParam = searchParams.get('flow');
+  const refreshParam = searchParams.get('refresh');
   const entrySource = searchParams.get('source') ?? 'direct';
   const reportTab = searchParams.get('report_tab');
   const reportKind = searchParams.get('report_kind');
@@ -46,6 +47,13 @@ function SurveyContent() {
     return 'child';
   });
   const surveyFlow = flowParam === 'full' ? 'full' : 'quick';
+  const reportRefreshQuery =
+    refreshParam === 'all'
+    || refreshParam === 'child'
+    || refreshParam === 'parent'
+    || refreshParam === 'parenting'
+      ? `&refresh=${refreshParam}`
+      : '';
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showTransitionModal, setShowTransitionModal] = useState(false);
   const [transitionType, setTransitionType] = useState<'toParent' | 'toParenting' | 'finish' | null>(null);
@@ -208,7 +216,7 @@ function SurveyContent() {
           setTransitionType('toParent');
           setShowTransitionModal(true);
         } else {
-          router.replace('/report?child_only=true');
+          router.replace(`/report?child_only=true${reportRefreshQuery}`);
         }
       } else if (currentModule === 'parent') {
         // 양육자 기질 완료 시 양육 태도 안내 다이얼로그 노출
@@ -272,7 +280,7 @@ function SurveyContent() {
       });
       setIsCalculating(true);
       setTimeout(() => {
-        router.replace('/report');
+        router.replace(reportRefreshQuery ? `/report?${reportRefreshQuery.slice(1)}` : '/report');
       }, 2000);
     }
     setTransitionType(null);

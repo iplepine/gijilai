@@ -139,6 +139,41 @@ export const db = {
     }
   },
 
+  startFreshSurveyResponses: async (
+    userId: string,
+    childId?: string | null,
+  ) => {
+    const blankSurvey = {
+      answers: {},
+      scores: {},
+      step: 1,
+      status: "IN_PROGRESS" as const,
+    };
+
+    const { error } = await supabase.from("surveys").insert([
+      {
+        user_id: userId,
+        child_id: childId ?? null,
+        type: "CHILD" as const,
+        ...blankSurvey,
+      },
+      {
+        user_id: userId,
+        child_id: null,
+        type: "PARENT" as const,
+        ...blankSurvey,
+      },
+      {
+        user_id: userId,
+        child_id: childId ?? null,
+        type: "PARENTING_STYLE" as const,
+        ...blankSurvey,
+      },
+    ]);
+
+    if (error) throw error;
+  },
+
   getLatestSurveyResponses: async (userId: string) => {
     // 각 type별 최신 레코드 하나씩 가져오기
     const { data, error } = await supabase
