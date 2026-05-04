@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
+import { TemperamentLoadingState } from '@/components/ui/TemperamentLoadingState';
 import { useAppStore } from '@/store/useAppStore';
 import { useSurveySync } from '@/hooks/useSurveySync';
 import { useAuth } from '@/components/auth/AuthProvider';
@@ -309,24 +310,18 @@ function SurveyContent() {
     return (
       <div className="bg-background-light dark:bg-background-dark text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center font-body">
         <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl items-center justify-center px-10 text-center relative">
-          <div className="relative w-32 h-32 mb-8">
-            <div className="absolute inset-0 border-4 border-primary/20 rounded-full"></div>
-            <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-4xl animate-bounce">✨</span>
-            </div>
-          </div>
-          <h2 className="text-2xl font-bold text-text-main dark:text-white mb-4 animate-pulse">
-            {currentModule === 'child' ? t('survey.analyzingChild') : t('survey.analyzingFamily')}
-          </h2>
-          <p className="text-text-sub dark:text-slate-400 leading-relaxed break-keep">
-            {currentModule === 'child'
+          <TemperamentLoadingState
+            title={currentModule === 'child' ? t('survey.analyzingChild') : t('survey.analyzingFamily')}
+            message={currentModule === 'child'
               ? (intake.childName
                   ? t('survey.analyzingChildDesc', { name: intake.childName })
                   : t('survey.analyzingChildDescDefault'))
               : t('survey.analyzingFamilyDesc')
             }
-          </p>
+            imageSrc={currentModule === 'child' ? '/child_type/type_lhh.jpg' : '/parent_type/type_parent_lhh.jpg'}
+            imageAlt={t('common.defaultTemperamentImageAlt')}
+            imagePriority
+          />
         </div>
       </div>
     );
@@ -336,7 +331,14 @@ function SurveyContent() {
   if (!currentQuestion) return (
     <div className="bg-background-light dark:bg-background-dark text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center font-body">
       <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex items-center justify-center shadow-2xl relative">
-        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        <TemperamentLoadingState
+          title={t('common.loading')}
+          message={t('common.pleaseWait')}
+          imageSrc="/child_type/type_lhl.jpg"
+          imageAlt={t('common.defaultTemperamentImageAlt')}
+          progressStyle="dots"
+          size="compact"
+        />
       </div>
     </div>
   );

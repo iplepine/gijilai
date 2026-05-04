@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
+import { TemperamentLoadingState } from '@/components/ui/TemperamentLoadingState';
 import { VoiceInputButton } from '@/components/ui/VoiceInputButton';
 import { useLocale } from '@/i18n/LocaleProvider';
 
@@ -160,7 +161,19 @@ export function PracticeCheckModal({
 
     return (
         <div className="app-modal-overlay fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in">
-            <div className="app-modal-panel flex w-full max-w-sm flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-surface-dark animate-slide-up">
+            <div className="app-modal-panel relative flex w-full max-w-sm flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-surface-dark animate-slide-up">
+                {saving && enableChildReactionFeedback && (
+                    <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/95 px-6 dark:bg-surface-dark/95">
+                        <TemperamentLoadingState
+                            title={t('practices.generatingFeedback')}
+                            message={t('practices.generatingFeedbackCopy')}
+                            imageSrc="/child_type/type_llh.jpg"
+                            imageAlt={t('common.defaultTemperamentImageAlt')}
+                            progressStyle="dots"
+                            size="compact"
+                        />
+                    </div>
+                )}
                 <div className="shrink-0 p-6 border-b border-beige-main/10 dark:border-white/5 bg-beige-main/5 dark:bg-white/5">
                     <h4 className="font-bold text-lg text-text-main dark:text-white">{t('practices.todayRecord')}</h4>
                     <p className="text-[13px] text-text-sub mt-1">{practiceTitle}</p>

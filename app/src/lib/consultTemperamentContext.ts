@@ -11,6 +11,7 @@ export type ConsultTemperamentProfile = {
     label: string;
     keywords: string[];
     description: string;
+    image: string;
     scores: TemperamentScores;
 };
 
@@ -64,6 +65,7 @@ export async function resolveConsultTemperamentProfile(
             label: result.label,
             keywords: result.keywords,
             description: result.desc,
+            image: result.image,
             scores,
         };
     }

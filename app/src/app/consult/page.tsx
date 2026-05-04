@@ -7,6 +7,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { useAppStore } from '@/store/useAppStore';
 import { Button } from '@/components/ui/Button';
 import { MedicalDisclaimer } from '@/components/ui/MedicalDisclaimer';
+import { TemperamentLoadingState } from '@/components/ui/TemperamentLoadingState';
 import { VoiceInputButton } from '@/components/ui/VoiceInputButton';
 import { Navbar } from '@/components/layout/Navbar';
 import { db, ObservationData, PracticeItemData, PracticeLogData, ChildProfile } from '@/lib/db';
@@ -123,6 +124,7 @@ interface TemperamentProfile {
     label: string;
     keywords: string[];
     description: string;
+    image: string;
     scores: {
         NS: number;
         HA: number;
@@ -220,6 +222,7 @@ function ConsultContent() {
 
     const [step, setStep] = useState<Step>('INPUT');
     const [isLoading, setIsLoading] = useState(false);
+    const [loadingStage, setLoadingStage] = useState<'questions' | 'followup' | 'prescription' | null>(null);
 
     // 구독/트라이얼 상태
     const [hasSubscription, setHasSubscription] = useState(false);
@@ -452,7 +455,7 @@ function ConsultContent() {
                 const { CHILD_QUESTIONS } = await import('@/data/questions');
                 childScores = TemperamentScorer.calculate(CHILD_QUESTIONS, cbqResponses);
                 const result = TemperamentClassifier.analyzeChild(childScores);
-                setChildProfile({ label: result.label, keywords: result.keywords, description: result.desc, scores: childScores });
+                setChildProfile({ label: result.label, keywords: result.keywords, description: result.desc, image: result.image, scores: childScores });
             } else {
                 setChildProfile(null);
             }
@@ -461,7 +464,7 @@ function ConsultContent() {
                 const { PARENT_QUESTIONS } = await import('@/data/questions');
                 parentScores = TemperamentScorer.calculate(PARENT_QUESTIONS, atqResponses);
                 const result = TemperamentClassifier.analyzeParent(parentScores);
-                setParentProfile({ label: result.label, keywords: result.keywords, description: result.desc, scores: parentScores });
+                setParentProfile({ label: result.label, keywords: result.keywords, description: result.desc, image: result.image, scores: parentScores });
             } else {
                 setParentProfile(null);
             }
@@ -494,6 +497,7 @@ function ConsultContent() {
             report_kind: reportKind ?? undefined,
         });
 
+        setLoadingStage('questions');
         setIsLoading(true);
         try {
             let recentObservations: ObservationData[] = [];
@@ -546,6 +550,7 @@ function ConsultContent() {
             alert(t('consult.errorRetry'));
         } finally {
             setIsLoading(false);
+            setLoadingStage(null);
         }
     };
 
@@ -576,6 +581,7 @@ function ConsultContent() {
             openPricing('consult_gate', 'followup_question_gate');
             return;
         }
+        setLoadingStage('followup');
         setIsLoading(true);
         try {
             const fullProblem = problemDesc;
@@ -625,6 +631,7 @@ function ConsultContent() {
             await handleGeneratePrescription(currentAnswers); // Fallback to results
         } finally {
             setIsLoading(false);
+            setLoadingStage(null);
         }
     };
 
@@ -633,6 +640,7 @@ function ConsultContent() {
             openPricing('consult_gate', 'prescription_gate');
             return;
         }
+        setLoadingStage('prescription');
         setIsLoading(true);
         try {
             const fullProblem = problemDesc;
@@ -738,6 +746,7 @@ function ConsultContent() {
             alert(t('consult.prescriptionError'));
         } finally {
             setIsLoading(false);
+            setLoadingStage(null);
         }
     };
 
@@ -753,6 +762,16 @@ function ConsultContent() {
         if (!hasUnsavedConsultProgress) return true;
         return window.confirm(t('consult.confirmLeaveForHome'));
     }, [hasUnsavedConsultProgress, t]);
+    const loadingTitle = loadingStage === 'questions'
+        ? (childName ? t('consult.analyzingTemperament', { name: childName }) : t('consult.analyzingTemperamentDefault'))
+        : loadingStage === 'followup'
+            ? t('consult.refiningQuestions')
+            : t('consult.translatingHeart');
+    const loadingMessage = loadingStage === 'questions'
+        ? t('consult.loadingQuestionsCopy')
+        : loadingStage === 'followup'
+            ? t('consult.loadingFollowupCopy')
+            : t('consult.loadingPrescriptionCopy');
 
     useEffect(() => {
         setFreeTextOptionId(null);
@@ -1396,28 +1415,21 @@ function ConsultContent() {
                         </div>
                     )}
                     {isLoading && (
-                        <div className="fixed inset-0 bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-md z-50 flex flex-col items-center justify-center gap-6 px-8">
-                            <div className="w-10 h-10 rounded-full border-3 border-primary/15 border-t-primary animate-spin"></div>
-
-                            <div className="text-center space-y-2">
-                                <p className="text-lg font-bold text-text-main dark:text-white">
-                                    {step === 'INPUT' ? (childName ? t('consult.analyzingTemperament', { name: childName }) : t('consult.analyzingTemperamentDefault')) : t('consult.translatingHeart')}
-                                </p>
-                                <p className="text-sm text-text-sub dark:text-gray-400">
-                                    {step === 'INPUT' ? t('consult.preparingQuestions') : t('consult.creatingPrescription')}
-                                </p>
-                            </div>
+                        <div className="fixed inset-0 bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-md z-50 flex flex-col items-center justify-center gap-5 px-8">
+                            <TemperamentLoadingState
+                                title={loadingTitle}
+                                message={loadingMessage}
+                                imageSrc={childProfile?.image}
+                                imageAlt={childProfile?.label || t('common.defaultTemperamentImageAlt')}
+                                typeLabel={childProfile?.label}
+                            />
 
                             {problemDesc && (
-                                <div className="w-full max-w-sm bg-white/60 dark:bg-surface-dark/60 rounded-2xl p-5 border border-primary/10 mt-2">
+                                <div className="w-full max-w-sm bg-white/70 dark:bg-surface-dark/70 rounded-2xl p-5 border border-primary/10 mt-1 shadow-soft">
                                     <p className="text-[11px] font-bold text-text-sub dark:text-gray-500 mb-2 uppercase tracking-wider">{t('consult.consultContent')}</p>
                                     <p className="text-[14px] text-text-main dark:text-gray-200 leading-relaxed line-clamp-4">{problemDesc}</p>
                                 </div>
                             )}
-
-                            <div className="w-48 h-1.5 bg-primary/10 rounded-full overflow-hidden mt-2">
-                                <div className="h-full bg-gradient-to-r from-primary to-secondary rounded-full animate-progress"></div>
-                            </div>
                         </div>
                     )}
                 </main>

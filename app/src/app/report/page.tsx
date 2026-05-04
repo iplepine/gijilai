@@ -22,6 +22,7 @@ import { Icon } from '@/components/ui/Icon';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { MedicalDisclaimer } from '@/components/ui/MedicalDisclaimer';
+import { TemperamentLoadingState } from '@/components/ui/TemperamentLoadingState';
 import { trackEvent } from '@/lib/analytics';
 import { db, type ChildProfile, type ReportData, type SurveyData } from '@/lib/db';
 import { createPerfTracker } from '@/lib/perf';
@@ -251,18 +252,29 @@ function ReportContent() {
     t('report.harmonyLoadingStep5'),
   ], [t]);
 
-  const ReportGeneratingState = ({ title, steps }: { title: string; steps: string[] }) => (
-    <div className="py-16 px-6 flex flex-col items-center gap-4 animate-fade-in text-center">
-      <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-      <div className="space-y-2">
-        <p className="text-text-sub text-sm font-bold break-keep">{title}</p>
-        <p className="min-h-[22px] text-text-main dark:text-white text-[14px] font-black leading-snug break-keep">
-          {steps[reportLoadingStep % steps.length]}
-        </p>
-        <p className="text-text-sub/60 text-[12px] leading-relaxed break-keep">
-          {t('report.loadingStillWorking')}
-        </p>
-      </div>
+  const ReportGeneratingState = ({
+    title,
+    steps,
+    imageSrc,
+    imageAlt,
+    typeLabel,
+  }: {
+    title: string;
+    steps: string[];
+    imageSrc: string;
+    imageAlt: string;
+    typeLabel?: string;
+  }) => (
+    <div className="py-14 px-6">
+      <TemperamentLoadingState
+        title={title}
+        message={steps[reportLoadingStep % steps.length]}
+        note={t('report.loadingStillWorking')}
+        imageSrc={imageSrc}
+        imageAlt={imageAlt}
+        typeLabel={typeLabel}
+        imagePriority
+      />
     </div>
   );
 
@@ -1117,7 +1129,13 @@ function ReportContent() {
                       )}
                     </div>
                   ) : (
-                    <ReportGeneratingState title={t('report.analyzingChild')} steps={childLoadingSteps} />
+                    <ReportGeneratingState
+                      title={t('report.analyzingChild')}
+                      steps={childLoadingSteps}
+                      imageSrc={childType.image}
+                      imageAlt={childType.label}
+                      typeLabel={childType.label}
+                    />
                   )}
 
                   {/* Footer Actions */}
@@ -1302,7 +1320,13 @@ function ReportContent() {
                     )}
                   </>
                 ) : (
-                  <ReportGeneratingState title={t('report.analyzingParent')} steps={parentLoadingSteps} />
+                  <ReportGeneratingState
+                    title={t('report.analyzingParent')}
+                    steps={parentLoadingSteps}
+                    imageSrc={parentType.image}
+                    imageAlt={parentType.label}
+                    typeLabel={parentType.label}
+                  />
                 )}
 
                 {/* Footer Actions */}
@@ -1533,7 +1557,13 @@ function ReportContent() {
                     )}
                   </>
                 ) : (
-                  <ReportGeneratingState title={t('report.analyzingHarmony')} steps={harmonyLoadingSteps} />
+                  <ReportGeneratingState
+                    title={t('report.analyzingHarmony')}
+                    steps={harmonyLoadingSteps}
+                    imageSrc={childType.image}
+                    imageAlt={childType.label}
+                    typeLabel={childType.label}
+                  />
                 )}
 
                 {/* Footer Actions */}
