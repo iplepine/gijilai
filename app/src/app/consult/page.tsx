@@ -16,7 +16,7 @@ import { getRandomExamples } from '@/data/consultExamples';
 import { useLocale } from '@/i18n/LocaleProvider';
 import { trackEvent } from '@/lib/analytics';
 import { getApiErrorMessage, readJsonResponse } from '@/lib/api';
-import { isAppWebView } from '@/lib/install';
+import { buildInstallPageUrl, isAppWebView } from '@/lib/install';
 import {
     validateConsultProblemInput,
     type ConsultInputValidationCode,
@@ -1510,7 +1510,11 @@ function ConsultContent() {
                                 size="sm"
                                 variant="primary"
                                 className="w-full rounded-xl bg-secondary text-white h-12 font-black shadow-lg shadow-secondary/20 relative z-10"
-                                onClick={() => window.open('https://aina.garden/app', '_blank')}
+                                onClick={() => router.push(buildInstallPageUrl({
+                                    source: 'consult_result',
+                                    entry_cta: 'practice_reminder',
+                                    from: 'practices',
+                                }))}
                             >
                                 {t('consult.appInstallPush')}
                             </Button>

@@ -69,6 +69,8 @@
 - Flutter 앱 WebView의 루트(`/`) 진입 시 로그인 세션이 없으면 웹 랜딩 화면을 먼저 보여준다. 로그인 세션이 있으면 홈을 그대로 렌더링한다.
 - 앱 로그인은 랜딩 CTA 이후 `/login`에서 네이티브 로그인 화면 오버레이로 시작한다.
 - 앱 설치 유도 화면(`/install-app`)과 앱 설치/다운로드 CTA는 웹 브라우저 전용이다. 네이티브 앱 WebView에서는 렌더링하지 않고, `/install-app`이 앱 안에서 열리면 `from` 값에 따라 `/pricing`, `/payment`, 또는 홈으로 되돌린다.
+- PC 웹의 `/install-app`은 OS를 직접 선택하게 하는 화면이 아니라 QR 코드와 설치 링크 복사로 휴대폰에서 이어가게 한다. 모바일 웹의 `/install-app`은 `gijilai://open?path=...` 딥링크를 먼저 시도하고, 앱이 열리지 않으면 iOS는 App Store, Android는 Google Play로 이동한다.
+- Flutter 앱은 `gijilai://open` 딥링크를 받으면 WebView를 전달된 내부 path로 이동한다. 인증 콜백(`gijilai://auth/callback`)은 기존처럼 `/auth/callback`으로만 소비한다.
 - 노치/상태표시줄/시스템 제스처 영역 대응은 웹 CSS `env(safe-area-inset-*)`와 Flutter WebView가 주입하는 `--native-safe-area-top/bottom`을 함께 사용한다.
 - Android edge-to-edge WebView에서 native bottom inset이 `0px`로 보고되는 3-button navigation 환경이 있으므로, 하단 탭/고정 CTA는 Android 전용 fallback bottom inset을 함께 적용해 OS 내비게이션 버튼과 겹치지 않게 한다.
 - Flutter 앱은 WebView 문서마다 `window.__nativeCapabilities`를 주입해 현재 앱이 네이티브로 지원하는 화면 집합을 명시한다.

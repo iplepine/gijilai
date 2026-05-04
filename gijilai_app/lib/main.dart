@@ -172,6 +172,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
   Uri? _pendingAuthCallbackUri;
+  Uri? _pendingAppOpenUri;
   DateTime? _lastBackPressedAt;
   bool _showNativeLogin = false;
   bool _isNativeDialogVisible = false;
@@ -215,11 +216,11 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     try {
       final initialUri = await _appLinks.getInitialLink();
       if (initialUri != null) {
-        _handleIncomingAuthUri(initialUri);
+        _handleIncomingAppUri(initialUri);
       }
 
       _appLinkSubscription = _appLinks.uriLinkStream.listen(
-        (uri) => unawaited(_handleIncomingAuthUri(uri)),
+        (uri) => unawaited(_handleIncomingAppUri(uri)),
         onError: (error) {
           debugPrint('App link stream error: $error');
           unawaited(
@@ -336,6 +337,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       _controller = controller;
     });
     await _consumePendingAuthCallback();
+    await _consumePendingAppOpenUri();
   }
 
   Future<void> _handleWebViewPermissionRequest(
@@ -548,7 +550,12 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     if (uri == null) return NavigationDecision.navigate;
 
     if (_isAuthCallbackUri(uri)) {
-      _handleIncomingAuthUri(uri);
+      _handleIncomingAppUri(uri);
+      return NavigationDecision.prevent;
+    }
+
+    if (_isAppOpenUri(uri)) {
+      _handleIncomingAppUri(uri);
       return NavigationDecision.prevent;
     }
 
@@ -714,11 +721,21 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         uri.path.startsWith('/callback');
   }
 
-  Future<void> _handleIncomingAuthUri(Uri uri) async {
-    if (!_isAuthCallbackUri(uri)) return;
+  bool _isAppOpenUri(Uri uri) {
+    return uri.scheme == 'gijilai' && uri.host == 'open';
+  }
 
-    _pendingAuthCallbackUri = uri;
-    await _consumePendingAuthCallback();
+  Future<void> _handleIncomingAppUri(Uri uri) async {
+    if (_isAuthCallbackUri(uri)) {
+      _pendingAuthCallbackUri = uri;
+      await _consumePendingAuthCallback();
+      return;
+    }
+
+    if (_isAppOpenUri(uri)) {
+      _pendingAppOpenUri = uri;
+      await _consumePendingAppOpenUri();
+    }
   }
 
   Future<void> _consumePendingAuthCallback() async {
@@ -739,6 +756,38 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       setState(() {
         _showNativeLogin = false;
         _authInProgress = false;
+      });
+    }
+  }
+
+  Future<void> _consumePendingAppOpenUri() async {
+    final uri = _pendingAppOpenUri;
+    final controller = _controller;
+    if (uri == null || controller == null) return;
+
+    _pendingAppOpenUri = null;
+    final targetUri = Uri.parse(MainWebView.targetUrl);
+    final rawPath = uri.queryParameters['path'] ?? '/';
+    final pathUri = Uri.tryParse(rawPath);
+    final safePath =
+        pathUri != null &&
+            pathUri.path.startsWith('/') &&
+            !pathUri.path.startsWith('//')
+        ? pathUri.path
+        : '/';
+    final webUri = targetUri.replace(
+      path: safePath,
+      queryParameters: pathUri != null && pathUri.queryParameters.isNotEmpty
+          ? pathUri.queryParameters
+          : null,
+      fragment: null,
+    );
+
+    await controller.loadRequest(webUri);
+    if (mounted) {
+      setState(() {
+        _showNativeLogin = false;
+        _isWebPageLoading = true;
       });
     }
   }

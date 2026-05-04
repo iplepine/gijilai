@@ -44,7 +44,8 @@
 | `trial_conversion_cta_clicked` | 체험 종료/만료 전후 구독 CTA 클릭 확인 | `source`, `entry_cta`, `placement`, `trial_state`, `trial_days_remaining`, `has_subscription`, `has_practice_priority`, `has_consult_priority` |
 | `app_install_landing_viewed` | 웹 브라우저에서 앱 설치 유도 화면 도달 확인 | `source`, `entry_cta`, `report_tab`, `report_kind`, `platform` |
 | `app_install_store_clicked` | 설치 유도 화면에서 스토어 이동 클릭 확인 | `source`, `entry_cta`, `report_tab`, `report_kind`, `platform`, `store` |
-| `app_install_store_picker_clicked` | 데스크톱/기타 브라우저에서 스토어 선택 영역 노출 클릭 확인 | `source`, `entry_cta`, `report_tab`, `report_kind`, `platform` |
+| `app_install_app_open_clicked` | 모바일 설치 유도 화면에서 앱 딥링크 열기 시도 확인 | `source`, `entry_cta`, `report_tab`, `report_kind`, `platform`, `target_path` |
+| `app_install_link_copied` | PC 설치 유도 화면에서 휴대폰 전달용 링크 복사 확인 | `source`, `entry_cta`, `report_tab`, `report_kind`, `platform` |
 
 ## 리포트 전환 핵심 퍼널
 
