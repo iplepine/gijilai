@@ -7,15 +7,24 @@ type SharedReportRow = {
   content: string | null;
   analysis_json: unknown;
   created_at: string;
-  children: Array<{
+  children: Relation<{
     name: string;
     gender: string;
     birth_date: string;
   }>;
-  surveys: Array<{
+  surveys: Relation<{
     scores: unknown;
   }>;
 };
+
+type Relation<T> = T | T[] | null;
+
+function getRelationItem<T>(value: Relation<T>): T | null {
+  if (Array.isArray(value)) {
+    return value[0] ?? null;
+  }
+  return value ?? null;
+}
 
 function getSupabaseAdmin() {
   return createClient(
@@ -41,7 +50,7 @@ export async function GET(
       .from('reports')
       .select('id, type, content, analysis_json, created_at, children(name, gender, birth_date), surveys(scores)')
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Shared report query error:', error);
@@ -63,8 +72,8 @@ export async function GET(
       type: report.type,
       analysis: report.analysis_json,
       createdAt: report.created_at,
-      child: report.children[0] ?? null,
-      scores: report.surveys[0]?.scores ?? null,
+      child: getRelationItem(report.children),
+      scores: getRelationItem(report.surveys)?.scores ?? null,
     });
   } catch (e) {
     console.error('Failed to load shared report:', e);

@@ -23,7 +23,7 @@ describe('consultPromptBuilders', () => {
     it('formats child age in months or years', () => {
         const now = new Date('2026-05-03T00:00:00+09:00');
 
-        expect(formatConsultChildAge('2024-05-15', now)).toBe('24개월');
+        expect(formatConsultChildAge('2024-05-15', now)).toBe('23개월');
         expect(formatConsultChildAge('2021-09-01', now)).toBe('4세 8개월');
     });
 

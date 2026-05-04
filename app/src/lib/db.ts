@@ -110,30 +110,47 @@ export const db = {
     type: "CHILD" | "PARENT" | "PARENTING_STYLE",
     answers: Record<string, number>,
     status: "IN_PROGRESS" | "COMPLETED" = "IN_PROGRESS",
+    childId?: string | null,
   ) => {
     // 기존 레코드 찾기
-    const { data: existing } = await supabase
+    let existingQuery = supabase
       .from("surveys")
       .select("id")
       .eq("user_id", userId)
-      .eq("type", type)
+      .eq("type", type);
+
+    if (type === "CHILD" || type === "PARENTING_STYLE") {
+      existingQuery = childId
+        ? existingQuery.eq("child_id", childId)
+        : existingQuery.is("child_id", null);
+    } else {
+      existingQuery = existingQuery.is("child_id", null);
+    }
+
+    const { data: existing, error: existingError } = await existingQuery
       .order("created_at", { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
+    if (existingError) throw existingError;
+
+    const surveyPayload = {
+      answers,
+      status,
+      step: Object.keys(answers).length,
+      child_id: type === "PARENT" ? null : childId ?? null,
+    };
 
     if (existing) {
       const { error } = await supabase
         .from("surveys")
-        .update({ answers, status, step: Object.keys(answers).length })
+        .update(surveyPayload)
         .eq("id", existing.id);
       if (error) throw error;
     } else {
       const { error } = await supabase.from("surveys").insert({
         user_id: userId,
         type,
-        answers,
-        status,
-        step: Object.keys(answers).length,
+        ...surveyPayload,
       });
       if (error) throw error;
     }

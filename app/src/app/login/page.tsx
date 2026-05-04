@@ -40,6 +40,13 @@ function AppleLoginSymbol() {
     );
 }
 
+function getSafeRedirect(value: string | null) {
+    if (!value || !value.startsWith('/') || value.startsWith('//')) {
+        return '/';
+    }
+    return value;
+}
+
 export default function LoginPage() {
     const { t } = useLocale();
     const {
@@ -98,7 +105,8 @@ export default function LoginPage() {
 
     useEffect(() => {
         if (user) {
-            router.replace('/');
+            const params = new URLSearchParams(window.location.search);
+            router.replace(getSafeRedirect(params.get('redirect')));
         }
     }, [user, router]);
 

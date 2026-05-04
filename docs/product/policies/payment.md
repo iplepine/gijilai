@@ -11,6 +11,7 @@
 - 토스페이/네이버페이는 심사 거부로 결제 UI에서 미노출한다.
 - 웹 정기결제 빌링키 발급은 구매자 이름/휴대폰 번호가 필요하므로, 구독 버튼을 누른 시점에 다이얼로그로 휴대폰 번호를 입력받아 PortOne 빌링키 발급창 호출 파라미터로 전달한다. 이 값은 앱 DB에 저장하지 않는다.
 - 포트원 웹훅 시크릿은 운영 중 무중단 교체를 위해 최대 2개까지 동시에 검증할 수 있게 유지한다. 기본값은 `PORTONE_WEBHOOK_SECRET`, 교체 기간에는 `PORTONE_WEBHOOK_SECRET_SECONDARY` 또는 `PORTONE_WEBHOOK_SECRETS`를 함께 사용한다.
+- 포트원 웹훅과 정기결제 cron은 필수 시크릿이 없으면 fail closed로 실패한다. `PORTONE_WEBHOOK_SECRET` 계열 값이 없으면 웹훅을 처리하지 않고, `CRON_SECRET`이 없으면 `/api/payment/billing`을 실행하지 않는다.
 
 ## 가격
 
@@ -93,16 +94,19 @@
 - 앱 IAP도 웹 구독과 동일한 `subscriptions` 테이블을 사용하되 `source`로 출처를 구분한다.
 - 운영 중 필수 환경변수:
   - `APPLE_IAP_JWT`
+  - `APPLE_APP_STORE_ROOT_CERT_PEM` : Apple Server Notification V2와 signed transaction JWS 인증서 체인을 검증할 Apple root CA PEM
   - `GOOGLE_PLAY_CREDENTIALS` : Google 서비스 계정 JSON 전체 문자열 (`client_email`, `private_key` 포함)
   - `GOOGLE_PLAY_PACKAGE_NAME`
   - `GOOGLE_RTDN_TOKEN` (RTDN 엔드포인트 보호용 공유 토큰)
 
 - `GOOGLE_PLAY_CREDENTIALS.private_key`는 PEM 개인키여야 하며 줄바꿈이 보존되어야 한다. 시크릿 매니저에 붙여넣을 때는 서비스 계정 JSON 원문 그대로 저장하거나 JSON 문자열 내부 `\n` 이스케이프를 유지한다.
+- `APPLE_APP_STORE_ROOT_CERT_PEM`도 PEM 줄바꿈이 보존되어야 한다. 시크릿 매니저가 한 줄 값만 허용하면 `\n` 이스케이프를 유지해 저장한다.
 
 ### IAP 상태 동기화 원칙
 
 - 최초 구매 성공만으로 구독 운영을 끝내지 않는다. 갱신, 해지 예약, 결제 실패, 환불/회수는 서버 알림으로 반영한다.
 - Apple/Google 알림이 오면 해당 거래를 다시 스토어 API로 조회해 검증한 뒤 `subscriptions` 상태를 갱신한다.
+- Apple Server Notification V2의 `signedPayload`와 내부 `signedTransactionInfo`는 JWS 서명과 x5c 인증서 체인을 먼저 검증한 뒤 처리한다.
 - Google Play 구독은 사용자가 스토어 구독 관리 화면에서 해지 후 앱으로 복귀했을 때 `/api/payment/subscription` 조회 중 스토어 상태를 다시 확인해 `cancelled_at`를 즉시 동기화한다.
 - App Store 구독은 기본적으로 Apple Server Notification을 우선 진실값으로 사용한다. 앱 복귀 직후에는 알림 반영 전까지 잠시 이전 상태가 보일 수 있다.
 - 해지 예약은 `cancelled_at`만 설정하고, 사용 기간이 끝날 때까지 `ACTIVE`를 유지할 수 있다.

@@ -17,6 +17,31 @@ import { useLocale } from '@/i18n/LocaleProvider';
 type SurveyModule = 'child' | 'parent' | 'parenting';
 type QuestionNavDirection = 'next' | 'prev';
 
+function getInitialModule(typeParam: string | null): SurveyModule {
+  if (typeParam === 'PARENT') return 'parent';
+  if (typeParam === 'STYLE') return 'parenting';
+  return 'child';
+}
+
+function getFirstUnansweredIndex(
+  module: SurveyModule,
+  responsesByModule: {
+    child: Record<string, number>;
+    parent: Record<string, number>;
+    parenting: Record<string, number>;
+  },
+) {
+  const questionsByModule = {
+    child: CHILD_QUESTIONS,
+    parent: PARENT_QUESTIONS,
+    parenting: PARENTING_STYLE_QUESTIONS,
+  };
+  const questions = questionsByModule[module];
+  const responses = responsesByModule[module];
+  const firstUnanswered = questions.findIndex((question) => responses[String(question.id)] === undefined);
+  return firstUnanswered === -1 ? Math.max(questions.length - 1, 0) : firstUnanswered;
+}
+
 function SurveyContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -43,11 +68,7 @@ function SurveyContent() {
   // 설문 응답을 Supabase에 자동 동기화
   useSurveySync();
 
-  const [currentModule, setCurrentModule] = useState<SurveyModule>(() => {
-    if (typeParam === 'PARENT') return 'parent';
-    if (typeParam === 'STYLE') return 'parenting';
-    return 'child';
-  });
+  const [currentModule, setCurrentModule] = useState<SurveyModule>(() => getInitialModule(typeParam));
   const surveyFlow = flowParam === 'full' ? 'full' : 'quick';
   const reportRefreshQuery =
     refreshParam === 'all'
@@ -56,7 +77,14 @@ function SurveyContent() {
     || refreshParam === 'parenting'
       ? `&refresh=${refreshParam}`
       : '';
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(() => getFirstUnansweredIndex(
+    getInitialModule(typeParam),
+    {
+      child: cbqResponses,
+      parent: atqResponses,
+      parenting: parentingResponses,
+    },
+  ));
   const [showTransitionModal, setShowTransitionModal] = useState(false);
   const [transitionType, setTransitionType] = useState<'toParent' | 'toParenting' | 'finish' | null>(null);
   const [showExitModal, setShowExitModal] = useState(false);

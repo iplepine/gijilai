@@ -1,4 +1,5 @@
 import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { X509Certificate, verify as verifyCrypto } from 'crypto';
 
 type Platform = 'APPLE_IAP' | 'GOOGLE_PLAY';
 type SubscriptionStatus = 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'EXPIRED';
@@ -13,6 +14,13 @@ export class IapConfigurationError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'IapConfigurationError';
+  }
+}
+
+export class AppleJwsVerificationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AppleJwsVerificationError';
   }
 }
 
@@ -67,6 +75,133 @@ export function decodeJwsPayload<T = Record<string, unknown>>(token: string): T 
   return JSON.parse(Buffer.from(segments[1], 'base64url').toString('utf8')) as T;
 }
 
+type JwsHeader = {
+  alg?: string;
+  x5c?: string[];
+};
+
+function parseJwsJson<T>(segment: string, label: string): T {
+  try {
+    return JSON.parse(Buffer.from(segment, 'base64url').toString('utf8')) as T;
+  } catch {
+    throw new AppleJwsVerificationError(`Invalid Apple JWS ${label}`);
+  }
+}
+
+function getAppleRootCertificates() {
+  const rawValue = process.env.APPLE_APP_STORE_ROOT_CERT_PEM
+    || process.env.APPLE_ROOT_CA_CERT_PEM;
+
+  if (!rawValue?.trim()) {
+    throw new IapConfigurationError(
+      'APPLE_APP_STORE_ROOT_CERT_PEM is not configured'
+    );
+  }
+
+  const normalized = rawValue.replace(/\\n/g, '\n').trim();
+  const pemBlocks = normalized.match(
+    /-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g
+  );
+
+  if (pemBlocks?.length) {
+    return pemBlocks.map((pem) => new X509Certificate(pem));
+  }
+
+  try {
+    return [new X509Certificate(Buffer.from(normalized, 'base64'))];
+  } catch {
+    throw new IapConfigurationError(
+      'APPLE_APP_STORE_ROOT_CERT_PEM must be a PEM or base64 DER certificate'
+    );
+  }
+}
+
+function assertCertificateIsCurrentlyValid(cert: X509Certificate, now: Date) {
+  const validFrom = new Date(cert.validFrom);
+  const validTo = new Date(cert.validTo);
+
+  if (now < validFrom || now > validTo) {
+    throw new AppleJwsVerificationError('Apple JWS certificate is expired or not yet valid');
+  }
+}
+
+function verifyAppleCertificateChain(certs: X509Certificate[]) {
+  if (certs.length === 0) {
+    throw new AppleJwsVerificationError('Apple JWS certificate chain is missing');
+  }
+
+  const now = new Date();
+  certs.forEach((cert) => assertCertificateIsCurrentlyValid(cert, now));
+
+  for (let index = 0; index < certs.length - 1; index++) {
+    const cert = certs[index];
+    const issuer = certs[index + 1];
+    if (cert.issuer !== issuer.subject || !cert.verify(issuer.publicKey)) {
+      throw new AppleJwsVerificationError('Apple JWS certificate chain is invalid');
+    }
+  }
+
+  const trustedRoots = getAppleRootCertificates();
+  const chainAnchor = certs[certs.length - 1];
+  const trusted = trustedRoots.some((root) => {
+    assertCertificateIsCurrentlyValid(root, now);
+    if (chainAnchor.fingerprint256 === root.fingerprint256) {
+      return true;
+    }
+    return chainAnchor.issuer === root.subject && chainAnchor.verify(root.publicKey);
+  });
+
+  if (!trusted) {
+    throw new AppleJwsVerificationError('Apple JWS certificate chain is not trusted');
+  }
+}
+
+function parseAppleX5cCertificates(x5c: string[]) {
+  try {
+    return x5c.map((cert) => new X509Certificate(Buffer.from(cert, 'base64')));
+  } catch {
+    throw new AppleJwsVerificationError('Apple JWS x5c certificate chain is invalid');
+  }
+}
+
+export function verifyAppleSignedPayload<T = Record<string, unknown>>(token: string): T {
+  const segments = token.split('.');
+  if (segments.length !== 3) {
+    throw new AppleJwsVerificationError('Invalid Apple JWS format');
+  }
+
+  const [encodedHeader, encodedPayload, encodedSignature] = segments;
+  const header = parseJwsJson<JwsHeader>(encodedHeader, 'header');
+  if (header.alg !== 'ES256') {
+    throw new AppleJwsVerificationError('Unsupported Apple JWS algorithm');
+  }
+
+  if (!Array.isArray(header.x5c) || header.x5c.length === 0) {
+    throw new AppleJwsVerificationError('Apple JWS x5c certificate chain is missing');
+  }
+
+  const certs = parseAppleX5cCertificates(header.x5c);
+  verifyAppleCertificateChain(certs);
+
+  const signature = Buffer.from(encodedSignature, 'base64url');
+  if (signature.length !== 64) {
+    throw new AppleJwsVerificationError('Apple JWS signature has invalid length');
+  }
+
+  const isSignatureValid = verifyCrypto(
+    'sha256',
+    Buffer.from(`${encodedHeader}.${encodedPayload}`),
+    { key: certs[0].publicKey, dsaEncoding: 'ieee-p1363' },
+    signature
+  );
+
+  if (!isSignatureValid) {
+    throw new AppleJwsVerificationError('Apple JWS signature is invalid');
+  }
+
+  return parseJwsJson<T>(encodedPayload, 'payload');
+}
+
 export async function verifyAppleTransaction(transactionId: string): Promise<VerifiedIapPurchase> {
   const isProduction = process.env.NODE_ENV === 'production';
   const baseUrl = isProduction
@@ -85,7 +220,7 @@ export async function verifyAppleTransaction(transactionId: string): Promise<Ver
   }
 
   const data = await response.json();
-  const payload = decodeJwsPayload<{
+  const payload = verifyAppleSignedPayload<{
     productId: string;
     transactionId: string;
     originalTransactionId?: string;

@@ -3,6 +3,7 @@ import { invalidJsonResponse, isInvalidJsonBodyError, isNonEmptyString, parseJso
 import { openai } from '@/lib/openai';
 import { createClient } from '@/lib/supabaseServer';
 import { getConsultModel } from '@/lib/consult-model';
+import { getServerFeatureAccess } from '@/lib/access';
 
 type ConsultOptionsResponse = {
     question: string;
@@ -33,6 +34,17 @@ export async function POST(request: Request) {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const access = await getServerFeatureAccess(supabase, {
+            userId: session.user.id,
+            userCreatedAt: session.user.created_at,
+        });
+        if (!access.canUseConsult) {
+            return NextResponse.json(
+                { error: 'Subscription required', code: 'SUBSCRIPTION_REQUIRED' },
+                { status: 402 }
+            );
         }
 
         const { problem } = await parseJsonBody<{ problem?: string }>(request);

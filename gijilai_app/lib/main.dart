@@ -63,6 +63,9 @@ class NativeCapabilityRegistry {
 const String _googleWebClientId = String.fromEnvironment(
   'GOOGLE_WEB_CLIENT_ID',
 );
+const String _googleIosClientId = String.fromEnvironment(
+  'GOOGLE_IOS_CLIENT_ID',
+);
 
 Future<void> main() async {
   await runZonedGuarded(
@@ -965,6 +968,9 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     try {
       final googleSignIn = GoogleSignIn(
         scopes: const ['email', 'profile', 'openid'],
+        clientId: Platform.isIOS && _googleIosClientId.isNotEmpty
+            ? _googleIosClientId
+            : null,
         serverClientId: _googleWebClientId.isEmpty ? null : _googleWebClientId,
       );
 
@@ -998,13 +1004,12 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       );
     } catch (e) {
       debugPrint('Google native login error: $e');
-      _externalAuthInProgress = false;
       if (mounted) {
         setState(() {
           _authInProgress = false;
         });
       }
-      _showSnackBar('Google 로그인을 완료할 수 없습니다', isError: true);
+      _externalAuthInProgress = false;
       unawaited(
         FirebaseCrashlytics.instance.recordError(
           e,
@@ -1012,6 +1017,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           reason: 'Google native login error',
         ),
       );
+      await _startNativeOAuth('google');
     }
   }
 
@@ -1651,6 +1657,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   }
 
   Future<void> _verifyAndDeliver(PurchaseDetails purchase) async {
+    var shouldCompletePurchase = false;
     try {
       final platform = Platform.isIOS ? 'APPLE_IAP' : 'GOOGLE_PLAY';
 
@@ -1718,6 +1725,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       final data = jsonDecode(jsonStr) as Map<String, dynamic>;
 
       if (data['success'] == true) {
+        shouldCompletePurchase = true;
         _showSnackBar('구독이 시작되었습니다!');
         await _controller!.runJavaScript(
           'window.__iapPaymentCompleted && window.__iapPaymentCompleted();',
@@ -1746,7 +1754,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       _showSnackBar('영수증 검증에 실패했습니다', isError: true);
       _notifyWebLoadingDone();
     } finally {
-      if (purchase.pendingCompletePurchase) {
+      if (shouldCompletePurchase && purchase.pendingCompletePurchase) {
         await _iap.completePurchase(purchase);
       }
     }

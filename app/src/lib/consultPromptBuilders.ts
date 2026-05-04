@@ -109,9 +109,15 @@ export function formatConsultChildAge(
 ): string {
     if (!birthDate) return '';
 
-    const birth = new Date(birthDate);
-    const totalMonths = (now.getFullYear() - birth.getFullYear()) * 12
-        + (now.getMonth() - birth.getMonth());
+    const [birthYear, birthMonth, birthDay] = birthDate.split('-').map(Number);
+    if (!birthYear || !birthMonth || !birthDay) return '';
+
+    let totalMonths = (now.getFullYear() - birthYear) * 12
+        + (now.getMonth() - (birthMonth - 1));
+    if (now.getDate() < birthDay) {
+        totalMonths -= 1;
+    }
+    totalMonths = Math.max(0, totalMonths);
 
     if (totalMonths <= 36) {
         return `${totalMonths}개월`;

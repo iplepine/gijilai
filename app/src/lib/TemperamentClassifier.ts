@@ -29,29 +29,73 @@ export class TemperamentClassifier {
     }
 
     static analyzeParent(scores: { NS: number, HA: number, RD: number, P: number }) {
-        const { NS, HA, RD } = scores;
+        const { NS, HA, RD, P } = scores;
 
         const isNS_H = NS > 64;
         const isHA_H = HA > 56;
-        const isRD_H = RD > 60;
 
-        if (isNS_H && !isHA_H && !isRD_H) {
-            return { label: "주도적인 지휘관", emoji: "🦅", image: "/parent_type/type_parent_hll.jpg", keywords: ["목표지향", "독립양육", "추진력"], desc: "명확한 목표를 제시하고 아이의 독립심을 강하게 키움" };
-        } else if (isNS_H && !isHA_H && isRD_H) {
-            return { label: "활기찬 페이스메이커", emoji: "🐬", image: "/parent_type/type_parent_hlh.jpg", keywords: ["소통", "에너지", "놀이중심"], desc: "아이와 친구처럼 즐겁게 놀아주며 에너지를 북돋움" };
-        } else if (isNS_H && isHA_H && !isRD_H) {
-            return { label: "철저한 전략가", emoji: "🐕", image: "/parent_type/type_parent_hhl.jpg", keywords: ["계획성", "분석력", "성취지향"], desc: "똑똑하고 예민하게 위험을 살피며 아이의 성취를 가이드함" };
-        } else if (isNS_H && isHA_H && isRD_H) {
-            return { label: "섬세한 공감자", emoji: "🦙", image: "/parent_type/type_parent_hhh.jpg", keywords: ["공감력", "정서교감", "민감함"], desc: "아이의 작은 감정 변화에도 민감하게 반응하며 정서적으로 교감함" };
-        } else if (!isNS_H && isHA_H && !isRD_H) {
-            return { label: "신중한 관찰자", emoji: "🦒", image: "/parent_type/type_parent_lhl.jpg", keywords: ["관망", "안전중시", "인내심"], desc: "높은 시야에서 멀리 내다보며 아이를 조용히 지켜봄" };
-        } else if (!isNS_H && isHA_H && isRD_H) {
-            return { label: "헌신적인 수호자", emoji: "🦘", image: "/parent_type/type_parent_lhh.jpg", keywords: ["보호본능", "헌신", "안정감"], desc: "아이를 품에 안고 헌신적으로 보호하며 함께 뛰어감" };
-        } else if (!isNS_H && !isHA_H && !isRD_H) {
-            return { label: "여유로운 조력자", emoji: "🐋", image: "/parent_type/type_parent_lll.jpg", keywords: ["평온함", "여유", "큰그림"], desc: "아이의 속도에 맞춰 느긋하게 기다려주는 평온한 양육자" };
-        } else {
-            return { label: "한결같은 동반자", emoji: "🐘", image: "/parent_type/type_parent_llh.jpg", keywords: ["성실함", "우직함", "동행"], desc: "성실함과 우직함으로 일상을 지탱하는 동반자" };
+        let base = {
+            label: "따뜻하고 넉넉한 마음",
+            emoji: "🤲",
+            image: "/parent_type/type_parent_llh.jpg",
+            keywords: ["따뜻함", "수용", "균형"],
+            desc: "아이의 속도와 보호자의 기준 사이에서 유연하게 균형을 잡는 양육자"
+        };
+
+        if (isNS_H && !isHA_H) {
+            base = {
+                label: "에너지가 샘솟는 열정적인 마음",
+                emoji: "🔥",
+                image: "/parent_type/type_parent_hll.jpg",
+                keywords: ["활력", "추진력", "도전"],
+                desc: "상황을 빠르게 움직이고 아이에게 새로운 시도를 열어주는 양육자"
+            };
+        } else if (!isNS_H && isHA_H) {
+            base = {
+                label: "평온을 지키는 섬세한 마음",
+                emoji: "🫧",
+                image: "/parent_type/type_parent_lhl.jpg",
+                keywords: ["안정", "섬세함", "보호"],
+                desc: "위험과 변화를 세심하게 살피며 아이에게 안정감을 주는 양육자"
+            };
+        } else if (isNS_H && isHA_H) {
+            base = {
+                label: "호기심과 신중함이 공존하는 마음",
+                emoji: "🧭",
+                image: "/parent_type/type_parent_hhl.jpg",
+                keywords: ["탐색", "계획", "긴장조절"],
+                desc: "새로운 가능성을 보면서도 위험을 함께 계산해 움직이는 양육자"
+            };
+        } else if (!isNS_H && !isHA_H) {
+            base = {
+                label: "흔들림 없는 평온하고 단단한 마음",
+                emoji: "🪨",
+                image: "/parent_type/type_parent_lll.jpg",
+                keywords: ["평온함", "일관성", "기다림"],
+                desc: "쉽게 흔들리지 않고 아이의 속도를 차분히 기다려주는 양육자"
+            };
         }
+
+        const adjustments: string[] = [];
+        if (RD >= 65) {
+            adjustments.push("공감형");
+        } else if (RD <= 35) {
+            adjustments.push("논리형");
+        }
+        if (P >= 65) {
+            adjustments.push("지속형");
+        }
+
+        if (adjustments.length === 0) {
+            return base;
+        }
+
+        return {
+            ...base,
+            label: `${base.label} (${adjustments.join(" · ")})`,
+            keywords: [...base.keywords, ...adjustments],
+            desc: `${base.desc}. ${adjustments.join(", ")} 보정이 함께 반영됩니다.`
+        };
     }
 
     static analyzeHarmony(childScores: { NS: number, HA: number, RD: number, P: number }, parentScores: { NS: number, HA: number, RD: number, P: number }) {

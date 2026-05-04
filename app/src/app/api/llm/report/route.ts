@@ -117,11 +117,19 @@ export async function POST(request: Request) {
         let childInfo: { name: string, gender: string, birthDate: string } | null = null;
 
         if (childId) {
-            const { data } = await supabase
+            const { data, error: childLookupError } = await supabase
                 .from('children')
                 .select('name, gender, birth_date')
                 .eq('id', childId)
-                .single();
+                .eq('parent_id', userId)
+                .maybeSingle();
+            if (childLookupError) {
+                console.error('[Report API] Child lookup error:', childLookupError);
+                return NextResponse.json({ error: 'CHILD_LOOKUP_FAILED' }, { status: 500 });
+            }
+            if (!data) {
+                return NextResponse.json({ error: 'CHILD_NOT_FOUND' }, { status: 404 });
+            }
             if (data) childInfo = { name: data.name, gender: data.gender, birthDate: data.birth_date };
         } else {
             const { data: existingChildren, error: childQueryError } = await supabase

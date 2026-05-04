@@ -54,8 +54,9 @@ function isPrescriptionResponse(value: unknown): value is PrescriptionResponse {
                 && isNonEmptyString(candidate.analysis);
         })
     );
-    const validActionItems = payload.actionItems === undefined || (
+    const validActionItems = (
         Array.isArray(payload.actionItems)
+        && payload.actionItems.length === 3
         && payload.actionItems.every((item) => {
             if (!item || typeof item !== 'object') return false;
             const candidate = item as Record<string, unknown>;

@@ -15,9 +15,11 @@ export function useSurveySync() {
     const cbqResponses = useAppStore((s) => s.cbqResponses);
     const atqResponses = useAppStore((s) => s.atqResponses);
     const parentingResponses = useAppStore((s) => s.parentingResponses);
+    const selectedChildId = useAppStore((s) => s.selectedChildId);
 
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const prevRef = useRef<string>('');
+    const latestSyncRef = useRef<() => Promise<void>>(async () => undefined);
 
     const syncToServer = useCallback(async () => {
         if (!user) return;
@@ -27,7 +29,8 @@ export function useSurveySync() {
         if (Object.keys(cbqResponses).length > 0) {
             saves.push(
                 db.saveSurveyResponses(user.id, 'CHILD', cbqResponses,
-                    Object.keys(cbqResponses).length >= 20 ? 'COMPLETED' : 'IN_PROGRESS')
+                    Object.keys(cbqResponses).length >= 20 ? 'COMPLETED' : 'IN_PROGRESS',
+                    selectedChildId)
             );
         }
         if (Object.keys(atqResponses).length > 0) {
@@ -48,25 +51,45 @@ export function useSurveySync() {
         } catch (e) {
             console.warn('Survey sync failed (will retry on next change):', e);
         }
-    }, [user, cbqResponses, atqResponses, parentingResponses]);
+    }, [user, cbqResponses, atqResponses, parentingResponses, selectedChildId]);
+
+    useEffect(() => {
+        latestSyncRef.current = syncToServer;
+    }, [syncToServer]);
+
+    useEffect(() => {
+        return () => {
+            if (timerRef.current) {
+                clearTimeout(timerRef.current);
+                timerRef.current = null;
+                void latestSyncRef.current();
+            }
+        };
+    }, []);
 
     useEffect(() => {
         if (!user) return;
 
         const fingerprint = JSON.stringify({
-            c: Object.keys(cbqResponses).length,
-            a: Object.keys(atqResponses).length,
-            p: Object.keys(parentingResponses).length,
+            childId: selectedChildId,
+            c: sortResponses(cbqResponses),
+            a: sortResponses(atqResponses),
+            p: sortResponses(parentingResponses),
         });
 
         if (fingerprint === prevRef.current) return;
         prevRef.current = fingerprint;
 
         if (timerRef.current) clearTimeout(timerRef.current);
-        timerRef.current = setTimeout(syncToServer, 2000);
+        timerRef.current = setTimeout(() => {
+            timerRef.current = null;
+            void latestSyncRef.current();
+        }, 2000);
+    }, [user, cbqResponses, atqResponses, parentingResponses, selectedChildId]);
+}
 
-        return () => {
-            if (timerRef.current) clearTimeout(timerRef.current);
-        };
-    }, [user, cbqResponses, atqResponses, parentingResponses, syncToServer]);
+function sortResponses(responses: Record<string, number>) {
+    return Object.fromEntries(
+        Object.entries(responses).sort(([a], [b]) => a.localeCompare(b))
+    );
 }

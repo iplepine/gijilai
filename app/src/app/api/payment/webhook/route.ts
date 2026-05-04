@@ -51,38 +51,41 @@ export async function POST(req: Request) {
 
     // 웹훅 시그니처 검증
     const webhookSecrets = getWebhookSecrets();
-    if (webhookSecrets.length > 0) {
-      const headers = {
-        'webhook-id': req.headers.get('webhook-id') ?? '',
-        'webhook-signature': req.headers.get('webhook-signature') ?? '',
-        'webhook-timestamp': req.headers.get('webhook-timestamp') ?? '',
-      };
+    if (webhookSecrets.length === 0) {
+      console.error('PortOne webhook is not configured: no webhook secret');
+      return NextResponse.json({ error: 'WEBHOOK_SECRET_MISSING' }, { status: 500 });
+    }
 
-      let verified = false;
-      const verificationErrors: string[] = [];
+    const headers = {
+      'webhook-id': req.headers.get('webhook-id') ?? '',
+      'webhook-signature': req.headers.get('webhook-signature') ?? '',
+      'webhook-timestamp': req.headers.get('webhook-timestamp') ?? '',
+    };
 
-      for (const webhookSecret of webhookSecrets) {
-        try {
-          await Webhook.verify(webhookSecret, body, headers);
-          verified = true;
-          break;
-        } catch (error) {
-          verificationErrors.push(getErrorMessage(error));
-        }
+    let verified = false;
+    const verificationErrors: string[] = [];
+
+    for (const webhookSecret of webhookSecrets) {
+      try {
+        await Webhook.verify(webhookSecret, body, headers);
+        verified = true;
+        break;
+      } catch (error) {
+        verificationErrors.push(getErrorMessage(error));
       }
+    }
 
-      if (!verified) {
-        console.error('Webhook signature verification failed', {
-          headerPresence: {
-            webhookId: Boolean(headers['webhook-id']),
-            webhookSignature: Boolean(headers['webhook-signature']),
-            webhookTimestamp: Boolean(headers['webhook-timestamp']),
-          },
-          secretCount: webhookSecrets.length,
-          verificationErrors,
-        });
-        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
-      }
+    if (!verified) {
+      console.error('Webhook signature verification failed', {
+        headerPresence: {
+          webhookId: Boolean(headers['webhook-id']),
+          webhookSignature: Boolean(headers['webhook-signature']),
+          webhookTimestamp: Boolean(headers['webhook-timestamp']),
+        },
+        secretCount: webhookSecrets.length,
+        verificationErrors,
+      });
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
 
     let payload: PortoneWebhookPayload;

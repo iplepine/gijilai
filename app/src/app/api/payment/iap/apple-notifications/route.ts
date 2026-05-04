@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import { invalidJsonResponse, isInvalidJsonBodyError, parseJsonBody } from '@/lib/api';
 import {
-  decodeJwsPayload,
+  AppleJwsVerificationError,
+  IapConfigurationError,
   syncIapSubscription,
   verifyAppleTransaction,
+  verifyAppleSignedPayload,
 } from '@/lib/iap';
 
 function mapAppleNotificationToStatus(notificationType: string) {
@@ -29,7 +31,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'MISSING_SIGNED_PAYLOAD' }, { status: 400 });
     }
 
-    const payload = decodeJwsPayload<{
+    const payload = verifyAppleSignedPayload<{
       notificationType: string;
       subtype?: string;
       data?: {
@@ -38,7 +40,7 @@ export async function POST(req: Request) {
     }>(signedPayload);
 
     const txPayload = payload.data?.signedTransactionInfo
-      ? decodeJwsPayload<{
+      ? verifyAppleSignedPayload<{
           transactionId: string;
         }>(payload.data.signedTransactionInfo)
       : null;
@@ -82,6 +84,16 @@ export async function POST(req: Request) {
   } catch (error) {
     if (isInvalidJsonBodyError(error)) {
       return invalidJsonResponse();
+    }
+
+    if (error instanceof AppleJwsVerificationError) {
+      console.error('Apple IAP notification signature verification failed:', error);
+      return NextResponse.json({ error: 'INVALID_APPLE_SIGNATURE' }, { status: 401 });
+    }
+
+    if (error instanceof IapConfigurationError) {
+      console.error('Apple IAP notification is not configured:', error);
+      return NextResponse.json({ error: 'APPLE_NOTIFICATION_MISCONFIGURED' }, { status: 500 });
     }
 
     console.error('Apple IAP notification error:', error);

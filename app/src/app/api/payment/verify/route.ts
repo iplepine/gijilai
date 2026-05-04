@@ -1,12 +1,20 @@
 import { NextResponse } from 'next/server';
 import { invalidJsonResponse, isInvalidJsonBodyError, parseJsonBody } from '@/lib/api';
 import { createClient } from '@/lib/supabaseServer';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { verifyPayment } from '@/lib/portone';
 
 type VerifyRequest = {
   paymentId?: string;
   reportId?: string;
 };
+
+function getSupabaseAdmin() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 export async function POST(req: Request) {
   try {
@@ -39,18 +47,36 @@ export async function POST(req: Request) {
     }
 
     // 중복 처리 방지
-    const { data: existingPayment } = await supabase
+    const admin = getSupabaseAdmin();
+
+    const { data: existingPayment, error: existingPaymentError } = await admin
       .from('payments')
       .select('id')
       .eq('portone_payment_id', paymentId)
-      .single();
+      .maybeSingle();
+
+    if (existingPaymentError) throw existingPaymentError;
 
     if (existingPayment) {
       return NextResponse.json({ error: 'ALREADY_PROCESSED' }, { status: 400 });
     }
 
+    if (reportId) {
+      const { data: report, error: reportError } = await admin
+        .from('reports')
+        .select('id')
+        .eq('id', reportId)
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+
+      if (reportError) throw reportError;
+      if (!report) {
+        return NextResponse.json({ error: 'REPORT_NOT_FOUND' }, { status: 404 });
+      }
+    }
+
     // payments 테이블에 기록
-    const { error: paymentError } = await supabase
+    const { error: paymentError } = await admin
       .from('payments')
       .insert({
         user_id: session.user.id,
@@ -69,11 +95,12 @@ export async function POST(req: Request) {
 
     // 리포트 결제 상태 업데이트
     if (reportId) {
-      await supabase
+      const { error: reportUpdateError } = await admin
         .from('reports')
         .update({ is_paid: true })
         .eq('id', reportId)
         .eq('user_id', session.user.id);
+      if (reportUpdateError) throw reportUpdateError;
     }
 
     return NextResponse.json({ success: true });

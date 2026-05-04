@@ -617,6 +617,7 @@ WHERE status IN ('ACTIVE', 'PAST_DUE')
 CRON_SECRET 환경 변수.
 요청 헤더: Authorization: Bearer ${CRON_SECRET}
 불일치 시 401 반환.
+CRON_SECRET 미설정 시 500을 반환하고 결제 갱신을 실행하지 않음.
 ```
 
 ## 15. 실패 모델 및 복구

@@ -131,7 +131,7 @@ export async function POST(req: Request) {
       if (subError) throw subError;
 
       // 결제 기록 (실제 결제 금액)
-      await admin.from('payments').insert({
+      const { error: paymentInsertError } = await admin.from('payments').insert({
         user_id: session.user.id,
         subscription_id: subscription.id,
         type: 'SUBSCRIPTION',
@@ -147,6 +147,7 @@ export async function POST(req: Request) {
           isFirstSubscription,
         }),
       });
+      if (paymentInsertError) throw paymentInsertError;
 
       return NextResponse.json({
         success: true,
@@ -159,10 +160,26 @@ export async function POST(req: Request) {
     } catch (dbError: unknown) {
       // 구독/결제기록 생성 실패 → 결제 취소(환불)
       console.error('Subscribe DB error, cancelling payment:', dbError);
+      const nowIso = new Date().toISOString();
+      const admin = getSupabaseAdmin();
       try {
         await cancelPayment(paymentId, '구독 생성 실패로 인한 자동 환불');
       } catch (cancelError) {
         console.error('Auto-cancel also failed:', cancelError);
+      }
+      const { error: subscriptionCleanupError } = await admin
+        .from('subscriptions')
+        .update({
+          status: 'CANCELLED',
+          cancelled_at: nowIso,
+          updated_at: nowIso,
+          billing_key: null,
+        })
+        .eq('user_id', session.user.id)
+        .eq('billing_key', billingKey)
+        .in('status', ['ACTIVE', 'PAST_DUE']);
+      if (subscriptionCleanupError) {
+        console.error('Subscribe cleanup failed:', subscriptionCleanupError);
       }
       return NextResponse.json({ error: '구독 생성 실패' }, { status: 500 });
     }

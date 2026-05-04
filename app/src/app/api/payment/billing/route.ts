@@ -27,8 +27,13 @@ function getSupabaseAdmin() {
 export async function POST(req: Request) {
   // Cron 인증
   const authHeader = req.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  const cronSecret = process.env.CRON_SECRET?.trim();
+  if (!cronSecret) {
+    console.error('Billing cron is not configured: CRON_SECRET is missing');
+    return NextResponse.json({ error: 'BILLING_CRON_MISCONFIGURED' }, { status: 500 });
+  }
+
+  if (authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

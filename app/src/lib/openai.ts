@@ -15,7 +15,7 @@ if (!apiKey) {
 }
 
 export const openai = new OpenAI({
-    apiKey: apiKey,
+    apiKey: apiKey || 'missing-openai-api-key',
 });
 
 export type ReportType = 'PARENT' | 'CHILD' | 'HARMONY';
@@ -38,6 +38,31 @@ type ReportPayload = {
         age: string;
     };
 };
+
+export function formatSurveyAnswersForPrompt(
+    type: ReportType,
+    answers?: { questionId: string; score: number }[]
+) {
+    if (!answers || answers.length === 0) return '';
+
+    let questions: Question[] = CHILD_QUESTIONS;
+    if (type === 'PARENT') questions = PARENT_QUESTIONS;
+    if (type === 'HARMONY') {
+        questions = [...CHILD_QUESTIONS, ...PARENT_QUESTIONS, ...PARENTING_STYLE_QUESTIONS];
+    }
+
+    return answers.map(ans => {
+        const question = questions.find(q => String(q.id) === String(ans.questionId));
+        if (!question) return null;
+
+        const choiceText = question.choices?.[ans.score - 1];
+        const answerText = choiceText
+            ? `${ans.score}점 - ${choiceText}`
+            : `${ans.score}점`;
+        const questionText = question.context || question.text || '(질문 없음)';
+        return `Q. ${questionText}\nA. ${answerText}`;
+    }).filter(Boolean).join('\n\n');
+}
 
 export const generateReport = async (
     userName: string,
@@ -63,24 +88,7 @@ export const generateReport = async (
     const promptToUse = systemPrompt || defaultPrompt;
 
     // Scan and Format Q&A
-    let formattedQnA = '';
-    if (answers && answers.length > 0) {
-        let questions: Question[] = CHILD_QUESTIONS;
-        if (type === 'PARENT') questions = PARENT_QUESTIONS;
-        if (type === 'HARMONY') questions = [...CHILD_QUESTIONS, ...PARENT_QUESTIONS, ...PARENTING_STYLE_QUESTIONS];
-
-        formattedQnA = answers.map(ans => {
-            const question = questions.find(q => String(q.id) === String(ans.questionId));
-            if (!question) return null;
-
-            const scoreLabels: Record<number, string> = {
-                1: '전혀 그렇지 않다', 2: '그렇지 않다', 3: '보통이다', 4: '그렇다', 5: '매우 그렇다',
-            };
-            const answerText = `${ans.score}점 (${scoreLabels[ans.score] || '알 수 없음'})`;
-            const questionText = question.context || question.text || '(질문 없음)';
-            return `Q. ${questionText}\nA. ${answerText}`;
-        }).filter(Boolean).join('\n\n');
-    }
+    const formattedQnA = formatSurveyAnswersForPrompt(type, answers);
 
     const payload: ReportPayload = { userName, type, surveyDetails: formattedQnA };
 
