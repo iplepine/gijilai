@@ -601,6 +601,7 @@
     "todayRecord": "오늘의 실천 기록",
     "didIt": "실천했어요",
     "didNot": "못했어요",
+    "saveFailed": "실천 기록을 저장하지 못했어요. 잠시 후 다시 시도해주세요.",
     "encourageMessage": "바쁜 하루였죠? 괜찮아요, 내일 다시 시작하면 돼요.",
     "findAlternative": "실천이 어려우셨다면, 다른 방법을 찾아볼까요?",
     "memoLabel": "한줄 메모 (선택)",

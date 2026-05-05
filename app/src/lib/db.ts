@@ -22,6 +22,47 @@ export type SubscriptionData =
   Database["public"]["Tables"]["subscriptions"]["Row"];
 export type PaymentData = Database["public"]["Tables"]["payments"]["Row"];
 
+type PracticeLogInsert = Database["public"]["Tables"]["practice_logs"]["Insert"];
+
+const PRACTICE_LOG_FEEDBACK_FIELDS = [
+  "practice_attempt_type",
+  "practice_attempt_note",
+  "child_reaction_type",
+  "child_reaction_note",
+  "parent_impression_type",
+  "ai_feedback",
+  "ai_feedback_created_at",
+  "ai_feedback_model",
+  "ai_feedback_depth",
+] as const;
+
+function removeUndefinedFields(log: PracticeLogInsert): PracticeLogInsert {
+  return Object.fromEntries(
+    Object.entries(log).filter(([, value]) => value !== undefined),
+  ) as PracticeLogInsert;
+}
+
+function isPracticeLogFeedbackColumnError(
+  error: { code?: string; message?: string; details?: string | null; hint?: string | null },
+  log: PracticeLogInsert,
+) {
+  const includesFeedbackField = PRACTICE_LOG_FEEDBACK_FIELDS.some((field) =>
+    Object.prototype.hasOwnProperty.call(log, field),
+  );
+  if (!includesFeedbackField) return false;
+
+  const errorText = [
+    error.message,
+    error.details,
+    error.hint,
+  ].filter(Boolean).join(" ");
+
+  return (
+    error.code === "PGRST204" ||
+    PRACTICE_LOG_FEEDBACK_FIELDS.some((field) => errorText.includes(field))
+  );
+}
+
 export const db = {
   // --- Profile ---
   getUserProfile: async (userId: string) => {
@@ -624,32 +665,38 @@ export const db = {
   },
 
   // --- Practice Logs ---
-  createPracticeLog: async (
-    log: Omit<
-      PracticeLogData,
-      | "id"
-      | "created_at"
-      | "ai_feedback"
-      | "ai_feedback_created_at"
-      | "ai_feedback_model"
-      | "ai_feedback_depth"
-    > &
-      Partial<
-        Pick<
-          PracticeLogData,
-          | "ai_feedback"
-          | "ai_feedback_created_at"
-          | "ai_feedback_model"
-          | "ai_feedback_depth"
-        >
-      >,
-  ) => {
+  createPracticeLog: async (log: PracticeLogInsert) => {
+    const cleanedLog = removeUndefinedFields(log);
     const { data, error } = await supabase
       .from("practice_logs")
-      .upsert(log, { onConflict: "practice_id,date" })
+      .upsert(cleanedLog, { onConflict: "practice_id,date" })
       .select()
       .single();
-    if (error) throw error;
+    if (error) {
+      if (!isPracticeLogFeedbackColumnError(error, cleanedLog)) {
+        throw error;
+      }
+
+      console.warn(
+        "Practice log feedback columns are unavailable; retrying basic practice log save.",
+        error,
+      );
+
+      const basicLog = removeUndefinedFields({
+        practice_id: log.practice_id,
+        user_id: log.user_id,
+        date: log.date,
+        done: log.done,
+        memo: log.memo ?? null,
+      });
+      const { data: retryData, error: retryError } = await supabase
+        .from("practice_logs")
+        .upsert(basicLog, { onConflict: "practice_id,date" })
+        .select()
+        .single();
+      if (retryError) throw retryError;
+      return retryData as PracticeLogData;
+    }
     return data as PracticeLogData;
   },
 

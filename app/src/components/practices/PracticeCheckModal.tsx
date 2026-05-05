@@ -94,6 +94,7 @@ export function PracticeCheckModal({
     const [attemptError, setAttemptError] = useState(false);
     const [reactionError, setReactionError] = useState(false);
     const [impressionError, setImpressionError] = useState(false);
+    const [saveError, setSaveError] = useState(false);
     const [saving, setSaving] = useState(false);
 
     const attemptOptions: Array<{ value: PracticeAttemptType; label: string }> = [
@@ -137,6 +138,7 @@ export function PracticeCheckModal({
         }
 
         setSaving(true);
+        setSaveError(false);
         try {
             const result = await onSave({
                 done,
@@ -154,6 +156,9 @@ export function PracticeCheckModal({
                 return;
             }
             onClose();
+        } catch (error) {
+            console.error('Failed to save practice log:', error);
+            setSaveError(true);
         } finally {
             setSaving(false);
         }
@@ -411,18 +416,25 @@ export function PracticeCheckModal({
                     )}
                 </div>
 
-                <div className="shrink-0 p-4 bg-beige-main/5 dark:bg-white/5 flex gap-3 border-t border-beige-main/10 dark:border-white/5">
+                <div className="shrink-0 p-4 bg-beige-main/5 dark:bg-white/5 border-t border-beige-main/10 dark:border-white/5">
                     {savedWithFeedback ? (
                         <Button variant="primary" fullWidth onClick={onClose}>
                             {t('common.close')}
                         </Button>
                     ) : (
-                        <>
-                            <Button variant="secondary" fullWidth onClick={onClose}>{t('common.cancel')}</Button>
-                            <Button variant="primary" fullWidth onClick={handleSave} disabled={saving}>
-                                {saving ? (enableChildReactionFeedback ? t('practices.generatingFeedback') : t('common.saving')) : t('common.save')}
-                            </Button>
-                        </>
+                        <div className="space-y-3">
+                            {saveError && (
+                                <p className="text-center text-[12px] font-medium text-red-500">
+                                    {t('practices.saveFailed')}
+                                </p>
+                            )}
+                            <div className="flex gap-3">
+                                <Button variant="secondary" fullWidth onClick={onClose}>{t('common.cancel')}</Button>
+                                <Button variant="primary" fullWidth onClick={handleSave} disabled={saving}>
+                                    {saving ? (enableChildReactionFeedback ? t('practices.generatingFeedback') : t('common.saving')) : t('common.save')}
+                                </Button>
+                            </div>
+                        </div>
                     )}
                 </div>
             </div>
