@@ -90,19 +90,19 @@
 - 알림 설정의 리마인더 시간 선택은 브라우저/WebView 기본 `input type="time"` picker를 쓰지 않고, 웹 커스텀 모달로 표시해 앱/웹에서 동일한 시각 언어를 유지한다.
 - Flutter 앱 WebView가 `/login`에 도달하면 WebView 위에 네이티브 로그인 화면을 오버레이한다.
 - Next.js 클라이언트 라우팅으로 `/login`에 도달하는 경우도 `RouteBridge`가 `history.pushState/replaceState/popstate`를 감지해 네이티브 로그인 오버레이 상태를 동기화한다.
-- 네이티브 로그인 화면은 Android에서 카카오, Apple, Google, 이메일 진입점을 제공하고, iOS 심사 빌드에서는 Apple과 이메일 진입점을 기본 제공한다.
-- 카카오 버튼은 Kakao Flutter SDK 앱투앱 로그인을 먼저 시도하고, Kakao ID 토큰을 `/auth/native-session`으로 전달해 Supabase 세션 쿠키를 WebView에 설정한다. iOS에서는 App Review 대응을 위해 카카오톡 앱투앱 로그인이 가능한 경우에만 카카오 진입점을 노출하고, 카카오 계정 웹/OAuth fallback은 열지 않는다.
+- 네이티브 로그인 화면은 Android에서 카카오톡 앱투앱 로그인이 가능한 경우 카카오와 Google, 이메일 진입점을 제공하고, iOS 심사 빌드에서는 Apple과 이메일 진입점을 기본 제공한다. 사용자가 보는 로그인/회원가입 화면은 Flutter 네이티브 화면이어야 하며, 웹 `/login` 폼을 직접 노출하지 않는다.
+- 카카오 버튼은 Kakao Flutter SDK 앱투앱 로그인을 먼저 시도하고, Kakao ID 토큰을 `/auth/native-session`으로 전달해 Supabase 세션 쿠키를 WebView에 설정한다. 카카오톡 앱투앱 로그인 또는 ID 토큰을 사용할 수 없으면 카카오 계정 웹/OAuth fallback을 열지 않고 앱 안에서 실패를 안내한다.
 - Apple은 iOS에서 `sign_in_with_apple` 네이티브 SDK를 우선 사용해 ID 토큰(+ nonce)을 받고 `/auth/native-session`으로 세션을 교환한다.
-- Google은 Android에서 `google_sign_in` 네이티브 SDK를 우선 사용해 ID 토큰을 받고 `/auth/native-session`으로 세션을 교환한다. iOS에서는 Google Sign-In이 심사 환경에서 웹 인증 표면으로 이어질 수 있어 숨기고, Apple 또는 이메일 로그인을 안내한다.
+- Google은 Android에서 `google_sign_in` 네이티브 SDK를 우선 사용해 ID 토큰을 받고 `/auth/native-session`으로 세션을 교환한다. 네이티브 ID 토큰을 받을 수 없으면 브라우저 OAuth fallback을 열지 않고 실패를 안내한다. iOS에서는 Google Sign-In이 심사 환경에서 웹 인증 표면으로 이어질 수 있어 숨기고, Apple 또는 이메일 로그인을 안내한다.
+- 이메일 로그인/회원가입은 Flutter 네이티브 폼에서 입력을 받고 WebView 내부의 `/auth/native-email` API를 호출해 Supabase 세션 쿠키만 설정한다.
 - `GOOGLE_WEB_CLIENT_ID` dart define은 선택값이다. 있으면 `serverClientId`로 함께 주입하고, 없어도 모바일 앱 기본 설정(`GoogleService-Info.plist`, `google-services.json`)만으로 네이티브 로그인부터 시도한다.
-- Android에서 Apple/Google/Kakao 네이티브 토큰을 받을 수 없는 환경에서는 앱이 WebView의 `AuthProvider` OAuth 훅을 우선 호출해 Supabase auth-js가 PKCE 및 `gijilai://auth/callback` 리다이렉트를 생성하게 한다. 훅을 사용할 수 없는 경우에만 Supabase OAuth authorize URL을 외부 앱/브라우저로 직접 열고, 딥링크를 받아 WebView의 `/auth/callback`으로 다시 로드한다.
-- iOS에서는 심사 리젝을 피하기 위해 Supabase OAuth authorize URL, Google/Apple/Kakao OAuth 도메인, WebView `AuthBridge` OAuth URL을 외부 브라우저나 인앱 브라우저로 열지 않는다. WebView에서 소셜 OAuth URL이 발생하면 Apple은 네이티브 SDK 로그인으로 다시 라우팅하고, Google은 Apple 또는 이메일 로그인을 안내한다.
-- 앱 WebView의 웹 `/login` 화면은 네이티브 로그인 오버레이의 이메일 진입점으로만 사용하므로 웹 소셜 로그인 버튼을 숨기고 이메일 로그인/회원가입 폼만 노출한다.
+- Android와 iOS에서는 Supabase OAuth authorize URL, Google/Apple/Kakao OAuth 도메인, WebView `AuthBridge` OAuth URL을 외부 브라우저나 인앱 브라우저로 열지 않는다. WebView에서 소셜 OAuth URL이 발생하면 지원 가능한 네이티브 SDK 로그인으로 다시 라우팅하고, 네이티브 경로가 없으면 앱 안에서 실패를 안내한다.
+- 앱 WebView의 웹 `/login` 화면은 네이티브 로그인 오버레이 뒤에서만 존재한다. 웹 소셜 로그인 버튼은 숨기고, 이메일 폼도 사용자가 보는 주 로그인 화면으로 쓰지 않는다.
 - iOS에서 OAuth 후 앱이 콜드 스타트되는 경우를 위해 `AppDelegate`는 `launchOptions`의 초기 URL을 `app_links`로 직접 브리지한다.
 - iOS `Info.plist`의 `FlutterDeepLinkingEnabled`는 `false`로 유지해 Flutter 기본 딥링크 처리와 `app_links`가 같은 커스텀 스킴을 중복 처리하지 않게 한다.
-- 기존 웹 `/login`의 `AuthBridge` 경로는 fallback으로 유지한다.
-- 외부 OAuth 앱/브라우저에서 사용자가 로그인하지 않고 앱으로 돌아와 딥링크 콜백이 없는 경우, 앱은 로그인 취소로 간주하고 네이티브/웹 로그인 로딩 상태를 해제해 재시도할 수 있게 한다.
-- Apple/Google/Kakao OAuth 도메인으로 WebView가 직접 이동하려는 경우도 `disallowed_useragent` 방지를 위해 외부 앱/브라우저로 강제 전환한다.
+- 기존 웹 `/login`의 `AuthBridge` 경로는 브라우저 fallback이 아니라 네이티브 로그인 재라우팅 안전장치로 유지한다.
+- 외부 OAuth 앱에서 사용자가 로그인하지 않고 앱으로 돌아와 딥링크 콜백이 없는 경우, 앱은 로그인 취소로 간주하고 네이티브 로그인 로딩 상태를 해제해 재시도할 수 있게 한다.
+- Apple/Google/Kakao OAuth 도메인으로 WebView가 직접 이동하려는 경우 앱/브라우저로 강제 전환하지 않고 네이티브 로그인 경로로 재라우팅하거나 차단한다.
 - Supabase Auth Redirect URL allow list에는 `gijilai://auth/callback`을 반드시 포함한다.
 - Apple OAuth는 `name email` scope를 요청해 최초 가입 시 이름/이메일을 수신할 수 있게 한다.
 - OAuth 콜백 서버 라우트는 localhost 계열 host 헤더를 신뢰하지 않고 `NEXT_PUBLIC_APP_URL` 또는 `https://gijilai.com`으로 복귀시켜 앱 로그인 후 localhost로 이동하지 않게 한다.
