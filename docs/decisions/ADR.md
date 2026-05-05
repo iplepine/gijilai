@@ -554,6 +554,18 @@
 - **이유**: App Review에서 앱 로그인 중 외부 브라우저 기반 인증이 노출되는 흐름이 리젝 요인이 될 수 있다. iOS 심사 환경에서는 카카오톡이 설치되어 있지 않을 수 있으므로 카카오 웹 fallback을 열면 같은 문제가 재현된다.
 - **대안**: 기존 fallback 유지 — 심사 리젝을 반복할 수 있어 기각. iOS에서 모든 소셜 로그인을 제거 — 리스크는 낮지만 Apple 네이티브 로그인은 심사 권장 흐름이고 이메일 대안도 있어 과도하므로 기각.
 
+## 2026-05-06 | Android 앱에서 Apple 로그인을 웹 OAuth handoff로 지원한다
+
+- **결정**: Android 로그인 오버레이에도 Apple 버튼을 노출한다. Android에는 Apple 네이티브 SDK가 없으므로 Apple만 예외적으로 Supabase OAuth URL을 Android Custom Tab으로 열고, 인증 후 `gijilai://auth/callback` 딥링크로 앱에 복귀시킨다. Google과 Kakao는 계속 네이티브 SDK 경로만 사용하고, iOS는 기존처럼 Apple 네이티브 SDK를 사용한다.
+- **이유**: Apple로 가입한 사용자가 Android 기기에서도 같은 계정으로 로그인할 수 있어야 한다. Apple 공식 문서는 비 Apple 플랫폼에서 웹 기반 Sign in with Apple과 리다이렉트 처리를 지원한다.
+- **대안**: Android에서 Apple 로그인을 숨김 — iOS에서 Apple 계정으로 가입한 사용자의 Android 재로그인을 막으므로 기각. Android에서 모든 소셜 OAuth fallback을 다시 허용 — Google/Kakao의 네이티브 로그인 안정성과 iOS 심사 대응 정책을 약화하므로 기각.
+
+## 2026-05-06 | Android 카카오톡 로그인 복귀는 MainActivity taskAffinity를 기본값으로 둔다
+
+- **결정**: Android `MainActivity`의 `android:taskAffinity=""`를 제거해 기본 task affinity를 사용한다. 카카오 로그인은 KakaoTalk 설치 시 `loginWithKakaoTalk`, 미설치 또는 앱투앱 로그인 실패 시 `loginWithKakaoAccount`를 사용하는 공식 SDK 경로를 유지한다. 로그인 성공 후 WebView가 기존 `/login` 화면을 잠깐 노출하지 않도록 완료 전환 상태에서는 네이티브 `로그인 중` 화면을 유지한다.
+- **이유**: 실제 기기에서 `TalkAuthCodeActivity`가 카카오톡 복귀 URL을 처리할 때 `Reply already submitted` 네이티브 크래시가 발생했다. Kakao DevTalk의 공식 안내도 Flutter 3.22 이후 템플릿에 들어간 `android:taskAffinity=""`와 Kakao 로그인 복귀 문제가 있을 수 있어 해당 옵션 제거 또는 SDK 업데이트를 권장한다. 현재 프로젝트의 Flutter 3.32/Dart 3.8 조합에서는 Kakao SDK 1.10.0이 빌드되지 않으므로, 공식 안내의 manifest 수정으로 앱투앱 로그인 경로를 유지한다.
+- **대안**: 카카오톡 앱투앱 로그인을 끄고 카카오계정 웹 로그인만 사용 — 크래시는 피할 수 있지만 네이티브 카카오 로그인 요구를 약화해 기각. Kakao Flutter SDK 1.10.0 또는 v2로 즉시 올림 — 현재 Flutter/Dart 버전에서 빌드 또는 요구사항 문제가 있어 이번 수정 범위에서는 기각.
+
 ## 2026-05-05 | 앱 이메일 로그인/회원가입은 Flutter 네이티브 화면에서 제공한다
 
 - **결정**: 앱에서 사용자가 보는 로그인/회원가입 화면은 Flutter 네이티브 오버레이로 제공한다. 이메일 로그인/회원가입도 웹 `/login` 폼으로 전환하지 않고 네이티브 폼에서 입력받으며, WebView는 `/auth/native-email` API를 통해 Supabase 세션 쿠키를 설정하는 백그라운드 컨텍스트로만 사용한다. Android와 iOS 모두 Supabase OAuth authorize URL과 소셜 OAuth 도메인을 브라우저/Custom Tab으로 열지 않고, 네이티브 SDK 경로가 없으면 앱 안에서 실패를 안내한다.

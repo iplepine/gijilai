@@ -8,6 +8,8 @@ type NativeSessionBody = {
   nonce?: string;
 };
 
+const KAKAO_NATIVE_PROVIDER = 'custom:kakao-mobile';
+
 export async function POST(request: NextRequest) {
   const response = NextResponse.json({ success: true });
 
@@ -40,8 +42,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Missing native auth token' }, { status: 400 });
   }
 
+  const signInProvider =
+    body.provider === 'kakao' ? KAKAO_NATIVE_PROVIDER : body.provider;
+
   const { data, error } = await supabase.auth.signInWithIdToken({
-    provider: body.provider,
+    provider: signInProvider,
     token: body.idToken,
     access_token: body.accessToken,
     nonce: body.nonce,
@@ -50,6 +55,7 @@ export async function POST(request: NextRequest) {
   if (error || !data.session) {
     console.warn('[auth/native-session] signInWithIdToken failed', {
       provider: body.provider,
+      signInProvider,
       error: error?.message ?? 'Native auth returned no session',
       code: error && 'code' in error ? error.code : undefined,
       status: error && 'status' in error ? error.status : undefined,

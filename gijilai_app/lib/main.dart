@@ -48,7 +48,8 @@ class NativeCapabilityRegistry {
   static bool get supportsVoiceInput => Platform.isAndroid;
   static bool get supportsKakaoNativeAuth =>
       Platform.isAndroid || Platform.isIOS;
-  static bool get supportsAppleNativeAuth => Platform.isIOS;
+  static bool get supportsAppleNativeAuth =>
+      Platform.isIOS || Platform.isAndroid;
   static bool get supportsGoogleNativeAuth {
     if (Platform.isIOS || Platform.isAndroid) {
       return _googleWebClientId.isNotEmpty;
@@ -103,6 +104,11 @@ const String _googleWebClientId = String.fromEnvironment(
 const String _googleIosClientId = String.fromEnvironment(
   'GOOGLE_IOS_CLIENT_ID',
 );
+const List<String> _kakaoRequiredScopes = [
+  'openid',
+  'account_email',
+  'profile_nickname',
+];
 
 Future<void> main() async {
   await runZonedGuarded(
@@ -220,6 +226,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   bool _isNativeDialogVisible = false;
   bool _authInProgress = false;
   bool _externalAuthInProgress = false;
+  bool _postNativeAuthNavigationInProgress = false;
+  bool _isCompletingNativeAuth = false;
   bool _hasRenderedFirstPage = false;
   bool _isWebPageLoading = false;
   bool _iapLaunchInProgress = false;
@@ -784,12 +792,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     if (_shouldOpenExternally(uri)) {
       if ((Platform.isIOS || Platform.isAndroid) &&
           _isOAuthNavigationUri(uri)) {
-        final provider = _authProviderFromOAuthUri(uri);
-        if (provider == null) {
-          unawaited(_finishNativeAuthFailure('앱 안에서 지원되는 로그인 수단을 이용해주세요'));
-        } else {
-          unawaited(_startNativeLoginForProvider(provider));
-        }
+        unawaited(_launchAuthUrlFromBridge(uri));
         return NavigationDecision.prevent;
       }
 
@@ -818,28 +821,39 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       _isWebPageLoading = true;
       _webPageLoadProgress = 0;
       if (isNativeLoginRoute) {
+        _postNativeAuthNavigationInProgress = false;
+        _isCompletingNativeAuth = false;
         _showNativeLogin = true;
         _refreshNativeLoginAvailability();
+      } else if (_postNativeAuthNavigationInProgress) {
+        _showNativeLogin = true;
+        _isWebEmailLoginVisible = false;
+        _isCompletingNativeAuth = true;
       } else {
         _showNativeLogin = false;
         _isWebEmailLoginVisible = false;
+        _isCompletingNativeAuth = false;
       }
     });
   }
 
   void _syncNativeLoginRouteState(String url) {
     if (!mounted) return;
+    if (_postNativeAuthNavigationInProgress) return;
 
     final uri = Uri.tryParse(url);
     final isNativeLoginRoute = _isNativeLoginRoute(uri);
     _rememberLoginRedirect(uri);
     setState(() {
       if (isNativeLoginRoute) {
+        _postNativeAuthNavigationInProgress = false;
+        _isCompletingNativeAuth = false;
         _showNativeLogin = true;
         _refreshNativeLoginAvailability();
       } else {
         _showNativeLogin = false;
         _isWebEmailLoginVisible = false;
+        _isCompletingNativeAuth = false;
       }
     });
   }
@@ -865,11 +879,17 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         _isWebPageLoading = false;
         _webPageLoadProgress = 100;
         if (isNativeLoginRoute) {
+          _postNativeAuthNavigationInProgress = false;
+          _isCompletingNativeAuth = false;
           _showNativeLogin = true;
+          _authInProgress = false;
           _refreshNativeLoginAvailability();
         } else {
+          _postNativeAuthNavigationInProgress = false;
+          _isCompletingNativeAuth = false;
           _showNativeLogin = false;
           _isWebEmailLoginVisible = false;
+          _authInProgress = false;
         }
         _hasRenderedFirstPage = true;
       });
@@ -880,6 +900,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     setState(() {
       _showNativeLogin = true;
       _isWebEmailLoginVisible = true;
+      _isCompletingNativeAuth = false;
       _lastBackPressedAt = null;
     });
   }
@@ -888,9 +909,25 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     setState(() {
       _showNativeLogin = true;
       _isWebEmailLoginVisible = false;
+      _isCompletingNativeAuth = false;
       _lastBackPressedAt = null;
     });
     _refreshNativeLoginAvailability();
+  }
+
+  Future<void> _openNativeLoginInfoPage(String path) async {
+    final controller = _controller;
+    if (controller == null) return;
+
+    unawaited(HapticFeedback.lightImpact());
+    setState(() {
+      _showNativeLogin = false;
+      _isWebEmailLoginVisible = false;
+      _isCompletingNativeAuth = false;
+      _isWebPageLoading = true;
+      _lastBackPressedAt = null;
+    });
+    await controller.loadRequest(_webUriForInternalPath(path));
   }
 
   void _rememberLoginRedirect(Uri? uri) {
@@ -1155,6 +1192,10 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     return null;
   }
 
+  bool _canUseMobileOAuthBrowser(Uri uri) {
+    return Platform.isAndroid && _authProviderFromOAuthUri(uri) == 'apple';
+  }
+
   bool _isAuthCallbackUri(Uri uri) {
     return uri.scheme == 'gijilai' &&
         uri.host == 'auth' &&
@@ -1191,14 +1232,17 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       queryParameters: uri.queryParameters,
       fragment: null,
     );
-    await controller.loadRequest(webCallback);
     if (mounted) {
       setState(() {
-        _showNativeLogin = false;
+        _postNativeAuthNavigationInProgress = true;
+        _showNativeLogin = true;
         _isWebEmailLoginVisible = false;
-        _authInProgress = false;
+        _isCompletingNativeAuth = true;
+        _isWebPageLoading = true;
+        _webPageLoadProgress = 0;
       });
     }
+    await controller.loadRequest(webCallback);
   }
 
   Future<void> _consumePendingAppOpenUri() async {
@@ -1264,6 +1308,22 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     return _webUriForInternalPath(redirectPath ?? '/');
   }
 
+  Future<void> _loadPostNativeAuthUri(WebViewController controller) async {
+    final uri = _postLoginUri();
+    if (mounted) {
+      setState(() {
+        _postNativeAuthNavigationInProgress = true;
+        _showNativeLogin = true;
+        _isWebEmailLoginVisible = false;
+        _isCompletingNativeAuth = true;
+        _isWebPageLoading = true;
+        _webPageLoadProgress = 0;
+        _lastBackPressedAt = null;
+      });
+    }
+    await controller.loadRequest(uri);
+  }
+
   Future<WebViewController> _waitForWebAuthDocument() async {
     final controller = _controller;
     if (controller == null) {
@@ -1294,15 +1354,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       final data = jsonDecode(message.message);
       if (data['type'] == 'OAUTH_URL' && data['url'] is String) {
         final uri = Uri.parse(data['url'] as String);
-        final provider =
-            _authProviderFromValue(data['provider']) ??
-            _authProviderFromOAuthUri(uri);
         if (Platform.isIOS || Platform.isAndroid) {
-          if (provider == null) {
-            unawaited(_finishNativeAuthFailure('앱 안에서 지원되는 로그인 수단을 이용해주세요'));
-          } else {
-            unawaited(_startNativeLoginForProvider(provider));
-          }
+          unawaited(_launchAuthUrlFromBridge(uri));
           return;
         }
 
@@ -1345,6 +1398,14 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       final provider = _authProviderFromOAuthUri(uri);
       if (provider == null) {
         await _finishNativeAuthFailure('앱 안에서 지원되는 로그인 수단을 이용해주세요');
+        return;
+      }
+      if (_canUseMobileOAuthBrowser(uri)) {
+        _externalAuthInProgress = true;
+        final launched = await _launchExternalUrl(uri);
+        if (!launched) {
+          await _finishCancelledAuthHandoff(showMessage: true);
+        }
         return;
       }
       await _startNativeLoginForProvider(provider);
@@ -1458,7 +1519,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   Future<bool> _launchExternalUrl(Uri uri) async {
     try {
       if ((Platform.isIOS || Platform.isAndroid) &&
-          _isOAuthNavigationUri(uri)) {
+          _isOAuthNavigationUri(uri) &&
+          !_canUseMobileOAuthBrowser(uri)) {
         throw Exception('Mobile OAuth browser fallback is blocked: $uri');
       }
 
@@ -1484,7 +1546,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   }
 
   Future<void> _startNativeOAuth(String provider) async {
-    if (Platform.isIOS || Platform.isAndroid) {
+    final canUseMobileOAuthBrowser = Platform.isAndroid && provider == 'apple';
+    if ((Platform.isIOS || Platform.isAndroid) && !canUseMobileOAuthBrowser) {
       await _finishNativeAuthFailure('앱 안에서 지원되는 로그인 수단을 이용해주세요');
       return;
     }
@@ -1561,52 +1624,71 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     if (_authInProgress) return;
 
     final isKakaoTalkAvailable = await isKakaoTalkInstalled();
-    if (!isKakaoTalkAvailable) {
-      await _finishNativeAuthFailure('카카오톡 앱 설치 후 카카오 로그인을 이용해주세요');
-      return;
-    }
-
     setState(() {
       _authInProgress = true;
     });
 
     try {
+      final rawNonce = _generateNonce();
+      final hashedNonce = sha256.convert(utf8.encode(rawNonce)).toString();
       OAuthToken token;
       if (isKakaoTalkAvailable) {
         try {
-          token = await UserApi.instance.loginWithKakaoTalk();
+          token = await UserApi.instance.loginWithKakaoTalk(nonce: hashedNonce);
         } catch (e) {
-          debugPrint('KakaoTalk login failed: $e');
-          if (Platform.isIOS || Platform.isAndroid) {
-            await _finishNativeAuthFailure('카카오 로그인을 완료할 수 없습니다');
+          if (_isUserCancelledAuthError(e)) {
+            await _finishCancelledAuthHandoff();
             return;
           }
-          token = await UserApi.instance.loginWithKakaoAccount();
+          debugPrint('KakaoTalk login failed, falling back to account: $e');
+          token = await UserApi.instance.loginWithKakaoAccount(
+            nonce: hashedNonce,
+          );
         }
       } else {
-        token = await UserApi.instance.loginWithKakaoAccount();
+        token = await UserApi.instance.loginWithKakaoAccount(
+          nonce: hashedNonce,
+        );
       }
 
-      if (token.idToken == null || token.idToken!.isEmpty) {
-        debugPrint('Kakao ID token was not returned.');
-        if (Platform.isIOS || Platform.isAndroid) {
+      final grantedScopes = token.scopes ?? const <String>[];
+      final missingScopes = _kakaoRequiredScopes
+          .where((scope) => !grantedScopes.contains(scope))
+          .toList(growable: false);
+
+      if (token.idToken == null ||
+          token.idToken!.isEmpty ||
+          missingScopes.isNotEmpty) {
+        debugPrint(
+          'Kakao token is missing required scopes; requesting additional consent. '
+          'missingScopes=$missingScopes',
+        );
+        try {
+          token = await UserApi.instance.loginWithNewScopes(
+            _kakaoRequiredScopes,
+            nonce: hashedNonce,
+          );
+        } catch (e) {
+          debugPrint('Kakao additional scope request failed: $e');
           await _finishNativeAuthFailure('카카오 로그인을 완료할 수 없습니다');
           return;
         }
-        if (mounted) {
-          setState(() {
-            _authInProgress = false;
-          });
+
+        if (token.idToken == null || token.idToken!.isEmpty) {
+          debugPrint(
+            'Kakao additional scope token did not include an ID token. '
+            'scopes=${token.scopes}',
+          );
+          await _finishNativeAuthFailure('카카오 로그인을 완료할 수 없습니다');
+          return;
         }
-        _externalAuthInProgress = false;
-        await _startNativeOAuth('kakao');
-        return;
       }
 
       await _completeNativeSession(
         provider: 'kakao',
         idToken: token.idToken!,
         accessToken: token.accessToken,
+        nonce: rawNonce,
       );
     } catch (e) {
       if (_isUserCancelledAuthError(e)) {
@@ -1634,6 +1716,11 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
   Future<void> _startAppleNativeLogin() async {
     if (_authInProgress) return;
+
+    if (Platform.isAndroid) {
+      await _startNativeOAuth('apple');
+      return;
+    }
 
     if (!Platform.isIOS) {
       await _finishNativeAuthFailure('이 기기에서는 Apple 로그인을 지원하지 않습니다');
@@ -1884,15 +1971,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       throw Exception(result?['error']?.toString() ?? 'Native session failed');
     }
 
-    if (mounted) {
-      setState(() {
-        _showNativeLogin = false;
-        _isWebEmailLoginVisible = false;
-        _authInProgress = false;
-      });
-    }
     _externalAuthInProgress = false;
-    await controller.loadRequest(_postLoginUri());
+    await _loadPostNativeAuthUri(controller);
   }
 
   Future<_NativeEmailAuthOutcome> _startNativeEmailAuth({
@@ -1945,15 +2025,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         );
       }
 
-      if (mounted) {
-        setState(() {
-          _showNativeLogin = false;
-          _isWebEmailLoginVisible = false;
-          _authInProgress = false;
-        });
-      }
       _externalAuthInProgress = false;
-      await _controller!.loadRequest(_postLoginUri());
+      await _loadPostNativeAuthUri(_controller!);
 
       return _NativeEmailAuthOutcome(
         message: isSignUp ? '회원가입이 완료되었습니다' : null,
@@ -2079,6 +2152,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     if (mounted) {
       setState(() {
         _authInProgress = false;
+        _isCompletingNativeAuth = false;
+        _postNativeAuthNavigationInProgress = false;
       });
     }
     await _notifyWebAuthLoadingDone();
@@ -2090,6 +2165,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     if (mounted) {
       setState(() {
         _authInProgress = false;
+        _isCompletingNativeAuth = false;
+        _postNativeAuthNavigationInProgress = false;
       });
     }
     await _notifyWebAuthLoadingDone();
@@ -2099,18 +2176,11 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   }
 
   void _refreshNativeLoginAvailability() {
-    unawaited(() async {
-      var isAvailable = false;
-      try {
-        isAvailable = await isKakaoTalkInstalled();
-      } catch (e) {
-        debugPrint('KakaoTalk availability check failed: $e');
-      }
-      if (!mounted || _canUseKakaoNativeLogin == isAvailable) return;
-      setState(() {
-        _canUseKakaoNativeLogin = isAvailable;
-      });
-    }());
+    final isAvailable = Platform.isAndroid || Platform.isIOS;
+    if (!mounted || _canUseKakaoNativeLogin == isAvailable) return;
+    setState(() {
+      _canUseKakaoNativeLogin = isAvailable;
+    });
   }
 
   Future<void> _initIAP() async {
@@ -3006,21 +3076,31 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
               ),
             ),
             if (_showNativeLogin)
-              _NativeLoginScreen(
-                isLoading: _authInProgress,
-                showEmailForm: _isWebEmailLoginVisible,
-                showKakaoLogin: _canUseKakaoNativeLogin,
-                showAppleLogin: Platform.isIOS,
-                showGoogleLogin:
-                    !Platform.isIOS &&
-                    _nativeCapabilities.supportsNativeAuthProvider('google'),
-                onKakaoPressed: _startKakaoNativeLogin,
-                onApplePressed: _startAppleNativeLogin,
-                onGooglePressed: _startGoogleNativeLogin,
-                onEmailPressed: _showEmailLoginWebView,
-                onEmailBackPressed: _showNativeLoginOptions,
-                onEmailSubmitted: _startNativeEmailAuth,
-              ),
+              _isCompletingNativeAuth
+                  ? const _NativeAuthCompletionScreen()
+                  : _NativeLoginScreen(
+                      isLoading: _authInProgress,
+                      showEmailForm: _isWebEmailLoginVisible,
+                      showKakaoLogin: _canUseKakaoNativeLogin,
+                      showAppleLogin: Platform.isIOS || Platform.isAndroid,
+                      showGoogleLogin:
+                          !Platform.isIOS &&
+                          _nativeCapabilities.supportsNativeAuthProvider(
+                            'google',
+                          ),
+                      onKakaoPressed: _startKakaoNativeLogin,
+                      onApplePressed: _startAppleNativeLogin,
+                      onGooglePressed: _startGoogleNativeLogin,
+                      onEmailPressed: _showEmailLoginWebView,
+                      onEmailBackPressed: _showNativeLoginOptions,
+                      onEmailSubmitted: _startNativeEmailAuth,
+                      onAboutPressed: () =>
+                          unawaited(_openNativeLoginInfoPage('/legal/about')),
+                      onPrivacyPressed: () =>
+                          unawaited(_openNativeLoginInfoPage('/legal/privacy')),
+                      onTermsPressed: () =>
+                          unawaited(_openNativeLoginInfoPage('/legal/terms')),
+                    ),
             Positioned(
               top: topInset,
               left: 0,
@@ -3340,6 +3420,9 @@ class _NativeLoginScreen extends StatefulWidget {
     required this.onEmailPressed,
     required this.onEmailBackPressed,
     required this.onEmailSubmitted,
+    required this.onAboutPressed,
+    required this.onPrivacyPressed,
+    required this.onTermsPressed,
   });
 
   final bool isLoading;
@@ -3353,6 +3436,9 @@ class _NativeLoginScreen extends StatefulWidget {
   final VoidCallback onEmailPressed;
   final VoidCallback onEmailBackPressed;
   final _NativeEmailAuthSubmit onEmailSubmitted;
+  final VoidCallback onAboutPressed;
+  final VoidCallback onPrivacyPressed;
+  final VoidCallback onTermsPressed;
 
   static const _primary = Color(0xFF2F4F3E);
   static const _textMain = Color(0xFF26382F);
@@ -3494,6 +3580,13 @@ class _NativeLoginScreenState extends State<_NativeLoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
+                _LoginInfoLinks(
+                  enabled: !widget.isLoading,
+                  onAboutPressed: widget.onAboutPressed,
+                  onPrivacyPressed: widget.onPrivacyPressed,
+                  onTermsPressed: widget.onTermsPressed,
+                ),
+                const SizedBox(height: 10),
                 const Text(
                   '로그인하면 이용약관과 개인정보처리방침에 동의하게 됩니다.',
                   textAlign: TextAlign.center,
@@ -3513,143 +3606,169 @@ class _NativeLoginScreenState extends State<_NativeLoginScreen> {
   }
 
   Widget _buildEmailForm(BuildContext context) {
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-
     return LayoutBuilder(
       key: const ValueKey('native-email-form'),
       builder: (context, constraints) {
-        return SingleChildScrollView(
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          padding: EdgeInsets.fromLTRB(28, 18, 28, 24 + bottomInset),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight - 42),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: IconButton.filledTonal(
-                    onPressed: widget.isLoading
-                        ? null
-                        : () {
-                            unawaited(HapticFeedback.lightImpact());
-                            widget.onEmailBackPressed();
-                          },
-                    icon: const Icon(Icons.arrow_back_rounded),
-                    tooltip: '로그인 수단',
-                    style: IconButton.styleFrom(
-                      backgroundColor: const Color(0xFFEDEFEA),
-                      foregroundColor: _NativeLoginScreen._primary,
-                    ),
+        final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+        final compact = constraints.maxHeight < 760;
+        final contentMinHeight = max(
+          0.0,
+          constraints.maxHeight - (compact ? 72 : 82),
+        );
+
+        return Padding(
+          padding: EdgeInsets.fromLTRB(28, compact ? 8 : 12, 28, 0),
+          child: Column(
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: IconButton.filledTonal(
+                  onPressed: widget.isLoading
+                      ? null
+                      : () {
+                          unawaited(HapticFeedback.lightImpact());
+                          widget.onEmailBackPressed();
+                        },
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  tooltip: '로그인 수단',
+                  style: IconButton.styleFrom(
+                    backgroundColor: const Color(0xFFEDEFEA),
+                    foregroundColor: _NativeLoginScreen._primary,
                   ),
                 ),
-                const SizedBox(height: 18),
-                _LoginBrandMark.small(),
-                const SizedBox(height: 18),
-                const Text(
-                  '이메일로 시작하기',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: _NativeLoginScreen._textMain,
-                    fontSize: 26,
-                    height: 1.2,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0,
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: EdgeInsets.fromLTRB(
+                    0,
+                    compact ? 10 : 18,
+                    0,
+                    24 + bottomInset,
                   ),
-                ),
-                const SizedBox(height: 24),
-                _EmailModeToggle(
-                  isSignUp: _isSignUp,
-                  enabled: !widget.isLoading,
-                  onChanged: (value) {
-                    setState(() {
-                      _isSignUp = value;
-                      _emailError = null;
-                      _emailMessage = null;
-                    });
-                  },
-                ),
-                const SizedBox(height: 14),
-                _NativeTextField(
-                  controller: _emailController,
-                  enabled: !widget.isLoading,
-                  keyboardType: TextInputType.emailAddress,
-                  autofillHints: const [AutofillHints.email],
-                  label: '이메일',
-                  icon: Icons.mail_outline_rounded,
-                ),
-                const SizedBox(height: 12),
-                _NativeTextField(
-                  controller: _passwordController,
-                  enabled: !widget.isLoading,
-                  obscureText: true,
-                  autofillHints: const [AutofillHints.password],
-                  label: '비밀번호',
-                  icon: Icons.lock_outline_rounded,
-                ),
-                if (_emailError != null) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    _emailError!,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Color(0xFFD32F2F),
-                      fontSize: 12,
-                      height: 1.35,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-                if (_emailMessage != null) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    _emailMessage!,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: _NativeLoginScreen._primary,
-                      fontSize: 12,
-                      height: 1.35,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 18),
-                _LoginButton(
-                  label: widget.isLoading
-                      ? (_isSignUp ? '가입 중' : '로그인 중')
-                      : (_isSignUp ? '회원가입' : '로그인'),
-                  backgroundColor: const Color(0xFF1F2B3A),
-                  foregroundColor: Colors.white,
-                  enabled: !widget.isLoading,
-                  icon: widget.isLoading
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.2,
-                            color: Colors.white,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: contentMinHeight),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _LoginBrandMark.small(),
+                        const SizedBox(height: 18),
+                        const Text(
+                          '이메일로 시작하기',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: _NativeLoginScreen._textMain,
+                            fontSize: 26,
+                            height: 1.2,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0,
                           ),
-                        )
-                      : const Icon(
-                          Icons.arrow_forward_rounded,
-                          size: 20,
-                          color: Colors.white,
                         ),
-                  onPressed: _submitEmailAuth,
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  '로그인하면 이용약관과 개인정보처리방침에 동의하게 됩니다.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Color(0xFF9A9F99),
-                    fontSize: 12,
-                    height: 1.4,
-                    fontWeight: FontWeight.w500,
+                        const SizedBox(height: 24),
+                        _EmailModeToggle(
+                          isSignUp: _isSignUp,
+                          enabled: !widget.isLoading,
+                          onChanged: (value) {
+                            setState(() {
+                              _isSignUp = value;
+                              _emailError = null;
+                              _emailMessage = null;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 14),
+                        _NativeTextField(
+                          controller: _emailController,
+                          enabled: !widget.isLoading,
+                          keyboardType: TextInputType.emailAddress,
+                          autofillHints: const [AutofillHints.email],
+                          label: '이메일',
+                          icon: Icons.mail_outline_rounded,
+                        ),
+                        const SizedBox(height: 12),
+                        _NativeTextField(
+                          controller: _passwordController,
+                          enabled: !widget.isLoading,
+                          obscureText: true,
+                          autofillHints: const [AutofillHints.password],
+                          label: '비밀번호',
+                          icon: Icons.lock_outline_rounded,
+                        ),
+                        if (_emailError != null) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            _emailError!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Color(0xFFD32F2F),
+                              fontSize: 12,
+                              height: 1.35,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                        if (_emailMessage != null) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            _emailMessage!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: _NativeLoginScreen._primary,
+                              fontSize: 12,
+                              height: 1.35,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 18),
+                        _LoginButton(
+                          label: widget.isLoading
+                              ? (_isSignUp ? '가입 중' : '로그인 중')
+                              : (_isSignUp ? '회원가입' : '로그인'),
+                          backgroundColor: const Color(0xFF1F2B3A),
+                          foregroundColor: Colors.white,
+                          enabled: !widget.isLoading,
+                          icon: widget.isLoading
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.arrow_forward_rounded,
+                                  size: 20,
+                                  color: Colors.white,
+                                ),
+                          onPressed: _submitEmailAuth,
+                        ),
+                        const SizedBox(height: 20),
+                        _LoginInfoLinks(
+                          enabled: !widget.isLoading,
+                          onAboutPressed: widget.onAboutPressed,
+                          onPrivacyPressed: widget.onPrivacyPressed,
+                          onTermsPressed: widget.onTermsPressed,
+                        ),
+                        const SizedBox(height: 10),
+                        const Text(
+                          '로그인하면 이용약관과 개인정보처리방침에 동의하게 됩니다.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Color(0xFF9A9F99),
+                            fontSize: 12,
+                            height: 1.4,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
@@ -3681,6 +3800,47 @@ class _NativeLoginScreenState extends State<_NativeLoginScreen> {
         _emailError = e.toString().replaceFirst('Exception: ', '');
       });
     }
+  }
+}
+
+class _NativeAuthCompletionScreen extends StatelessWidget {
+  const _NativeAuthCompletionScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFFFBFAF6),
+      child: SafeArea(
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _LoginBrandMark.small(),
+              const SizedBox(height: 22),
+              const Text(
+                '로그인 중',
+                style: TextStyle(
+                  color: _NativeLoginScreen._textMain,
+                  fontSize: 20,
+                  height: 1.2,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0,
+                ),
+              ),
+              const SizedBox(height: 18),
+              const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.6,
+                  color: _NativeLoginScreen._primary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -3718,6 +3878,98 @@ class _LoginBrandMark extends StatelessWidget {
         Icons.favorite_border_rounded,
         color: const Color(0xFFEFE5BE),
         size: size * 0.5,
+      ),
+    );
+  }
+}
+
+class _LoginInfoLinks extends StatelessWidget {
+  const _LoginInfoLinks({
+    required this.enabled,
+    required this.onAboutPressed,
+    required this.onPrivacyPressed,
+    required this.onTermsPressed,
+  });
+
+  final bool enabled;
+  final VoidCallback onAboutPressed;
+  final VoidCallback onPrivacyPressed;
+  final VoidCallback onTermsPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 4,
+      runSpacing: 0,
+      children: [
+        _LoginTextLink(
+          label: '기질아이 알아보기',
+          enabled: enabled,
+          onPressed: onAboutPressed,
+        ),
+        const _LoginLinkDivider(),
+        _LoginTextLink(
+          label: '개인정보처리방침',
+          enabled: enabled,
+          onPressed: onPrivacyPressed,
+        ),
+        const _LoginLinkDivider(),
+        _LoginTextLink(
+          label: '이용약관',
+          enabled: enabled,
+          onPressed: onTermsPressed,
+        ),
+      ],
+    );
+  }
+}
+
+class _LoginTextLink extends StatelessWidget {
+  const _LoginTextLink({
+    required this.label,
+    required this.enabled,
+    required this.onPressed,
+  });
+
+  final String label;
+  final bool enabled;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton(
+      onPressed: enabled ? onPressed : null,
+      style: TextButton.styleFrom(
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        minimumSize: const Size(0, 34),
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        foregroundColor: _NativeLoginScreen._primary,
+        disabledForegroundColor: const Color(0xFFB7BDB7),
+        textStyle: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0,
+          decoration: TextDecoration.underline,
+        ),
+      ),
+      child: Text(label),
+    );
+  }
+}
+
+class _LoginLinkDivider extends StatelessWidget {
+  const _LoginLinkDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Text(
+      '|',
+      style: TextStyle(
+        color: Color(0xFFD1D5CE),
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
       ),
     );
   }

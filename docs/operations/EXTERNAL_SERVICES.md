@@ -1,7 +1,7 @@
 # 외부 서비스 인벤토리
 
 프로젝트가 의존하는 외부 서비스와 각 서비스의 책임, 코드 접점, 운영 포인트를 한곳에 정리한 문서.
-최종 동기화: 2026-04-19
+최종 동기화: 2026-05-06
 
 ## 목적
 
@@ -138,9 +138,12 @@
 - 웹 공유 SDK는 `NEXT_PUBLIC_KAKAO_JS_KEY` 환경변수의 JavaScript 키로 초기화한다. 배포 환경변수가 빠져도 공유가 막히지 않도록 웹 코드에 공개 JavaScript 키 fallback을 둔다.
 - Flutter 앱 Native App Key: `8d63a45bb147379940cda43c72e841d6`
 - 앱 URL scheme: `kakao8d63a45bb147379940cda43c72e841d6`
-- Android Flutter 앱은 KakaoTalk 앱투앱 native activity 크래시를 피하기 위해 Kakao account 로그인 경로를 우선 사용한다. Kakao SDK 업그레이드 후 앱투앱 재활성화 여부를 Crashlytics로 확인한다.
-- Flutter 앱은 Kakao SDK 기반 네이티브 토큰 교환 경로가 있을 때 `window.__nativeCapabilities.nativeAuthProviders.kakao`를 `true`로 광고한다. ID 토큰이 없거나 iOS에서 KakaoTalk 미설치 등 네이티브 경로를 완료할 수 없으면 Supabase OAuth fallback을 사용한다.
+- Android Flutter 앱은 KakaoTalk 설치 시 앱투앱 로그인을 우선 시도하고, KakaoTalk 미설치 또는 앱투앱 로그인 실패 시 Kakao SDK의 카카오계정 로그인 경로로 이어간다.
+- Flutter 앱은 Kakao SDK 기반 네이티브 토큰 교환 경로가 있을 때 `window.__nativeCapabilities.nativeAuthProviders.kakao`를 `true`로 광고한다. ID 토큰이 없거나 세션 교환에 실패하면 Supabase OAuth fallback을 열지 않고 앱 안에서 실패를 안내한다.
+- Android 카카오 로그인 복귀 크래시를 피하기 위해 `MainActivity`에는 `android:taskAffinity=""`를 두지 않는다. 현재 Flutter 3.32/Dart 3.8 환경에서는 Kakao SDK 1.10.0 이상이 빌드 요구사항과 맞지 않으므로 `kakao_flutter_sdk_user` 1.9.7+3을 유지한다.
 - 앱투앱 로그인 후 Supabase 세션으로 교환하려면 Kakao Developers에서 OpenID Connect를 활성화해 ID 토큰이 발급되어야 한다.
+- Kakao Flutter SDK로 받은 ID 토큰의 audience는 SDK 초기화에 사용한 Native App Key다. Supabase Kakao provider가 REST API key만 Client ID로 설정되어 있으면 `Unacceptable audience in id_token` 오류가 난다. 웹 Kakao OAuth와 앱 네이티브 로그인을 같이 유지하려면 Supabase Custom OIDC provider의 acceptable client IDs에 Native App Key를 추가하거나, 앱 전용 REST/OAuth 교환 경로를 별도로 둔다. 내장 Kakao provider의 Client ID를 Native App Key로 바꾸면 웹 Kakao OAuth가 깨질 수 있다.
+- Kakao 네이티브 로그인 nonce는 Supabase ID token 검증 방식에 맞춰 Kakao SDK에는 SHA-256 해시 nonce를 보내고, `/auth/native-session`에는 원본 nonce를 전달한다. 이메일 기반 계정 생성이 필요하므로 네이티브 로그인은 `openid`, `account_email`, `profile_nickname` 동의를 요청한다.
 - OAuth fallback은 Kakao Developers 개인정보 동의항목의 `account_email`이 필수 동의로 설정되어 있다는 전제로 `profile_nickname account_email` scope를 요청한다. 이 설정이 빠지면 `KOE205`가 날 수 있으므로 Kakao Developers 동의항목과 코드 scope를 함께 유지한다.
 - Android 앱 키 해시, iOS Bundle ID, 플랫폼별 Redirect URI를 Kakao Developers와 Supabase Auth provider 설정에 함께 등록해야 한다.
 
@@ -166,7 +169,7 @@
 - **코드 접점**: `app/src/components/auth/AuthProvider.tsx`, `app/src/app/login/page.tsx`, `gijilai_app/lib/main.dart`
 - **운영 포인트**
 - Supabase Auth의 Apple provider에 Team ID, Service ID, Key ID, private key를 연결해야 함
-- Flutter 앱은 iOS에서만 `window.__nativeCapabilities.nativeAuthProviders.apple`을 `true`로 광고하고 `sign_in_with_apple` ID 토큰을 `/auth/native-session`으로 교환한다. Android와 기타 플랫폼은 Supabase OAuth fallback을 사용한다.
+- Flutter 앱은 iOS와 Android에서 `window.__nativeCapabilities.nativeAuthProviders.apple`을 `true`로 광고한다. iOS는 `sign_in_with_apple` ID 토큰을 `/auth/native-session`으로 교환하고, Android는 Apple 네이티브 SDK가 없으므로 Supabase Apple OAuth URL을 Android Custom Tab으로 열어 `gijilai://auth/callback`으로 복귀한다.
 - Apple 로그인은 `https://gijilai.com/auth/callback`, `gijilai://auth/callback` 리다이렉트 경로와 함께 검증해야 함
 - iOS App Store 심사에서 제3자 로그인(Google/Kakao)을 유지할 경우 Sign in with Apple 제공 여부를 함께 확인해야 함
 
