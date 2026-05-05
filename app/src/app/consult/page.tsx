@@ -956,7 +956,7 @@ function ConsultContent() {
                                 <div className="grid gap-2.5">
                                     <div className="rounded-2xl bg-primary/5 px-4 py-4">
                                         <div className="mx-auto flex w-full max-w-[30rem] items-center gap-3">
-                                            <span className="material-symbols-outlined flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/80 text-[19px] text-primary shadow-sm dark:bg-white/10">
+                                            <span className="material-symbols-outlined flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/80 text-[19px] leading-none text-primary shadow-sm dark:bg-white/10">
                                                 psychology
                                             </span>
                                             <div className="min-w-0 flex-1">
@@ -967,7 +967,7 @@ function ConsultContent() {
                                     </div>
                                     <div className="rounded-2xl bg-secondary/5 px-4 py-4">
                                         <div className="mx-auto flex w-full max-w-[30rem] items-center gap-3">
-                                            <span className="material-symbols-outlined flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/80 text-[19px] text-secondary shadow-sm dark:bg-white/10">
+                                            <span className="material-symbols-outlined flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/80 text-[19px] leading-none text-secondary shadow-sm dark:bg-white/10">
                                                 timer
                                             </span>
                                             <div className="min-w-0 flex-1">
@@ -978,7 +978,7 @@ function ConsultContent() {
                                     </div>
                                     <div className="rounded-2xl bg-beige-main/25 px-4 py-4">
                                         <div className="mx-auto flex w-full max-w-[30rem] items-center gap-3">
-                                            <span className="material-symbols-outlined flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/80 text-[19px] text-text-main shadow-sm dark:bg-white/10 dark:text-white">
+                                            <span className="material-symbols-outlined flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/80 text-[19px] leading-none text-text-main shadow-sm dark:bg-white/10 dark:text-white">
                                                 health_and_safety
                                             </span>
                                             <div className="min-w-0 flex-1">
