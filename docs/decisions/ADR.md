@@ -508,7 +508,7 @@
 
 ## 2026-05-01 | 앱 핵심 화면 네이티브 전환은 capability 기반으로 단계 적용한다
 
-- **결정**: 앱 핵심 화면의 네이티브 전환은 `앱 여부`가 아니라 Flutter WebView가 주입하는 `window.__nativeCapabilities` 계약을 기준으로 단계 적용한다. 웹 라우트(`/login`, `/payment`, `/settings/subscription`, `/settings/notifications`, `/settings/profile`)는 계속 유지하고, 앱은 해당 버전이 실제로 지원하는 화면만 capability에 `true`로 선언한 뒤 선택적으로 네이티브 인터셉트한다. 초기 계약 버전에서는 `login`만 활성화하고 나머지 화면은 fallback 웹 흐름을 유지한다.
+- **결정**: 앱 핵심 화면의 네이티브 전환은 `앱 여부`가 아니라 Flutter WebView가 주입하는 `window.__nativeCapabilities` 계약을 기준으로 단계 적용한다. 웹 라우트(`/login`, `/payment`, `/settings/subscription`, `/settings/notifications`, `/settings/profile`)는 계속 유지하고, 앱은 해당 버전이 실제로 지원하는 화면만 capability에 `true`로 선언한 뒤 선택적으로 네이티브 인터셉트한다. 초기 계약 버전에서는 `login`만 활성화하고 나머지 화면은 fallback 웹 흐름을 유지한다. 후속 계약 버전에서는 `nativeAuthProviders`를 추가해 카카오, Apple, Google 중 실제 네이티브 토큰 교환을 시도할 provider를 별도로 선언한다.
 - **이유**: 로그인, 결제, 알림, 프로필을 한 번에 네이티브로 옮기면 웹/앱/구버전 앱 간 분기가 화면마다 퍼지기 쉽다. 단순 UA 분기만으로 네이티브 여부를 결정하면, 아직 구현되지 않은 앱 버전이나 스토어 심사 중인 구버전에서 잘못된 CTA와 깨진 이동이 발생한다. capability 계약을 WebView 문서마다 주입하면 웹은 "앱인가?"보다 "이 앱 버전이 이 화면을 네이티브로 지원하는가?"를 기준으로 안전하게 분기할 수 있다.
 - **대안**: 앱 UA만 감지해 모든 핵심 화면을 네이티브로 가정 — 구버전 앱에서 즉시 회귀가 생길 수 있어 기각. 웹 라우트를 제거하고 앱 전용 화면으로 강제 전환 — 모바일 웹과 fallback 경로를 잃어 운영 리스크가 커 기각. 앱 버전 문자열을 웹 곳곳에서 직접 비교 — 분기 로직이 흩어져 유지보수성이 낮아 기각.
 
@@ -544,7 +544,7 @@
 
 ## 2026-05-01 | 앱 로그인은 Apple·Google도 네이티브 토큰 교환을 우선한다
 
-- **결정**: Flutter 앱의 로그인 오버레이는 Kakao뿐 아니라 Apple과 Google도 네이티브 SDK 로그인을 우선 시도한다. Apple은 `sign_in_with_apple`로 ID 토큰과 nonce를 받아 `/auth/native-session`에 전달하고, Google은 `google_sign_in`으로 ID 토큰을 받아 같은 세션 교환 경로를 사용한다. Google의 `GOOGLE_WEB_CLIENT_ID`는 선택값으로 두고, 없어도 모바일 앱 기본 설정으로 네이티브 로그인부터 시도한다. 네이티브 토큰을 받을 수 없을 때만 기존 Supabase OAuth handoff fallback을 유지한다.
+- **결정**: Flutter 앱의 로그인 오버레이는 Kakao뿐 아니라 Apple과 Google도 네이티브 SDK 로그인을 우선 시도한다. Apple은 `sign_in_with_apple`로 ID 토큰과 nonce를 받아 `/auth/native-session`에 전달하고, Google은 `google_sign_in`으로 ID 토큰을 받아 같은 세션 교환 경로를 사용한다. iOS/Android Google 네이티브 로그인은 `GOOGLE_WEB_CLIENT_ID`가 있을 때만 capability로 광고하고, 값이 없으면 기존 Supabase OAuth handoff fallback을 사용한다. 네이티브 토큰을 받을 수 없거나 세션 교환이 실패할 때도 기존 Supabase OAuth handoff fallback을 유지한다.
 - **이유**: 앱 결제와 알림은 이미 네이티브 경험을 강화하는 쪽으로 가고 있는데, 로그인만 외부 OAuth handoff 중심으로 남으면 첫 진입 경험이 가장 거칠게 느껴진다. 특히 iOS에서는 Sign in with Apple이 네이티브 흐름일수록 심사/신뢰 측면에서 유리하고, Google도 외부 브라우저 전환 없이 복귀 실패 지점을 줄일 수 있다.
 - **대안**: 기존 OAuth handoff 유지 — 구현은 단순하지만 앱다운 경험과 복귀 안정성이 약해 기각. Apple만 네이티브화하고 Google은 유지 — 로그인 수단별 경험 차이가 커져 일관성이 떨어져 기각.
 

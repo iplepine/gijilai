@@ -43,9 +43,18 @@ class _AndroidIntentUri {
 class NativeCapabilityRegistry {
   const NativeCapabilityRegistry();
 
-  static const int contractVersion = 1;
+  static const int contractVersion = 2;
   static const bool supportsHaptics = true;
   static bool get supportsVoiceInput => Platform.isAndroid;
+  static bool get supportsKakaoNativeAuth =>
+      Platform.isAndroid || Platform.isIOS;
+  static bool get supportsAppleNativeAuth => Platform.isIOS;
+  static bool get supportsGoogleNativeAuth {
+    if (Platform.isIOS || Platform.isAndroid) {
+      return _googleWebClientId.isNotEmpty;
+    }
+    return false;
+  }
 
   static const Map<String, bool> supportedScreens = {
     'login': true,
@@ -55,12 +64,25 @@ class NativeCapabilityRegistry {
     'profile': false,
   };
 
+  static Map<String, bool> get nativeAuthProviders => {
+    'kakao': supportsKakaoNativeAuth,
+    'apple': supportsAppleNativeAuth,
+    'google': supportsGoogleNativeAuth,
+  };
+
   bool supportsScreen(String screenKey) {
     return supportedScreens[screenKey] ?? false;
   }
 
+  bool supportsNativeAuthProvider(String provider) {
+    return nativeAuthProviders[provider] ?? false;
+  }
+
   String toJavaScriptObjectLiteral() {
     final screens = supportedScreens.entries
+        .map((entry) => "'${entry.key}': ${entry.value}")
+        .join(', ');
+    final authProviders = nativeAuthProviders.entries
         .map((entry) => "'${entry.key}': ${entry.value}")
         .join(', ');
     return '''
@@ -68,7 +90,8 @@ class NativeCapabilityRegistry {
         contractVersion: $contractVersion,
         haptics: $supportsHaptics,
         voiceInput: $supportsVoiceInput,
-        supportedScreens: { $screens }
+        supportedScreens: { $screens },
+        nativeAuthProviders: { $authProviders }
       }
     ''';
   }
@@ -379,6 +402,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         'VoiceInputBridge',
         onMessageReceived: _onVoiceInputMessage,
       )
+      ..addJavaScriptChannel('RouteBridge', onMessageReceived: _onRouteMessage)
       ..addJavaScriptChannel('AuthBridge', onMessageReceived: _onAuthMessage)
       ..addJavaScriptChannel('ShareBridge', onMessageReceived: _onShareMessage)
       ..loadRequest(Uri.parse(MainWebView.targetUrl));
@@ -768,14 +792,10 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     if (!mounted) return;
 
     final uri = Uri.tryParse(url);
-    final shouldShowLogin =
-        uri != null &&
-        uri.host == Uri.parse(MainWebView.targetUrl).host &&
-        uri.path == '/login' &&
-        _nativeCapabilities.supportsScreen('login');
+    final shouldShowLogin = _shouldShowNativeLoginForUrl(url);
 
     if (shouldShowLogin) {
-      _rememberLoginRedirect(uri.queryParameters['redirect']);
+      _rememberLoginRedirect(uri?.queryParameters['redirect']);
     }
 
     setState(() {
@@ -799,12 +819,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   void _handlePageFinished(String url) {
     unawaited(_syncWebAppContext());
 
-    final uri = Uri.tryParse(url);
-    final shouldShowLogin =
-        uri != null &&
-        uri.host == Uri.parse(MainWebView.targetUrl).host &&
-        uri.path == '/login' &&
-        _nativeCapabilities.supportsScreen('login');
+    final shouldShowLogin = _shouldShowNativeLoginForUrl(url);
 
     if (mounted) {
       setState(() {
@@ -824,6 +839,16 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     if (safeRedirect != null) {
       _pendingLoginRedirectPath = safeRedirect;
     }
+  }
+
+  bool _shouldShowNativeLoginForUrl(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return false;
+
+    final targetUri = Uri.parse(MainWebView.targetUrl);
+    return uri.host == targetUri.host &&
+        uri.path == '/login' &&
+        _nativeCapabilities.supportsScreen('login');
   }
 
   Future<void> _syncWebAppContext() async {
@@ -867,6 +892,37 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
             appInfo: window.__nativeAppInfo
           }
         }));
+
+        if (!window.__nativeRouteBridgeInstalled) {
+          const notifyNativeRoute = () => {
+            try {
+              RouteBridge.postMessage(JSON.stringify({
+                type: 'ROUTE_CHANGED',
+                url: window.location.href,
+                path: window.location.pathname
+              }));
+            } catch (_) {}
+          };
+
+          ['pushState', 'replaceState'].forEach((methodName) => {
+            const original = window.history[methodName];
+            if (typeof original !== 'function') return;
+            window.history[methodName] = function(...args) {
+              const result = original.apply(this, args);
+              window.setTimeout(notifyNativeRoute, 0);
+              return result;
+            };
+          });
+
+          window.addEventListener('popstate', () => window.setTimeout(notifyNativeRoute, 0));
+          window.addEventListener('hashchange', () => window.setTimeout(notifyNativeRoute, 0));
+          window.__notifyNativeRoute = notifyNativeRoute;
+          window.__nativeRouteBridgeInstalled = true;
+        }
+
+        if (window.__notifyNativeRoute) {
+          window.__notifyNativeRoute();
+        }
 
         if (!window.__nativeDialogTapGuard) {
           const guard = {
@@ -1080,6 +1136,37 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     }
   }
 
+  void _onRouteMessage(JavaScriptMessage message) {
+    try {
+      final data = jsonDecode(message.message);
+      if (data is! Map<String, dynamic>) return;
+
+      final url = data['url']?.toString();
+      final path = data['path']?.toString();
+      if ((url == null || url.isEmpty) && (path == null || path.isEmpty)) {
+        return;
+      }
+
+      final shouldShowLogin =
+          path == '/login' ||
+          (url != null && _shouldShowNativeLoginForUrl(url));
+      if (mounted) {
+        setState(() {
+          _showNativeLogin = shouldShowLogin;
+        });
+      }
+    } catch (e) {
+      debugPrint('RouteBridge parse error: $e');
+      unawaited(
+        FirebaseCrashlytics.instance.recordError(
+          e,
+          StackTrace.current,
+          reason: 'RouteBridge parse error',
+        ),
+      );
+    }
+  }
+
   Future<void> _launchAuthUrlFromBridge(Uri uri) async {
     final launched = await _launchExternalUrl(uri);
     if (!launched) {
@@ -1259,6 +1346,11 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   Future<void> _startKakaoNativeLogin() async {
     if (_authInProgress) return;
 
+    if (!_nativeCapabilities.supportsNativeAuthProvider('kakao')) {
+      await _startNativeOAuth('kakao');
+      return;
+    }
+
     if (Platform.isIOS && !await isKakaoTalkInstalled()) {
       FirebaseCrashlytics.instance.log(
         'Kakao native login fallback: KakaoTalk is not installed on iOS.',
@@ -1315,14 +1407,18 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         accessToken: token.accessToken,
       );
     } catch (e) {
+      if (_isUserCancelledAuthError(e)) {
+        await _finishCancelledAuthHandoff();
+        return;
+      }
+
       debugPrint('Kakao native login error: $e');
-      _externalAuthInProgress = false;
       if (mounted) {
         setState(() {
           _authInProgress = false;
         });
       }
-      _showSnackBar('카카오 로그인을 완료할 수 없습니다', isError: true);
+      _externalAuthInProgress = false;
       unawaited(
         FirebaseCrashlytics.instance.recordError(
           e,
@@ -1330,15 +1426,16 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           reason: 'Kakao native login error',
         ),
       );
+      await _startNativeOAuth('kakao');
     }
   }
 
   Future<void> _startAppleNativeLogin() async {
     if (_authInProgress) return;
 
-    if (!Platform.isIOS) {
+    if (!_nativeCapabilities.supportsNativeAuthProvider('apple')) {
       FirebaseCrashlytics.instance.log(
-        'Apple native login fallback: platform is not iOS.',
+        'Apple native login fallback: provider unsupported.',
       );
       await _startNativeOAuth('apple');
       return;
@@ -1383,14 +1480,18 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         nonce: rawNonce,
       );
     } catch (e) {
+      if (_isUserCancelledAuthError(e)) {
+        await _finishCancelledAuthHandoff();
+        return;
+      }
+
       debugPrint('Apple native login error: $e');
-      _externalAuthInProgress = false;
       if (mounted) {
         setState(() {
           _authInProgress = false;
         });
       }
-      _showSnackBar('Apple 로그인을 완료할 수 없습니다', isError: true);
+      _externalAuthInProgress = false;
       unawaited(
         FirebaseCrashlytics.instance.recordError(
           e,
@@ -1398,11 +1499,18 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           reason: 'Apple native login error',
         ),
       );
+      await _startNativeOAuth('apple');
     }
   }
 
   Future<void> _startGoogleNativeLogin() async {
     if (_authInProgress) return;
+
+    if (!_nativeCapabilities.supportsNativeAuthProvider('google')) {
+      await _startNativeOAuth('google');
+      return;
+    }
+
     setState(() {
       _authInProgress = true;
       _showNativeEmailLogin = false;
@@ -1449,6 +1557,11 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         accessToken: authentication.accessToken,
       );
     } catch (e) {
+      if (_isUserCancelledAuthError(e)) {
+        await _finishCancelledAuthHandoff();
+        return;
+      }
+
       debugPrint('Google native login error: $e');
       FirebaseCrashlytics.instance.log(
         'Google native login fallback: native SDK error.',
@@ -1468,6 +1581,22 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       );
       await _startNativeOAuth('google');
     }
+  }
+
+  bool _isUserCancelledAuthError(Object error) {
+    if (error is PlatformException) {
+      final code = error.code.toLowerCase();
+      final message = error.message?.toLowerCase() ?? '';
+      return code.contains('cancel') ||
+          message.contains('cancel') ||
+          message.contains('취소');
+    }
+
+    final text = error.toString().toLowerCase();
+    return text.contains('user canceled') ||
+        text.contains('user cancelled') ||
+        text.contains('canceled') ||
+        text.contains('cancelled');
   }
 
   Future<void> _completeNativeSession({

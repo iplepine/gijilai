@@ -73,8 +73,10 @@
 - Flutter 앱은 `gijilai://open` 딥링크를 받으면 WebView를 전달된 내부 path로 이동한다. 인증 콜백(`gijilai://auth/callback`)은 기존처럼 `/auth/callback`으로만 소비한다.
 - 노치/상태표시줄/시스템 제스처 영역 대응은 웹 CSS `env(safe-area-inset-*)`와 Flutter WebView가 주입하는 `--native-safe-area-top/bottom`을 함께 사용한다.
 - Android edge-to-edge WebView에서 native bottom inset이 `0px`로 보고되는 3-button navigation 환경이 있으므로, 하단 탭/고정 CTA는 Android 전용 fallback bottom inset을 함께 적용해 OS 내비게이션 버튼과 겹치지 않게 한다.
-- Flutter 앱은 WebView 문서마다 `window.__nativeCapabilities`를 주입해 현재 앱이 네이티브로 지원하는 화면 집합을 명시한다.
-- 웹은 `isAppWebView()` 같은 단순 앱 여부만으로 네이티브 분기를 결정하지 않고, `window.__nativeCapabilities.supportedScreens`를 우선 확인한다.
+- Flutter 앱은 WebView 문서마다 `window.__nativeCapabilities`를 주입해 현재 앱이 네이티브로 지원하는 화면 집합(`supportedScreens`)과 네이티브 토큰 교환을 시도할 수 있는 로그인 수단(`nativeAuthProviders`)을 명시한다.
+- 웹은 `isAppWebView()` 같은 단순 앱 여부만으로 네이티브 분기를 결정하지 않고, `window.__nativeCapabilities.supportedScreens`와 provider별 `nativeAuthProviders`를 우선 확인한다.
+- `window.__nativeAppInfo.version/buildNumber`는 장애 우회, 분석, 강제 업데이트 안내에만 사용하고, 기능 분기의 기본 기준은 capability로 둔다.
+- Flutter 앱은 Next.js client-side route 변경(`pushState`/`replaceState`/`popstate`)도 `RouteBridge`로 감지해 `/login` 같은 네이티브 인터셉트 대상 화면을 full page load와 동일하게 처리한다.
 - 로그인 외 네이티브 전환 후보 화면(`/payment`, `/settings/subscription`, `/settings/notifications`, `/settings/profile`)은 capability가 없는 앱 버전과 모바일 웹에서 기존 웹 라우트를 fallback으로 유지한다.
 - `Navbar` 기반 일반 스크롤 화면은 `app-page-scroll`로 하단 safe area + 여유 패딩을 공통 적용한다.
 - 하단 탭바는 edge-to-edge 배경을 유지하되 탭 아이콘/라벨/중앙 버튼의 실제 터치 영역은 native bottom inset을 반영한 `app-bottom-nav` padding 위에 둔다.
@@ -93,8 +95,8 @@
 - 카카오 버튼은 Kakao Flutter SDK 앱투앱 로그인을 먼저 시도하고, Kakao ID 토큰을 `/auth/native-session`으로 전달해 Supabase 세션 쿠키를 WebView에 설정한다.
 - Apple은 iOS에서 `sign_in_with_apple` 네이티브 SDK를 우선 사용해 ID 토큰(+ nonce)을 받고 `/auth/native-session`으로 세션을 교환한다.
 - Google은 `google_sign_in` 네이티브 SDK를 우선 사용해 ID 토큰을 받고 `/auth/native-session`으로 세션을 교환한다.
-- `GOOGLE_WEB_CLIENT_ID` dart define은 선택값이다. 있으면 `serverClientId`로 함께 주입하고, 없어도 모바일 앱 기본 설정(`GoogleService-Info.plist`, `google-services.json`)만으로 네이티브 로그인부터 시도한다. ID 토큰을 받을 수 없을 때만 OAuth fallback으로 전환한다.
-- Apple/Google/Kakao 네이티브 토큰을 받을 수 없는 환경에서는 앱이 WebView의 `AuthProvider` OAuth 훅을 우선 호출해 Supabase auth-js가 PKCE 및 `gijilai://auth/callback` 리다이렉트를 생성하게 한다. 훅을 사용할 수 없는 경우에만 Supabase OAuth authorize URL을 외부 앱/브라우저로 직접 열고, 딥링크를 받아 WebView의 `/auth/callback`으로 다시 로드한다.
+- `GOOGLE_WEB_CLIENT_ID` dart define은 모바일 Google ID 토큰의 audience를 Supabase Google provider와 맞추는 값이다. iOS/Android 모두 이 값이 있을 때만 `nativeAuthProviders.google`을 `true`로 광고해 네이티브 Google 로그인을 연다.
+- Apple/Google/Kakao 네이티브 토큰을 받을 수 없거나 `/auth/native-session` 세션 교환이 실패하면 앱이 WebView의 `AuthProvider` OAuth 훅을 우선 호출해 Supabase auth-js가 PKCE 및 `gijilai://auth/callback` 리다이렉트를 생성하게 한다. 훅을 사용할 수 없는 경우에만 Supabase OAuth authorize URL을 외부 앱/브라우저로 직접 열고, 딥링크를 받아 WebView의 `/auth/callback`으로 다시 로드한다.
 - iOS에서 OAuth 후 앱이 콜드 스타트되는 경우를 위해 `AppDelegate`는 `launchOptions`의 초기 URL을 `app_links`로 직접 브리지한다.
 - iOS `Info.plist`의 `FlutterDeepLinkingEnabled`는 `false`로 유지해 Flutter 기본 딥링크 처리와 `app_links`가 같은 커스텀 스킴을 중복 처리하지 않게 한다.
 - 기존 웹 `/login`의 `AuthBridge` 경로는 fallback으로 유지한다.

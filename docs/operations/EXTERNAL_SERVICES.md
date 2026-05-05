@@ -139,6 +139,7 @@
 - Flutter 앱 Native App Key: `8d63a45bb147379940cda43c72e841d6`
 - 앱 URL scheme: `kakao8d63a45bb147379940cda43c72e841d6`
 - Android Flutter 앱은 KakaoTalk 앱투앱 native activity 크래시를 피하기 위해 Kakao account 로그인 경로를 우선 사용한다. Kakao SDK 업그레이드 후 앱투앱 재활성화 여부를 Crashlytics로 확인한다.
+- Flutter 앱은 Kakao SDK 기반 네이티브 토큰 교환 경로가 있을 때 `window.__nativeCapabilities.nativeAuthProviders.kakao`를 `true`로 광고한다. ID 토큰이 없거나 iOS에서 KakaoTalk 미설치 등 네이티브 경로를 완료할 수 없으면 Supabase OAuth fallback을 사용한다.
 - 앱투앱 로그인 후 Supabase 세션으로 교환하려면 Kakao Developers에서 OpenID Connect를 활성화해 ID 토큰이 발급되어야 한다.
 - OAuth fallback은 Kakao Developers 개인정보 동의항목의 `account_email`이 필수 동의로 설정되어 있다는 전제로 `profile_nickname account_email` scope를 요청한다. 이 설정이 빠지면 `KOE205`가 날 수 있으므로 Kakao Developers 동의항목과 코드 scope를 함께 유지한다.
 - Android 앱 키 해시, iOS Bundle ID, 플랫폼별 Redirect URI를 Kakao Developers와 Supabase Auth provider 설정에 함께 등록해야 한다.
@@ -154,8 +155,8 @@
 - Supabase Auth의 Google provider 설정
 - **운영 포인트**
 - 승인된 리디렉션 URI와 Supabase 설정을 함께 맞춰야 함
-- Flutter 앱은 Google 로그인을 네이티브 SDK로 먼저 시도하고, 받은 ID 토큰을 Supabase 세션으로 교환한다.
-- `GOOGLE_WEB_CLIENT_ID` dart define은 선택값이다. 있으면 Android/iOS native Google 로그인에서 `serverClientId`로 사용한다. 값이 없어도 모바일 앱 기본 설정(`GoogleService-Info.plist`, `google-services.json`)으로 네이티브 로그인을 먼저 시도하고, ID 토큰을 받을 수 없을 때만 Supabase OAuth fallback을 사용한다.
+- Flutter 앱은 `nativeAuthProviders.google`이 `true`인 환경에서 Google 로그인을 네이티브 SDK로 먼저 시도하고, 받은 ID 토큰을 Supabase 세션으로 교환한다.
+- `GOOGLE_WEB_CLIENT_ID` dart define은 모바일 Google ID 토큰의 audience를 Supabase Google provider와 맞추는 값이다. Android/iOS 모두 이 값이 있을 때만 `window.__nativeCapabilities.nativeAuthProviders.google`을 `true`로 광고하고 네이티브 Google 로그인을 연다. 값이 없거나 세션 교환이 실패하면 Supabase OAuth fallback을 사용한다.
 - iOS 네이티브 로그인을 안정적으로 쓰려면 `GOOGLE_IOS_CLIENT_ID` dart define과 `GoogleService-Info.plist`의 `CLIENT_ID`/`REVERSED_CLIENT_ID`, `Info.plist` URL scheme을 Google Cloud Console 값과 일치시킨다. 네이티브 설정 예외가 나면 앱은 Supabase OAuth fallback으로 전환한다.
 - Android는 Firebase/Google Cloud에 앱 SHA-1, SHA-256을 등록해야 `google-services.json`의 `oauth_client`가 채워지고 안정적으로 동작한다. 이 값이 비어 있으면 Play Services Auth native activity 크래시 또는 로그인 실패가 Crashlytics에 잡힐 수 있다.
 
@@ -165,6 +166,7 @@
 - **코드 접점**: `app/src/components/auth/AuthProvider.tsx`, `app/src/app/login/page.tsx`, `gijilai_app/lib/main.dart`
 - **운영 포인트**
 - Supabase Auth의 Apple provider에 Team ID, Service ID, Key ID, private key를 연결해야 함
+- Flutter 앱은 iOS에서만 `window.__nativeCapabilities.nativeAuthProviders.apple`을 `true`로 광고하고 `sign_in_with_apple` ID 토큰을 `/auth/native-session`으로 교환한다. Android와 기타 플랫폼은 Supabase OAuth fallback을 사용한다.
 - Apple 로그인은 `https://gijilai.com/auth/callback`, `gijilai://auth/callback` 리다이렉트 경로와 함께 검증해야 함
 - iOS App Store 심사에서 제3자 로그인(Google/Kakao)을 유지할 경우 Sign in with Apple 제공 여부를 함께 확인해야 함
 
