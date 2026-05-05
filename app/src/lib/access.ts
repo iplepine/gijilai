@@ -1,5 +1,10 @@
 export const TRIAL_DAYS = 7;
 export const FREE_PRACTICE_VISIBLE_COUNT = 1;
+export const FREE_CHILD_PROFILE_LIMIT = 1;
+export const CHILD_PROFILE_LIMIT_REACHED_CODE = 'CHILD_PROFILE_LIMIT_REACHED';
+export const LAST_FREE_CHILD_DELETE_BLOCKED_CODE = 'LAST_FREE_CHILD_DELETE_BLOCKED';
+
+export type ChildProfileAccess = ReturnType<typeof getChildProfileAccess>;
 
 type SubscriptionLookupFilter = {
   eq: (...args: unknown[]) => SubscriptionLookupQuery;
@@ -12,6 +17,14 @@ type SubscriptionLookupFilter = {
 
 type SubscriptionLookupQuery = SubscriptionLookupFilter & {
   select: (...args: unknown[]) => SubscriptionLookupFilter;
+};
+
+type CountLookupQuery = {
+  eq: (...args: unknown[]) => Promise<{ count: number | null; error: unknown }>;
+};
+
+type CountLookupTable = {
+  select: (...args: unknown[]) => CountLookupQuery;
 };
 
 export function getTrialStatus(userCreatedAt: string) {
@@ -39,6 +52,45 @@ export function getFeatureAccess(params: { userCreatedAt?: string | null; hasSub
   };
 }
 
+export function getChildProfileAccess(params: {
+  userCreatedAt?: string | null;
+  hasSubscription: boolean;
+  childCount: number;
+  lifetimeChildSlots: number;
+}) {
+  const featureAccess = getFeatureAccess({
+    userCreatedAt: params.userCreatedAt,
+    hasSubscription: params.hasSubscription,
+  });
+  const hasFullChildProfileAccess = featureAccess.hasFullAccess;
+
+  return {
+    trial: featureAccess.trial,
+    hasSubscription: featureAccess.hasSubscription,
+    hasFullChildProfileAccess,
+    freeChildProfileLimit: FREE_CHILD_PROFILE_LIMIT,
+    childCount: params.childCount,
+    lifetimeChildSlots: params.lifetimeChildSlots,
+    canCreateChild: hasFullChildProfileAccess || params.lifetimeChildSlots < FREE_CHILD_PROFILE_LIMIT,
+    canDeleteChild: hasFullChildProfileAccess || params.childCount > FREE_CHILD_PROFILE_LIMIT,
+    canDeleteLastChild: hasFullChildProfileAccess,
+  };
+}
+
+async function countRows(
+  supabase: { from: (table: string) => unknown },
+  table: string,
+  column: string,
+  value: string
+) {
+  const query = (supabase.from(table) as CountLookupTable)
+    .select('id', { count: 'exact', head: true });
+  const { count, error } = await query.eq(column, value);
+
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export async function getServerFeatureAccess(
   supabase: { from: (table: string) => unknown },
   params: { userId: string; userCreatedAt?: string | null }
@@ -58,5 +110,23 @@ export async function getServerFeatureAccess(
   return getFeatureAccess({
     userCreatedAt: params.userCreatedAt,
     hasSubscription: !!subscription,
+  });
+}
+
+export async function getServerChildProfileAccess(
+  supabase: { from: (table: string) => unknown },
+  params: { userId: string; userCreatedAt?: string | null }
+) {
+  const featureAccess = await getServerFeatureAccess(supabase, params);
+  const [childCount, lifetimeChildSlots] = await Promise.all([
+    countRows(supabase, 'children', 'parent_id', params.userId),
+    countRows(supabase, 'child_profile_slots', 'user_id', params.userId),
+  ]);
+
+  return getChildProfileAccess({
+    userCreatedAt: params.userCreatedAt,
+    hasSubscription: featureAccess.hasSubscription,
+    childCount,
+    lifetimeChildSlots,
   });
 }

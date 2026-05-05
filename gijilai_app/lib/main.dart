@@ -45,6 +45,7 @@ class NativeCapabilityRegistry {
 
   static const int contractVersion = 1;
   static const bool supportsHaptics = true;
+  static bool get supportsVoiceInput => Platform.isAndroid;
 
   static const Map<String, bool> supportedScreens = {
     'login': true,
@@ -66,6 +67,7 @@ class NativeCapabilityRegistry {
       {
         contractVersion: $contractVersion,
         haptics: $supportsHaptics,
+        voiceInput: $supportsVoiceInput,
         supportedScreens: { $screens }
       }
     ''';
@@ -195,6 +197,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   bool _hasRenderedFirstPage = false;
   bool _isWebPageLoading = false;
   bool _iapLaunchInProgress = false;
+  bool _nativeVoiceInputInProgress = false;
   int _webPageLoadProgress = 0;
 
   String get _subscriptionProductId => Platform.isIOS
@@ -370,6 +373,10 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         'HapticBridge',
         onMessageReceived: _onHapticMessage,
       )
+      ..addJavaScriptChannel(
+        'VoiceInputBridge',
+        onMessageReceived: _onVoiceInputMessage,
+      )
       ..addJavaScriptChannel('AuthBridge', onMessageReceived: _onAuthMessage)
       ..addJavaScriptChannel('ShareBridge', onMessageReceived: _onShareMessage)
       ..loadRequest(Uri.parse(MainWebView.targetUrl));
@@ -437,6 +444,153 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       );
       return false;
     }
+  }
+
+  void _onVoiceInputMessage(JavaScriptMessage message) {
+    try {
+      final data = jsonDecode(message.message) as Map<String, dynamic>;
+      if (data['type'] != 'VOICE_INPUT_REQUEST') return;
+
+      unawaited(
+        _startNativeVoiceInput(
+          requestId: data['requestId']?.toString(),
+          languageTag: data['languageTag']?.toString(),
+        ),
+      );
+    } catch (e, stack) {
+      debugPrint('VoiceInputBridge parse error: $e');
+      unawaited(
+        FirebaseCrashlytics.instance.recordError(
+          e,
+          stack,
+          reason: 'VoiceInputBridge parse error',
+        ),
+      );
+    }
+  }
+
+  Future<void> _startNativeVoiceInput({
+    required String? requestId,
+    required String? languageTag,
+  }) async {
+    if (!Platform.isAndroid) {
+      await _dispatchNativeVoiceInputResult(
+        requestId: requestId,
+        status: 'error',
+        code: 'service-not-allowed',
+      );
+      return;
+    }
+
+    if (_nativeVoiceInputInProgress) {
+      await _dispatchNativeVoiceInputResult(
+        requestId: requestId,
+        status: 'error',
+        code: 'aborted',
+      );
+      return;
+    }
+
+    _nativeVoiceInputInProgress = true;
+    try {
+      final isGranted = await _requestMicrophonePermission();
+      if (!isGranted) {
+        await _dispatchNativeVoiceInputResult(
+          requestId: requestId,
+          status: 'error',
+          code: 'not-allowed',
+        );
+        return;
+      }
+
+      final result = await _permissionsChannel.invokeMapMethod<String, dynamic>(
+        'startVoiceInput',
+        {'languageTag': languageTag ?? 'ko-KR'},
+      );
+      final status = result?['status']?.toString() ?? 'error';
+      final transcript = result?['transcript']?.toString() ?? '';
+
+      if (status == 'ok' && transcript.trim().isNotEmpty) {
+        await _dispatchNativeVoiceInputResult(
+          requestId: requestId,
+          status: 'ok',
+          transcript: transcript,
+        );
+        return;
+      }
+
+      await _dispatchNativeVoiceInputResult(
+        requestId: requestId,
+        status: status == 'cancelled' ? 'cancelled' : 'error',
+        code: status == 'cancelled' ? null : 'no-speech',
+      );
+    } on PlatformException catch (e, stack) {
+      debugPrint('Native voice input error: ${e.code} ${e.message}');
+      unawaited(
+        FirebaseCrashlytics.instance.recordError(
+          e,
+          stack,
+          reason: 'Native voice input error',
+        ),
+      );
+      await _dispatchNativeVoiceInputResult(
+        requestId: requestId,
+        status: 'error',
+        code: _voiceInputErrorCodeForPlatformException(e),
+      );
+    } catch (e, stack) {
+      debugPrint('Native voice input error: $e');
+      unawaited(
+        FirebaseCrashlytics.instance.recordError(
+          e,
+          stack,
+          reason: 'Native voice input error',
+        ),
+      );
+      await _dispatchNativeVoiceInputResult(
+        requestId: requestId,
+        status: 'error',
+        code: 'unknown',
+      );
+    } finally {
+      _nativeVoiceInputInProgress = false;
+    }
+  }
+
+  String _voiceInputErrorCodeForPlatformException(PlatformException e) {
+    switch (e.code) {
+      case 'microphone_permission_denied':
+        return 'not-allowed';
+      case 'speech_recognizer_unavailable':
+        return 'service-not-allowed';
+      case 'voice_input_in_progress':
+        return 'aborted';
+      default:
+        return 'unknown';
+    }
+  }
+
+  Future<void> _dispatchNativeVoiceInputResult({
+    required String? requestId,
+    required String status,
+    String? transcript,
+    String? code,
+  }) async {
+    final controller = _controller;
+    if (controller == null) return;
+
+    final payload = jsonEncode({
+      'requestId': requestId,
+      'status': status,
+      if (transcript != null) 'transcript': transcript,
+      if (code != null) 'code': code,
+    });
+
+    await controller.runJavaScript('''
+      window.dispatchEvent(new CustomEvent('gijilai:nativeVoiceInputResult', {
+        detail: $payload
+      }));
+    ''');
   }
 
   Future<void> _showJavaScriptAlertDialog(
@@ -691,6 +845,12 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         root.style.setProperty('--native-safe-area-bottom', '${bottomInset}px');
         window.__nativeCapabilities = $nativeCapabilitiesJs;
         window.__nativeAppInfo = $nativeAppInfoJs;
+        window.dispatchEvent(new CustomEvent('gijilai:nativeContextReady', {
+          detail: {
+            capabilities: window.__nativeCapabilities,
+            appInfo: window.__nativeAppInfo
+          }
+        }));
 
         if (!window.__nativeDialogTapGuard) {
           const guard = {

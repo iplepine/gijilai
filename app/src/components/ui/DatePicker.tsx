@@ -11,9 +11,10 @@ interface DatePickerProps {
   onChange: (value: string) => void;
   label?: string;
   error?: string;
+  disabled?: boolean;
 }
 
-export function DatePicker({ value, onChange, label, error }: DatePickerProps) {
+export function DatePicker({ value, onChange, label, error, disabled = false }: DatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState<Step>('year');
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
@@ -32,6 +33,8 @@ export function DatePicker({ value, onChange, label, error }: DatePickerProps) {
   const firstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
 
   const handleOpen = () => {
+    if (disabled) return;
+
     if (value) {
       const d = new Date(value);
       setSelectedYear(d.getFullYear());
@@ -133,7 +136,8 @@ export function DatePicker({ value, onChange, label, error }: DatePickerProps) {
       <button
         type="button"
         onClick={handleOpen}
-        className={`w-full h-14 px-5 rounded-2xl border-2 bg-white dark:bg-surface-dark flex items-center justify-between text-[15px] font-medium transition-all ${error ? 'border-red-400' : 'border-beige-main/20 dark:border-surface-dark/50 shadow-sm shadow-primary/5'}`}
+        disabled={disabled}
+        className={`w-full h-14 px-5 rounded-2xl border-2 bg-white dark:bg-surface-dark flex items-center justify-between text-[15px] font-medium transition-all disabled:opacity-60 disabled:cursor-not-allowed ${error ? 'border-red-400' : 'border-beige-main/20 dark:border-surface-dark/50 shadow-sm shadow-primary/5'}`}
       >
         <span className={value ? 'text-text-main dark:text-white' : 'text-text-sub'}>
           {value ? value.replace(/-/g, '. ') : '날짜를 선택해주세요'}

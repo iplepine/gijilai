@@ -17,6 +17,44 @@ export type ParentingStyleScores = {
 
 export type ReportScoreKey = keyof TemperamentScores;
 
+const DIMENSION_KEY_ALIASES: Record<string, ReportScoreKey> = {
+    ns: 'NS',
+    noveltyseeking: 'NS',
+    '자극추구': 'NS',
+    '새로움추구': 'NS',
+    ha: 'HA',
+    harmavoidance: 'HA',
+    '위험회피': 'HA',
+    '손상회피': 'HA',
+    rd: 'RD',
+    rewarddependence: 'RD',
+    '사회적민감성': 'RD',
+    '보상의존': 'RD',
+    p: 'P',
+    persistence: 'P',
+    '인내력': 'P',
+    '지속성': 'P',
+};
+
+function normalizeDimensionKey(key: string): ReportScoreKey | null {
+    return DIMENSION_KEY_ALIASES[key.replace(/[\s_-]/g, '').toLowerCase()] ?? null;
+}
+
+export function normalizeTemperamentDimensions(
+    dimensions: Record<string, unknown> | null | undefined,
+): Partial<Record<ReportScoreKey, string>> | undefined {
+    if (!dimensions || typeof dimensions !== 'object') return undefined;
+
+    const normalized: Partial<Record<ReportScoreKey, string>> = {};
+    Object.entries(dimensions).forEach(([key, value]) => {
+        const scoreKey = normalizeDimensionKey(key);
+        if (!scoreKey || typeof value !== 'string' || value.trim().length === 0) return;
+        normalized[scoreKey] = value;
+    });
+
+    return Object.keys(normalized).length > 0 ? normalized : undefined;
+}
+
 export type ChildInsightItem = {
     scene: string;
     content: string;
@@ -146,11 +184,32 @@ function isJsonRecord(value: Json | null | undefined): value is JsonRecord {
 }
 
 export function asChildAiReport(value: Json | null | undefined): ChildAiReport | null {
-    return isJsonRecord(value) ? (value as unknown as ChildAiReport) : null;
+    if (!isJsonRecord(value)) return null;
+
+    const report = value as unknown as ChildAiReport;
+    const dimensions = normalizeTemperamentDimensions(report.analysis?.dimensions);
+    if (!dimensions) return report;
+
+    return {
+        ...report,
+        analysis: {
+            ...report.analysis,
+            dimensions,
+        },
+    };
 }
 
 export function asParentAiReport(value: Json | null | undefined): ParentAiReport | null {
-    return isJsonRecord(value) ? (value as unknown as ParentAiReport) : null;
+    if (!isJsonRecord(value)) return null;
+
+    const report = value as unknown as ParentAiReport;
+    const dimensions = normalizeTemperamentDimensions(report.dimensions);
+    if (!dimensions) return report;
+
+    return {
+        ...report,
+        dimensions,
+    };
 }
 
 export function asHarmonyAiReport(value: Json | null | undefined): HarmonyAiReport | null {

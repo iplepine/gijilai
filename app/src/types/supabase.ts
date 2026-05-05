@@ -67,6 +67,26 @@ export interface Database {
                     created_at?: string
                 }
             }
+            child_profile_slots: {
+                Row: {
+                    id: string
+                    user_id: string
+                    child_id: string | null
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    user_id: string
+                    child_id?: string | null
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    user_id?: string
+                    child_id?: string | null
+                    created_at?: string
+                }
+            }
             surveys: {
                 Row: {
                     id: string

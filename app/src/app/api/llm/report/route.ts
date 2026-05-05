@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server';
 import { invalidJsonResponse, isInvalidJsonBodyError, parseJsonBody } from '@/lib/api';
 import { formatSurveyAnswersForPrompt, generateReport, openai, type ReportType } from '@/lib/openai';
 import { buildServerTimingHeader, createPerfTracker } from '@/lib/perf';
-import { CHILD_REPORT_STREAM_PROMPT } from '@/lib/prompts';
+import { CHILD_REPORT_STREAM_PROMPT, PARENT_REPORT_STREAM_PROMPT } from '@/lib/prompts';
 import { createClient } from '@/lib/supabaseServer';
-import type { ChildAiReport } from '@/lib/report';
+import { normalizeTemperamentDimensions, type ChildAiReport, type ParentAiReport } from '@/lib/report';
+import { CHILD_PROFILE_LIMIT_REACHED_CODE, getServerChildProfileAccess } from '@/lib/access';
 import type { Json } from '@/types/supabase';
 
 const REPORT_MODEL = 'gpt-4o-mini';
@@ -35,6 +36,7 @@ type ReportRequestBody = {
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 type ChildDimensionMap = NonNullable<NonNullable<ChildAiReport['analysis']>['dimensions']>;
 type ChildInsight = NonNullable<ChildAiReport['analysis']>['insight'];
+type ParentDimensionMap = NonNullable<ParentAiReport['dimensions']>;
 const REPORT_SCORE_KEYS = ['NS', 'HA', 'RD', 'P'] as const;
 type ChildReportStreamModule =
     | { module: 'intro'; data: { title?: string; intro?: string } }
@@ -44,6 +46,15 @@ type ChildReportStreamModule =
     | { module: 'parentingTips'; data: { parentingTips?: ChildAiReport['parentingTips'] } }
     | { module: 'scripts'; data: { scripts?: ChildAiReport['scripts']; shareText?: string } };
 const CHILD_REPORT_STREAM_MODULES = ['intro', 'dimensions', 'insight', 'strengths', 'parentingTips', 'scripts'] as const;
+type ParentReportStreamModule =
+    | { module: 'intro'; data: { title?: string; intro?: string } }
+    | { module: 'dimensions'; data: { dimensions?: ParentDimensionMap } }
+    | { module: 'shining'; data: { shining?: string } }
+    | { module: 'parentingStyle'; data: { parentingStyle?: ParentAiReport['parentingStyle'] } }
+    | { module: 'vulnerability'; data: { vulnerability?: string } }
+    | { module: 'solutions'; data: { solutions?: ParentAiReport['solutions'] } }
+    | { module: 'letter'; data: { letter?: string } };
+const PARENT_REPORT_STREAM_MODULES = ['intro', 'dimensions', 'shining', 'parentingStyle', 'vulnerability', 'solutions', 'letter'] as const;
 
 function isReportType(value: unknown): value is ReportType {
     return value === 'PARENT' || value === 'CHILD' || value === 'HARMONY';
@@ -58,14 +69,24 @@ function isChildReportStreamModule(value: unknown): value is ChildReportStreamMo
         && typeof item.data === 'object';
 }
 
+function isParentReportStreamModule(value: unknown): value is ParentReportStreamModule {
+    if (!value || typeof value !== 'object') return false;
+    const item = value as { module?: unknown; data?: unknown };
+    return typeof item.module === 'string'
+        && PARENT_REPORT_STREAM_MODULES.includes(item.module as typeof PARENT_REPORT_STREAM_MODULES[number])
+        && !!item.data
+        && typeof item.data === 'object';
+}
+
 function isChildReportValid(value: unknown): value is ChildAiReport {
     if (!value || typeof value !== 'object') return false;
     const report = value as ChildAiReport;
+    const dimensions = normalizeTemperamentDimensions(report.analysis?.dimensions);
     return !!(
         report.intro
-        && report.analysis?.dimensions
+        && dimensions
         && REPORT_SCORE_KEYS.every((key) => {
-            const dimension = report.analysis?.dimensions?.[key];
+            const dimension = dimensions[key];
             return typeof dimension === 'string' && dimension.trim().length > 0;
         })
     );
@@ -83,6 +104,34 @@ function isChildReportComplete(value: unknown): value is ChildAiReport {
     );
 }
 
+function isParentReportValid(value: unknown): value is ParentAiReport {
+    if (!value || typeof value !== 'object') return false;
+    const report = value as ParentAiReport;
+    return !!(
+        report.intro
+        && (report.dimensions || report.sections)
+    );
+}
+
+function isParentReportComplete(value: unknown): value is ParentAiReport {
+    if (!isParentReportValid(value)) return false;
+    const report = value as ParentAiReport;
+    return !!(
+        report.dimensions
+        && REPORT_SCORE_KEYS.every((key) => {
+            const dimension = report.dimensions?.[key];
+            return typeof dimension === 'string' && dimension.trim().length > 0;
+        })
+        && report.shining
+        && Array.isArray(report.parentingStyle)
+        && report.parentingStyle.length > 0
+        && report.vulnerability
+        && Array.isArray(report.solutions)
+        && report.solutions.length > 0
+        && report.letter
+    );
+}
+
 function applyChildReportStreamModule(report: ChildAiReport, item: ChildReportStreamModule) {
     if (item.module === 'intro') {
         report.title = item.data.title;
@@ -91,7 +140,10 @@ function applyChildReportStreamModule(report: ChildAiReport, item: ChildReportSt
     }
 
     if (item.module === 'dimensions') {
-        report.analysis = { ...report.analysis, dimensions: item.data.dimensions };
+        report.analysis = {
+            ...report.analysis,
+            dimensions: normalizeTemperamentDimensions(item.data.dimensions),
+        };
         return;
     }
 
@@ -112,6 +164,40 @@ function applyChildReportStreamModule(report: ChildAiReport, item: ChildReportSt
 
     report.scripts = item.data.scripts;
     report.shareText = item.data.shareText;
+}
+
+function applyParentReportStreamModule(report: ParentAiReport, item: ParentReportStreamModule) {
+    if (item.module === 'intro') {
+        report.intro = item.data.intro;
+        return;
+    }
+
+    if (item.module === 'dimensions') {
+        report.dimensions = normalizeTemperamentDimensions(item.data.dimensions);
+        return;
+    }
+
+    if (item.module === 'shining') {
+        report.shining = item.data.shining;
+        return;
+    }
+
+    if (item.module === 'parentingStyle') {
+        report.parentingStyle = item.data.parentingStyle;
+        return;
+    }
+
+    if (item.module === 'vulnerability') {
+        report.vulnerability = item.data.vulnerability;
+        return;
+    }
+
+    if (item.module === 'solutions') {
+        report.solutions = item.data.solutions;
+        return;
+    }
+
+    report.letter = item.data.letter;
 }
 
 function normalizeStreamLine(line: string) {
@@ -157,13 +243,46 @@ function buildChildReportStreamPayload(params: {
     return JSON.stringify(payload);
 }
 
+function buildParentReportStreamPayload(params: {
+    userName: string;
+    scores: TemperamentScores;
+    answers?: AnswerItem[];
+    parentType?: TemperamentSummary;
+}) {
+    const payload: Record<string, unknown> = {
+        userName: params.userName,
+        type: 'PARENT',
+        surveyDetails: formatSurveyAnswersForPrompt('PARENT', params.answers),
+        scores: params.scores,
+    };
+
+    if (params.parentType) payload.parentType = params.parentType;
+
+    return JSON.stringify(payload);
+}
+
+function getKnownReportErrorCode(error: unknown) {
+    if (error instanceof Error) {
+        if (error.message === CHILD_PROFILE_LIMIT_REACHED_CODE) return CHILD_PROFILE_LIMIT_REACHED_CODE;
+        if (error.message === 'CHILD_NOT_FOUND') return 'CHILD_NOT_FOUND';
+    }
+
+    if (typeof error === 'object' && error !== null) {
+        const record = error as Record<string, unknown>;
+        if (record.message === CHILD_PROFILE_LIMIT_REACHED_CODE) return CHILD_PROFILE_LIMIT_REACHED_CODE;
+    }
+
+    return null;
+}
+
 async function resolveChildForReport(params: {
     supabase: SupabaseServerClient;
     userId: string;
+    userCreatedAt?: string | null;
     clientChildId?: string | null;
     intake?: IntakePayload | null;
 }) {
-    const { supabase, userId, clientChildId, intake } = params;
+    const { supabase, userId, userCreatedAt, clientChildId, intake } = params;
     let childId: string | null = clientChildId || null;
     let childInfo: ChildInfo | null = null;
 
@@ -191,6 +310,11 @@ async function resolveChildForReport(params: {
     }
 
     if (!childId && intake) {
+        const access = await getServerChildProfileAccess(supabase, { userId, userCreatedAt });
+        if (!access.canCreateChild) {
+            throw new Error(CHILD_PROFILE_LIMIT_REACHED_CODE);
+        }
+
         const { data, error } = await supabase
             .from('children')
             .insert({
@@ -253,6 +377,7 @@ function streamChildReportResponse(params: {
     childType?: TemperamentSummary;
     refresh: boolean;
     intake?: IntakePayload | null;
+    userCreatedAt?: string | null;
     clientChildId?: string | null;
 }) {
     const encoder = new TextEncoder();
@@ -305,6 +430,7 @@ function streamChildReportResponse(params: {
                 const { childId, childInfo } = await resolveChildForReport({
                     supabase: params.supabase,
                     userId: params.userId,
+                    userCreatedAt: params.userCreatedAt,
                     clientChildId: params.clientChildId,
                     intake: params.intake,
                 });
@@ -443,7 +569,226 @@ function streamChildReportResponse(params: {
             } catch (error) {
                 perf.fail(error);
                 console.error('[Report Stream API] Error:', error);
-                send('error', { error: 'Failed to generate streamed report' });
+                const code = getKnownReportErrorCode(error);
+                send('error', code ? { error: code, code } : { error: 'Failed to generate streamed report' });
+            } finally {
+                controller.close();
+            }
+        },
+    });
+
+    return new Response(body, {
+        headers: {
+            'Content-Type': 'text/event-stream; charset=utf-8',
+            'Cache-Control': 'no-cache, no-transform',
+            Connection: 'keep-alive',
+            'X-Accel-Buffering': 'no',
+        },
+    });
+}
+
+function streamParentReportResponse(params: {
+    supabase: SupabaseServerClient;
+    userId: string;
+    userName: string;
+    scores: TemperamentScores;
+    answers?: AnswerItem[];
+    parentType?: TemperamentSummary;
+    refresh: boolean;
+    intake?: IntakePayload | null;
+    userCreatedAt?: string | null;
+    clientChildId?: string | null;
+}) {
+    const encoder = new TextEncoder();
+    const perf = createPerfTracker('Report Stream API', { type: 'PARENT', refresh: params.refresh });
+
+    const body = new ReadableStream({
+        async start(controller) {
+            const send = (event: string, data: Record<string, unknown>) => {
+                controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+            };
+
+            try {
+                send('started', { type: 'PARENT' });
+
+                if (!params.refresh) {
+                    let cacheQuery = params.supabase
+                        .from('reports')
+                        .select('id, analysis_json, created_at, is_paid')
+                        .eq('user_id', params.userId)
+                        .eq('type', 'PARENT');
+
+                    if (params.clientChildId) {
+                        cacheQuery = cacheQuery.eq('child_id', params.clientChildId);
+                    }
+
+                    const { data: cachedRows, error: cacheError } = await cacheQuery
+                        .order('created_at', { ascending: false })
+                        .limit(1);
+                    if (cacheError) throw cacheError;
+                    perf.mark('cache_query', { cacheHit: !!cachedRows?.length });
+
+                    const cachedReport = cachedRows?.[0]?.analysis_json;
+                    if (isParentReportValid(cachedReport)) {
+                        send('cached', {
+                            report: cachedReport as Json,
+                            reportId: cachedRows[0].id,
+                            createdAt: cachedRows[0].created_at,
+                        });
+                        send('completed', {
+                            report: cachedReport as Json,
+                            reportId: cachedRows[0].id,
+                            createdAt: cachedRows[0].created_at,
+                            cached: true,
+                            timings: perf.getSegments(),
+                        });
+                        return;
+                    }
+                }
+
+                const { childId } = await resolveChildForReport({
+                    supabase: params.supabase,
+                    userId: params.userId,
+                    userCreatedAt: params.userCreatedAt,
+                    clientChildId: params.clientChildId,
+                    intake: params.intake,
+                });
+                perf.mark('child_lookup', { childId });
+
+                const surveyId = await insertCompletedSurvey({
+                    supabase: params.supabase,
+                    userId: params.userId,
+                    childId,
+                    type: 'PARENT',
+                    answers: params.answers,
+                    scores: params.scores,
+                });
+                perf.mark('survey_insert', { hasSurveyId: !!surveyId });
+
+                const userMessage = buildParentReportStreamPayload({
+                    userName: params.userName,
+                    scores: params.scores,
+                    answers: params.answers,
+                    parentType: params.parentType,
+                });
+                perf.mark('prompt_prepared', { payloadBytes: userMessage.length });
+
+                const completionStream = await openai.chat.completions.create({
+                    model: REPORT_MODEL,
+                    messages: [
+                        { role: 'system', content: PARENT_REPORT_STREAM_PROMPT },
+                        { role: 'user', content: userMessage },
+                    ],
+                    temperature: 0.7,
+                    stream: true,
+                });
+
+                const report: ParentAiReport = {};
+                let lineBuffer = '';
+                const processLine = (rawLine: string) => {
+                    const line = normalizeStreamLine(rawLine);
+                    if (!line || !line.startsWith('{')) return;
+
+                    let parsed: ParentReportStreamModule;
+                    try {
+                        parsed = JSON.parse(line) as ParentReportStreamModule;
+                    } catch (error) {
+                        if (isParentReportComplete(report)) {
+                            console.warn('[Report Stream API] Ignoring malformed trailing parent JSONL line after complete report:', line);
+                            return;
+                        }
+                        throw error;
+                    }
+
+                    if (!isParentReportStreamModule(parsed)) {
+                        if (isParentReportComplete(report)) {
+                            console.warn('[Report Stream API] Ignoring unknown trailing parent JSONL object after complete report:', line);
+                            return;
+                        }
+                        throw new Error('INVALID_PARENT_REPORT_STREAM_MODULE');
+                    }
+
+                    applyParentReportStreamModule(report, parsed);
+                    perf.mark(`module_${parsed.module}`);
+                    send('module', parsed as unknown as Record<string, unknown>);
+                };
+
+                for await (const chunk of completionStream) {
+                    const delta = chunk.choices[0]?.delta?.content ?? '';
+                    if (!delta) continue;
+                    lineBuffer += delta;
+
+                    let newlineIndex = lineBuffer.indexOf('\n');
+                    while (newlineIndex >= 0) {
+                        const line = lineBuffer.slice(0, newlineIndex);
+                        lineBuffer = lineBuffer.slice(newlineIndex + 1);
+                        processLine(line);
+                        newlineIndex = lineBuffer.indexOf('\n');
+                    }
+                }
+
+                if (lineBuffer.trim()) {
+                    processLine(lineBuffer);
+                }
+                perf.mark('openai_stream_completed');
+
+                if (!isParentReportComplete(report)) {
+                    throw new Error('INVALID_STREAMED_PARENT_REPORT');
+                }
+
+                let savedReportId: string | null = null;
+                let persisted = false;
+                try {
+                    const { data: savedReport, error: reportError } = await params.supabase
+                        .from('reports')
+                        .insert({
+                            user_id: params.userId,
+                            child_id: childId,
+                            survey_id: surveyId,
+                            type: 'PARENT',
+                            analysis_json: report as Json,
+                            model_used: REPORT_MODEL,
+                            is_paid: false,
+                        })
+                        .select('id')
+                        .single();
+                    if (reportError) throw reportError;
+                    savedReportId = savedReport?.id || null;
+                    persisted = !!savedReportId;
+                    perf.mark('report_insert', { hasReportId: persisted });
+
+                    if (params.refresh && savedReportId) {
+                        let deleteQuery = params.supabase
+                            .from('reports')
+                            .delete()
+                            .eq('user_id', params.userId)
+                            .eq('type', 'PARENT')
+                            .neq('id', savedReportId);
+                        if (childId) {
+                            deleteQuery = deleteQuery.eq('child_id', childId);
+                        }
+                        const { error: deleteError } = await deleteQuery;
+                        if (deleteError) console.error('[Report Stream API] Delete previous parent reports error:', deleteError);
+                        perf.mark('refresh_cleanup');
+                    }
+                } catch (persistenceError) {
+                    console.error('[Report Stream API] Parent report persistence error after complete stream:', persistenceError);
+                    perf.mark('report_persist_failed');
+                }
+
+                send('completed', {
+                    report: report as Json,
+                    reportId: savedReportId,
+                    createdAt: new Date().toISOString(),
+                    cached: false,
+                    persisted,
+                    timings: perf.getSegments(),
+                });
+            } catch (error) {
+                perf.fail(error);
+                console.error('[Report Stream API] Parent error:', error);
+                const code = getKnownReportErrorCode(error);
+                send('error', code ? { error: code, code } : { error: 'Failed to generate streamed parent report' });
             } finally {
                 controller.close();
             }
@@ -508,11 +853,26 @@ export async function POST(request: Request) {
         }
 
         if (stream) {
-            if (type !== 'CHILD') {
+            if (type !== 'CHILD' && type !== 'PARENT') {
                 return NextResponse.json(
-                    { error: 'Streaming reports are currently supported for CHILD only.' },
+                    { error: 'Streaming reports are currently supported for CHILD and PARENT only.' },
                     { status: 400 }
                 );
+            }
+
+            if (type === 'PARENT') {
+                return streamParentReportResponse({
+                    supabase,
+                    userId,
+                    userName,
+                    scores,
+                    answers,
+                    parentType,
+                    refresh,
+                    intake,
+                    userCreatedAt: session.user.created_at,
+                    clientChildId,
+                });
             }
 
             return streamChildReportResponse({
@@ -524,6 +884,7 @@ export async function POST(request: Request) {
                 childType,
                 refresh,
                 intake,
+                userCreatedAt: session.user.created_at,
                 clientChildId,
             });
         }
@@ -565,66 +926,31 @@ export async function POST(request: Request) {
         }
 
         // 2. Child 프로필 조회/생성
-        let childId: string | null = clientChildId || null;
+        let childId: string | null = null;
         let childInfo: { name: string, gender: string, birthDate: string } | null = null;
 
-        if (childId) {
-            const { data, error: childLookupError } = await supabase
-                .from('children')
-                .select('name, gender, birth_date')
-                .eq('id', childId)
-                .eq('parent_id', userId)
-                .maybeSingle();
-            if (childLookupError) {
-                console.error('[Report API] Child lookup error:', childLookupError);
-                return NextResponse.json({ error: 'CHILD_LOOKUP_FAILED' }, { status: 500 });
+        try {
+            const resolvedChild = await resolveChildForReport({
+                supabase,
+                userId,
+                userCreatedAt: session.user.created_at,
+                clientChildId,
+                intake,
+            });
+            childId = resolvedChild.childId;
+            childInfo = resolvedChild.childInfo;
+        } catch (error) {
+            const code = getKnownReportErrorCode(error);
+            if (code === CHILD_PROFILE_LIMIT_REACHED_CODE) {
+                return NextResponse.json({ code, error: code }, { status: 403 });
             }
-            if (!data) {
+            if (code === 'CHILD_NOT_FOUND') {
                 return NextResponse.json({ error: 'CHILD_NOT_FOUND' }, { status: 404 });
             }
-            if (data) childInfo = { name: data.name, gender: data.gender, birthDate: data.birth_date };
-        } else {
-            const { data: existingChildren, error: childQueryError } = await supabase
-                .from('children')
-                .select('id, name, gender, birth_date')
-                .eq('parent_id', userId)
-                .limit(1);
-
-            if (childQueryError) {
-                console.error('[Report API] Child query error:', childQueryError);
-            }
-
-            if (existingChildren && existingChildren.length > 0) {
-                childId = existingChildren[0].id;
-                childInfo = { name: existingChildren[0].name, gender: existingChildren[0].gender, birthDate: existingChildren[0].birth_date };
-            }
+            throw error;
         }
 
         perf.mark('child_lookup', { childId: childId ?? null });
-        
-        if (!childId && intake) {
-            const { data: newChild, error: childInsertError } = await supabase
-                .from('children')
-                .insert({
-                    parent_id: userId,
-                    name: intake.childName || '아이',
-                    gender: intake.gender || 'male',
-                    birth_date: intake.birthDate || new Date().toISOString().split('T')[0],
-                    birth_time: null,
-                    image_url: null,
-                })
-                .select('id, name, gender, birth_date')
-                .single();
-
-            if (childInsertError) {
-                console.error('[Report API] Child insert error:', childInsertError);
-            } else if (newChild) {
-                childId = newChild.id;
-                childInfo = { name: newChild.name, gender: newChild.gender, birthDate: newChild.birth_date };
-            }
-
-            perf.mark('child_create', { childId: childId ?? null });
-        }
 
         // 3. Survey 저장
         let surveyId: string | null = null;
@@ -719,6 +1045,11 @@ export async function POST(request: Request) {
     } catch (error) {
         if (isInvalidJsonBodyError(error)) {
             return invalidJsonResponse();
+        }
+
+        const code = getKnownReportErrorCode(error);
+        if (code === CHILD_PROFILE_LIMIT_REACHED_CODE) {
+            return NextResponse.json({ code, error: code }, { status: 403 });
         }
 
         perf.fail(error);

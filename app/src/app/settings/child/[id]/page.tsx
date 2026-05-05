@@ -8,6 +8,12 @@ import { Icon } from '@/components/ui/Icon';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Navbar } from '@/components/layout/Navbar';
 import { useLocale } from '@/i18n/LocaleProvider';
+import { LAST_FREE_CHILD_DELETE_BLOCKED_CODE } from '@/lib/access';
+
+type ChildDeleteResponse = {
+    code?: string;
+    error?: string;
+};
 
 export default function EditChildPage() {
     const { t } = useLocale();
@@ -119,18 +125,23 @@ export default function EditChildPage() {
 
         try {
             setSaving(true);
-            const { error } = await supabase
-                .from('children')
-                .delete()
-                .eq('id', childId);
+            const response = await fetch(`/api/children/${childId}`, { method: 'DELETE' });
+            const payload = await response.json().catch(() => null) as ChildDeleteResponse | null;
 
-            if (error) throw error;
+            if (!response.ok) {
+                if (payload?.code === LAST_FREE_CHILD_DELETE_BLOCKED_CODE || payload?.error === LAST_FREE_CHILD_DELETE_BLOCKED_CODE) {
+                    alert(t('settings.lastFreeChildDeleteBlocked'));
+                    return;
+                }
+                throw new Error(payload?.error || t('settings.deleteFailed'));
+            }
 
             router.refresh();
             router.replace('/');
         } catch (error) {
             console.error('Error deleting child:', error);
             alert(t('settings.deleteFailed'));
+        } finally {
             setSaving(false);
         }
     };
@@ -150,7 +161,7 @@ export default function EditChildPage() {
                 <Navbar
                     title={t('settings.editChild')}
                     rightElement={
-                        <button onClick={handleDelete} className="text-red-500 font-medium text-sm">
+                        <button onClick={handleDelete} disabled={saving} className="text-red-500 font-medium text-sm disabled:opacity-50">
                             {t('common.delete')}
                         </button>
                     }
@@ -197,6 +208,7 @@ export default function EditChildPage() {
                             <DatePicker
                                 value={formData.birthdate}
                                 onChange={(date) => setFormData({ ...formData, birthdate: date })}
+                                disabled={saving}
                             />
                         </div>
 

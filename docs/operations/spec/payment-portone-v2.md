@@ -152,6 +152,7 @@ create policy "Service role can manage payments."
 
 | 기능 | 무료 | 구독 (MONTHLY/YEARLY) |
 |------|------|----------------------|
+| 아이 프로필 | 1명 영구 슬롯 (삭제해도 초기화 없음) | 여러 명 |
 | 기질 리포트 | O (전체 동일) | O |
 | AI 상담 | 총 5회 (소진 시 종료) | 무제한 |
 | 실천 기록 | 최근 1개만 | 전체 이력 |
@@ -329,7 +330,7 @@ locale 결정 순서:
 ### 9.1 `hasAccess` 함수 (`app/src/lib/subscription.ts`)
 
 ```typescript
-type Feature = 'premium_report' | 'consult' | 'practice_full' | 'no_cooldown';
+type Feature = 'premium_report' | 'consult' | 'practice_full';
 
 async function hasAccess(userId: string, feature: Feature, resourceId?: string): Promise<boolean> {
   const sub = await getActiveSubscription(userId);
@@ -350,9 +351,6 @@ async function hasAccess(userId: string, feature: Feature, resourceId?: string):
       return count < 2;
 
     case 'practice_full':
-      return !!sub;
-
-    case 'no_cooldown':
       return !!sub;
   }
 }
@@ -542,7 +540,7 @@ async function getActiveSubscription(userId: string): Promise<Subscription | nul
 │  - 프리미엄 리포트 무제한                     │
 │  - AI 상담 무제한                            │
 │  - 실천 기록 전체                            │
-│  - 재검사 쿨다운 없음                        │
+│  - 재검사 쿨다운 24시간                      │
 │                                             │
 │                                             │
 └─────────────────────────────────────────────┘
@@ -647,13 +645,13 @@ CRON_SECRET 미설정 시 500을 반환하고 결제 갱신을 실행하지 않�
 - 구독 해지: 즉시 해지 아닌 기간 만료 해지 (cancelled_at 방식)
 - 갱신 실패 유예: 3일간 재시도, 3회 실패 시 만료
 - 무료 상담 제한: 월 2회
-- 구독자 재검사 쿨다운: 없음
+- 구독자 재검사 쿨다운: 24시간
 
 ### 수정 정책 (기존 → 변경)
 - 결제 방식: Stripe PaymentIntent → 포트원 V2
 - 건별 결제: 폐지 (구독 전용으로 전환)
 - 무료 사용자 쿨다운: 7일 (유지)
-- 구독 사용자 쿨다운: 없음
+- 구독 사용자 쿨다운: 24시간
 
 ## 18. 패키지 변경
 

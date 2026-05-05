@@ -50,6 +50,25 @@ type VoiceInputErrorCode =
     | 'aborted'
     | 'unknown';
 
+interface NativeVoiceInputBridge {
+    postMessage: (message: string) => void;
+}
+
+interface NativeVoiceInputWindow extends Window {
+    VoiceInputBridge?: NativeVoiceInputBridge;
+    __nativeCapabilities?: {
+        haptics?: boolean;
+        voiceInput?: boolean;
+    };
+}
+
+interface NativeVoiceInputResult {
+    requestId?: string;
+    status?: 'ok' | 'cancelled' | 'error';
+    transcript?: string;
+    code?: VoiceInputErrorCode;
+}
+
 interface VoiceInputButtonProps {
     value: string;
     onChange: (value: string) => void;
@@ -64,6 +83,26 @@ function getSpeechRecognition(): SpeechRecognitionConstructor | null {
         webkitSpeechRecognition?: SpeechRecognitionConstructor;
     };
     return speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition ?? null;
+}
+
+function getNativeVoiceInputBridge(): NativeVoiceInputBridge | null {
+    if (typeof window === 'undefined') return null;
+    const nativeWindow = window as NativeVoiceInputWindow;
+    if (nativeWindow.__nativeCapabilities?.voiceInput !== true) return null;
+    return nativeWindow.VoiceInputBridge ?? null;
+}
+
+function supportsNativeVoiceInput() {
+    return Boolean(getNativeVoiceInputBridge());
+}
+
+function supportsVoiceInput() {
+    return Boolean(getSpeechRecognition()) || supportsNativeVoiceInput();
+}
+
+function isCoarsePointer() {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+    return window.matchMedia('(pointer: coarse)').matches;
 }
 
 function appendTranscript(baseValue: string, transcript: string, maxLength?: number) {
@@ -134,6 +173,48 @@ async function requestMicrophoneAccess(): Promise<{ ok: true } | { ok: false; co
     }
 }
 
+function requestNativeVoiceInput(languageTag: string): Promise<NativeVoiceInputResult> {
+    const bridge = getNativeVoiceInputBridge();
+    if (!bridge) {
+        return Promise.resolve({ status: 'error', code: 'service-not-allowed' });
+    }
+
+    const requestId = `voice-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    return new Promise((resolve) => {
+        const cleanup = () => {
+            window.clearTimeout(timeoutId);
+            window.removeEventListener('gijilai:nativeVoiceInputResult', handleResult);
+        };
+
+        const handleResult = (event: Event) => {
+            const detail = (event as CustomEvent<NativeVoiceInputResult>).detail;
+            if (detail?.requestId !== requestId) return;
+            cleanup();
+            resolve(detail);
+        };
+
+        const timeoutId = window.setTimeout(() => {
+            cleanup();
+            resolve({ requestId, status: 'error', code: 'aborted' });
+        }, 90000);
+
+        window.addEventListener('gijilai:nativeVoiceInputResult', handleResult);
+
+        try {
+            bridge.postMessage(JSON.stringify({
+                type: 'VOICE_INPUT_REQUEST',
+                requestId,
+                languageTag,
+            }));
+        } catch (error) {
+            console.warn('Native voice input request failed:', error);
+            cleanup();
+            resolve({ requestId, status: 'error', code: 'unknown' });
+        }
+    });
+}
+
 export function VoiceInputButton({ value, onChange, maxLength, className = '' }: VoiceInputButtonProps) {
     const { locale, t } = useLocale();
     const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
@@ -144,11 +225,18 @@ export function VoiceInputButton({ value, onChange, maxLength, className = '' }:
     const [isListening, setIsListening] = useState(false);
 
     useEffect(() => {
-        const id = window.setTimeout(() => {
-            setIsMobileInput(window.matchMedia('(pointer: coarse)').matches);
-            setIsSupported(Boolean(getSpeechRecognition()));
-        }, 0);
-        return () => window.clearTimeout(id);
+        const updateSupport = () => {
+            setIsMobileInput(isCoarsePointer() || supportsNativeVoiceInput());
+            setIsSupported(supportsVoiceInput());
+        };
+
+        const timeoutIds = [0, 250, 1000].map((delay) => window.setTimeout(updateSupport, delay));
+        window.addEventListener('gijilai:nativeContextReady', updateSupport);
+
+        return () => {
+            timeoutIds.forEach((id) => window.clearTimeout(id));
+            window.removeEventListener('gijilai:nativeContextReady', updateSupport);
+        };
     }, []);
 
     useEffect(() => {
@@ -163,6 +251,24 @@ export function VoiceInputButton({ value, onChange, maxLength, className = '' }:
 
     const startListening = async () => {
         if (isStarting) return;
+
+        const languageTag = locale === 'ko' ? 'ko-KR' : 'en-US';
+        if (supportsNativeVoiceInput()) {
+            setIsStarting(true);
+            try {
+                const result = await requestNativeVoiceInput(languageTag);
+                if (result.status === 'ok') {
+                    onChange(appendTranscript(value, result.transcript ?? '', maxLength));
+                    return;
+                }
+                if (result.status !== 'cancelled') {
+                    alert(getVoiceErrorMessage(t, result.code ?? 'unknown'));
+                }
+            } finally {
+                setIsStarting(false);
+            }
+            return;
+        }
 
         const SpeechRecognition = getSpeechRecognition();
         if (!SpeechRecognition) {
@@ -181,7 +287,7 @@ export function VoiceInputButton({ value, onChange, maxLength, className = '' }:
         const recognition = new SpeechRecognition();
         recognition.continuous = true;
         recognition.interimResults = true;
-        recognition.lang = locale === 'ko' ? 'ko-KR' : 'en-US';
+        recognition.lang = languageTag;
         baseValueRef.current = value;
 
         recognition.onresult = (event) => {
@@ -223,14 +329,14 @@ export function VoiceInputButton({ value, onChange, maxLength, className = '' }:
         <button
             type="button"
             onClick={isListening ? stopListening : () => void startListening()}
-            disabled={!isSupported || isStarting}
+            disabled={isStarting}
             aria-label={isListening ? t('voice.stop') : t('voice.start')}
             title={isSupported ? (isListening ? t('voice.stop') : t('voice.start')) : t('voice.unsupported')}
             className={`inline-flex h-10 w-10 items-center justify-center rounded-full border text-[18px] transition-all active:scale-95 ${
                 isListening
                     ? 'border-red-200 bg-red-50 text-red-500 shadow-lg shadow-red-100'
                     : 'border-primary/15 bg-white/95 text-primary shadow-sm hover:bg-primary/5 dark:bg-surface-dark'
-            } ${!isSupported || isStarting ? 'cursor-not-allowed opacity-40' : ''} ${className}`}
+            } ${isStarting ? 'cursor-wait opacity-40' : ''} ${className}`}
         >
             <span className="material-symbols-outlined text-[20px] leading-none">
                 {isListening ? 'stop_circle' : 'mic'}

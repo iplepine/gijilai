@@ -33,8 +33,9 @@
 
 - 상담 고민 입력, 주관식 문진 답변, 일반 실천 한줄메모, 추천 실천의 과정/아이 반응 메모, 실천 완료 회고처럼 자유 텍스트 입력이 필요한 곳에는 공통 `VoiceInputButton`을 붙인다.
 - `VoiceInputButton`은 모바일/터치 입력 환경(`pointer: coarse`)에서만 렌더링한다.
-- 음성 입력은 브라우저 Web Speech API(`SpeechRecognition`/`webkitSpeechRecognition`)를 사용한다.
-- 데스크톱에서는 버튼을 숨기고, 모바일 미지원 브라우저에서는 음성 버튼을 비활성화하고 안내 문구를 제공하며, 키보드 입력 흐름은 변경하지 않는다.
+- 음성 입력은 기본적으로 브라우저 Web Speech API(`SpeechRecognition`/`webkitSpeechRecognition`)를 사용한다.
+- Android 앱 WebView에서는 Web Speech API 지원 여부와 별개로 `window.__nativeCapabilities.voiceInput`과 `VoiceInputBridge`가 확인되면 네이티브 speech-to-text bridge를 우선 사용한다.
+- 데스크톱에서는 버튼을 숨기고, 모바일 미지원 브라우저에서는 음성 버튼을 탭했을 때 안내 문구를 제공하며, 키보드 입력 흐름은 변경하지 않는다.
 - 음성으로 입력된 텍스트는 현재 입력값 뒤에 이어 붙이고, 각 textarea의 기존 글자 수 제한을 넘지 않게 자른다.
 - 음성 오류 안내는 실제 오류 코드에 맞춰 분기한다. `not-allowed`는 권한 거부, `audio-capture`는 마이크 장치 접근 실패, `network`는 네트워크 오류, `service-not-allowed`는 현재 환경의 음성 인식 서비스 제한, `language-not-supported`는 언어 미지원, `no-speech`는 음성 미감지로 안내한다. 실제 오류 코드는 콘솔에 남긴다.
 
