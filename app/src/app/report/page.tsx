@@ -82,6 +82,13 @@ type ChildReportLoadingKey =
   | 'strengths'
   | 'parentingTips'
   | 'scripts';
+type ReportLoadingSection<Key extends string = string> = {
+  key: Key;
+  icon: string;
+  label: string;
+  message: string;
+  isReady: boolean;
+};
 type ReanalysisTarget = 'child' | 'parent' | 'harmony';
 type HarmonyRefreshSource = 'child' | 'parent' | null;
 
@@ -140,7 +147,7 @@ function parseSseBlock(block: string) {
   return { event, data };
 }
 
-function ChildReportReveal({
+function ReportSectionReveal({
   children,
   order,
 }: {
@@ -158,6 +165,47 @@ function ChildReportReveal({
       {children}
     </div>
   );
+}
+
+function ReportSectionGroup({ children }: { children: React.ReactNode }) {
+  const items = React.Children
+    .toArray(children)
+    .filter((child) => child !== null && child !== undefined);
+
+  return (
+    <>
+      {items.map((child, index) => (
+        <ReportSectionReveal key={index} order={index}>
+          {child}
+        </ReportSectionReveal>
+      ))}
+    </>
+  );
+}
+
+function getTimedLoadingState<Key extends string>(
+  sections: ReadonlyArray<ReportLoadingSection<Key>>,
+  step: number,
+) {
+  const progressTotal = sections.length + 1;
+
+  if (step >= sections.length) {
+    return {
+      section: null,
+      progressCurrent: progressTotal,
+      progressTotal,
+      isFinalizing: true,
+    };
+  }
+
+  const index = Math.min(step, Math.max(0, sections.length - 1));
+
+  return {
+    section: sections[index] ?? null,
+    progressCurrent: index + 1,
+    progressTotal,
+    isFinalizing: false,
+  };
 }
 
 function ReportContent() {
@@ -202,6 +250,7 @@ function ReportContent() {
   const [children, setChildren] = useState<ChildProfile[]>([]);
   const [reports, setReports] = useState<ReportData[]>([]);
   const [surveys, setSurveys] = useState<SurveyData[]>([]);
+  const [isDashboardContextLoaded, setIsDashboardContextLoaded] = useState(false);
   const reportId = searchParams.get('id');
 
   useEffect(() => {
@@ -216,9 +265,13 @@ function ReportContent() {
   }, [user]);
 
   useEffect(() => {
-    if (!user || reportId) return;
+    if (!user || reportId) {
+      setIsDashboardContextLoaded(true);
+      return;
+    }
 
     let isActive = true;
+    setIsDashboardContextLoaded(false);
 
     db.getDashboardData(user.id)
       .then((data) => {
@@ -229,6 +282,9 @@ function ReportContent() {
       })
       .catch((error) => {
         console.error('Failed to load report dashboard context:', error);
+      })
+      .finally(() => {
+        if (isActive) setIsDashboardContextLoaded(true);
       });
 
     return () => {
@@ -263,7 +319,11 @@ function ReportContent() {
 
   const currentChildSurvey = useMemo(() => {
     if (!currentChild) return null;
-    return surveys.find((survey) => survey.type === 'CHILD' && survey.child_id === currentChild.id) ?? null;
+    return surveys.find((survey) => (
+      survey.type === 'CHILD'
+      && survey.child_id === currentChild.id
+      && survey.status === 'COMPLETED'
+    )) ?? null;
   }, [currentChild, surveys]);
 
   const currentParentReport = useMemo(() => {
@@ -271,7 +331,7 @@ function ReportContent() {
   }, [reports]);
 
   const currentParentSurvey = useMemo(() => {
-    return surveys.find((survey) => survey.type === 'PARENT') ?? null;
+    return surveys.find((survey) => survey.type === 'PARENT' && survey.status === 'COMPLETED') ?? null;
   }, [surveys]);
 
   const currentChildReportScores = useMemo(
@@ -329,22 +389,6 @@ function ReportContent() {
     t('report.childLoadingStep5'),
   ], [t]);
 
-  const parentLoadingSteps = useMemo(() => [
-    t('report.parentLoadingStep1'),
-    t('report.parentLoadingStep2'),
-    t('report.parentLoadingStep3'),
-    t('report.parentLoadingStep4'),
-    t('report.parentLoadingStep5'),
-  ], [t]);
-
-  const harmonyLoadingSteps = useMemo(() => [
-    t('report.harmonyLoadingStep1'),
-    t('report.harmonyLoadingStep2'),
-    t('report.harmonyLoadingStep3'),
-    t('report.harmonyLoadingStep4'),
-    t('report.harmonyLoadingStep5'),
-  ], [t]);
-
   const ReportGeneratingState = ({
     title,
     steps,
@@ -359,22 +403,32 @@ function ReportContent() {
     imageAlt?: string;
     typeLabel?: string;
     showImage?: boolean;
-  }) => (
-    <div className="py-14 px-6">
-      <TemperamentLoadingState
-        title={title}
-        message={steps[reportLoadingStep % steps.length]}
-        note={t('report.loadingStillWorking')}
-        imageSrc={imageSrc}
-        imageAlt={imageAlt}
-        typeLabel={showImage ? typeLabel : undefined}
-        imagePriority={showImage}
-        showImage={showImage}
-      />
-    </div>
-  );
+  }) => {
+    const currentStep = (reportLoadingStep % steps.length) + 1;
 
-  const ChildSectionLoadingCard = ({
+    return (
+      <div className="py-14 px-6">
+        <TemperamentLoadingState
+          title={title}
+          message={steps[currentStep - 1]}
+          note={t('report.loadingStillWorking')}
+          imageSrc={imageSrc}
+          imageAlt={imageAlt}
+          typeLabel={showImage ? typeLabel : undefined}
+          imagePriority={showImage}
+          showImage={showImage}
+          progressCurrent={currentStep}
+          progressTotal={steps.length}
+          progressLabel={t('report.reportLoadingProgress', {
+            current: currentStep,
+            total: steps.length,
+          })}
+        />
+      </div>
+    );
+  };
+
+  const SectionLoadingCard = ({
     icon,
     label,
     message,
@@ -387,19 +441,21 @@ function ReportContent() {
     progressCurrent: number;
     progressTotal: number;
   }) => {
-    const progressPercent = Math.max(8, Math.min(100, Math.round((progressCurrent / progressTotal) * 100)));
-    const progressLabel = t('report.childReportModuleProgress', {
-      current: progressCurrent,
-      total: progressTotal,
+    const progressPercent = Math.min(100, Math.round((progressCurrent / progressTotal) * 100));
+    const progressBarPercent = Math.max(8, progressPercent);
+    const progressLabel = t('report.childReportProgressPercent', {
+      percent: progressPercent,
     });
 
     return (
       <section
         role="status"
         aria-live="polite"
-        className="bg-white dark:bg-surface-dark rounded-2xl px-6 py-5 shadow-card border border-beige-main/10 space-y-3 animate-fade-in"
+        className="relative overflow-hidden rounded-2xl border border-white/70 bg-white/80 px-6 py-5 shadow-card shadow-primary/5 backdrop-blur-md dark:border-white/10 dark:bg-surface-dark/75 dark:shadow-black/20 space-y-3"
       >
-        <div className="flex items-start gap-3">
+        <div className="pointer-events-none absolute -right-8 -top-10 size-28 rounded-full bg-primary/10 blur-2xl dark:bg-primary/20" />
+        <div className="pointer-events-none absolute -left-8 bottom-0 h-16 w-32 rounded-full bg-secondary/10 blur-2xl dark:bg-secondary/15" />
+        <div className="relative flex items-start gap-3">
           <div className="mt-0.5 size-8 rounded-full bg-primary/10 text-primary dark:bg-white/10 dark:text-primary-light flex items-center justify-center shrink-0">
             <Icon name={icon} size="sm" />
           </div>
@@ -421,13 +477,13 @@ function ReportContent() {
           role="progressbar"
           aria-label={`${label} ${progressLabel}`}
           aria-valuemin={0}
-          aria-valuemax={progressTotal}
-          aria-valuenow={progressCurrent}
-          className="h-1.5 w-full overflow-hidden rounded-full bg-primary/10 dark:bg-white/10"
+          aria-valuemax={100}
+          aria-valuenow={progressPercent}
+          className="relative h-1.5 w-full overflow-hidden rounded-full bg-primary/10 dark:bg-white/10"
         >
           <div
             className="h-full rounded-full bg-gradient-to-r from-primary to-secondary transition-all duration-700 ease-out"
-            style={{ width: `${progressPercent}%` }}
+            style={{ width: `${progressBarPercent}%` }}
           />
         </div>
       </section>
@@ -781,12 +837,14 @@ function ReportContent() {
     return result;
   }, [currentChild?.id, intake, selectedChildId]);
 
+  const hasCompleteLocalChildResponses = Object.keys(cbqResponses).length >= CHILD_QUESTIONS.length;
+  const hasCompleteLocalParentResponses = Object.keys(atqResponses).length >= PARENT_QUESTIONS.length;
   const prefersFreshChildResponses =
     (reportRefreshParam === 'all' || reportRefreshParam === 'child')
-    && Object.keys(cbqResponses).length > 0;
+    && hasCompleteLocalChildResponses;
   const prefersFreshParentResponses =
     (reportRefreshParam === 'all' || reportRefreshParam === 'parent')
-    && Object.keys(atqResponses).length > 0;
+    && hasCompleteLocalParentResponses;
 
   const childScores = useMemo(() => {
     if (prefersFreshChildResponses) return TemperamentScorer.calculate(CHILD_QUESTIONS, cbqResponses);
@@ -838,23 +896,36 @@ function ReportContent() {
   const parentType = useMemo(() => TemperamentClassifier.analyzeParent(parentScores), [parentScores]);
 
   const isChildSurveyComplete = useMemo(() => {
-    if (prefersFreshChildResponses) return Object.keys(cbqResponses).length > 0;
+    if (prefersFreshChildResponses) return hasCompleteLocalChildResponses;
     return !!savedChildScores
       || !!currentChildReportScores
       || !!currentChildSurveyScores
       || !!currentChildSurveyAnswers
-      || Object.keys(cbqResponses).length > 0;
-  }, [cbqResponses, currentChildReportScores, currentChildSurveyAnswers, currentChildSurveyScores, prefersFreshChildResponses, savedChildScores]);
+      || hasCompleteLocalChildResponses;
+  }, [currentChildReportScores, currentChildSurveyAnswers, currentChildSurveyScores, hasCompleteLocalChildResponses, prefersFreshChildResponses, savedChildScores]);
 
   const hasParentScores = useMemo(() => {
-    if (prefersFreshParentResponses) return Object.keys(atqResponses).length > 0;
+    if (prefersFreshParentResponses) return hasCompleteLocalParentResponses;
     return !!savedParentScores
       || !!currentParentReportScores
       || !!currentParentSurveyScores
       || !!currentParentSurveyAnswers
-      || Object.keys(atqResponses).length > 0;
-  }, [atqResponses, currentParentReportScores, currentParentSurveyAnswers, currentParentSurveyScores, prefersFreshParentResponses, savedParentScores]);
+      || hasCompleteLocalParentResponses;
+  }, [currentParentReportScores, currentParentSurveyAnswers, currentParentSurveyScores, hasCompleteLocalParentResponses, prefersFreshParentResponses, savedParentScores]);
   const isParentSurveyComplete = hasParentScores;
+
+  useEffect(() => {
+    if (!isChildOnly || !isParentSurveyComplete || reportId) return;
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('child_only');
+    params.delete('report_tab');
+    params.delete('report_kind');
+    params.set('tab', 'child');
+
+    const nextQuery = params.toString();
+    router.replace(nextQuery ? `/report?${nextQuery}` : '/report?tab=child');
+  }, [isChildOnly, isParentSurveyComplete, reportId, router, searchParams]);
 
   const generateChildAIReport = useCallback(async (refresh = false) => {
     if (generatingRef.current.has('CHILD')) return;
@@ -1015,21 +1086,23 @@ function ReportContent() {
 
   // 아이 기질 탭: 리포트 없으면 자동 생성 (서버가 캐시/생성 분기)
   useEffect(() => {
-    const hasCbq = Object.keys(childAnswerMap).length > 0
+    const hasCbq = hasCompleteLocalChildResponses
       || !!savedChildScores
       || !!currentChildReportScores
       || !!currentChildSurveyScores;
     if (activeTab === 'child' && !isGenerating && !reportId && hasCbq && !childAiReport) {
-      void generateChildAIReport(shouldRefreshReportType('CHILD'));
+      const shouldRefresh = prefersFreshChildResponses && shouldRefreshReportType('CHILD');
+      void generateChildAIReport(shouldRefresh);
     }
-  }, [activeTab, childAiReport, childAnswerMap, currentChildReportScores, currentChildSurveyScores, generateChildAIReport, isGenerating, reportId, savedChildScores, shouldRefreshReportType]);
+  }, [activeTab, childAiReport, currentChildReportScores, currentChildSurveyScores, generateChildAIReport, hasCompleteLocalChildResponses, isGenerating, prefersFreshChildResponses, reportId, savedChildScores, shouldRefreshReportType]);
 
   // 양육자 탭 진입 시 자동 생성
   useEffect(() => {
     if (activeTab === 'parent' && !isGenerating && !reportId && hasParentScores && !parentAiReport) {
-      void generateParentAIReport(shouldRefreshReportType('PARENT'));
+      const shouldRefresh = prefersFreshParentResponses && shouldRefreshReportType('PARENT');
+      void generateParentAIReport(shouldRefresh);
     }
-  }, [activeTab, generateParentAIReport, hasParentScores, isGenerating, parentAiReport, reportId, shouldRefreshReportType]);
+  }, [activeTab, generateParentAIReport, hasParentScores, isGenerating, parentAiReport, prefersFreshParentResponses, reportId, shouldRefreshReportType]);
 
   // 기질맞춤양육 탭 진입 시 자동 생성
   useEffect(() => {
@@ -1057,7 +1130,7 @@ function ReportContent() {
   const childScoreSectionTitle = locale === 'ko'
     ? `${childPossessiveName} 기질 점수`
     : `${childName}${t('report.temperamentScores')}`;
-  const isChildReportGenerating = isGenerating && generatingRef.current.has('CHILD') && !reportDates.child;
+  const isChildReportStreaming = isGenerating && generatingRef.current.has('CHILD');
   const childReportInsight = childAiReport?.analysis?.insight;
   const childReportStrengths = childAiReport?.analysis?.strengths;
   const childReportParentingTips = childAiReport?.parentingTips;
@@ -1082,7 +1155,7 @@ function ReportContent() {
       icon: 'bar_chart',
       label: childScoreSectionTitle,
       message: t('report.childSectionLoadingScores'),
-      isReady: hasChildReportIntro || !isChildReportGenerating,
+      isReady: hasChildReportIntro || !isChildReportStreaming,
     },
     {
       key: 'dimensions',
@@ -1119,13 +1192,7 @@ function ReportContent() {
       message: t('report.childSectionLoadingMagicWord'),
       isReady: hasChildReportScripts,
     },
-  ] satisfies Array<{
-    key: ChildReportLoadingKey;
-    icon: string;
-    label: string;
-    message: string;
-    isReady: boolean;
-  }>, [
+  ] satisfies Array<ReportLoadingSection<ChildReportLoadingKey>>, [
     childReportInsight,
     childReportStrengths,
     childScoreSectionTitle,
@@ -1133,10 +1200,10 @@ function ReportContent() {
     hasChildReportIntro,
     hasChildReportParentingTips,
     hasChildReportScripts,
-    isChildReportGenerating,
+    isChildReportStreaming,
     t,
   ]);
-  const activeChildLoadingSection = isChildReportGenerating
+  const activeChildLoadingSection = isChildReportStreaming
     ? childReportLoadingSections.find((section) => !section.isReady)
     : undefined;
   const activeChildLoadingKey = activeChildLoadingSection?.key;
@@ -1144,7 +1211,126 @@ function ReportContent() {
   const activeChildLoadingProgressCurrent = activeChildLoadingSection
     ? childReportLoadingSections.findIndex((section) => section.key === activeChildLoadingSection.key) + 1
     : childReportProgressTotal;
-  const isChildReportFinalizing = isChildReportGenerating && hasChildReportScripts && !activeChildLoadingSection;
+  const isChildReportFinalizing = isChildReportStreaming && hasChildReportScripts && !activeChildLoadingSection;
+  const parentReportLoadingSections = useMemo(() => [
+    {
+      key: 'intro',
+      icon: 'chat_bubble',
+      label: t('report.ainaComment'),
+      message: t('report.parentSectionLoadingAina'),
+      isReady: false,
+    },
+    {
+      key: 'scores',
+      icon: 'bar_chart',
+      label: t('report.parentTemperamentScores'),
+      message: t('report.parentSectionLoadingScores'),
+      isReady: false,
+    },
+    {
+      key: 'dimensions',
+      icon: 'psychology',
+      label: t('report.dimensionAnalysis'),
+      message: t('report.parentSectionLoadingDimensions'),
+      isReady: false,
+    },
+    {
+      key: 'shining',
+      icon: 'auto_awesome',
+      label: t('report.shiningMoment'),
+      message: t('report.parentSectionLoadingShining'),
+      isReady: false,
+    },
+    {
+      key: 'parentingStyle',
+      icon: 'child_care',
+      label: t('report.parentingTemperament'),
+      message: t('report.parentSectionLoadingParentingTemperament'),
+      isReady: false,
+    },
+    {
+      key: 'vulnerability',
+      icon: 'battery_alert',
+      label: t('report.energyWarning'),
+      message: t('report.parentSectionLoadingEnergyWarning'),
+      isReady: false,
+    },
+    {
+      key: 'solutions',
+      icon: 'lightbulb',
+      label: t('report.mindNutrient'),
+      message: t('report.parentSectionLoadingMindNutrient'),
+      isReady: false,
+    },
+    {
+      key: 'letter',
+      icon: 'mail',
+      label: t('report.ainaLetter'),
+      message: t('report.parentSectionLoadingLetter'),
+      isReady: false,
+    },
+  ] satisfies Array<ReportLoadingSection>, [t]);
+  const parentLoadingState = getTimedLoadingState(parentReportLoadingSections, reportLoadingStep);
+  const isHarmonyReportGenerating = isGenerating && generatingRef.current.has('HARMONY');
+  const harmonyReportLoadingSections = useMemo(() => [
+    {
+      key: 'radar',
+      icon: 'analytics',
+      label: t('report.temperamentComparison'),
+      message: t('report.harmonySectionLoadingRadar'),
+      isReady: false,
+    },
+    {
+      key: 'summary',
+      icon: 'auto_awesome',
+      label: t('report.harmonyReport'),
+      message: t('report.harmonySectionLoadingSummary'),
+      isReady: false,
+    },
+    {
+      key: 'coreGap',
+      icon: 'compare_arrows',
+      label: t('report.coreGap'),
+      message: t('report.harmonySectionLoadingCoreGap'),
+      isReady: false,
+    },
+    {
+      key: 'coreMatch',
+      icon: 'favorite',
+      label: t('report.coreMatch'),
+      message: t('report.harmonySectionLoadingCoreMatch'),
+      isReady: false,
+    },
+    {
+      key: 'principles',
+      icon: 'school',
+      label: t('report.parentingPrinciples'),
+      message: t('report.harmonySectionLoadingPrinciples'),
+      isReady: false,
+    },
+    {
+      key: 'situationalTips',
+      icon: 'lightbulb',
+      label: t('report.situationalTips'),
+      message: t('report.harmonySectionLoadingSituationalTips'),
+      isReady: false,
+    },
+    {
+      key: 'audit',
+      icon: 'tune',
+      label: t('report.parentingStyleDiag'),
+      message: t('report.harmonySectionLoadingAudit'),
+      isReady: false,
+    },
+    {
+      key: 'dailyReminder',
+      icon: 'bookmark',
+      label: t('report.dailyReminder'),
+      message: t('report.harmonySectionLoadingReminder'),
+      isReady: false,
+    },
+  ] satisfies Array<ReportLoadingSection>, [t]);
+  const harmonyLoadingState = getTimedLoadingState(harmonyReportLoadingSections, reportLoadingStep);
 
   const radarData = {
     labels: [
@@ -1416,7 +1602,7 @@ function ReportContent() {
                     <div className="space-y-5 animate-fade-in">
                       {/* 1. 아이나의 한마디 */}
                       {hasChildReportIntro ? (
-                        <ChildReportReveal key="child-intro" order={0}>
+                        <ReportSectionReveal key="child-intro" order={0}>
                           <section className="bg-white dark:bg-surface-dark rounded-2xl px-6 py-5 shadow-card border border-beige-main/10">
                             <p className="text-[12px] font-black text-primary mb-2.5 flex items-center gap-1.5">
                               <Icon name="chat_bubble" size="sm" /> {t('report.ainaComment')}
@@ -1425,9 +1611,9 @@ function ReportContent() {
                               {childAiReport.intro}
                             </p>
                           </section>
-                        </ChildReportReveal>
+                        </ReportSectionReveal>
                       ) : activeChildLoadingKey === 'intro' && activeChildLoadingSection && (
-                        <ChildSectionLoadingCard
+                        <SectionLoadingCard
                           icon={activeChildLoadingSection.icon}
                           label={activeChildLoadingSection.label}
                           message={activeChildLoadingSection.message}
@@ -1437,8 +1623,8 @@ function ReportContent() {
                       )}
 
                       {/* 2. 기질 {t('common.points')}수 카드 */}
-                      {hasChildReportIntro || !isChildReportGenerating ? (
-                        <ChildReportReveal key="child-scores" order={1}>
+                      {hasChildReportIntro || !isChildReportStreaming ? (
+                        <ReportSectionReveal key="child-scores" order={1}>
                           <section className="bg-white dark:bg-surface-dark rounded-2xl px-6 py-6 shadow-card border border-beige-main/10 space-y-5">
                             <p className="text-[12px] font-black text-text-main dark:text-white flex items-center gap-1.5">
                               <Icon name="bar_chart" size="sm" /> {childScoreSectionTitle}
@@ -1466,9 +1652,9 @@ function ReportContent() {
                               })}
                             </div>
                           </section>
-                        </ChildReportReveal>
+                        </ReportSectionReveal>
                       ) : activeChildLoadingKey === 'scores' && activeChildLoadingSection && (
-                        <ChildSectionLoadingCard
+                        <SectionLoadingCard
                           icon={activeChildLoadingSection.icon}
                           label={activeChildLoadingSection.label}
                           message={activeChildLoadingSection.message}
@@ -1479,7 +1665,7 @@ function ReportContent() {
 
                       {/* 3. 기질 요소별 해석 */}
                       {hasChildReportDimensions ? (
-                        <ChildReportReveal key="child-dimensions" order={2}>
+                        <ReportSectionReveal key="child-dimensions" order={2}>
                           <section className="bg-white dark:bg-surface-dark rounded-2xl px-6 py-5 shadow-card border border-beige-main/10 space-y-4">
                             <p className="text-[12px] font-black text-text-main dark:text-white flex items-center gap-1.5">
                               <Icon name="psychology" size="sm" /> {t('report.dimensionAnalysis')}
@@ -1506,9 +1692,9 @@ function ReportContent() {
                               );
                             })}
                           </section>
-                        </ChildReportReveal>
+                        </ReportSectionReveal>
                       ) : activeChildLoadingKey === 'dimensions' && activeChildLoadingSection && (
-                        <ChildSectionLoadingCard
+                        <SectionLoadingCard
                           icon={activeChildLoadingSection.icon}
                           label={activeChildLoadingSection.label}
                           message={activeChildLoadingSection.message}
@@ -1519,7 +1705,7 @@ function ReportContent() {
 
                       {/* 4. 아이의 숨겨진 속마음 */}
                       {childReportInsight ? (
-                        <ChildReportReveal key="child-insight" order={3}>
+                        <ReportSectionReveal key="child-insight" order={3}>
                           <section className="space-y-3">
                             <p className="text-[12px] font-black text-primary flex items-center gap-1.5 px-1">
                               <Icon name="favorite" size="sm" /> {t('report.hiddenFeelings')}
@@ -1541,9 +1727,9 @@ function ReportContent() {
                               </div>
                             )}
                           </section>
-                        </ChildReportReveal>
+                        </ReportSectionReveal>
                       ) : activeChildLoadingKey === 'insight' && activeChildLoadingSection && (
-                        <ChildSectionLoadingCard
+                        <SectionLoadingCard
                           icon={activeChildLoadingSection.icon}
                           label={activeChildLoadingSection.label}
                           message={activeChildLoadingSection.message}
@@ -1554,7 +1740,7 @@ function ReportContent() {
 
                       {/* 6. 강{t('common.points')} + 성장 가능성 */}
                       {childReportStrengths ? (
-                        <ChildReportReveal key="child-strengths" order={4}>
+                        <ReportSectionReveal key="child-strengths" order={4}>
                           <section className="bg-white dark:bg-surface-dark rounded-2xl px-6 py-5 shadow-card border border-beige-main/10 space-y-2.5">
                             <p className="text-[12px] font-black text-text-main dark:text-white flex items-center gap-1.5">
                               <Icon name="emoji_events" size="sm" /> {t('report.strengthsGrowth')}
@@ -1563,9 +1749,9 @@ function ReportContent() {
                               {childReportStrengths}
                             </p>
                           </section>
-                        </ChildReportReveal>
+                        </ReportSectionReveal>
                       ) : activeChildLoadingKey === 'strengths' && activeChildLoadingSection && (
-                        <ChildSectionLoadingCard
+                        <SectionLoadingCard
                           icon={activeChildLoadingSection.icon}
                           label={activeChildLoadingSection.label}
                           message={activeChildLoadingSection.message}
@@ -1576,7 +1762,7 @@ function ReportContent() {
 
                       {/* 7. 양육 가이드 */}
                       {hasChildReportParentingTips ? (
-                        <ChildReportReveal key="child-parenting-tips" order={5}>
+                        <ReportSectionReveal key="child-parenting-tips" order={5}>
                           <section className="space-y-3">
                             <p className="text-[12px] font-black text-text-main dark:text-white flex items-center gap-1.5 px-1">
                               <Icon name="lightbulb" size="sm" /> {t('report.parentingGuide')}
@@ -1597,9 +1783,9 @@ function ReportContent() {
                               </div>
                             ))}
                           </section>
-                        </ChildReportReveal>
+                        </ReportSectionReveal>
                       ) : activeChildLoadingKey === 'parentingTips' && activeChildLoadingSection && (
-                        <ChildSectionLoadingCard
+                        <SectionLoadingCard
                           icon={activeChildLoadingSection.icon}
                           label={activeChildLoadingSection.label}
                           message={activeChildLoadingSection.message}
@@ -1610,7 +1796,7 @@ function ReportContent() {
 
                       {/* 7. 마법의 한마디 */}
                       {hasChildReportScripts ? (
-                        <ChildReportReveal key="child-scripts" order={6}>
+                        <ReportSectionReveal key="child-scripts" order={6}>
                           <section className="space-y-3">
                             <p className="text-[12px] font-black text-text-main dark:text-white flex items-center gap-1.5 px-1">
                               <Icon name="record_voice_over" size="sm" /> {t('report.magicWord')}
@@ -1623,9 +1809,9 @@ function ReportContent() {
                               </div>
                             ))}
                           </section>
-                        </ChildReportReveal>
+                        </ReportSectionReveal>
                       ) : activeChildLoadingKey === 'scripts' && activeChildLoadingSection && (
-                        <ChildSectionLoadingCard
+                        <SectionLoadingCard
                           icon={activeChildLoadingSection.icon}
                           label={activeChildLoadingSection.label}
                           message={activeChildLoadingSection.message}
@@ -1635,7 +1821,7 @@ function ReportContent() {
                       )}
 
                       {isChildReportFinalizing && (
-                        <ChildSectionLoadingCard
+                        <SectionLoadingCard
                           icon="auto_awesome"
                           label={t('report.finalizingReport')}
                           message={t('report.childSectionLoadingFinal')}
@@ -1680,7 +1866,7 @@ function ReportContent() {
                         variant="secondary"
                         onClick={() => {
                           trackReportCtaClick('share', 'footer', '/share');
-                          router.push(buildTrackedPath(`/share${(reportId || childReportId) ? `?id=${reportId || childReportId}` : ''}`));
+                          router.push(buildTrackedPath(`/share${(childReportId || reportId) ? `?id=${childReportId || reportId}` : ''}`));
                         }}
                         fullWidth
                         className="h-14 rounded-2xl border-none bg-white shadow-lg"
@@ -1696,8 +1882,8 @@ function ReportContent() {
               )
             ) : activeTab === 'parent' ? (
               <div className="animate-fade-in space-y-5">
-                {parentAiReport ? (
-                  <>
+	                {parentAiReport ? (
+	                  <ReportSectionGroup>
                     {/* 1. 아이나의 한마디 */}
                     <section className="bg-white dark:bg-surface-dark rounded-2xl px-6 py-5 shadow-card border border-beige-main/10">
                       <p className="text-[12px] font-black text-primary mb-2.5 flex items-center gap-1.5">
@@ -1851,17 +2037,28 @@ function ReportContent() {
                         </button>
                       </div>
                     )}
-                  </>
-                ) : (
-                  <ReportGeneratingState
-                    title={t('report.analyzingParent')}
-                    steps={parentLoadingSteps}
-                    imageSrc={parentType.image}
-                    imageAlt={parentType.label}
-                    typeLabel={parentType.label}
-                    showImage={false}
-                  />
-                )}
+	                  </ReportSectionGroup>
+	                ) : (
+	                  <div className="py-6">
+	                    {parentLoadingState.isFinalizing || !parentLoadingState.section ? (
+	                      <SectionLoadingCard
+	                        icon="auto_awesome"
+	                        label={t('report.finalizingReport')}
+	                        message={t('report.parentSectionLoadingFinal')}
+	                        progressCurrent={parentLoadingState.progressCurrent}
+	                        progressTotal={parentLoadingState.progressTotal}
+	                      />
+	                    ) : (
+	                      <SectionLoadingCard
+	                        icon={parentLoadingState.section.icon}
+	                        label={parentLoadingState.section.label}
+	                        message={parentLoadingState.section.message}
+	                        progressCurrent={parentLoadingState.progressCurrent}
+	                        progressTotal={parentLoadingState.progressTotal}
+	                      />
+	                    )}
+	                  </div>
+	                )}
 
                 {/* Footer Actions */}
                 {parentAiReport && (
@@ -1872,7 +2069,7 @@ function ReportContent() {
                       variant="secondary"
                       onClick={() => {
                         trackReportCtaClick('share', 'footer', '/share');
-                        router.push(buildTrackedPath(`/share${(reportId || childReportId) ? `?id=${reportId || childReportId}` : ''}`));
+                        router.push(buildTrackedPath(`/share${(childReportId || reportId) ? `?id=${childReportId || reportId}` : ''}`));
                       }}
                       fullWidth
                       className="h-14 rounded-2xl border-none bg-white shadow-lg"
@@ -1907,7 +2104,7 @@ function ReportContent() {
                   <div className="max-w-[280px] mx-auto">
                     <Radar data={radarData} options={radarOptions} />
                   </div>
-                  {isRadarLoading && (
+                  {isRadarLoading && !isHarmonyReportGenerating && (
                     <p
                       role="status"
                       aria-live="polite"
@@ -1935,8 +2132,8 @@ function ReportContent() {
                           {t('report.upgradeGuide')}
                         </Button>
                       </section>
-                    ) : (
-                      <>
+	                    ) : (
+	                      <ReportSectionGroup>
                         {/* 2. 관계 카드 */}
                         <section className="bg-white dark:bg-surface-dark rounded-2xl px-6 py-6 shadow-card border border-beige-main/10 text-center space-y-3">
                           <p className="text-[10px] font-black text-primary uppercase tracking-widest">Our Harmony</p>
@@ -2080,8 +2277,8 @@ function ReportContent() {
                             <p className="text-text-sub text-[11px]">{t('report.putOnFridge')}</p>
                           </section>
                         )}
-                      </>
-                    )}
+	                      </ReportSectionGroup>
+	                    )}
 
                     {/* 분석 날짜 & 다시 분석하기 */}
                     {reportDates.parenting && (
@@ -2099,15 +2296,27 @@ function ReportContent() {
                       </div>
                     )}
                   </>
-                ) : (
-                  <ReportGeneratingState
-                    title={t('report.analyzingHarmony')}
-                    steps={harmonyLoadingSteps}
-                    imageSrc={childType.image}
-                    imageAlt={childType.label}
-                    typeLabel={childType.label}
-                  />
-                )}
+	                ) : (
+	                  <div className="py-6">
+	                    {harmonyLoadingState.isFinalizing || !harmonyLoadingState.section ? (
+	                      <SectionLoadingCard
+	                        icon="auto_awesome"
+	                        label={t('report.finalizingReport')}
+	                        message={t('report.harmonySectionLoadingFinal')}
+	                        progressCurrent={harmonyLoadingState.progressCurrent}
+	                        progressTotal={harmonyLoadingState.progressTotal}
+	                      />
+	                    ) : (
+	                      <SectionLoadingCard
+	                        icon={harmonyLoadingState.section.icon}
+	                        label={harmonyLoadingState.section.label}
+	                        message={harmonyLoadingState.section.message}
+	                        progressCurrent={harmonyLoadingState.progressCurrent}
+	                        progressTotal={harmonyLoadingState.progressTotal}
+	                      />
+	                    )}
+	                  </div>
+	                )}
 
                 {/* Footer Actions */}
                 {harmonyAiReport && <div className="flex flex-col gap-4 pt-10 pb-16 text-center px-4">
@@ -2117,7 +2326,7 @@ function ReportContent() {
                     variant="secondary"
                     onClick={() => {
                       trackReportCtaClick('share', 'footer', '/share');
-                      router.push(buildTrackedPath(`/share${(reportId || childReportId) ? `?id=${reportId || childReportId}` : ''}`));
+                      router.push(buildTrackedPath(`/share${(childReportId || reportId) ? `?id=${childReportId || reportId}` : ''}`));
                     }}
                     fullWidth
                     className="h-14 rounded-2xl border-none bg-white shadow-lg text-slate-800 font-bold"
@@ -2161,84 +2370,42 @@ function ReportContent() {
         />
       )}
 
-      {isChildOnly && (
+      {isChildOnly && isDashboardContextLoaded && !isParentSurveyComplete && (
         <div className="app-fixed-cta fixed bottom-0 left-0 right-0 z-50">
           <div className="max-w-md mx-auto">
-            {isParentSurveyComplete ? (
-              <div className="m-3 bg-white rounded-[2rem] shadow-2xl border border-slate-100 overflow-hidden">
-                <div className="px-5 pt-4 pb-5 space-y-3">
-                  <div className="space-y-1 text-center">
-                    <p className="text-[11px] font-black uppercase tracking-wider text-primary">
-                      {t('report.nextStepEyebrow')}
-                    </p>
-                    <p className="text-[13px] font-bold leading-relaxed text-slate-600 break-keep">
-                      {t('report.fullReportCtaDesc')}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      trackEvent('report_expand_clicked', {
-                        from_tab: activeTab,
-                        to_tab: 'full_report',
-                        child_only: isChildOnly,
-                        source: entrySource,
-                      });
-                      trackReportCtaClick('expand_full_report', 'sticky', '/report');
-                      router.replace(buildTrackedPath('/report'));
-                    }}
-                    className="w-full py-4 rounded-2xl font-black text-white text-base flex items-center justify-center gap-2 active:scale-[0.98] transition-all shadow-lg shadow-primary/20"
-                    style={{ backgroundColor: 'var(--primary)' }}
-                  >
-                    <span>{t('report.viewFullReport')}</span>
-                    <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      trackReportCtaClick('share', 'sticky', '/share');
-                      router.push(buildTrackedPath(`/share${(reportId || childReportId) ? `?id=${reportId || childReportId}` : ''}`));
-                    }}
-                    className="w-full py-2.5 rounded-xl font-bold text-[13px] flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all text-slate-500 hover:text-primary"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">share</span>
-                    <span>{t('report.shareResults')}</span>
-                  </button>
-                </div>
+            <div className="m-3 bg-white rounded-[2rem] shadow-2xl border border-slate-100 overflow-hidden">
+              <div className="bg-gradient-to-r from-primary/10 to-slate-50 px-5 py-3 border-b border-slate-100">
+                <p className="text-[11px] font-bold text-primary text-center">
+                  {t('report.parentChildMatch')}
+                </p>
               </div>
-            ) : (
-              <div className="m-3 bg-white rounded-[2rem] shadow-2xl border border-slate-100 overflow-hidden">
-                <div className="bg-gradient-to-r from-primary/10 to-slate-50 px-5 py-3 border-b border-slate-100">
-                  <p className="text-[11px] font-bold text-primary text-center">
-                    {t('report.parentChildMatch')}
-                  </p>
-                </div>
-                <div className="px-5 py-4">
-                  <p className="text-[12px] text-slate-500 text-center mb-3 leading-relaxed">
-                    {t('report.parentChildMatchDesc')}
-                  </p>
-                  <button
-                    onClick={() => {
-                      trackReportCtaClick('continue_parent_survey', 'sticky', '/survey?type=PARENT');
-                      router.push(buildTrackedPath('/survey?type=PARENT'));
-                    }}
-                    className="w-full py-4 rounded-2xl font-black text-white text-base flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
-                    style={{ backgroundColor: 'var(--primary)' }}
-                  >
-                    <span>{t('report.continueParentSurvey')}</span>
-                    <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      trackReportCtaClick('share', 'sticky', '/share');
-                      router.push(buildTrackedPath(`/share${(reportId || childReportId) ? `?id=${reportId || childReportId}` : ''}`));
-                    }}
-                    className="mt-2 w-full py-2.5 rounded-xl font-bold text-[13px] flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all text-slate-500 hover:text-primary"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">share</span>
-                    <span>{t('report.shareResults')}</span>
-                  </button>
-                </div>
+              <div className="px-5 py-4">
+                <p className="text-[12px] text-slate-500 text-center mb-3 leading-relaxed">
+                  {t('report.parentChildMatchDesc')}
+                </p>
+                <button
+                  onClick={() => {
+                    trackReportCtaClick('continue_parent_survey', 'sticky', '/survey?type=PARENT');
+                    router.push(buildTrackedPath('/survey?type=PARENT'));
+                  }}
+                  className="w-full py-4 rounded-2xl font-black text-white text-base flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+                  style={{ backgroundColor: 'var(--primary)' }}
+                >
+                  <span>{t('report.continueParentSurvey')}</span>
+                  <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
+                </button>
+                <button
+                  onClick={() => {
+                    trackReportCtaClick('share', 'sticky', '/share');
+                    router.push(buildTrackedPath(`/share${(childReportId || reportId) ? `?id=${childReportId || reportId}` : ''}`));
+                  }}
+                  className="mt-2 w-full py-2.5 rounded-xl font-bold text-[13px] flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all text-slate-500 hover:text-primary"
+                >
+                  <span className="material-symbols-outlined text-[18px]">share</span>
+                  <span>{t('report.shareResults')}</span>
+                </button>
               </div>
-            )}
+            </div>
           </div>
         </div>
       )}

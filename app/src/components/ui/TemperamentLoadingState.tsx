@@ -16,6 +16,9 @@ interface TemperamentLoadingStateProps {
   imagePriority?: boolean;
   showImage?: boolean;
   progressStyle?: ProgressStyle;
+  progressCurrent?: number;
+  progressTotal?: number;
+  progressLabel?: string;
   size?: LoadingSize;
 }
 
@@ -33,9 +36,19 @@ export function TemperamentLoadingState({
   imagePriority = false,
   showImage = true,
   progressStyle = 'bar',
+  progressCurrent,
+  progressTotal,
+  progressLabel,
   size = 'regular',
 }: TemperamentLoadingStateProps) {
   const isCompact = size === 'compact';
+  const hasDeterminateProgress =
+    typeof progressCurrent === 'number'
+    && typeof progressTotal === 'number'
+    && progressTotal > 0;
+  const progressPercent = hasDeterminateProgress
+    ? Math.max(4, Math.min(100, Math.round((progressCurrent / progressTotal) * 100)))
+    : null;
 
   return (
     <div
@@ -81,8 +94,27 @@ export function TemperamentLoadingState({
       </div>
 
       {progressStyle === 'bar' && (
-        <div className={`${isCompact ? 'h-1 w-28' : 'h-1.5 w-44'} overflow-hidden rounded-full bg-primary/10 dark:bg-white/10`} aria-hidden="true">
-          <div className="h-full rounded-full bg-gradient-to-r from-primary to-secondary animate-progress" />
+        <div className={`${isCompact ? 'w-28' : 'w-44'} space-y-1.5`}>
+          {progressLabel && (
+            <p className="text-[11px] font-black text-primary dark:text-primary-light">
+              {progressLabel}
+            </p>
+          )}
+          <div
+            role="progressbar"
+            aria-label={progressLabel ? `${title} ${progressLabel}` : title}
+            aria-valuemin={hasDeterminateProgress ? 0 : undefined}
+            aria-valuemax={hasDeterminateProgress ? progressTotal : undefined}
+            aria-valuenow={hasDeterminateProgress ? progressCurrent : undefined}
+            className={`${isCompact ? 'h-1' : 'h-1.5'} overflow-hidden rounded-full bg-primary/10 dark:bg-white/10`}
+          >
+            <div
+              className={`h-full rounded-full bg-gradient-to-r from-primary to-secondary ${
+                hasDeterminateProgress ? 'transition-all duration-700 ease-out' : 'animate-progress'
+              }`}
+              style={hasDeterminateProgress ? { width: `${progressPercent}%` } : undefined}
+            />
+          </div>
         </div>
       )}
 

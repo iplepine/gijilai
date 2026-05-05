@@ -21,7 +21,6 @@ Date: 2026-05-01
 |--------|------|
 | `report_viewed` | 리포트 열람과 진입 소스 확인 |
 | `report_primary_cta_clicked` | 리포트 다음 행동 클릭 확인 |
-| `report_expand_clicked` | `child_only` → 전체 리포트 확장 확인 |
 | `survey_module_started` | 리포트에서 설문으로 넘어간 흐름 확인 |
 | `pricing_viewed` | 가격 페이지 도달 여부 확인 |
 | `consult_started` | 리포트가 상담으로 이어졌는지 확인 |
@@ -49,7 +48,7 @@ GA4 또는 Firebase Explore에서 아래 3개 퍼널을 기본 저장한다.
 ### 퍼널 B. child_only → 전체 분석 확장
 
 - `report_viewed(child_only=true)`
-- `report_expand_clicked`
+- `report_primary_cta_clicked(cta_type=continue_parent_survey)`
 - `survey_module_started(source=report, module=parent)`
 - `survey_flow_completed`
 

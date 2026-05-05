@@ -6,7 +6,6 @@ import { Navbar } from '@/components/layout/Navbar';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAppStore } from '@/store/useAppStore';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { db, ReportData, ChildProfile } from '@/lib/db';
 import { TemperamentScorer } from '@/lib/TemperamentScorer';
 import { TemperamentClassifier } from '@/lib/TemperamentClassifier';
 import { CHILD_QUESTIONS } from '@/data/questions';
@@ -17,12 +16,25 @@ import type { Json } from '@/types/supabase';
 
 type SharedAnalysis = {
   label?: string;
+  title?: string;
   desc?: string;
   intro?: string;
+  shareText?: string;
   scores?: { NS: number; HA: number; RD: number; P: number };
   analysis?: {
     strengths?: string;
   };
+};
+
+type TemperamentScores = { NS: number; HA: number; RD: number; P: number };
+
+type SharedReport = {
+  id: string;
+  type: string;
+  analysis: Json | null;
+  createdAt: string;
+  child: { name: string; gender: string; birth_date: string } | null;
+  scores: Json | null;
 };
 
 const KAKAO_SDK_SCRIPT_ID = 'kakao-js-sdk';
@@ -105,6 +117,12 @@ function parseAnalysis(value: Json | null): SharedAnalysis | null {
   return value as unknown as SharedAnalysis;
 }
 
+function isTemperamentScores(value: unknown): value is TemperamentScores {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  return ['NS', 'HA', 'RD', 'P'].every((key) => typeof record[key] === 'number');
+}
+
 function SharePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -114,10 +132,10 @@ function SharePageContent() {
   const [copied, setCopied] = useState(false);
   const [isKakaoSharing, setIsKakaoSharing] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
+  const [isReportLoading, setIsReportLoading] = useState(false);
 
   // DB-loaded data
-  const [report, setReport] = useState<ReportData | null>(null);
-  const [child, setChild] = useState<ChildProfile | null>(null);
+  const [report, setReport] = useState<SharedReport | null>(null);
 
   const reportId = searchParams.get('id');
 
@@ -131,27 +149,39 @@ function SharePageContent() {
     return /gijilai_app|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   };
 
-  // Load report from DB if reportId is provided
+  // Load the exact shared report row when reportId is provided.
   useEffect(() => {
+    let isActive = true;
+
     async function loadReport() {
-      if (!reportId || !user) return;
+      if (!reportId) {
+        setReport(null);
+        setIsReportLoading(false);
+        return;
+      }
+
+      setIsReportLoading(true);
       try {
-        const reports = await db.getReports(user.id);
-        const found = reports.find(r => r.id === reportId);
-        if (found) {
-          setReport(found);
-          if (found.child_id) {
-            const children = await db.getChildren(user.id);
-            const foundChild = children.find(c => c.id === found.child_id);
-            if (foundChild) setChild(foundChild);
-          }
+        const res = await fetch(`/api/report/shared/${reportId}`, { cache: 'no-store' });
+        if (!res.ok) {
+          throw new Error(`Shared report load failed: ${res.status}`);
         }
+        const data = await res.json();
+        if (isActive) setReport(data as SharedReport);
       } catch (e) {
         console.error('Failed to load report:', e);
+        if (isActive) setReport(null);
+      } finally {
+        if (isActive) setIsReportLoading(false);
       }
     }
+
     loadReport();
-  }, [reportId, user]);
+
+    return () => {
+      isActive = false;
+    };
+  }, [reportId]);
 
   const canShareToOtherApps = useSyncExternalStore(
     () => () => undefined,
@@ -159,7 +189,7 @@ function SharePageContent() {
     () => false,
   );
 
-  const childName = child?.name || intake.childName || t('share.defaultChildName');
+  const childName = report?.child?.name || intake.childName || t('share.defaultChildName');
 
   const referralCode = 'GIJILAI-' + (user?.id?.substring(0, 8) || 'FRIEND');
 
@@ -172,14 +202,21 @@ function SharePageContent() {
 
   // Calculate Temperament from DB report or local store
   const temperamentInfo = (() => {
-    if (report?.analysis_json) {
-      const analysis = parseAnalysis(report.analysis_json);
-      if (analysis && analysis.label && analysis.desc) {
-        if (analysis.scores) {
-          const classified = TemperamentClassifier.analyzeChild(analysis.scores);
-          return { label: analysis.label, desc: analysis.desc, image: classified.image, intro: analysis.intro, strengths: analysis.analysis?.strengths };
-        }
-        return { label: analysis.label, desc: analysis.desc, image: '', intro: analysis.intro, strengths: analysis.analysis?.strengths };
+    if (reportId && report) {
+      const analysis = parseAnalysis(report.analysis);
+      const reportScores = isTemperamentScores(report.scores)
+        ? report.scores
+        : (isTemperamentScores(analysis?.scores) ? analysis.scores : null);
+      const classified = reportScores ? TemperamentClassifier.analyzeChild(reportScores) : null;
+
+      if (analysis || classified) {
+        return {
+          label: analysis?.label || classified?.label || analysis?.title || '열정 탐험가',
+          desc: analysis?.desc || classified?.desc || analysis?.shareText || analysis?.intro || t('share.defaultDesc'),
+          image: classified?.image || '',
+          intro: analysis?.intro,
+          strengths: analysis?.analysis?.strengths,
+        };
       }
     }
 
@@ -276,6 +313,19 @@ function SharePageContent() {
       // User cancelled share - ignore
     }
   };
+
+  if (reportId && isReportLoading) {
+    return (
+      <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center font-body">
+        <div className="w-full max-w-md bg-background-light dark:bg-background-dark min-h-screen flex flex-col shadow-2xl relative">
+          <Navbar title={t('share.title')} showBack onBackClick={() => router.back()} />
+          <div className="flex flex-1 items-center justify-center">
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center font-body">

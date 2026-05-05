@@ -14,8 +14,9 @@
 
 ## 빠른 아이 리포트
 
-- `child_only` 모드는 아이 기질 리포트만 먼저 보여준다.
-- 탭 전환은 숨기고, 하단 CTA로 양육자 설문 또는 전체 분석 확장을 안내한다.
+- `child_only` 모드는 양육자 기질 데이터가 없는 사용자에게 아이 기질 리포트만 먼저 보여준다.
+- 탭 전환은 숨기고, 하단 CTA로 양육자 설문을 안내한다.
+- 양육자 기질 데이터가 이미 있으면 `child_only`를 유지하지 않고 전체 리포트의 아이 기질 탭(`/report?tab=child`)으로 정규화한다.
 - 목적은 첫 효용 시간을 줄이는 것이다.
 
 ## 콘텐츠 원칙
@@ -29,7 +30,7 @@
 
 - 비구독자 리포트 하단은 공유보다 상담/실천/구독 루프를 우선 설명한다.
 - CTA는 "리포트에서 끝내지 않고 오늘 상황까지 이어서 본다"는 가치로 작성한다.
-- 측정 이벤트는 `report_viewed`, `report_primary_cta_clicked`, `report_expand_clicked`를 기준으로 한다.
+- 측정 이벤트는 `report_viewed`, `report_primary_cta_clicked`, `survey_module_started`, `survey_flow_completed`를 기준으로 한다.
 
 ## 상세 정책
 

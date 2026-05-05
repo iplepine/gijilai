@@ -24,8 +24,8 @@
 ## 빠른 아이 리포트 확장 퍼널
 
 1. `report_viewed(child_only=true)`
-2. `report_expand_clicked`
-3. `survey_module_started(source=report)`
+2. `report_primary_cta_clicked(cta_type=continue_parent_survey)`
+3. `survey_module_started(source=report, module=parent)`
 4. `survey_flow_completed`
 
 ## 체험 가치 퍼널

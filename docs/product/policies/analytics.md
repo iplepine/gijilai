@@ -30,7 +30,6 @@
 | `survey_flow_completed` | 전체 설문 완료율 확인 | `answered_questions`, `source`, `report_tab`, `report_kind` |
 | `report_viewed` | 리포트 탭별 열람량과 진입 소스 확인 | `tab`, `child_only`, `report_kind`, `has_saved_report`, `source`, `has_subscription` |
 | `report_primary_cta_clicked` | 리포트에서 다음 행동 CTA 클릭률 확인 | `cta_type`, `placement`, `report_tab`, `report_kind`, `child_only`, `source` |
-| `report_expand_clicked` | `child_only` 사용자가 전체 리포트로 확장하는 비율 확인 | `from_tab`, `to_tab`, `child_only`, `source` |
 | `pricing_viewed` | 가격 페이지 유입 소스와 리포트 연계 전환 확인 | `source`, `entry_cta`, `is_app`, `report_tab`, `report_kind` |
 | `payment_started` | 결제 시도량 및 결제수단 비중 확인 | `source`, `entry_cta`, `pay_method`, `used_coupon`, `final_amount`, `report_tab`, `report_kind` |
 | `payment_completed` | 결제 완료율 및 쿠폰 효과 확인 | `source`, `entry_cta`, `pay_method`, `used_coupon`, `final_amount`, `report_tab`, `report_kind` |
@@ -50,8 +49,8 @@
 ## 리포트 전환 핵심 퍼널
 
 - 기본 퍼널: `report_viewed → report_primary_cta_clicked → pricing_viewed → payment_started → payment_completed`
-- 빠른 아이 리포트 확장 퍼널: `report_viewed(child_only=true) → report_expand_clicked → survey_module_started(source=report) → survey_flow_completed`
-- 설문 확장 퍼널: `report_primary_cta_clicked(cta_type=continue_parent_survey) → survey_module_started(module=parent, source=report)`
+- 빠른 아이 리포트 확장 퍼널: `report_viewed(child_only=true) → report_primary_cta_clicked(cta_type=continue_parent_survey) → survey_module_started(module=parent, source=report) → survey_flow_completed`
+- 이미 양육자 기질 데이터가 있는 사용자의 아이 리포트 재진입은 `child_only`를 유지하지 않고 전체 리포트 모드로 정규화한다.
 - 체험 가치 퍼널: `consult_started → consult_completed → practice_item_saved → practice_log_saved → followup_context_viewed → consult_started(is_followup=true)`
 
 ## 운영 질문

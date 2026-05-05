@@ -97,13 +97,17 @@ export default function HomePage() {
   const latestSurvey = useMemo(() => {
     if (!mainChild) return null;
     return (
-      surveys.find((s) => s.type === "CHILD" && s.child_id === mainChild.id) ||
+      surveys.find((s) => (
+        s.type === "CHILD" &&
+        s.child_id === mainChild.id &&
+        s.status === "COMPLETED"
+      )) ||
       null
     );
   }, [surveys, mainChild]);
 
   const parentSurvey = useMemo(() => {
-    return surveys.find((s) => s.type === "PARENT") || null;
+    return surveys.find((s) => s.type === "PARENT" && s.status === "COMPLETED") || null;
   }, [surveys]);
 
   // Handle Child Selection
@@ -146,6 +150,8 @@ export default function HomePage() {
     : null;
   const shouldShowTrialEndingCard =
     !subscription && !!trialStatus?.isActive && trialStatus.daysRemaining <= 2;
+  const hasCompleteLocalChildResponses = Object.keys(cbqResponses).length >= CHILD_QUESTIONS.length;
+  const hasCompleteLocalParentResponses = Object.keys(atqResponses).length >= PARENT_QUESTIONS.length;
 
   // Derived Temperament (Parent = Soil, Child = Seed + Plant)
   // 양육자 기질은 아이와 무관하게 하나
@@ -154,7 +160,7 @@ export default function HomePage() {
     const parentReport = reports.find((r) => r.type === "PARENT");
     const parentReportScores = extractReportScores(parentReport?.analysis_json);
 
-    if (Object.keys(atqResponses).length > 0) {
+    if (hasCompleteLocalParentResponses) {
       parentScores = TemperamentScorer.calculate(
         PARENT_QUESTIONS,
         atqResponses,
@@ -173,12 +179,12 @@ export default function HomePage() {
 
     const parentType = TemperamentClassifier.analyzeParent(parentScores);
     const hasRealParentData =
-      Object.keys(atqResponses).length > 0 ||
+      hasCompleteLocalParentResponses ||
       !!parentSurvey?.answers ||
       !!parentReportScores;
 
     return { ...parentType, hasData: hasRealParentData };
-  }, [atqResponses, parentSurvey, reports]);
+  }, [atqResponses, hasCompleteLocalParentResponses, parentSurvey, reports]);
 
   const temperamentInfo = useMemo(() => {
     // 해당 아이의 리포트나 설문 데이터 찾기
@@ -191,7 +197,7 @@ export default function HomePage() {
       extractReportScores(childReport?.analysis_json) ||
       parseAnswerMap(latestSurvey?.answers) ||
       (mainChild?.id === "temporary-intake-id" &&
-      Object.keys(cbqResponses).length > 0
+      hasCompleteLocalChildResponses
         ? cbqResponses
         : null);
 
@@ -204,12 +210,12 @@ export default function HomePage() {
     const childResult = TemperamentClassifier.analyzeChild(scores);
 
     return { child: childResult };
-  }, [mainChild, cbqResponses, latestSurvey, reports]);
+  }, [mainChild, cbqResponses, hasCompleteLocalChildResponses, latestSurvey, reports]);
 
   const childTestPending = !temperamentInfo;
   const parentTestPending =
     !parentSurvey &&
-    Object.keys(atqResponses).length < PARENT_QUESTIONS.length &&
+    !hasCompleteLocalParentResponses &&
     !!temperamentInfo?.child;
   const hasPracticePriority =
     practices.attentionCount > 0 || practices.uncheckedCount > 0;
