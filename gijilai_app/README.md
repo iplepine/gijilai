@@ -37,7 +37,9 @@ emulator @small_phone -no-window -no-audio -no-snapshot -gpu swiftshader -port 5
 ```
 
 It also passes `GIJILAI_WEB_URL=http://10.0.2.2:3000/` to Flutter so the
-Android WebView loads the host machine's local web app.
+Android WebView loads the host machine's local web app. Google native login
+uses the same default `GOOGLE_WEB_CLIENT_ID` dart define as the release lane,
+unless overridden in the environment.
 
 To only start the emulator:
 

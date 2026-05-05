@@ -803,12 +803,21 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     return NavigationDecision.navigate;
   }
 
-  bool _isNativeLoginRoute(Uri? uri) {
-    if (uri == null) return false;
-    final path = uri.path.replaceFirst(RegExp(r'/+$'), '');
-    return uri.host == Uri.parse(MainWebView.targetUrl).host &&
-        (path == '/login' || path.endsWith('/login')) &&
-        _nativeCapabilities.supportsScreen('login');
+  bool _isLoginPath(String? rawPath) {
+    if (rawPath == null || rawPath.isEmpty) return false;
+    final pathUri = Uri.tryParse(rawPath);
+    final path = (pathUri?.path ?? rawPath).replaceFirst(RegExp(r'/+$'), '');
+    return path == '/login' || path.endsWith('/login');
+  }
+
+  bool _isNativeLoginRoute(Uri? uri, {String? routePath}) {
+    if (!_nativeCapabilities.supportsScreen('login')) return false;
+
+    final hasLoginPath = _isLoginPath(routePath) || _isLoginPath(uri?.path);
+    if (!hasLoginPath) return false;
+
+    if (uri == null || uri.host.isEmpty) return true;
+    return uri.host == Uri.parse(MainWebView.targetUrl).host;
   }
 
   void _handlePageStarted(String url) {
@@ -837,13 +846,13 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     });
   }
 
-  void _syncNativeLoginRouteState(String url) {
+  void _syncNativeLoginRouteState({String? url, String? routePath}) {
     if (!mounted) return;
     if (_postNativeAuthNavigationInProgress) return;
 
-    final uri = Uri.tryParse(url);
-    final isNativeLoginRoute = _isNativeLoginRoute(uri);
-    _rememberLoginRedirect(uri);
+    final uri = url == null || url.isEmpty ? null : Uri.tryParse(url);
+    final isNativeLoginRoute = _isNativeLoginRoute(uri, routePath: routePath);
+    _rememberLoginRedirect(uri, routePath: routePath);
     setState(() {
       if (isNativeLoginRoute) {
         _postNativeAuthNavigationInProgress = false;
@@ -930,9 +939,13 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     await controller.loadRequest(_webUriForInternalPath(path));
   }
 
-  void _rememberLoginRedirect(Uri? uri) {
-    if (!_isNativeLoginRoute(uri)) return;
-    final safeRedirect = _safeInternalPath(uri?.queryParameters['redirect']);
+  void _rememberLoginRedirect(Uri? uri, {String? routePath}) {
+    if (!_isNativeLoginRoute(uri, routePath: routePath)) return;
+    final routePathUri = routePath == null ? null : Uri.tryParse(routePath);
+    final safeRedirect = _safeInternalPath(
+      uri?.queryParameters['redirect'] ??
+          routePathUri?.queryParameters['redirect'],
+    );
     if (safeRedirect != null) {
       _pendingLoginRedirectPath = safeRedirect;
     }
@@ -1378,18 +1391,20 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     try {
       final data = jsonDecode(message.message);
       if (data is! Map<String, dynamic>) {
-        _syncNativeLoginRouteState(message.message);
+        _syncNativeLoginRouteState(url: message.message);
         return;
       }
 
       final url = data['url']?.toString();
-      if (url == null || url.isEmpty) {
+      final routePath = data['path']?.toString();
+      if ((url == null || url.isEmpty) &&
+          (routePath == null || routePath.isEmpty)) {
         return;
       }
 
-      _syncNativeLoginRouteState(url);
+      _syncNativeLoginRouteState(url: url, routePath: routePath);
     } catch (e) {
-      _syncNativeLoginRouteState(message.message);
+      _syncNativeLoginRouteState(url: message.message);
     }
   }
 
