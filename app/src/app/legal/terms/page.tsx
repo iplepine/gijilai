@@ -11,11 +11,11 @@ function TermsContent() {
 
                 <main className="app-page-scroll flex-1 px-6 py-8">
                     <div className="bg-white dark:bg-surface-dark rounded-[2rem] p-6 shadow-soft border border-gray-100 dark:border-gray-800 overflow-y-auto" style={{ maxHeight: '75vh' }}>
-                        <h2 className="text-xl font-bold mb-6 mt-2">아이기질 이용약관</h2>
+                        <h2 className="text-xl font-bold mb-6 mt-2">기질아이 이용약관</h2>
                         <div className="space-y-6 text-sm text-gray-600 dark:text-gray-300 leading-relaxed font-medium">
                             <section>
                                 <h3 className="font-bold text-navy dark:text-white text-base mb-2">제1조 (목적)</h3>
-                                <p>본 약관은 회사가 제공하는 &apos;아이기질(가칭)&apos; 서비스(이하 “서비스”)의 이용과 관련하여 회사와 회원 간의 권리, 의무, 책임사항 및 기타 필요한 사항을 규정함을 목적으로 합니다.</p>
+                                <p>본 약관은 회사가 제공하는 &apos;기질아이&apos; 서비스(이하 “서비스”)의 이용과 관련하여 회사와 회원 간의 권리, 의무, 책임사항 및 기타 필요한 사항을 규정함을 목적으로 합니다.</p>
                             </section>
                             <section>
                                 <h3 className="font-bold text-navy dark:text-white text-base mb-2">제2조 (용어의 정의)</h3>
@@ -34,6 +34,22 @@ function TermsContent() {
                             <section>
                                 <h3 className="font-bold text-navy dark:text-white text-base mb-2">제5조 (서비스의 제공 및 중단)</h3>
                                 <p>회사는 연중무휴 1일 24시간 서비스 제공을 원칙으로 합니다. 다만, 설비 점검 및 통신망 문제 등의 사유로 인하여 일시적으로 서비스가 중단될 수 있습니다.</p>
+                            </section>
+                            <section>
+                                <h3 className="font-bold text-navy dark:text-white text-base mb-2">제6조 (유료 구독 및 EULA)</h3>
+                                <p>
+                                    기질아이 프리미엄 월간 구독은 앱 결제 화면과 App Store 또는 Google Play 구매 화면에 표시된 가격으로 매월 자동 갱신됩니다.
+                                    구독 기간, 가격, 갱신 및 해지는 각 스토어 계정 설정에서 확인하고 관리할 수 있습니다.
+                                </p>
+                                <p className="mt-2">
+                                    Apple App Store에서 구매한 구독에는 Apple 표준 EULA가 적용됩니다:{' '}
+                                    <a
+                                        href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"
+                                        className="font-bold text-primary underline underline-offset-2"
+                                    >
+                                        https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+                                    </a>
+                                </p>
                             </section>
                             <div className="pt-6 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-400">
                                 시행일: 2026년 3월 1일

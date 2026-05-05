@@ -61,7 +61,6 @@ Fastlane으로 대부분 자동화되어 있다.
 • AI 상담 무제한
 • 실천 기록 전체 이력
 • 다음 상담에 지난 실천 맥락 반영
-• 첫 달 30% 할인
 
 👨‍👩‍👧‍👦 이런 부모님께 추천합니다
 • 아이의 행동이 이해되지 않을 때
@@ -122,7 +121,7 @@ https://gijilai.com/legal/privacy
 
 ### Promotional Text (170 chars)
 ```text
-30% off your first month! Understand your child's temperament and get personalized AI parenting guidance.
+Understand your child's temperament and get personalized AI parenting guidance.
 ```
 
 ### Description (4000 chars)
@@ -150,7 +149,10 @@ Premium Subscription
 • Unlimited AI consultations
 • Full practice history
 • Past practice context carried into the next consultation
-• 30% off your first month
+
+Terms of Use (EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Service Terms: https://gijilai.com/legal/terms
+Privacy Policy: https://gijilai.com/legal/privacy
 
 Contact: devhohouse@gmail.com
 ```
@@ -206,7 +208,12 @@ bundle install
 |------|------|
 | `GOOGLE_PLAY_JSON_KEY_PATH` | Google Play 서비스 계정 JSON 키 파일 경로 |
 | `GOOGLE_PLAY_CREDENTIALS` | IAP 영수증 검증용 (서버, Google 서비스 계정 JSON 전체 문자열) |
-| `APPLE_IAP_JWT` | Apple IAP 영수증 검증용 (서버) |
+| `APPLE_IAP_ISSUER_ID` | Apple App Store Server API JWT 발급용 Issuer ID |
+| `APPLE_IAP_KEY_ID` | Apple App Store Server API JWT 발급용 Key ID |
+| `APPLE_IAP_PRIVATE_KEY` | Apple App Store Server API JWT 발급용 `.p8` 개인키 |
+| `APPLE_BUNDLE_ID` | Apple IAP 검증용 번들 ID (`com.devho.gijilai`) |
+| `APPLE_APP_STORE_ROOT_CERT_PEM` | Apple signed transaction/notification JWS 인증서 체인 검증용 Root CA |
+| `APPLE_IAP_JWT` | Apple IAP 영수증 검증용 사전 발급 JWT fallback. 운영에서는 만료 방지를 위해 위 API key 3종을 우선 사용 |
 | `GOOGLE_RTDN_TOKEN` | Google RTDN 웹훅 보호용 공유 토큰 |
 
 ---
@@ -372,7 +379,7 @@ gijilai_app/
 - [ ] 앱 개인정보 보호 선언
 - [ ] iOS 구독 상품 생성 (`gijilai_premium_monthly`)
 - [ ] Sign in with Apple provider 설정 (Apple Developer + Supabase Auth)
-- [ ] `APPLE_IAP_JWT` 환경변수
+- [ ] `APPLE_IAP_ISSUER_ID`, `APPLE_IAP_KEY_ID`, `APPLE_IAP_PRIVATE_KEY`, `APPLE_BUNDLE_ID`, `APPLE_APP_STORE_ROOT_CERT_PEM` 환경변수
 - [ ] App Store Server Notifications V2 → `/api/payment/iap/apple-notifications` 연결
 - [ ] Appfile에 apple_id, team_id 설정
 - [ ] IDFA / ATT 설정

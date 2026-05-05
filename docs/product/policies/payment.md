@@ -93,14 +93,19 @@
   - Google Real-time Developer Notifications: `/api/payment/iap/google-rtdn`
 - 앱 IAP도 웹 구독과 동일한 `subscriptions` 테이블을 사용하되 `source`로 출처를 구분한다.
 - 운영 중 필수 환경변수:
-  - `APPLE_IAP_JWT`
+  - `APPLE_IAP_ISSUER_ID`
+  - `APPLE_IAP_KEY_ID`
+  - `APPLE_IAP_PRIVATE_KEY`
+  - `APPLE_BUNDLE_ID`
   - `APPLE_APP_STORE_ROOT_CERT_PEM` : Apple Server Notification V2와 signed transaction JWS 인증서 체인을 검증할 Apple root CA PEM
   - `GOOGLE_PLAY_CREDENTIALS` : Google 서비스 계정 JSON 전체 문자열 (`client_email`, `private_key` 포함)
   - `GOOGLE_PLAY_PACKAGE_NAME`
   - `GOOGLE_RTDN_TOKEN` (RTDN 엔드포인트 보호용 공유 토큰)
 
+- `APPLE_IAP_JWT`는 기존 운영값 호환을 위한 fallback으로만 사용한다. App Store Server API JWT는 최대 60분까지만 유효하므로 운영에서는 App Store Connect API key(`issuerId`, `keyId`, `.p8`)로 서버가 요청마다 JWT를 발급한다.
 - `GOOGLE_PLAY_CREDENTIALS.private_key`는 PEM 개인키여야 하며 줄바꿈이 보존되어야 한다. 시크릿 매니저에 붙여넣을 때는 서비스 계정 JSON 원문 그대로 저장하거나 JSON 문자열 내부 `\n` 이스케이프를 유지한다.
-- `APPLE_APP_STORE_ROOT_CERT_PEM`도 PEM 줄바꿈이 보존되어야 한다. 시크릿 매니저가 한 줄 값만 허용하면 `\n` 이스케이프를 유지해 저장한다.
+- `APPLE_IAP_PRIVATE_KEY`와 `APPLE_APP_STORE_ROOT_CERT_PEM`은 PEM 줄바꿈이 보존되어야 한다. 시크릿 매니저가 한 줄 값만 허용하면 `\n` 이스케이프를 유지해 저장한다.
+- App Review/TestFlight 결제는 샌드박스 거래이므로 운영 서버도 Apple production transaction lookup이 `404`이면 sandbox endpoint로 재시도한다.
 
 ### IAP 상태 동기화 원칙
 

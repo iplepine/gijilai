@@ -583,9 +583,19 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   void _handlePageStarted(String url) {
     if (!mounted) return;
 
+    final uri = Uri.tryParse(url);
+    final shouldShowLogin =
+        uri != null &&
+        uri.host == Uri.parse(MainWebView.targetUrl).host &&
+        uri.path == '/login' &&
+        _nativeCapabilities.supportsScreen('login');
+
     setState(() {
       _isWebPageLoading = true;
       _webPageLoadProgress = 0;
+      if (shouldShowLogin) {
+        _showNativeLogin = true;
+      }
     });
   }
 
@@ -884,11 +894,15 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
   Future<bool> _tryLaunchExternalUri(Uri uri) async {
     try {
-      final browserMode = uri.scheme == 'http' || uri.scheme == 'https'
+      final isWebUri = uri.scheme == 'http' || uri.scheme == 'https';
+      final browserMode = isWebUri
           ? LaunchMode.inAppBrowserView
           : LaunchMode.externalApplication;
       var launched = await launchUrl(uri, mode: browserMode);
-      if (!launched && browserMode != LaunchMode.externalApplication) {
+      if (!launched &&
+          isWebUri &&
+          !Platform.isIOS &&
+          browserMode != LaunchMode.externalApplication) {
         launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
       return launched;
@@ -998,6 +1012,12 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
   Future<void> _startKakaoNativeLogin() async {
     if (_authInProgress) return;
+
+    if (Platform.isIOS && !await isKakaoTalkInstalled()) {
+      await _startNativeOAuth('kakao');
+      return;
+    }
+
     setState(() {
       _authInProgress = true;
     });
@@ -1009,6 +1029,15 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           token = await UserApi.instance.loginWithKakaoTalk();
         } catch (e) {
           debugPrint('KakaoTalk login failed, fallback to account: $e');
+          if (Platform.isIOS) {
+            if (mounted) {
+              setState(() {
+                _authInProgress = false;
+              });
+            }
+            await _startNativeOAuth('kakao');
+            return;
+          }
           token = await UserApi.instance.loginWithKakaoAccount();
         }
       } else {

@@ -101,6 +101,9 @@
     "buyerPhoneDialogDescription": "정기결제 등록 전에 구매자 휴대폰 번호가 필요합니다.",
     "buyerPhoneCancel": "취소",
     "buyerPhoneContinue": "계속",
+    "subscriptionDisclosure": "기질아이 프리미엄 월간 구독은 매월 자동 갱신되며, 해지는 App Store 또는 Google Play 계정 설정에서 관리할 수 있습니다.",
+    "termsLink": "이용약관(EULA)",
+    "privacyLink": "개인정보 처리방침",
     "subscribeWithPrice": "{price} 구독 시작하기",
     "subscribeError": "구독 처리 중 오류가 발생했습니다: {message}"
   },

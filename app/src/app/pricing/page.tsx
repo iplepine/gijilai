@@ -142,7 +142,8 @@ function PricingContent() {
   const getErrorMessage = useCallback((error: unknown) => (
     error instanceof Error ? error.message : t('common.error')
   ), [t]);
-  const currentPrice = isFirstSubscription ? FIRST_MONTH_PRICES[currency] : PRICES.MONTHLY[currency];
+  const hasFirstMonthDiscount = !isApp && isFirstSubscription;
+  const currentPrice = hasFirstMonthDiscount ? FIRST_MONTH_PRICES[currency] : PRICES.MONTHLY[currency];
 
   useEffect(() => {
     const inApp = isAppWebView();
@@ -212,7 +213,7 @@ function PricingContent() {
         source: entrySource,
         entry_cta: entryCta,
         pay_method: 'APPLE_GOOGLE',
-        used_coupon: isFirstSubscription,
+        used_coupon: hasFirstMonthDiscount,
         final_amount: currentPrice,
         report_tab: reportTab ?? undefined,
         report_kind: reportKind ?? undefined,
@@ -223,7 +224,7 @@ function PricingContent() {
       window.__iapLoadingDone = undefined;
       window.__iapPaymentCompleted = undefined;
     };
-  }, [currentPrice, entryCta, entrySource, isApp, isFirstSubscription, reportKind, reportTab]);
+  }, [currentPrice, entryCta, entrySource, hasFirstMonthDiscount, isApp, reportKind, reportTab]);
 
   if (!isEnvironmentReady || !isApp) {
     return (
@@ -246,7 +247,7 @@ function PricingContent() {
         source: entrySource,
         entry_cta: entryCta,
         pay_method: 'APPLE_GOOGLE',
-        used_coupon: isFirstSubscription,
+        used_coupon: hasFirstMonthDiscount,
         final_amount: currentPrice,
         report_tab: reportTab ?? undefined,
         report_kind: reportKind ?? undefined,
@@ -525,7 +526,7 @@ function PricingContent() {
           {/* Plan Card — [연 구독] 재활성화 시: grid grid-cols-2 gap-3으로 변경, YEARLY 카드 추가 */}
           <section>
             <div className="px-5 py-6 rounded-[28px] border-[1.5px] border-primary bg-primary/5 text-center relative">
-              {isFirstSubscription && (
+              {hasFirstMonthDiscount && (
                 <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-red-500 text-white text-[10px] font-bold px-3.5 py-1 rounded-full whitespace-nowrap">
                   {t('pricing.firstMonthOff')}
                 </span>
@@ -533,7 +534,7 @@ function PricingContent() {
               <p className="text-[11px] font-bold text-text-sub mb-2">
                 {t('pricing.monthly')}
               </p>
-              {isFirstSubscription ? (
+              {hasFirstMonthDiscount ? (
                 <>
                   <p className="text-[34px] leading-none font-black tracking-[-0.03em] text-text-main dark:text-white">
                     {formatPrice(FIRST_MONTH_PRICES[currency], currency)}
@@ -605,6 +606,21 @@ function PricingContent() {
                   </div>
                 ))}
               </div>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-beige-main/30 bg-white px-4 py-4 text-center text-[11px] leading-relaxed text-text-sub dark:border-gray-800 dark:bg-surface-dark">
+            <p>{t('pricing.subscriptionDisclosure')}</p>
+            <div className="mt-2 flex items-center justify-center gap-3 font-bold text-primary">
+              <a
+                href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"
+                className="underline underline-offset-2"
+              >
+                {t('pricing.termsLink')}
+              </a>
+              <a href="/legal/privacy" className="underline underline-offset-2">
+                {t('pricing.privacyLink')}
+              </a>
             </div>
           </section>
 
@@ -697,7 +713,7 @@ function PricingContent() {
             ) : (
               t('pricing.subscribeWithPrice', {
                 price: formatPrice(
-                  isFirstSubscription ? FIRST_MONTH_PRICES[currency] : PRICES.MONTHLY[currency],
+                  hasFirstMonthDiscount ? FIRST_MONTH_PRICES[currency] : PRICES.MONTHLY[currency],
                   currency
                 ),
               })

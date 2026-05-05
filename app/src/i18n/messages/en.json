@@ -101,6 +101,9 @@
     "buyerPhoneDialogDescription": "A buyer mobile number is required before setting up the subscription.",
     "buyerPhoneCancel": "Cancel",
     "buyerPhoneContinue": "Continue",
+    "subscriptionDisclosure": "Gijilai Premium Monthly renews automatically each month. You can manage cancellation in your App Store or Google Play account settings.",
+    "termsLink": "Terms of Use (EULA)",
+    "privacyLink": "Privacy Policy",
     "subscribeWithPrice": "Start for {price}",
     "subscribeError": "Subscription error: {message}"
   },

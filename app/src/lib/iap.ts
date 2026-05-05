@@ -1,5 +1,5 @@
 import { createClient as createAdminClient } from '@supabase/supabase-js';
-import { X509Certificate, verify as verifyCrypto } from 'crypto';
+import { X509Certificate, createSign, verify as verifyCrypto } from 'crypto';
 
 type Platform = 'APPLE_IAP' | 'GOOGLE_PLAY';
 type SubscriptionStatus = 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'EXPIRED';
@@ -32,6 +32,8 @@ export interface VerifiedIapPurchase {
   expiresDate: Date | null;
   cancelAtPeriodEnd?: boolean;
 }
+
+type AppleServerEnvironment = 'production' | 'sandbox';
 
 const MONTHLY_IAP_PRODUCT = {
   plan: 'MONTHLY' as const,
@@ -73,6 +75,75 @@ export function decodeJwsPayload<T = Record<string, unknown>>(token: string): T 
     throw new Error('Invalid JWS payload');
   }
   return JSON.parse(Buffer.from(segments[1], 'base64url').toString('utf8')) as T;
+}
+
+function base64UrlJson(value: unknown) {
+  return Buffer.from(JSON.stringify(value)).toString('base64url');
+}
+
+function normalizeApplePrivateKey(rawValue: string) {
+  const normalized = rawValue.replace(/\\n/g, '\n').trim();
+
+  if (normalized.includes('BEGIN PRIVATE KEY')) {
+    return normalized;
+  }
+
+  return [
+    '-----BEGIN PRIVATE KEY-----',
+    normalized,
+    '-----END PRIVATE KEY-----',
+  ].join('\n');
+}
+
+export function createAppleServerApiJwt(nowSeconds = Math.floor(Date.now() / 1000)) {
+  const existingToken = process.env.APPLE_IAP_JWT?.trim();
+  const issuerId = (
+    process.env.APPLE_IAP_ISSUER_ID ||
+    process.env.APP_STORE_CONNECT_ISSUER_ID
+  )?.trim();
+  const keyId = (
+    process.env.APPLE_IAP_KEY_ID ||
+    process.env.APP_STORE_CONNECT_KEY_ID
+  )?.trim();
+  const privateKey = (
+    process.env.APPLE_IAP_PRIVATE_KEY ||
+    process.env.APP_STORE_CONNECT_PRIVATE_KEY
+  )?.trim();
+  const bundleId = (
+    process.env.APPLE_BUNDLE_ID ||
+    process.env.APP_STORE_CONNECT_BUNDLE_ID ||
+    'com.devho.gijilai'
+  ).trim();
+
+  if (!issuerId || !keyId || !privateKey) {
+    if (existingToken) return existingToken;
+    throw new IapConfigurationError(
+      'Apple IAP API key is not configured'
+    );
+  }
+
+  const header = base64UrlJson({
+    alg: 'ES256',
+    kid: keyId,
+    typ: 'JWT',
+  });
+  const payload = base64UrlJson({
+    iss: issuerId,
+    iat: nowSeconds,
+    exp: nowSeconds + 50 * 60,
+    aud: 'appstoreconnect-v1',
+    bid: bundleId,
+  });
+  const unsignedToken = `${header}.${payload}`;
+  const signer = createSign('SHA256');
+  signer.update(unsignedToken);
+  signer.end();
+  const signature = signer.sign({
+    key: normalizeApplePrivateKey(privateKey),
+    dsaEncoding: 'ieee-p1363',
+  }).toString('base64url');
+
+  return `${unsignedToken}.${signature}`;
 }
 
 type JwsHeader = {
@@ -202,24 +273,90 @@ export function verifyAppleSignedPayload<T = Record<string, unknown>>(token: str
   return parseJwsJson<T>(encodedPayload, 'payload');
 }
 
-export async function verifyAppleTransaction(transactionId: string): Promise<VerifiedIapPurchase> {
-  const isProduction = process.env.NODE_ENV === 'production';
-  const baseUrl = isProduction
+function getAppleStoreKitBaseUrl(environment: AppleServerEnvironment) {
+  return environment === 'production'
     ? 'https://api.storekit.itunes.apple.com'
     : 'https://api.storekit-sandbox.itunes.apple.com';
+}
 
-  const response = await fetch(`${baseUrl}/inApps/v1/transactions/${transactionId}`, {
-    headers: {
-      Authorization: `Bearer ${process.env.APPLE_IAP_JWT}`,
-    },
-  });
+export function getAppleTransactionLookupEnvironments(
+  configuredEnvironment = process.env.APPLE_IAP_ENVIRONMENT,
+  nodeEnv = process.env.NODE_ENV
+): AppleServerEnvironment[] {
+  const normalized = configuredEnvironment?.trim().toLowerCase();
+
+  if (normalized === 'production') return ['production'];
+  if (normalized === 'sandbox') return ['sandbox'];
+
+  return nodeEnv === 'production'
+    ? ['production', 'sandbox']
+    : ['sandbox', 'production'];
+}
+
+class AppleTransactionLookupError extends Error {
+  constructor(
+    readonly environment: AppleServerEnvironment,
+    readonly status: number,
+    readonly body: string
+  ) {
+    super(`Apple ${environment} verification failed (${status}): ${body}`);
+    this.name = 'AppleTransactionLookupError';
+  }
+}
+
+async function fetchAppleTransactionInfo(
+  transactionId: string,
+  environment: AppleServerEnvironment
+) {
+  const response = await fetch(
+    `${getAppleStoreKitBaseUrl(environment)}/inApps/v1/transactions/${transactionId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${createAppleServerApiJwt()}`,
+      },
+    }
+  );
 
   if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Apple verification failed (${response.status}): ${text}`);
+    throw new AppleTransactionLookupError(
+      environment,
+      response.status,
+      await response.text()
+    );
   }
 
-  const data = await response.json();
+  return await response.json() as { signedTransactionInfo?: string };
+}
+
+function shouldTryNextAppleEnvironment(error: unknown) {
+  return error instanceof AppleTransactionLookupError && error.status === 404;
+}
+
+export async function verifyAppleTransaction(transactionId: string): Promise<VerifiedIapPurchase> {
+  let data: { signedTransactionInfo?: string } | null = null;
+  let lastError: unknown;
+  const environments = getAppleTransactionLookupEnvironments();
+
+  for (const environment of environments) {
+    try {
+      data = await fetchAppleTransactionInfo(transactionId, environment);
+      break;
+    } catch (error) {
+      lastError = error;
+      if (!shouldTryNextAppleEnvironment(error)) {
+        break;
+      }
+    }
+  }
+
+  if (!data) {
+    throw lastError instanceof Error ? lastError : new Error('Apple verification failed');
+  }
+
+  if (!data.signedTransactionInfo) {
+    throw new Error('Apple verification response did not include signedTransactionInfo');
+  }
+
   const payload = verifyAppleSignedPayload<{
     productId: string;
     transactionId: string;
