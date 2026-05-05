@@ -172,12 +172,60 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   static const _androidSubscriptionProductId = 'monthly_premium';
   static const _practiceReminderNotificationId = 1001;
   static const _practiceReminderTestNotificationId = 1002;
+  static const _practiceReminderCategoryId = 'practice_reminder_checkin';
+  static const _practiceReminderDoneActionId = 'practice_reminder_done';
+  static const _practiceReminderSkipActionId = 'practice_reminder_skip';
+  static const _practiceReminderOpenActionId = 'practice_reminder_open';
   static const _practiceReminderEnabledKey = 'practice_reminder_enabled';
   static const _practiceReminderTimeKey = 'practice_reminder_time';
   static const _practiceReminderTitleKey = 'practice_reminder_title';
   static const _practiceReminderBodyKey = 'practice_reminder_body';
   static const _practiceReminderPayloadKey = 'practice_reminder_payload';
   static const _nativeCapabilities = NativeCapabilityRegistry();
+  static const _practiceReminderAndroidActions = <AndroidNotificationAction>[
+    AndroidNotificationAction(
+      _practiceReminderDoneActionId,
+      '했어요',
+      showsUserInterface: true,
+      inputs: <AndroidNotificationActionInput>[
+        AndroidNotificationActionInput(label: '한줄 메모'),
+      ],
+    ),
+    AndroidNotificationAction(
+      _practiceReminderSkipActionId,
+      '못했어요',
+      showsUserInterface: true,
+      inputs: <AndroidNotificationActionInput>[
+        AndroidNotificationActionInput(
+          label: '못한 이유',
+          choices: <String>['깜빡했어요', '상황이 안 됐어요', '아이가 거부했어요', '내가 지쳤어요'],
+        ),
+      ],
+    ),
+    AndroidNotificationAction(
+      _practiceReminderOpenActionId,
+      '열기',
+      showsUserInterface: true,
+    ),
+  ];
+  static const _practiceReminderAndroidDetails = AndroidNotificationDetails(
+    'practice_reminders',
+    '실천 리마인더',
+    channelDescription: '진행 중인 실천 항목을 매일 떠올릴 수 있도록 알려줍니다.',
+    importance: Importance.defaultImportance,
+    priority: Priority.defaultPriority,
+    actions: _practiceReminderAndroidActions,
+  );
+  static const _practiceReminderIosDetails = DarwinNotificationDetails(
+    presentAlert: true,
+    presentBadge: true,
+    presentSound: true,
+    categoryIdentifier: _practiceReminderCategoryId,
+  );
+  static const _practiceReminderNotificationDetails = NotificationDetails(
+    android: _practiceReminderAndroidDetails,
+    iOS: _practiceReminderIosDetails,
+  );
 
   WebViewController? _controller;
   PackageInfo? _packageInfo;
@@ -189,6 +237,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       FlutterLocalNotificationsPlugin();
   Uri? _pendingAuthCallbackUri;
   Uri? _pendingAppOpenUri;
+  Map<String, Object?>? _pendingPracticeQuickCheckIn;
   DateTime? _lastBackPressedAt;
   bool _showNativeLogin = false;
   bool _isNativeDialogVisible = false;
@@ -270,12 +319,44 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       tz.setLocalLocation(tz.getLocation(timeZoneName));
 
       const android = AndroidInitializationSettings('@mipmap/ic_launcher');
-      const ios = DarwinInitializationSettings(
+      final ios = DarwinInitializationSettings(
         requestAlertPermission: false,
         requestBadgePermission: false,
         requestSoundPermission: false,
+        notificationCategories: <DarwinNotificationCategory>[
+          DarwinNotificationCategory(
+            _practiceReminderCategoryId,
+            actions: <DarwinNotificationAction>[
+              DarwinNotificationAction.text(
+                _practiceReminderDoneActionId,
+                '했어요',
+                buttonTitle: '저장',
+                placeholder: '한줄 메모',
+                options: <DarwinNotificationActionOption>{
+                  DarwinNotificationActionOption.foreground,
+                },
+              ),
+              DarwinNotificationAction.text(
+                _practiceReminderSkipActionId,
+                '못했어요',
+                buttonTitle: '저장',
+                placeholder: '못한 이유',
+                options: <DarwinNotificationActionOption>{
+                  DarwinNotificationActionOption.foreground,
+                },
+              ),
+              DarwinNotificationAction.plain(
+                _practiceReminderOpenActionId,
+                '열기',
+                options: <DarwinNotificationActionOption>{
+                  DarwinNotificationActionOption.foreground,
+                },
+              ),
+            ],
+          ),
+        ],
       );
-      const settings = InitializationSettings(android: android, iOS: ios);
+      final settings = InitializationSettings(android: android, iOS: ios);
 
       await _localNotifications.initialize(
         settings,
@@ -283,10 +364,10 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       );
       final launchDetails = await _localNotifications
           .getNotificationAppLaunchDetails();
-      final launchPayload = launchDetails?.notificationResponse?.payload;
+      final launchResponse = launchDetails?.notificationResponse;
       if (launchDetails?.didNotificationLaunchApp == true &&
-          launchPayload?.isNotEmpty == true) {
-        unawaited(_openWebPath(launchPayload!));
+          launchResponse != null) {
+        _handleNotificationResponse(launchResponse);
       }
       await _restorePracticeReminder();
     } catch (e) {
@@ -302,9 +383,45 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   }
 
   void _handleNotificationResponse(NotificationResponse response) {
+    if (_isPracticeReminderQuickAction(response.actionId)) {
+      final quickCheckIn = _buildPracticeQuickCheckInPayload(response);
+      if (quickCheckIn != null) {
+        _pendingPracticeQuickCheckIn = quickCheckIn;
+      }
+    }
+
     final payload = response.payload;
     if (payload == null || payload.isEmpty) return;
     unawaited(_openWebPath(payload));
+  }
+
+  bool _isPracticeReminderQuickAction(String? actionId) {
+    return actionId == _practiceReminderDoneActionId ||
+        actionId == _practiceReminderSkipActionId;
+  }
+
+  Map<String, Object?>? _buildPracticeQuickCheckInPayload(
+    NotificationResponse response,
+  ) {
+    final actionId = response.actionId;
+    final focusPracticeId = _practiceIdFromReminderPayload(response.payload);
+    if (focusPracticeId == null || focusPracticeId.isEmpty) return null;
+
+    final input = response.input?.trim();
+    return <String, Object?>{
+      'practiceId': focusPracticeId,
+      'done': actionId == _practiceReminderDoneActionId,
+      if (input != null && input.isNotEmpty) 'memo': input,
+      'source': 'notification_action',
+      if (actionId != null) 'actionId': actionId,
+      'receivedAt': DateTime.now().toIso8601String(),
+    };
+  }
+
+  String? _practiceIdFromReminderPayload(String? payload) {
+    if (payload == null || payload.isEmpty) return null;
+    final uri = Uri.tryParse(payload);
+    return uri?.queryParameters['focusPracticeId'];
   }
 
   Future<void> _openWebPath(String rawPath) async {
@@ -792,6 +909,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
   void _handlePageFinished(String url) {
     unawaited(_syncWebAppContext());
+    unawaited(_dispatchPendingPracticeQuickCheckIn(url));
 
     final uri = Uri.tryParse(url);
     final shouldShowLogin =
@@ -807,6 +925,36 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         _showNativeLogin = shouldShowLogin;
         _hasRenderedFirstPage = true;
       });
+    }
+  }
+
+  Future<void> _dispatchPendingPracticeQuickCheckIn(String url) async {
+    final controller = _controller;
+    final quickCheckIn = _pendingPracticeQuickCheckIn;
+    if (controller == null || quickCheckIn == null) return;
+
+    final uri = Uri.tryParse(url);
+    if (uri?.path != '/practices') return;
+
+    _pendingPracticeQuickCheckIn = null;
+    final payload = jsonEncode(quickCheckIn);
+    try {
+      await controller.runJavaScript('''
+        window.__pendingPracticeQuickCheckIn = $payload;
+        window.dispatchEvent(new CustomEvent('gijilai:practiceQuickCheckIn', {
+          detail: $payload
+        }));
+      ''');
+    } catch (e, stack) {
+      _pendingPracticeQuickCheckIn = quickCheckIn;
+      debugPrint('Practice quick check-in dispatch error: $e');
+      unawaited(
+        FirebaseCrashlytics.instance.recordError(
+          e,
+          stack,
+          reason: 'Practice quick check-in dispatch error',
+        ),
+      );
     }
   }
 
@@ -1751,9 +1899,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     if (!enabled) {
       if (showFeedback) {
         _showSnackBar(
-          storedEnabled == true
-              ? '진행 중인 실천이 있을 때 알림을 보낼게요'
-              : '실천 리마인더가 꺼졌습니다',
+          storedEnabled == true ? '진행 중인 실천이 있을 때 알림을 보낼게요' : '실천 리마인더가 꺼졌습니다',
         );
       }
       return;
@@ -1773,19 +1919,6 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     final hour = int.tryParse(parts.first) ?? 20;
     final minute = parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0;
 
-    const androidDetails = AndroidNotificationDetails(
-      'practice_reminders',
-      '실천 리마인더',
-      channelDescription: '진행 중인 실천 항목을 매일 떠올릴 수 있도록 알려줍니다.',
-      importance: Importance.defaultImportance,
-      priority: Priority.defaultPriority,
-    );
-    const iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
-
     final notificationTitle = title?.trim().isNotEmpty == true
         ? title!.trim()
         : '오늘의 실천을 떠올려볼 시간이에요';
@@ -1798,7 +1931,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       notificationTitle,
       notificationBody,
       _nextInstanceOfTime(hour, minute),
-      const NotificationDetails(android: androidDetails, iOS: iosDetails),
+      _practiceReminderNotificationDetails,
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
@@ -1822,26 +1955,11 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       return;
     }
 
-    const androidDetails = AndroidNotificationDetails(
-      'practice_reminders',
-      '실천 리마인더',
-      channelDescription: '진행 중인 실천 항목을 매일 떠올릴 수 있도록 알려줍니다.',
-      importance: Importance.defaultImportance,
-      priority: Priority.defaultPriority,
-    );
-    const iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
-
     await _localNotifications.show(
       _practiceReminderTestNotificationId,
       title?.trim().isNotEmpty == true ? title!.trim() : '테스트 알림입니다',
-      body?.trim().isNotEmpty == true
-          ? body!.trim()
-          : '실천 리마인더가 이렇게 표시됩니다.',
-      const NotificationDetails(android: androidDetails, iOS: iosDetails),
+      body?.trim().isNotEmpty == true ? body!.trim() : '실천 리마인더가 이렇게 표시됩니다.',
+      _practiceReminderNotificationDetails,
       payload: payload ?? _practiceReminderPayload(),
     );
     _showSnackBar('테스트 알림을 보냈습니다');

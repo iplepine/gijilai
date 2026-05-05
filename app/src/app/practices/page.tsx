@@ -39,6 +39,12 @@ import {
   readPracticeReminderPreferences,
   type PracticeReminderPreferences,
 } from "@/lib/practiceReminder";
+import {
+  getPracticeQuickCheckInKey,
+  normalizePracticeQuickCheckInPayload,
+  PRACTICE_QUICK_CHECK_IN_EVENT,
+  type PracticeQuickCheckInPayload,
+} from "@/lib/practiceQuickCheckIn";
 import { trackEvent } from "@/lib/analytics";
 
 interface PracticeWithSession extends PracticeItemData {
@@ -158,7 +164,14 @@ export default function PracticesPage() {
   const [hasFullAccess, setHasFullAccess] = useState(false);
   const [reminderPreferences, setReminderPreferences] =
     useState<PracticeReminderPreferences>(DEFAULT_REMINDER_PREFERENCES);
+  const [pendingQuickCheckIn, setPendingQuickCheckIn] =
+    useState<PracticeQuickCheckInPayload | null>(null);
+  const [quickCheckInNotice, setQuickCheckInNotice] = useState<{
+    tone: "success" | "error";
+    message: string;
+  } | null>(null);
   const handledFocusPracticeIdRef = useRef<string | null>(null);
+  const handledQuickCheckInKeysRef = useRef<Set<string>>(new Set());
 
   // 모달 상태
   const [checkModal, setCheckModal] = useState<{
@@ -263,6 +276,36 @@ export default function PracticesPage() {
       window.removeEventListener("storage", loadReminderPreferences);
     };
   }, []);
+
+  useEffect(() => {
+    const receiveQuickCheckIn = (value: unknown) => {
+      const payload = normalizePracticeQuickCheckInPayload(value);
+      if (payload) {
+        setPendingQuickCheckIn(payload);
+      }
+    };
+    const handleQuickCheckIn = (event: Event) => {
+      receiveQuickCheckIn((event as CustomEvent<unknown>).detail);
+    };
+
+    window.addEventListener(PRACTICE_QUICK_CHECK_IN_EVENT, handleQuickCheckIn);
+    receiveQuickCheckIn(window.__pendingPracticeQuickCheckIn);
+
+    return () => {
+      window.removeEventListener(
+        PRACTICE_QUICK_CHECK_IN_EVENT,
+        handleQuickCheckIn,
+      );
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!quickCheckInNotice) return;
+    const timeoutId = window.setTimeout(() => {
+      setQuickCheckInNotice(null);
+    }, 4000);
+    return () => window.clearTimeout(timeoutId);
+  }, [quickCheckInNotice]);
 
   const today = getLocalDateString();
 
@@ -592,6 +635,106 @@ export default function PracticesPage() {
     [allLogs, checkModal, fetchData, hasFullAccess, today, user],
   );
 
+  const savePracticeQuickCheckIn = useCallback(
+    async (payload: PracticeQuickCheckInPayload) => {
+      if (!user) return;
+
+      const practice = practices.find(
+        (item) => item.id === payload.practiceId,
+      );
+      if (!practice) {
+        setQuickCheckInNotice({
+          tone: "error",
+          message: t("practices.quickCheckInMissingPractice"),
+        });
+        return;
+      }
+
+      const lifecycle = getPracticeLifecycle(practice, allLogs, today);
+      if (lifecycle.status === "DUE_FOR_REVIEW" || lifecycle.status === "STALE") {
+        setReviewModal({
+          practice,
+          doneDays: lifecycle.doneDays,
+          sessionId: practice.session_id,
+          reviewMode: lifecycle.status === "STALE" ? "stale" : "due",
+        });
+        setQuickCheckInNotice({
+          tone: "error",
+          message: t("practices.quickCheckInReviewNeeded"),
+        });
+        return;
+      }
+
+      const childId = practice.consultation_sessions?.child_id;
+      if (childId) {
+        setSelectedChildId(childId);
+      }
+
+      const existingLog = todayLogs.find(
+        (log) => log.practice_id === practice.id,
+      );
+      const previousLogCount = allLogs.filter(
+        (log) =>
+          log.practice_id === practice.id &&
+          (!existingLog || log.id !== existingLog.id),
+      ).length;
+      const memo = payload.memo?.trim() || null;
+
+      try {
+        await db.createPracticeLog({
+          practice_id: practice.id,
+          user_id: user.id,
+          date: today,
+          done: payload.done,
+          memo,
+          practice_attempt_type: payload.done ? "as_prescribed" : "barely_tried",
+          practice_attempt_note: memo,
+          child_reaction_type: payload.done ? null : "not_tried",
+          child_reaction_note: null,
+          parent_impression_type: null,
+          ai_feedback: null,
+          ai_feedback_created_at: null,
+          ai_feedback_model: null,
+          ai_feedback_depth: null,
+        });
+        trackEvent("practice_log_saved", {
+          done: payload.done,
+          first_log: previousLogCount === 0,
+          has_full_access: hasFullAccess,
+          with_reaction_feedback: false,
+          quick_checkin: true,
+          source: payload.source ?? "notification_action",
+        });
+        await fetchData();
+        setQuickCheckInNotice({
+          tone: "success",
+          message: payload.done
+            ? t("practices.quickCheckInDoneSaved")
+            : t("practices.quickCheckInSkippedSaved"),
+        });
+      } catch (error) {
+        console.error("Failed to save quick practice check-in:", error);
+        setQuickCheckInNotice({
+          tone: "error",
+          message: t("practices.quickCheckInFailed"),
+        });
+      }
+    },
+    [allLogs, fetchData, hasFullAccess, practices, t, today, todayLogs, user],
+  );
+
+  useEffect(() => {
+    if (!pendingQuickCheckIn || isLoading || !user) return;
+
+    const key = getPracticeQuickCheckInKey(pendingQuickCheckIn);
+    if (handledQuickCheckInKeysRef.current.has(key)) return;
+
+    handledQuickCheckInKeysRef.current.add(key);
+    window.__pendingPracticeQuickCheckIn = null;
+    setPendingQuickCheckIn(null);
+    void savePracticeQuickCheckIn(pendingQuickCheckIn);
+  }, [isLoading, pendingQuickCheckIn, savePracticeQuickCheckIn, user]);
+
   const handleReviewSave = useCallback(
     async (content: string) => {
       if (!user || !reviewModal) return;
@@ -899,6 +1042,19 @@ export default function PracticesPage() {
         <Navbar title={t("nav.practices")} />
 
         <main className="app-bottom-nav-scroll flex-1 overflow-y-auto px-6 py-6 space-y-6">
+          {quickCheckInNotice && (
+            <div
+              className={`rounded-2xl border px-4 py-3 text-[13px] font-bold ${
+                quickCheckInNotice.tone === "success"
+                  ? "border-primary/15 bg-primary/5 text-primary"
+                  : "border-orange-200 bg-orange-50 text-orange-700"
+              }`}
+              role="status"
+            >
+              {quickCheckInNotice.message}
+            </div>
+          )}
+
           {/* 아이별 필터 */}
           {children.length > 1 && (
             <div className="flex gap-2 overflow-x-auto no-scrollbar">
