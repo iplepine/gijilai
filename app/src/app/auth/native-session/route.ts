@@ -48,6 +48,13 @@ export async function POST(request: NextRequest) {
   });
 
   if (error || !data.session) {
+    console.warn('[auth/native-session] signInWithIdToken failed', {
+      provider: body.provider,
+      error: error?.message ?? 'Native auth returned no session',
+      code: error && 'code' in error ? error.code : undefined,
+      status: error && 'status' in error ? error.status : undefined,
+    });
+
     return NextResponse.json(
       { error: error?.message ?? 'Native auth failed' },
       { status: 401 },

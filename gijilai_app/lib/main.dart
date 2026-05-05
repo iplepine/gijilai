@@ -43,9 +43,18 @@ class _AndroidIntentUri {
 class NativeCapabilityRegistry {
   const NativeCapabilityRegistry();
 
-  static const int contractVersion = 1;
+  static const int contractVersion = 2;
   static const bool supportsHaptics = true;
   static bool get supportsVoiceInput => Platform.isAndroid;
+  static bool get supportsKakaoNativeAuth =>
+      Platform.isAndroid || Platform.isIOS;
+  static bool get supportsAppleNativeAuth => Platform.isIOS;
+  static bool get supportsGoogleNativeAuth {
+    if (Platform.isIOS || Platform.isAndroid) {
+      return _googleWebClientId.isNotEmpty;
+    }
+    return false;
+  }
 
   static const Map<String, bool> supportedScreens = {
     'login': true,
@@ -55,12 +64,25 @@ class NativeCapabilityRegistry {
     'profile': false,
   };
 
+  static Map<String, bool> get nativeAuthProviders => {
+    'kakao': supportsKakaoNativeAuth,
+    'apple': supportsAppleNativeAuth,
+    'google': supportsGoogleNativeAuth,
+  };
+
   bool supportsScreen(String screenKey) {
     return supportedScreens[screenKey] ?? false;
   }
 
+  bool supportsNativeAuthProvider(String provider) {
+    return nativeAuthProviders[provider] ?? false;
+  }
+
   String toJavaScriptObjectLiteral() {
     final screens = supportedScreens.entries
+        .map((entry) => "'${entry.key}': ${entry.value}")
+        .join(', ');
+    final authProviders = nativeAuthProviders.entries
         .map((entry) => "'${entry.key}': ${entry.value}")
         .join(', ');
     return '''
@@ -68,7 +90,8 @@ class NativeCapabilityRegistry {
         contractVersion: $contractVersion,
         haptics: $supportsHaptics,
         voiceInput: $supportsVoiceInput,
-        supportedScreens: { $screens }
+        supportedScreens: { $screens },
+        nativeAuthProviders: { $authProviders }
       }
     ''';
   }
@@ -920,28 +943,35 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           }
         }));
 
-        if (!window.__nativeRouteBridgeInstalled && window.RouteBridge) {
-          const notifyRoute = () => {
+        if (!window.__nativeRouteBridgeInstalled) {
+          const notifyNativeRoute = () => {
             try {
-              window.RouteBridge.postMessage(window.location.href);
+              RouteBridge.postMessage(JSON.stringify({
+                type: 'ROUTE_CHANGED',
+                url: window.location.href,
+                path: window.location.pathname
+              }));
             } catch (_) {}
           };
-          const wrapHistory = (name) => {
-            const original = window.history[name];
-            if (typeof original !== 'function' || original.__nativeRouteWrapped) return;
-            const wrapped = function(...args) {
+
+          ['pushState', 'replaceState'].forEach((methodName) => {
+            const original = window.history[methodName];
+            if (typeof original !== 'function') return;
+            window.history[methodName] = function(...args) {
               const result = original.apply(this, args);
-              setTimeout(notifyRoute, 0);
+              window.setTimeout(notifyNativeRoute, 0);
               return result;
             };
-            wrapped.__nativeRouteWrapped = true;
-            window.history[name] = wrapped;
-          };
-          wrapHistory('pushState');
-          wrapHistory('replaceState');
-          window.addEventListener('popstate', notifyRoute);
+          });
+
+          window.addEventListener('popstate', () => window.setTimeout(notifyNativeRoute, 0));
+          window.addEventListener('hashchange', () => window.setTimeout(notifyNativeRoute, 0));
+          window.__notifyNativeRoute = notifyNativeRoute;
           window.__nativeRouteBridgeInstalled = true;
-          notifyRoute();
+        }
+
+        if (window.__notifyNativeRoute) {
+          window.__notifyNativeRoute();
         }
 
         if (!window.__nativeDialogTapGuard) {
@@ -1234,8 +1264,29 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     return _webUriForInternalPath(redirectPath ?? '/');
   }
 
-  void _onRouteMessage(JavaScriptMessage message) {
-    _syncNativeLoginRouteState(message.message);
+  Future<WebViewController> _waitForWebAuthDocument() async {
+    final controller = _controller;
+    if (controller == null) {
+      throw Exception('WebView is not ready');
+    }
+
+    for (var i = 0; i < 30; i += 1) {
+      try {
+        final raw = await controller.runJavaScriptReturningResult(
+          'document.readyState || ""',
+        );
+        final readyState = raw.toString().replaceAll('"', '');
+        if (readyState == 'interactive' || readyState == 'complete') {
+          return controller;
+        }
+      } catch (_) {
+        // The document may still be swapping during navigation.
+      }
+
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+    }
+
+    throw Exception('Web login page is not ready');
   }
 
   void _onAuthMessage(JavaScriptMessage message) {
@@ -1267,6 +1318,25 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           reason: 'AuthBridge parse error',
         ),
       );
+    }
+  }
+
+  void _onRouteMessage(JavaScriptMessage message) {
+    try {
+      final data = jsonDecode(message.message);
+      if (data is! Map<String, dynamic>) {
+        _syncNativeLoginRouteState(message.message);
+        return;
+      }
+
+      final url = data['url']?.toString();
+      if (url == null || url.isEmpty) {
+        return;
+      }
+
+      _syncNativeLoginRouteState(url);
+    } catch (e) {
+      _syncNativeLoginRouteState(message.message);
     }
   }
 
@@ -1539,8 +1609,12 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         accessToken: token.accessToken,
       );
     } catch (e) {
+      if (_isUserCancelledAuthError(e)) {
+        await _finishCancelledAuthHandoff();
+        return;
+      }
+
       debugPrint('Kakao native login error: $e');
-      _externalAuthInProgress = false;
       if (mounted) {
         setState(() {
           _authInProgress = false;
@@ -1605,8 +1679,12 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         nonce: rawNonce,
       );
     } catch (e) {
+      if (_isUserCancelledAuthError(e)) {
+        await _finishCancelledAuthHandoff();
+        return;
+      }
+
       debugPrint('Apple native login error: $e');
-      _externalAuthInProgress = false;
       if (mounted) {
         setState(() {
           _authInProgress = false;
@@ -1629,6 +1707,11 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
     if (Platform.isIOS) {
       await _finishNativeAuthFailure('Apple 또는 이메일로 로그인해주세요');
+      return;
+    }
+
+    if (!_nativeCapabilities.supportsNativeAuthProvider('google')) {
+      await _finishNativeAuthFailure('구글 로그인을 완료할 수 없습니다');
       return;
     }
 
@@ -1695,6 +1778,11 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         accessToken: authentication.accessToken,
       );
     } catch (e) {
+      if (_isUserCancelledAuthError(e)) {
+        await _finishCancelledAuthHandoff();
+        return;
+      }
+
       debugPrint('Google native login error: $e');
       if (Platform.isIOS || Platform.isAndroid) {
         unawaited(
@@ -1724,12 +1812,29 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     }
   }
 
+  bool _isUserCancelledAuthError(Object error) {
+    if (error is PlatformException) {
+      final code = error.code.toLowerCase();
+      final message = error.message?.toLowerCase() ?? '';
+      return code.contains('cancel') ||
+          message.contains('cancel') ||
+          message.contains('취소');
+    }
+
+    final text = error.toString().toLowerCase();
+    return text.contains('user canceled') ||
+        text.contains('user cancelled') ||
+        text.contains('canceled') ||
+        text.contains('cancelled');
+  }
+
   Future<void> _completeNativeSession({
     required String provider,
     required String idToken,
     String? accessToken,
     String? nonce,
   }) async {
+    final controller = await _waitForWebAuthDocument();
     final payload = jsonEncode({
       'provider': provider,
       'idToken': idToken,
@@ -1756,12 +1861,12 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       })();
     ''';
 
-    await _controller!.runJavaScript(jsCode);
+    await controller.runJavaScript(jsCode);
 
     Map<String, dynamic>? result;
     for (var i = 0; i < 30; i++) {
       await Future.delayed(const Duration(milliseconds: 300));
-      final raw = await _controller!.runJavaScriptReturningResult(
+      final raw = await controller.runJavaScriptReturningResult(
         'window.__nativeAuthResult || ""',
       );
       if (raw.toString().isNotEmpty && raw.toString() != '""') {
@@ -1770,7 +1875,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           jsonStr = jsonDecode(jsonStr) as String;
         }
         result = jsonDecode(jsonStr) as Map<String, dynamic>;
-        await _controller!.runJavaScript('delete window.__nativeAuthResult;');
+        await controller.runJavaScript('delete window.__nativeAuthResult;');
         break;
       }
     }
@@ -1787,7 +1892,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       });
     }
     _externalAuthInProgress = false;
-    await _controller!.loadRequest(_postLoginUri());
+    await controller.loadRequest(_postLoginUri());
   }
 
   Future<_NativeEmailAuthOutcome> _startNativeEmailAuth({
@@ -1876,6 +1981,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     required String password,
     required bool isSignUp,
   }) async {
+    final controller = await _waitForWebAuthDocument();
     final payload = jsonEncode({
       'mode': isSignUp ? 'signup' : 'login',
       'email': email,
@@ -1901,12 +2007,12 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       })();
     ''';
 
-    await _controller!.runJavaScript(jsCode);
+    await controller.runJavaScript(jsCode);
 
     Map<String, dynamic>? result;
     for (var i = 0; i < 30; i++) {
       await Future.delayed(const Duration(milliseconds: 300));
-      final raw = await _controller!.runJavaScriptReturningResult(
+      final raw = await controller.runJavaScriptReturningResult(
         'window.__nativeEmailAuthResult || ""',
       );
       if (raw.toString().isNotEmpty && raw.toString() != '""') {
@@ -1915,7 +2021,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           jsonStr = jsonDecode(jsonStr) as String;
         }
         result = jsonDecode(jsonStr) as Map<String, dynamic>;
-        await _controller!.runJavaScript(
+        await controller.runJavaScript(
           'delete window.__nativeEmailAuthResult;',
         );
         break;
@@ -2905,7 +3011,9 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
                 showEmailForm: _isWebEmailLoginVisible,
                 showKakaoLogin: _canUseKakaoNativeLogin,
                 showAppleLogin: Platform.isIOS,
-                showGoogleLogin: !Platform.isIOS,
+                showGoogleLogin:
+                    !Platform.isIOS &&
+                    _nativeCapabilities.supportsNativeAuthProvider('google'),
                 onKakaoPressed: _startKakaoNativeLogin,
                 onApplePressed: _startAppleNativeLogin,
                 onGooglePressed: _startGoogleNativeLogin,

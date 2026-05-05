@@ -73,8 +73,10 @@
 - Flutter 앱은 `gijilai://open` 딥링크를 받으면 WebView를 전달된 내부 path로 이동한다. 인증 콜백(`gijilai://auth/callback`)은 기존처럼 `/auth/callback`으로만 소비한다.
 - 노치/상태표시줄/시스템 제스처 영역 대응은 웹 CSS `env(safe-area-inset-*)`와 Flutter WebView가 주입하는 `--native-safe-area-top/bottom`을 함께 사용한다.
 - Android edge-to-edge WebView에서 native bottom inset이 `0px`로 보고되는 3-button navigation 환경이 있으므로, 하단 탭/고정 CTA는 Android 전용 fallback bottom inset을 함께 적용해 OS 내비게이션 버튼과 겹치지 않게 한다.
-- Flutter 앱은 WebView 문서마다 `window.__nativeCapabilities`를 주입해 현재 앱이 네이티브로 지원하는 화면 집합을 명시한다.
-- 웹은 `isAppWebView()` 같은 단순 앱 여부만으로 네이티브 분기를 결정하지 않고, `window.__nativeCapabilities.supportedScreens`를 우선 확인한다.
+- Flutter 앱은 WebView 문서마다 `window.__nativeCapabilities`를 주입해 현재 앱이 네이티브로 지원하는 화면 집합(`supportedScreens`)과 네이티브 토큰 교환을 시도할 수 있는 로그인 수단(`nativeAuthProviders`)을 명시한다.
+- 웹은 `isAppWebView()` 같은 단순 앱 여부만으로 네이티브 분기를 결정하지 않고, `window.__nativeCapabilities.supportedScreens`와 provider별 `nativeAuthProviders`를 우선 확인한다.
+- `window.__nativeAppInfo.version/buildNumber`는 장애 우회, 분석, 강제 업데이트 안내에만 사용하고, 기능 분기의 기본 기준은 capability로 둔다.
+- Flutter 앱은 Next.js client-side route 변경(`pushState`/`replaceState`/`popstate`)도 `RouteBridge`로 감지해 `/login` 같은 네이티브 인터셉트 대상 화면을 full page load와 동일하게 처리한다.
 - 로그인 외 네이티브 전환 후보 화면(`/payment`, `/settings/subscription`, `/settings/notifications`, `/settings/profile`)은 capability가 없는 앱 버전과 모바일 웹에서 기존 웹 라우트를 fallback으로 유지한다.
 - `Navbar` 기반 일반 스크롤 화면은 `app-page-scroll`로 하단 safe area + 여유 패딩을 공통 적용한다.
 - 하단 탭바는 edge-to-edge 배경을 유지하되 탭 아이콘/라벨/중앙 버튼의 실제 터치 영역은 native bottom inset을 반영한 `app-bottom-nav` padding 위에 둔다.
