@@ -2,6 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useLocale } from '@/i18n/LocaleProvider';
+import {
+    appendTranscript,
+    SpeechRecognitionEventLike,
+    transcriptFromSegments,
+    updateSpeechTranscriptSegments,
+} from '@/lib/voiceInput';
 
 type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 
@@ -14,26 +20,6 @@ interface SpeechRecognitionLike {
     onend: (() => void) | null;
     start: () => void;
     stop: () => void;
-}
-
-interface SpeechRecognitionEventLike {
-    results: SpeechRecognitionResultListLike;
-}
-
-interface SpeechRecognitionResultListLike {
-    length: number;
-    item: (index: number) => SpeechRecognitionResultLike;
-    [index: number]: SpeechRecognitionResultLike;
-}
-
-interface SpeechRecognitionResultLike {
-    isFinal: boolean;
-    item: (index: number) => SpeechRecognitionAlternativeLike;
-    [index: number]: SpeechRecognitionAlternativeLike;
-}
-
-interface SpeechRecognitionAlternativeLike {
-    transcript: string;
 }
 
 interface SpeechRecognitionErrorEventLike {
@@ -64,15 +50,6 @@ function getSpeechRecognition(): SpeechRecognitionConstructor | null {
         webkitSpeechRecognition?: SpeechRecognitionConstructor;
     };
     return speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition ?? null;
-}
-
-function appendTranscript(baseValue: string, transcript: string, maxLength?: number) {
-    const cleanTranscript = transcript.replace(/\s+/g, ' ').trim();
-    if (!cleanTranscript) return baseValue;
-
-    const separator = baseValue.trim().length > 0 && !/\s$/.test(baseValue) ? ' ' : '';
-    const nextValue = `${baseValue}${separator}${cleanTranscript}`;
-    return typeof maxLength === 'number' ? nextValue.slice(0, maxLength) : nextValue;
 }
 
 function normalizeMediaError(error: unknown): VoiceInputErrorCode {
@@ -138,6 +115,10 @@ export function VoiceInputButton({ value, onChange, maxLength, className = '' }:
     const { locale, t } = useLocale();
     const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
     const baseValueRef = useRef(value);
+    const transcriptSegmentsRef = useRef<string[]>([]);
+    const isListeningRef = useRef(false);
+    const isStartingRef = useRef(false);
+    const isMountedRef = useRef(true);
     const [isSupported, setIsSupported] = useState(false);
     const [isMobileInput, setIsMobileInput] = useState(false);
     const [isStarting, setIsStarting] = useState(false);
@@ -152,17 +133,43 @@ export function VoiceInputButton({ value, onChange, maxLength, className = '' }:
     }, []);
 
     useEffect(() => {
-        if (!isListening) baseValueRef.current = value;
-    }, [isListening, value]);
+        if (!isListeningRef.current) baseValueRef.current = value;
+    }, [value]);
+
+    useEffect(() => {
+        isMountedRef.current = true;
+
+        return () => {
+            isMountedRef.current = false;
+            const recognition = recognitionRef.current;
+            recognitionRef.current = null;
+            isListeningRef.current = false;
+            isStartingRef.current = false;
+            transcriptSegmentsRef.current = [];
+
+            if (recognition) {
+                recognition.onresult = null;
+                recognition.onerror = null;
+                recognition.onend = null;
+                recognition.stop();
+            }
+        };
+    }, []);
+
+    const setListening = (listening: boolean) => {
+        isListeningRef.current = listening;
+        setIsListening(listening);
+    };
 
     const stopListening = () => {
-        recognitionRef.current?.stop();
+        const recognition = recognitionRef.current;
         recognitionRef.current = null;
-        setIsListening(false);
+        setListening(false);
+        recognition?.stop();
     };
 
     const startListening = async () => {
-        if (isStarting) return;
+        if (isStartingRef.current || isListeningRef.current) return;
 
         const SpeechRecognition = getSpeechRecognition();
         if (!SpeechRecognition) {
@@ -170,9 +177,16 @@ export function VoiceInputButton({ value, onChange, maxLength, className = '' }:
             return;
         }
 
+        isStartingRef.current = true;
         setIsStarting(true);
         const microphoneAccess = await requestMicrophoneAccess();
+        if (!isMountedRef.current) {
+            isStartingRef.current = false;
+            return;
+        }
+
         if (!microphoneAccess.ok) {
+            isStartingRef.current = false;
             setIsStarting(false);
             alert(getVoiceErrorMessage(t, microphoneAccess.code));
             return;
@@ -183,12 +197,12 @@ export function VoiceInputButton({ value, onChange, maxLength, className = '' }:
         recognition.interimResults = true;
         recognition.lang = locale === 'ko' ? 'ko-KR' : 'en-US';
         baseValueRef.current = value;
+        transcriptSegmentsRef.current = [];
 
         recognition.onresult = (event) => {
-            let transcript = '';
-            for (let i = 0; i < event.results.length; i += 1) {
-                transcript += event.results[i][0].transcript;
-            }
+            const segments = updateSpeechTranscriptSegments(transcriptSegmentsRef.current, event);
+            transcriptSegmentsRef.current = segments;
+            const transcript = transcriptFromSegments(segments);
             onChange(appendTranscript(baseValueRef.current, transcript, maxLength));
         };
 
@@ -200,19 +214,25 @@ export function VoiceInputButton({ value, onChange, maxLength, className = '' }:
         };
 
         recognition.onend = () => {
-            recognitionRef.current = null;
-            setIsListening(false);
+            if (recognitionRef.current === recognition) {
+                recognitionRef.current = null;
+            }
+            transcriptSegmentsRef.current = [];
+            setListening(false);
         };
 
         recognitionRef.current = recognition;
+        isListeningRef.current = true;
         try {
             recognition.start();
             setIsListening(true);
         } catch {
+            isListeningRef.current = false;
             recognitionRef.current = null;
             console.warn('SpeechRecognition start failed');
             alert(t('voice.errorUnknown'));
         } finally {
+            isStartingRef.current = false;
             setIsStarting(false);
         }
     };
