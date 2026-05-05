@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import {
+  Suspense,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -144,7 +151,27 @@ function buildPracticeChangeUrl(sessionId: string, practiceId: string) {
   return `/consult?${params.toString()}`;
 }
 
+function PracticesPageFallback() {
+  return (
+    <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center font-body">
+      <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
+        <main className="flex flex-1 items-center justify-center">
+          <span className="h-10 w-10 animate-spin rounded-full border-4 border-primary/10 border-t-primary" />
+        </main>
+      </div>
+    </div>
+  );
+}
+
 export default function PracticesPage() {
+  return (
+    <Suspense fallback={<PracticesPageFallback />}>
+      <PracticesPageContent />
+    </Suspense>
+  );
+}
+
+function PracticesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
