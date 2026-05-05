@@ -25,6 +25,7 @@ import {
   type TemperamentScores,
 } from "@/lib/home";
 import {
+  buildPracticeReminderPlan,
   formatPracticeReminderTime,
   isAppWebView,
   postPracticeReminderSync,
@@ -281,18 +282,18 @@ export default function HomePage() {
       ? t("home.practiceReminderBodyWithItem", { time: reminderTime })
       : t("home.practiceReminderBodyDefault", { time: reminderTime });
 
-    postPracticeReminderSync({
-      enabled:
-        preferences.pushEnabled &&
-        preferences.practiceReminderEnabled &&
-        practices.reminderActiveCount > 0,
-      time: preferences.practiceReminderTime,
-      title,
-      body,
-      activePracticeCount: practices.reminderActiveCount,
-      pendingPracticeCount: practices.uncheckedCount,
-      userInitiated: false,
-    });
+    postPracticeReminderSync(
+      buildPracticeReminderPlan({
+        preferences,
+        title,
+        body,
+        focusPracticeId: reminderItem?.id,
+        activePracticeIds: practices.uncheckedItems.map((item) => item.id),
+        activePracticeCount: practices.reminderActiveCount,
+        pendingPracticeCount: practices.uncheckedCount,
+        userInitiated: false,
+      }),
+    );
   }, [
     loading,
     locale,

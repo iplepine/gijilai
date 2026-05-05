@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/auth/AuthProvider";
 import BottomNav from "@/components/layout/BottomNav";
@@ -32,6 +32,7 @@ import {
   type PracticeLifecycleStatus,
 } from "@/lib/practiceLifecycle";
 import {
+  buildPracticeReminderPlan,
   formatPracticeReminderTime,
   isAppWebView,
   postPracticeReminderSync,
@@ -145,6 +146,7 @@ function buildPracticeChangeUrl(sessionId: string, practiceId: string) {
 
 export default function PracticesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const { locale, t } = useLocale();
   const [practices, setPractices] = useState<PracticeWithSession[]>([]);
@@ -156,6 +158,7 @@ export default function PracticesPage() {
   const [hasFullAccess, setHasFullAccess] = useState(false);
   const [reminderPreferences, setReminderPreferences] =
     useState<PracticeReminderPreferences>(DEFAULT_REMINDER_PREFERENCES);
+  const handledFocusPracticeIdRef = useRef<string | null>(null);
 
   // 모달 상태
   const [checkModal, setCheckModal] = useState<{
@@ -395,6 +398,66 @@ export default function PracticesPage() {
     return count;
   };
 
+  const focusPracticeId = searchParams.get("focusPracticeId");
+
+  useEffect(() => {
+    if (
+      isLoading ||
+      !focusPracticeId ||
+      handledFocusPracticeIdRef.current === focusPracticeId
+    ) {
+      return;
+    }
+
+    const practice = filteredPractices.find(
+      (item) => item.id === focusPracticeId,
+    );
+    if (!practice) return;
+
+    handledFocusPracticeIdRef.current = focusPracticeId;
+    const lifecycle = getLifecycle(practice);
+    if (lifecycle.status === "DUE_FOR_REVIEW" || lifecycle.status === "STALE") {
+      setReviewModal({
+        practice,
+        doneDays: lifecycle.doneDays,
+        sessionId: practice.session_id,
+        reviewMode: lifecycle.status === "STALE" ? "stale" : "due",
+      });
+      return;
+    }
+
+    const todayLog = todayLogs.find((log) => log.practice_id === practice.id);
+    const practiceLogs = allLogs
+      .filter((log) => log.practice_id === practice.id)
+      .sort((a, b) => b.date.localeCompare(a.date));
+    let recentFailCount = 0;
+    for (const log of practiceLogs) {
+      if (!log.done) recentFailCount++;
+      else break;
+    }
+    const hasPreviousLogs = allLogs.some(
+      (log) =>
+        log.practice_id === practice.id && (!todayLog || log.id !== todayLog.id),
+    );
+
+    setCheckModal({
+      practice,
+      existingLog: todayLog,
+      recentFailCount,
+      sessionId: practice.session_id,
+      enableChildReactionFeedback:
+        recommendedPractice?.id === practice.id && hasPreviousLogs,
+    });
+  }, [
+    allLogs,
+    filteredPractices,
+    focusPracticeId,
+    getLifecycle,
+    isLoading,
+    recommendedPractice?.id,
+    todayLogs,
+  ]);
+
   const parseAiFeedback = (value: PracticeLogData["ai_feedback"]): PracticeAiFeedback | null => {
     if (!value || typeof value !== "object" || Array.isArray(value)) return null;
     const candidate = value as Record<string, unknown>;
@@ -617,18 +680,18 @@ export default function PracticesPage() {
         : t("practices.reminderBodyAllDone", { time: reminderTime })
       : t("practices.reminderBodyNoActive");
 
-    postPracticeReminderSync({
-      enabled:
-        reminderPreferences.pushEnabled &&
-        reminderPreferences.practiceReminderEnabled &&
-        reminderPractices.length > 0,
-      time: reminderPreferences.practiceReminderTime,
-      title,
-      body,
-      activePracticeCount: reminderPractices.length,
-      pendingPracticeCount: practiceInsight?.uncheckedToday ?? 0,
-      userInitiated: false,
-    });
+    postPracticeReminderSync(
+      buildPracticeReminderPlan({
+        preferences: reminderPreferences,
+        title,
+        body,
+        focusPracticeId: fallbackPractice?.id,
+        activePracticeIds: reminderPractices.map((practice) => practice.id),
+        activePracticeCount: reminderPractices.length,
+        pendingPracticeCount: practiceInsight?.uncheckedToday ?? 0,
+        userInitiated: false,
+      }),
+    );
   }, [
     checkedTodayIds,
     getLifecycle,

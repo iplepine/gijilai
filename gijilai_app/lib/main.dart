@@ -169,10 +169,12 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   static const _iosSubscriptionProductId = 'gijilai_premium_monthly';
   static const _androidSubscriptionProductId = 'monthly_premium';
   static const _practiceReminderNotificationId = 1001;
+  static const _practiceReminderTestNotificationId = 1002;
   static const _practiceReminderEnabledKey = 'practice_reminder_enabled';
   static const _practiceReminderTimeKey = 'practice_reminder_time';
   static const _practiceReminderTitleKey = 'practice_reminder_title';
   static const _practiceReminderBodyKey = 'practice_reminder_body';
+  static const _practiceReminderPayloadKey = 'practice_reminder_payload';
   static const _nativeCapabilities = NativeCapabilityRegistry();
 
   WebViewController? _controller;
@@ -272,7 +274,17 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       );
       const settings = InitializationSettings(android: android, iOS: ios);
 
-      await _localNotifications.initialize(settings);
+      await _localNotifications.initialize(
+        settings,
+        onDidReceiveNotificationResponse: _handleNotificationResponse,
+      );
+      final launchDetails = await _localNotifications
+          .getNotificationAppLaunchDetails();
+      final launchPayload = launchDetails?.notificationResponse?.payload;
+      if (launchDetails?.didNotificationLaunchApp == true &&
+          launchPayload?.isNotEmpty == true) {
+        unawaited(_openWebPath(launchPayload!));
+      }
       await _restorePracticeReminder();
     } catch (e) {
       debugPrint('Local notifications init error: $e');
@@ -284,6 +296,22 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         ),
       );
     }
+  }
+
+  void _handleNotificationResponse(NotificationResponse response) {
+    final payload = response.payload;
+    if (payload == null || payload.isEmpty) return;
+    unawaited(_openWebPath(payload));
+  }
+
+  Future<void> _openWebPath(String rawPath) async {
+    final uri = Uri(
+      scheme: 'gijilai',
+      host: 'open',
+      queryParameters: {'path': rawPath},
+    );
+    _pendingAppOpenUri = uri;
+    await _consumePendingAppOpenUri();
   }
 
   Future<void> _initWebView() async {
@@ -1456,7 +1484,11 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   Future<void> _onReminderMessage(JavaScriptMessage message) async {
     try {
       final data = jsonDecode(message.message) as Map<String, dynamic>;
-      if (data['type'] != 'PRACTICE_REMINDER_SETTINGS') return;
+      final messageType = data['type']?.toString();
+      if (messageType != 'PRACTICE_REMINDER_SETTINGS' &&
+          messageType != 'PRACTICE_REMINDER_TEST') {
+        return;
+      }
 
       final enabled = data['enabled'] == true;
       final time = data['time']?.toString() ?? '20:00';
@@ -1464,7 +1496,22 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           ?.toInt();
       final title = data['title']?.toString();
       final body = data['body']?.toString();
+      final payload =
+          data['payload']?.toString() ??
+          _practiceReminderPayload(
+            focusPracticeId: data['focusPracticeId']?.toString(),
+          );
       final userInitiated = data['userInitiated'] == true;
+
+      if (messageType == 'PRACTICE_REMINDER_TEST') {
+        await _showPracticeReminderTest(
+          title: title,
+          body: body,
+          payload: payload,
+        );
+        return;
+      }
+
       final shouldSchedule =
           enabled && (activePracticeCount == null || activePracticeCount > 0);
 
@@ -1473,6 +1520,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         time: time,
         title: title,
         body: body,
+        payload: payload,
         storedEnabled: enabled,
         showFeedback: userInitiated,
       );
@@ -1522,6 +1570,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     required String time,
     String? title,
     String? body,
+    String? payload,
     bool? storedEnabled,
     bool persist = true,
     bool requestPermission = true,
@@ -1533,6 +1582,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         time: time,
         title: title,
         body: body,
+        payload: payload,
       );
     }
 
@@ -1540,7 +1590,11 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
     if (!enabled) {
       if (showFeedback) {
-        _showSnackBar('실천 리마인더가 꺼졌습니다');
+        _showSnackBar(
+          storedEnabled == true
+              ? '진행 중인 실천이 있을 때 알림을 보낼게요'
+              : '실천 리마인더가 꺼졌습니다',
+        );
       }
       return;
     }
@@ -1589,6 +1643,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.time,
+      payload: payload ?? _practiceReminderPayload(),
     );
 
     if (showFeedback) {
@@ -1596,15 +1651,66 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _showPracticeReminderTest({
+    String? title,
+    String? body,
+    String? payload,
+  }) async {
+    final permissionGranted = await _requestLocalNotificationPermission();
+    if (!permissionGranted) {
+      _showSnackBar('알림 권한이 필요합니다', isError: true);
+      return;
+    }
+
+    const androidDetails = AndroidNotificationDetails(
+      'practice_reminders',
+      '실천 리마인더',
+      channelDescription: '진행 중인 실천 항목을 매일 떠올릴 수 있도록 알려줍니다.',
+      importance: Importance.defaultImportance,
+      priority: Priority.defaultPriority,
+    );
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    await _localNotifications.show(
+      _practiceReminderTestNotificationId,
+      title?.trim().isNotEmpty == true ? title!.trim() : '테스트 알림입니다',
+      body?.trim().isNotEmpty == true
+          ? body!.trim()
+          : '실천 리마인더가 이렇게 표시됩니다.',
+      const NotificationDetails(android: androidDetails, iOS: iosDetails),
+      payload: payload ?? _practiceReminderPayload(),
+    );
+    _showSnackBar('테스트 알림을 보냈습니다');
+  }
+
+  String _practiceReminderPayload({String? focusPracticeId}) {
+    final queryParameters = <String, String>{
+      'source': 'practice_reminder',
+      if (focusPracticeId != null && focusPracticeId.isNotEmpty)
+        'focusPracticeId': focusPracticeId,
+    };
+
+    return Uri(path: '/practices', queryParameters: queryParameters).toString();
+  }
+
   Future<void> _savePracticeReminderSettings({
     required bool enabled,
     required String time,
     String? title,
     String? body,
+    String? payload,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_practiceReminderEnabledKey, enabled);
     await prefs.setString(_practiceReminderTimeKey, time);
+    await prefs.setString(
+      _practiceReminderPayloadKey,
+      payload ?? _practiceReminderPayload(),
+    );
     if (title != null) {
       await prefs.setString(_practiceReminderTitleKey, title);
     }
@@ -1619,6 +1725,9 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     final time = prefs.getString(_practiceReminderTimeKey) ?? '20:00';
     final title = prefs.getString(_practiceReminderTitleKey);
     final body = prefs.getString(_practiceReminderBodyKey);
+    final payload =
+        prefs.getString(_practiceReminderPayloadKey) ??
+        _practiceReminderPayload();
 
     if (!enabled) return;
 
@@ -1633,6 +1742,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       time: time,
       title: title,
       body: body,
+      payload: payload,
       persist: false,
       requestPermission: false,
       showFeedback: false,

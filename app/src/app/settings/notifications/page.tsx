@@ -4,15 +4,21 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/Button";
+import { Icon } from "@/components/ui/Icon";
 import { useLocale } from "@/i18n/LocaleProvider";
-import { db } from "@/lib/db";
+import { db, type PracticeItemData, type PracticeLogData } from "@/lib/db";
+import { getLocalDateString } from "@/lib/date";
+import { getPracticeLifecycle } from "@/lib/practiceLifecycle";
 import {
   PRACTICE_REMINDER_STORAGE_KEY,
+  buildPracticeReminderPlan,
   formatPracticeReminderTime,
   isAppWebView,
+  postPracticeReminderTest,
   postPracticeReminderSync,
   readPracticeReminderPreferences,
 } from "@/lib/practiceReminder";
+import { supabase } from "@/lib/supabase";
 import {
   getCenteredWheelScrollTop,
   getCenteredWheelSideSpacerHeight,
@@ -25,10 +31,26 @@ interface NotificationSettings {
   practiceReminderTime: string;
 }
 
+interface ReminderPracticeSnapshot {
+  activePracticeCount: number;
+  pendingPracticeCount: number;
+  activePracticeIds: string[];
+  focusPracticeId?: string;
+  focusPracticeTitle?: string;
+  isLoading: boolean;
+}
+
 const DEFAULT_SETTINGS: NotificationSettings = {
   pushEnabled: true,
   practiceReminderEnabled: true,
   practiceReminderTime: "20:00",
+};
+
+const EMPTY_REMINDER_SNAPSHOT: ReminderPracticeSnapshot = {
+  activePracticeCount: 0,
+  pendingPracticeCount: 0,
+  activePracticeIds: [],
+  isLoading: false,
 };
 
 const WHEEL_ROW_HEIGHT = 44;
@@ -47,6 +69,11 @@ export default function NotificationsPage() {
   const [marketingLoaded, setMarketingLoaded] = useState(false);
   const [isSavingMarketing, setIsSavingMarketing] = useState(false);
   const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
+  const [reminderSnapshot, setReminderSnapshot] =
+    useState<ReminderPracticeSnapshot>({
+      ...EMPTY_REMINDER_SNAPSHOT,
+      isLoading: true,
+    });
   const [draftReminderTime, setDraftReminderTime] = useState(
     DEFAULT_SETTINGS.practiceReminderTime,
   );
@@ -89,6 +116,75 @@ export default function NotificationsPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user?.id) {
+      setReminderSnapshot(EMPTY_REMINDER_SNAPSHOT);
+      return;
+    }
+
+    let isCancelled = false;
+
+    const loadReminderSnapshot = async () => {
+      setReminderSnapshot((current) => ({ ...current, isLoading: true }));
+      try {
+        const activePractices = (await db.getActivePracticeItems(
+          user.id,
+        )) as PracticeItemData[];
+        const practiceIds = activePractices.map((practice) => practice.id);
+        let logs: Array<Pick<PracticeLogData, "practice_id" | "date" | "done">> =
+          [];
+
+        if (practiceIds.length > 0) {
+          const { data, error } = await supabase
+            .from("practice_logs")
+            .select("practice_id, date, done")
+            .in("practice_id", practiceIds);
+          if (error) throw error;
+          logs = (data || []) as Array<
+            Pick<PracticeLogData, "practice_id" | "date" | "done">
+          >;
+        }
+
+        if (isCancelled) return;
+
+        const today = getLocalDateString();
+        const checkedTodayIds = new Set(
+          logs
+            .filter((log) => log.date === today)
+            .map((log) => log.practice_id),
+        );
+        const reminderPractices = activePractices.filter((practice) => {
+          return getPracticeLifecycle(practice, logs, today).status === "ACTIVE";
+        });
+        const pendingPractices = reminderPractices.filter(
+          (practice) => !checkedTodayIds.has(practice.id),
+        );
+        const focusPractice = pendingPractices[0] ?? reminderPractices[0];
+
+        setReminderSnapshot({
+          activePracticeCount: reminderPractices.length,
+          pendingPracticeCount: pendingPractices.length,
+          activePracticeIds: reminderPractices.map((practice) => practice.id),
+          focusPracticeId: focusPractice?.id,
+          focusPracticeTitle: focusPractice?.title,
+          isLoading: false,
+        });
+      } catch (error) {
+        console.error("Failed to load reminder practice snapshot:", error);
+        if (!isCancelled) {
+          setReminderSnapshot(EMPTY_REMINDER_SNAPSHOT);
+        }
+      }
+    };
+
+    void loadReminderSnapshot();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [authLoading, user?.id]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user?.id) {
       setMarketingEnabled(false);
       setMarketingLoaded(true);
       return;
@@ -126,18 +222,42 @@ export default function NotificationsPage() {
   }, [authLoading, user?.id]);
 
   useEffect(() => {
-    if (!loaded) return;
+    if (!loaded || reminderSnapshot.isLoading) return;
     window.localStorage.setItem(
       PRACTICE_REMINDER_STORAGE_KEY,
       JSON.stringify(settings),
     );
-    postPracticeReminderSync({
-      enabled: settings.pushEnabled && settings.practiceReminderEnabled,
-      time: settings.practiceReminderTime,
-      userInitiated: reminderSyncUserInitiatedRef.current,
-    });
+    const reminderTime = formatPracticeReminderTime(
+      settings.practiceReminderTime,
+      locale,
+    );
+    const title = reminderSnapshot.focusPracticeTitle
+      ? t("practices.reminderTitleWithItem", {
+          title: reminderSnapshot.focusPracticeTitle,
+        })
+      : reminderSnapshot.activePracticeCount > 0
+        ? t("practices.reminderTitleAllDone")
+        : t("practices.reminderTitleNoActive");
+    const body = reminderSnapshot.focusPracticeTitle
+      ? t("practices.reminderBodyWithItem", { time: reminderTime })
+      : reminderSnapshot.activePracticeCount > 0
+        ? t("practices.reminderBodyAllDone", { time: reminderTime })
+        : t("practices.reminderBodyNoActive");
+
+    postPracticeReminderSync(
+      buildPracticeReminderPlan({
+        preferences: settings,
+        title,
+        body,
+        focusPracticeId: reminderSnapshot.focusPracticeId,
+        activePracticeIds: reminderSnapshot.activePracticeIds,
+        activePracticeCount: reminderSnapshot.activePracticeCount,
+        pendingPracticeCount: reminderSnapshot.pendingPracticeCount,
+        userInitiated: reminderSyncUserInitiatedRef.current,
+      }),
+    );
     reminderSyncUserInitiatedRef.current = false;
-  }, [loaded, settings]);
+  }, [loaded, locale, reminderSnapshot, settings, t]);
 
   const updateSetting = <K extends keyof NotificationSettings>(
     key: K,
@@ -224,6 +344,34 @@ export default function NotificationsPage() {
     settings.practiceReminderTime,
     locale,
   );
+  const reminderNotificationTitle = reminderSnapshot.focusPracticeTitle
+    ? t("practices.reminderTitleWithItem", {
+        title: reminderSnapshot.focusPracticeTitle,
+      })
+    : reminderSnapshot.activePracticeCount > 0
+      ? t("practices.reminderTitleAllDone")
+      : t("practices.reminderTitleNoActive");
+  const reminderNotificationBody = reminderSnapshot.focusPracticeTitle
+    ? t("practices.reminderBodyWithItem", { time: reminderTimeLabel })
+    : reminderSnapshot.activePracticeCount > 0
+      ? t("practices.reminderBodyAllDone", { time: reminderTimeLabel })
+      : t("practices.reminderBodyNoActive");
+  const reminderStatusText = !settings.pushEnabled
+    ? t("settings.practiceReminderStatusPushOff")
+    : !settings.practiceReminderEnabled
+      ? t("settings.practiceReminderStatusReminderOff")
+      : reminderSnapshot.isLoading
+        ? t("settings.practiceReminderStatusLoading")
+        : reminderSnapshot.activePracticeCount === 0
+          ? t("settings.practiceReminderStatusNoActive")
+          : reminderSnapshot.pendingPracticeCount === 0
+            ? t("settings.practiceReminderStatusAllDone", {
+                time: reminderTimeLabel,
+              })
+          : t("settings.practiceReminderStatusScheduled", {
+              time: reminderTimeLabel,
+              count: String(reminderSnapshot.pendingPracticeCount),
+            });
   const reminderPreview = !settings.pushEnabled
     ? t("settings.practiceReminderPreviewPushOff")
     : !settings.practiceReminderEnabled
@@ -233,6 +381,23 @@ export default function NotificationsPage() {
             time: reminderTimeLabel,
           })
         : t("settings.practiceReminderPreviewWeb", { time: reminderTimeLabel });
+  const canSendTestReminder =
+    isAppWebView() && settings.pushEnabled && settings.practiceReminderEnabled;
+
+  const sendTestReminder = () => {
+    postPracticeReminderTest(
+      buildPracticeReminderPlan({
+        preferences: settings,
+        title: reminderNotificationTitle,
+        body: reminderNotificationBody,
+        focusPracticeId: reminderSnapshot.focusPracticeId,
+        activePracticeIds: reminderSnapshot.activePracticeIds,
+        activePracticeCount: reminderSnapshot.activePracticeCount,
+        pendingPracticeCount: reminderSnapshot.pendingPracticeCount,
+        userInitiated: true,
+      }),
+    );
+  };
 
   const toggleMarketingPreference = async () => {
     if (!user?.id || isSavingMarketing) return;
@@ -326,6 +491,35 @@ export default function NotificationsPage() {
               <p className="text-[12px] font-medium text-primary break-keep">
                 {reminderPreview}
               </p>
+              <div className="rounded-2xl border border-primary/10 bg-primary/5 p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-primary shadow-sm dark:bg-white/10">
+                    <Icon name="notifications_active" size="sm" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-bold text-text-main dark:text-white">
+                      {t("settings.practiceReminderStatusTitle")}
+                    </p>
+                    <p className="mt-1 text-[12px] leading-relaxed text-text-sub break-keep">
+                      {reminderStatusText}
+                    </p>
+                    {reminderEnabled && reminderSnapshot.activePracticeCount > 0 && (
+                      <p className="mt-2 text-[11px] leading-relaxed text-text-sub/80 break-keep">
+                        {t("settings.practiceReminderInexactNote")}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={sendTestReminder}
+                  disabled={!canSendTestReminder}
+                  className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-primary/15 bg-white px-4 py-2.5 text-[13px] font-bold text-primary transition-colors disabled:cursor-not-allowed disabled:opacity-40 dark:bg-surface-dark"
+                >
+                  <Icon name="notifications" size="sm" />
+                  {t("settings.practiceReminderTest")}
+                </button>
+              </div>
               <p className="text-[12px] text-gray-500 leading-relaxed break-keep">
                 {t("settings.practiceReminderLocalNote")}
               </p>
