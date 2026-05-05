@@ -148,11 +148,11 @@
 
 ---
 
-## 2026-05-05 | Android 프로덕션 배포는 내부 테스트 트랙을 먼저 확보한다
+## 2026-05-05 | Android 프로덕션 배포는 내부 테스트 트랙도 함께 유지한다
 
-- **결정**: Android 기본 프로덕션 배포(`deploy_production`, `release_production`, `scripts/deploy_android_production.sh`)는 `pubspec.yaml` build number를 한 번만 증가시키고 AAB를 한 번 빌드한 뒤, Google Play `internal` 트랙에 먼저 업로드하고 같은 versionCode를 `production` 트랙으로 promote한다. 프로덕션 트랙에만 직접 올리는 예외용 lane은 `deploy_production_only`로 분리한다.
+- **결정**: Android 기본 프로덕션 배포(`deploy_production`, `release_production`, `scripts/deploy_android_production.sh`)는 `pubspec.yaml` build number를 한 번만 증가시키고 AAB를 한 번 빌드한 뒤, Google Play `internal` 트랙에 업로드하고 같은 versionCode를 `production` 트랙에도 릴리스로 설정한다. 프로덕션 트랙에만 직접 올리는 예외용 lane은 `deploy_production_only`로 분리한다.
 - **이유**: Google Play 프로덕션 검토/반영은 지연될 수 있으므로, 배포 직후 실제 스토어 배포 산출물을 내부 테스트 트랙에서 바로 설치 확인할 수 있어야 한다. 같은 AAB/versionCode를 사용하면 내부 테스트와 프로덕션 후보가 갈라지지 않는다.
-- **대안**: 내부 테스트와 프로덕션을 각각 별도 build number로 업로드 — 테스트한 빌드와 프로덕션 후보가 달라져 검증 신뢰가 떨어져 기각. 내부 테스트 업로드 후 프로덕션 수동 promote — 배포 절차가 두 단계로 남아 누락 가능성이 있어 기각. 프로덕션만 업로드 — 검토 지연 중 즉시 설치 검증 경로가 없어 기각.
+- **대안**: 내부 테스트와 프로덕션을 각각 별도 build number로 업로드 — 테스트한 빌드와 프로덕션 후보가 달라져 검증 신뢰가 떨어져 기각. 내부 테스트 업로드 후 프로덕션 수동 설정 — 배포 절차가 두 단계로 남아 누락 가능성이 있어 기각. 프로덕션만 업로드 — 검토 지연 중 즉시 설치 검증 경로가 없어 기각.
 
 ## 2026-04-29 | Android 배포는 build number 기준 출시노트를 자동 생성한다
 

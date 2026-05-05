@@ -190,7 +190,7 @@ bundle install
 | `bundle exec fastlane android build` | AAB 빌드 |
 | `bundle exec fastlane android update_release_notes` | 현재 build number 기준 Android 출시노트 changelog 생성 |
 | `bundle exec fastlane android deploy_internal` | 내부 테스트 트랙 업로드 |
-| `bundle exec fastlane android deploy_production` | 내부 테스트 업로드 후 같은 빌드를 프로덕션으로 promote |
+| `bundle exec fastlane android deploy_production` | 같은 빌드를 내부 테스트와 프로덕션 트랙에 함께 배포 |
 | `bundle exec fastlane android deploy_production_only` | 프로덕션 트랙에만 직접 배포 |
 | `bundle exec fastlane android release_production` | Android 내부 테스트+프로덕션 릴리스 진입 lane |
 | `bundle exec fastlane android release` | 스크린샷+메타데이터+빌드+내부 테스트/프로덕션 업로드 한번에 |
@@ -219,7 +219,7 @@ bundle install
   - `gijilai_app/fastlane/release_notes/android/ko-KR.txt`
   - `gijilai_app/fastlane/release_notes/android/en-US.txt`
 - `deploy_internal` / `deploy_production`은 build number를 올린 뒤 `fastlane/metadata/android/<locale>/changelogs/<versionCode>.txt`를 자동 생성한다.
-- 기본 프로덕션 배포(`deploy_production`, `release_production`, `scripts/deploy_android_production.sh`)는 한 번 빌드한 AAB를 내부 테스트 트랙에 먼저 올리고, 같은 versionCode를 프로덕션 트랙으로 promote한다. 프로덕션 검토가 늦어도 내부 테스트 트랙에서 즉시 설치 확인할 수 있게 하기 위함이다.
+- 기본 프로덕션 배포(`deploy_production`, `release_production`, `scripts/deploy_android_production.sh`)는 한 번 빌드한 AAB를 내부 테스트 트랙에 올린 뒤, 같은 versionCode를 프로덕션 트랙에도 릴리스로 설정한다. 프로덕션 검토가 늦어도 내부 테스트 트랙에서 즉시 설치 확인할 수 있게 하기 위함이다.
 - 프로덕션 트랙에만 직접 올려야 하는 예외 상황에서는 `deploy_production_only`를 사용한다.
 - Play Console에 올릴 문구를 바꾸려면 원본 파일 두 개만 수정하면 된다.
 

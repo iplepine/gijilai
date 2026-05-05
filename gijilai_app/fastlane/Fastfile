@@ -108,13 +108,11 @@ def upload_android_release(track:, skip_upload_metadata:, skip_upload_images:, s
   )
 end
 
-def promote_android_release(from_track:, to_track:, build_number:)
+def publish_existing_android_release_to_track(track:, build_number:)
   upload_to_play_store(
     package_name: PACKAGE_NAME,
-    track: from_track,
-    track_promote_to: to_track,
-    track_promote_release_status: "completed",
-    version_code: build_number,
+    track: track,
+    version_codes_to_retain: [build_number],
     json_key: android_json_key_path,
     skip_upload_apk: true,
     skip_upload_aab: true,
@@ -169,9 +167,9 @@ def deploy_android_internal_and_production
   build_number = prepare_android_release_build
 
   upload_android_track_with_retry(track: "internal")
-  promote_android_release(from_track: "internal", to_track: "production", build_number: build_number)
+  publish_existing_android_release_to_track(track: "production", build_number: build_number)
 
-  UI.success("Android build #{build_number} uploaded to internal testing and promoted to production")
+  UI.success("Android build #{build_number} uploaded to internal testing and production")
 end
 
 # ─────────────────────────────────────────────
