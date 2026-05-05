@@ -27,7 +27,7 @@ export default function ParentSurveyPage() {
     const totalQuestions = questions.length;
     // Progress needs to be calculated relative to THIS survey or global?
     // UX spec says bridge page separates them, so relative progress is fine.
-    const progress = Math.round((currentStep / totalQuestions) * 100);
+    const progress = Math.round(((currentStep - 1) / totalQuestions) * 100);
 
     const startParentSurvey = () => {
         setSurveyType('PARENT'); // Resets step to 1

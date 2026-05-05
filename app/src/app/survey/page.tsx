@@ -217,6 +217,9 @@ function SurveyContent() {
   const currentQuestion = questions[currentIndex];
   const currentAnswer = responses[String(currentQuestion?.id)];
   const responseCount = Object.keys(responses).length;
+  const moduleProgressPercent = questions.length > 0
+    ? Math.round((Math.min(responseCount, questions.length) / questions.length) * 100)
+    : 0;
 
   // 진행률 계산
   const answeredCount =
@@ -413,12 +416,12 @@ function SurveyContent() {
               <span className="text-xs font-semibold text-text-sub">
                 {t('survey.questionCount', { current: currentIndex + 1, total: questions.length })}
               </span>
-              <span className="text-xs font-bold" style={{ color: accent }}>{Math.round(((currentIndex + 1) / questions.length) * 100)}%</span>
+              <span className="text-xs font-bold" style={{ color: accent }}>{moduleProgressPercent}%</span>
             </div>
             <div className="h-1.5 bg-beige-light dark:bg-background-dark rounded-full overflow-hidden">
               <div
                 className="h-full transition-all duration-500 ease-out"
-                style={{ width: `${((currentIndex + 1) / questions.length) * 100}%`, backgroundColor: accent }}
+                style={{ width: `${moduleProgressPercent}%`, backgroundColor: accent }}
               />
             </div>
           </div>

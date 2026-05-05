@@ -43,7 +43,7 @@ export const useSurveyStore = create<SurveyState>()(
 
             getProgress: (totalQuestions) => {
                 const { currentStep } = get();
-                return Math.min(100, Math.round((currentStep / totalQuestions) * 100));
+                return Math.min(100, Math.round(((currentStep - 1) / totalQuestions) * 100));
             },
         }),
         {

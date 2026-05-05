@@ -25,7 +25,7 @@ export default function ParentingStyleSurveyPage() {
     const questions = PARENTING_STYLE_QUESTIONS;
     const currentQuestion = questions[currentStep - 1]; // Use local index if store's step is global, but store resets step on Type change so this is correct.
     const totalQuestions = questions.length;
-    const progress = Math.round((currentStep / totalQuestions) * 100);
+    const progress = Math.round(((currentStep - 1) / totalQuestions) * 100);
 
     const startStyleSurvey = () => {
         setSurveyType('PARENTING_STYLE');
