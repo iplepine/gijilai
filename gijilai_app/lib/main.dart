@@ -1004,9 +1004,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
     try {
       OAuthToken token;
-      if (Platform.isAndroid) {
-        token = await UserApi.instance.loginWithKakaoAccount();
-      } else if (await isKakaoTalkInstalled()) {
+      if (await isKakaoTalkInstalled()) {
         try {
           token = await UserApi.instance.loginWithKakaoTalk();
         } catch (e) {
