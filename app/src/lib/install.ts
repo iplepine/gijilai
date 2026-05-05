@@ -1,3 +1,5 @@
+import type { NativeCapabilities } from '@/lib/nativeCapabilities';
+
 export type BrowserPlatform = 'ios' | 'android' | 'other';
 
 export const GIJILAI_APP_SCHEME = 'gijilai';
@@ -17,7 +19,7 @@ export function isAppWebView(userAgent?: string) {
 
   const appWindow = window as Window & {
     PaymentBridge?: unknown;
-    __nativeCapabilities?: unknown;
+    __nativeCapabilities?: NativeCapabilities;
   };
   const nativePlatform = document.documentElement.dataset.nativePlatform;
 

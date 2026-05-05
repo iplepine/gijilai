@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { trackEvent } from '@/lib/analytics';
+import type { NativeAuthProvider } from '@/lib/nativeCapabilities';
 import { createPerfTracker } from '@/lib/perf';
 import { supabase } from '@/lib/supabase';
 
@@ -12,11 +13,11 @@ declare global {
             postMessage: (message: string) => void;
         };
         __authLoadingDone?: () => void;
-        __startNativeOAuthProvider?: (provider: 'google' | 'kakao' | 'apple') => Promise<void>;
+        __startNativeOAuthProvider?: (provider: NativeAuthProvider) => Promise<void>;
     }
 }
 
-type SocialOAuthProvider = 'google' | 'kakao' | 'apple';
+type SocialOAuthProvider = NativeAuthProvider;
 
 interface AuthContextType {
     session: Session | null;

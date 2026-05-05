@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useLocale } from '@/i18n/LocaleProvider';
+import { getNativeCapabilities } from '@/lib/nativeCapabilities';
 
 type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 
@@ -56,10 +57,6 @@ interface NativeVoiceInputBridge {
 
 interface NativeVoiceInputWindow extends Window {
     VoiceInputBridge?: NativeVoiceInputBridge;
-    __nativeCapabilities?: {
-        haptics?: boolean;
-        voiceInput?: boolean;
-    };
 }
 
 interface NativeVoiceInputResult {
@@ -88,7 +85,7 @@ function getSpeechRecognition(): SpeechRecognitionConstructor | null {
 function getNativeVoiceInputBridge(): NativeVoiceInputBridge | null {
     if (typeof window === 'undefined') return null;
     const nativeWindow = window as NativeVoiceInputWindow;
-    if (nativeWindow.__nativeCapabilities?.voiceInput !== true) return null;
+    if (getNativeCapabilities()?.voiceInput !== true) return null;
     return nativeWindow.VoiceInputBridge ?? null;
 }
 

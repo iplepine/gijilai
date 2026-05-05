@@ -1,14 +1,13 @@
 'use client';
 
+import { getNativeCapabilities } from '@/lib/nativeCapabilities';
+
 export type NativeHapticStyle = 'light' | 'medium' | 'heavy';
 
 declare global {
   interface Window {
     HapticBridge?: {
       postMessage: (message: string) => void;
-    };
-    __nativeCapabilities?: {
-      haptics?: boolean;
     };
   }
 }
@@ -25,7 +24,7 @@ export function supportsNativeHaptics() {
 
   return (
     isAppWebView() &&
-    window.__nativeCapabilities?.haptics === true &&
+    getNativeCapabilities()?.haptics === true &&
     !!window.HapticBridge
   );
 }

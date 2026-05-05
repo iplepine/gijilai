@@ -3,6 +3,7 @@
 import { useAuth } from '@/components/auth/AuthProvider';
 import { HomeLogoButton } from '@/components/layout/HomeLogoButton';
 import { trackEvent } from '@/lib/analytics';
+import { notifyNativeRouteChange } from '@/lib/nativeCapabilities';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useLocale } from '@/i18n/LocaleProvider';
@@ -69,6 +70,10 @@ export default function LoginPage() {
     const [password, setPassword] = useState('');
     const [emailError, setEmailError] = useState('');
     const [emailMessage, setEmailMessage] = useState('');
+
+    useEffect(() => {
+        notifyNativeRouteChange('/login');
+    }, []);
 
     const getErrorMessage = (error: unknown) => {
         if (error instanceof Error) {
