@@ -442,49 +442,69 @@ function ReportContent() {
     progressTotal: number;
   }) => {
     const progressPercent = Math.min(100, Math.round((progressCurrent / progressTotal) * 100));
-    const progressBarPercent = Math.max(8, progressPercent);
     const progressLabel = t('report.childReportProgressPercent', {
       percent: progressPercent,
     });
+    const progressRadius = 18;
+    const progressCircumference = 2 * Math.PI * progressRadius;
+    const progressDashOffset = progressCircumference * (1 - progressPercent / 100);
 
     return (
       <section
         role="status"
         aria-live="polite"
-        className="relative overflow-hidden rounded-2xl border border-white/70 bg-white/80 px-6 py-5 shadow-card shadow-primary/5 backdrop-blur-md dark:border-white/10 dark:bg-surface-dark/75 dark:shadow-black/20 space-y-3"
+        className="relative overflow-hidden rounded-2xl border border-white/70 bg-white/80 px-6 py-5 shadow-card shadow-primary/5 backdrop-blur-md dark:border-white/10 dark:bg-surface-dark/75 dark:shadow-black/20"
       >
         <div className="pointer-events-none absolute -right-8 -top-10 size-28 rounded-full bg-primary/10 blur-2xl dark:bg-primary/20" />
         <div className="pointer-events-none absolute -left-8 bottom-0 h-16 w-32 rounded-full bg-secondary/10 blur-2xl dark:bg-secondary/15" />
-        <div className="relative flex items-start gap-3">
+        <div className="relative flex items-center gap-3">
           <div className="mt-0.5 size-8 rounded-full bg-primary/10 text-primary dark:bg-white/10 dark:text-primary-light flex items-center justify-center shrink-0">
             <Icon name={icon} size="sm" />
           </div>
           <div className="min-w-0 flex-1 space-y-1">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-[12px] font-black text-text-main dark:text-white break-keep">
-                {label}
-              </p>
-              <span className="shrink-0 text-[11px] font-black text-primary">
-                {progressLabel}
-              </span>
-            </div>
+            <p className="text-[12px] font-black text-text-main dark:text-white break-keep">
+              {label}
+            </p>
             <p className="text-[14px] font-semibold text-text-sub dark:text-slate-400 leading-[1.75] break-keep">
               {message}
             </p>
           </div>
-        </div>
-        <div
-          role="progressbar"
-          aria-label={`${label} ${progressLabel}`}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={progressPercent}
-          className="relative h-1.5 w-full overflow-hidden rounded-full bg-primary/10 dark:bg-white/10"
-        >
           <div
-            className="h-full rounded-full bg-gradient-to-r from-primary to-secondary transition-all duration-700 ease-out"
-            style={{ width: `${progressBarPercent}%` }}
-          />
+            role="progressbar"
+            aria-label={`${label} ${progressLabel}`}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={progressPercent}
+            className="relative size-12 shrink-0 rounded-full bg-white/80 text-primary shadow-[0_6px_18px_rgba(47,79,62,0.10)] dark:bg-white/10 dark:text-primary-light"
+          >
+            <svg className="absolute inset-0 size-full animate-spin" viewBox="0 0 44 44" aria-hidden="true">
+              <circle
+                cx="22"
+                cy="22"
+                r={progressRadius}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="4"
+                className="text-primary/10 dark:text-white/10"
+              />
+              <circle
+                cx="22"
+                cy="22"
+                r={progressRadius}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="4"
+                strokeLinecap="round"
+                strokeDasharray={progressCircumference}
+                strokeDashoffset={progressDashOffset}
+                transform="rotate(-90 22 22)"
+                className="transition-all duration-700 ease-out"
+              />
+            </svg>
+            <span className="absolute inset-0 flex items-center justify-center text-[10px] font-black leading-none text-primary dark:text-primary-light">
+              {progressLabel}
+            </span>
+          </div>
         </div>
       </section>
     );
