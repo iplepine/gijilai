@@ -1,5 +1,10 @@
 # 출시 준비 체크리스트
 
+## 최근 배포
+
+- 2026-05-06: Android Google Play internal/production `1.0.3+29` 배포 완료. AAB: `gijilai_app/build/app/outputs/bundle/release/app-release.aab`.
+- 2026-05-06: Android production Fastlane lane은 다음 배포부터 marketing patch version과 build number를 함께 올린 뒤 업로드하도록 변경했다.
+
 ## 제품
 
 - [ ] 핵심 흐름이 동작한다: 로그인 → 아이 등록 → 설문 → 리포트 → 상담 → 실천

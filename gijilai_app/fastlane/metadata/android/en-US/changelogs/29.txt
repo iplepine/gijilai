@@ -1,0 +1,4 @@
+Improved KakaoTalk app login.
+• Prefer app-to-app login when KakaoTalk is installed
+• Fall back to Kakao account login if KakaoTalk login fails
+• Verified Android release build stability

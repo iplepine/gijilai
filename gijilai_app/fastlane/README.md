@@ -45,7 +45,7 @@ Flutter 빌드 → AAB (App Bundle)
 [bundle exec] fastlane android deploy_internal
 ```
 
-Google Play 내부 테스트 트랙에 업로드
+build number 자동 증가 후 Google Play 내부 테스트 트랙에 업로드
 
 ### android deploy_production
 
@@ -53,7 +53,7 @@ Google Play 내부 테스트 트랙에 업로드
 [bundle exec] fastlane android deploy_production
 ```
 
-Google Play 내부 테스트 + 프로덕션 동시 배포
+marketing version/build number 자동 증가 후 Google Play 내부 테스트 + 프로덕션 동시 배포
 
 ### android deploy_production_only
 
@@ -61,7 +61,7 @@ Google Play 내부 테스트 + 프로덕션 동시 배포
 [bundle exec] fastlane android deploy_production_only
 ```
 
-Google Play 프로덕션 트랙에만 직접 배포
+marketing version/build number 자동 증가 후 Google Play 프로덕션 트랙에만 직접 배포
 
 ### android update_release_notes
 
@@ -77,7 +77,7 @@ Google Play 프로덕션 트랙에만 직접 배포
 [bundle exec] fastlane android release_production
 ```
 
-Google Play 내부 테스트 + 프로덕션 릴리스
+marketing version/build number 자동 증가 후 Google Play 내부 테스트 + 프로덕션 릴리스
 
 ### android release
 
@@ -85,7 +85,7 @@ Google Play 내부 테스트 + 프로덕션 릴리스
 [bundle exec] fastlane android release
 ```
 
-스크린샷 + 메타데이터 + 빌드 + 내부 테스트/프로덕션 업로드 한번에
+스크린샷 + 메타데이터 + marketing version/build number 자동 증가 + 내부 테스트/프로덕션 업로드 한번에
 
 ----
 

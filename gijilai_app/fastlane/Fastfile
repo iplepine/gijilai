@@ -37,6 +37,31 @@ def read_pubspec_version_info
   }
 end
 
+def parse_marketing_version(marketing_version)
+  parts = marketing_version.split(".")
+  UI.user_error!("Marketing version must use <major>.<minor>.<patch> format") unless parts.length == 3
+  UI.user_error!("Marketing version must contain numeric parts only") unless parts.all? { |part| part.match?(/\A\d+\z/) }
+
+  parts.map(&:to_i)
+end
+
+def next_android_marketing_version(current_marketing_version)
+  target_marketing_version = ENV["ANDROID_MARKETING_VERSION"].to_s.strip
+  current_parts = parse_marketing_version(current_marketing_version)
+
+  if target_marketing_version.empty?
+    major, minor, patch = current_parts
+    return "#{major}.#{minor}.#{patch + 1}"
+  end
+
+  target_parts = parse_marketing_version(target_marketing_version)
+  unless (target_parts <=> current_parts) == 1
+    UI.user_error!("ANDROID_MARKETING_VERSION must be greater than current marketing version #{current_marketing_version}")
+  end
+
+  target_marketing_version
+end
+
 def ensure_app_store_connect_api_key_path
   env_path = ENV["APP_STORE_CONNECT_API_KEY_PATH"]
   return env_path if env_path && File.exist?(env_path)
@@ -123,8 +148,12 @@ def publish_existing_android_release_to_track(track:, build_number:)
   )
 end
 
-def prepare_android_release_build
-  bump_pubspec_build_number
+def prepare_android_release_build(bump_marketing_version: false)
+  if bump_marketing_version
+    bump_pubspec_release_version
+  else
+    bump_pubspec_build_number
+  end
 
   version_info = read_pubspec_version_info
   build_number = version_info[:build_number]
@@ -158,13 +187,13 @@ def upload_android_track_with_retry(track:)
   end
 end
 
-def deploy_android_track(track:)
-  prepare_android_release_build
+def deploy_android_track(track:, bump_marketing_version: false)
+  prepare_android_release_build(bump_marketing_version: bump_marketing_version)
   upload_android_track_with_retry(track: track)
 end
 
 def deploy_android_internal_and_production
-  build_number = prepare_android_release_build
+  build_number = prepare_android_release_build(bump_marketing_version: true)
 
   upload_android_track_with_retry(track: "internal")
   publish_existing_android_release_to_track(track: "production", build_number: build_number)
@@ -191,6 +220,23 @@ platform :android do
     )
 
     UI.success("Android build number bumped: #{marketing_version}+#{current_build_number} → #{next_version}")
+  end
+
+  desc "pubspec.yaml Android production version 자동 증가"
+  private_lane :bump_pubspec_release_version do
+    version_info = read_pubspec_version_info
+    marketing_version = version_info[:marketing_version]
+    current_build_number = version_info[:build_number]
+    next_marketing_version = next_android_marketing_version(marketing_version)
+    next_build_number = current_build_number + 1
+    next_version = "#{next_marketing_version}+#{next_build_number}"
+
+    File.write(
+      version_info[:pubspec_path],
+      version_info[:pubspec].sub(/^version:\s*#{Regexp.escape(marketing_version)}\+#{current_build_number}\s*$/, "version: #{next_version}")
+    )
+
+    UI.success("Android release version bumped: #{marketing_version}+#{current_build_number} → #{next_version}")
   end
 
   desc "Google Play Android 출시노트 changelog 파일 생성"
@@ -341,19 +387,19 @@ platform :android do
     UI.success("🎉 메타데이터 생성 완료")
   end
 
-  desc "Google Play 내부 테스트 트랙에 업로드"
+  desc "build number 자동 증가 후 Google Play 내부 테스트 트랙에 업로드"
   lane :deploy_internal do
     deploy_android_track(track: "internal")
   end
 
-  desc "Google Play 내부 테스트 + 프로덕션 동시 배포"
+  desc "marketing version/build number 자동 증가 후 Google Play 내부 테스트 + 프로덕션 동시 배포"
   lane :deploy_production do
     deploy_android_internal_and_production
   end
 
-  desc "Google Play 프로덕션 트랙에만 직접 배포"
+  desc "marketing version/build number 자동 증가 후 Google Play 프로덕션 트랙에만 직접 배포"
   lane :deploy_production_only do
-    deploy_android_track(track: "production")
+    deploy_android_track(track: "production", bump_marketing_version: true)
   end
 
   desc "현재 pubspec build number 기준 Android 출시노트 changelog 갱신"
@@ -361,12 +407,12 @@ platform :android do
     prepare_android_release_notes(build_number: read_pubspec_version_info[:build_number])
   end
 
-  desc "Google Play 내부 테스트 + 프로덕션 릴리스"
+  desc "marketing version/build number 자동 증가 후 Google Play 내부 테스트 + 프로덕션 릴리스"
   lane :release_production do
     deploy_production
   end
 
-  desc "스크린샷 + 메타데이터 + 빌드 + 내부 테스트/프로덕션 업로드 한번에"
+  desc "스크린샷 + 메타데이터 + marketing version/build number 자동 증가 + 내부 테스트/프로덕션 업로드 한번에"
   lane :release do
     screenshots
     metadata
