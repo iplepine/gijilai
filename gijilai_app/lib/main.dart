@@ -191,6 +191,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   Uri? _pendingAppOpenUri;
   DateTime? _lastBackPressedAt;
   bool _showNativeLogin = false;
+  bool _isWebEmailLoginVisible = false;
   bool _isNativeDialogVisible = false;
   bool _authInProgress = false;
   bool _externalAuthInProgress = false;
@@ -762,21 +763,25 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     return NavigationDecision.navigate;
   }
 
+  bool _isNativeLoginRoute(Uri? uri) {
+    if (uri == null) return false;
+    return uri.host == Uri.parse(MainWebView.targetUrl).host &&
+        uri.path == '/login' &&
+        _nativeCapabilities.supportsScreen('login');
+  }
+
   void _handlePageStarted(String url) {
     if (!mounted) return;
 
-    final uri = Uri.tryParse(url);
-    final shouldShowLogin =
-        uri != null &&
-        uri.host == Uri.parse(MainWebView.targetUrl).host &&
-        uri.path == '/login' &&
-        _nativeCapabilities.supportsScreen('login');
-
+    final isNativeLoginRoute = _isNativeLoginRoute(Uri.tryParse(url));
     setState(() {
       _isWebPageLoading = true;
       _webPageLoadProgress = 0;
-      if (shouldShowLogin) {
-        _showNativeLogin = true;
+      if (isNativeLoginRoute) {
+        _showNativeLogin = !_isWebEmailLoginVisible;
+      } else {
+        _showNativeLogin = false;
+        _isWebEmailLoginVisible = false;
       }
     });
   }
@@ -793,21 +798,37 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   void _handlePageFinished(String url) {
     unawaited(_syncWebAppContext());
 
-    final uri = Uri.tryParse(url);
-    final shouldShowLogin =
-        uri != null &&
-        uri.host == Uri.parse(MainWebView.targetUrl).host &&
-        uri.path == '/login' &&
-        _nativeCapabilities.supportsScreen('login');
+    final isNativeLoginRoute = _isNativeLoginRoute(Uri.tryParse(url));
 
     if (mounted) {
       setState(() {
         _isWebPageLoading = false;
         _webPageLoadProgress = 100;
-        _showNativeLogin = shouldShowLogin;
+        if (isNativeLoginRoute) {
+          _showNativeLogin = !_isWebEmailLoginVisible;
+        } else {
+          _showNativeLogin = false;
+          _isWebEmailLoginVisible = false;
+        }
         _hasRenderedFirstPage = true;
       });
     }
+  }
+
+  void _showEmailLoginWebView() {
+    setState(() {
+      _showNativeLogin = false;
+      _isWebEmailLoginVisible = true;
+      _lastBackPressedAt = null;
+    });
+  }
+
+  void _showNativeLoginOptions() {
+    setState(() {
+      _showNativeLogin = true;
+      _isWebEmailLoginVisible = false;
+      _lastBackPressedAt = null;
+    });
   }
 
   Future<void> _syncWebAppContext() async {
@@ -966,6 +987,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     if (mounted) {
       setState(() {
         _showNativeLogin = false;
+        _isWebEmailLoginVisible = false;
         _authInProgress = false;
       });
     }
@@ -998,6 +1020,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     if (mounted) {
       setState(() {
         _showNativeLogin = false;
+        _isWebEmailLoginVisible = false;
         _isWebPageLoading = true;
       });
     }
@@ -1466,6 +1489,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     if (mounted) {
       setState(() {
         _showNativeLogin = false;
+        _isWebEmailLoginVisible = false;
         _authInProgress = false;
       });
     }
@@ -2319,6 +2343,11 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   }
 
   Future<void> _handleBackPressed(WebViewController controller) async {
+    if (_isWebEmailLoginVisible) {
+      _showNativeLoginOptions();
+      return;
+    }
+
     final currentUrl = await controller.currentUrl();
 
     if (!_isHomeUrl(currentUrl) && await controller.canGoBack()) {
@@ -2400,11 +2429,16 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
                 onKakaoPressed: _startKakaoNativeLogin,
                 onApplePressed: _startAppleNativeLogin,
                 onGooglePressed: _startGoogleNativeLogin,
-                onEmailPressed: () {
-                  setState(() {
-                    _showNativeLogin = false;
-                  });
-                },
+                onEmailPressed: _showEmailLoginWebView,
+              ),
+            if (_isWebEmailLoginVisible && !_showNativeLogin)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: _NativeLoginReturnButton(
+                  onPressed: _showNativeLoginOptions,
+                ),
               ),
             Positioned(
               top: topInset,
@@ -2694,6 +2728,51 @@ class _AppDialogButton extends StatelessWidget {
           ),
         ),
         child: Text(label),
+      ),
+    );
+  }
+}
+
+class _NativeLoginReturnButton extends StatelessWidget {
+  const _NativeLoginReturnButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  static const _primary = Color(0xFF2F4F3E);
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: SafeArea(
+        bottom: false,
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+            child: FilledButton.icon(
+              onPressed: () {
+                unawaited(HapticFeedback.lightImpact());
+                onPressed();
+              },
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 16),
+              label: const Text('로그인 선택'),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFFBFAF6),
+                foregroundColor: _primary,
+                elevation: 2,
+                shadowColor: Colors.black.withValues(alpha: 0.16),
+                padding: const EdgeInsets.fromLTRB(14, 10, 16, 10),
+                shape: const StadiumBorder(),
+                textStyle: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0,
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
