@@ -3,17 +3,24 @@ package com.devho.gijilai
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
-import io.flutter.embedding.android.FlutterActivity
+import android.os.Bundle
+import androidx.activity.enableEdgeToEdge
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
-class MainActivity : FlutterActivity() {
+class MainActivity : FlutterFragmentActivity() {
     companion object {
         private const val PERMISSIONS_CHANNEL = "com.devho.gijilai/permissions"
         private const val MICROPHONE_PERMISSION_REQUEST_CODE = 9401
     }
 
     private var microphonePermissionResult: MethodChannel.Result? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)

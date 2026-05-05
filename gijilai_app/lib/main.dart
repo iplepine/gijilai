@@ -122,12 +122,9 @@ class GijilaiApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const overlayStyle = SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.dark,
       statusBarBrightness: Brightness.light,
-      systemNavigationBarColor: Colors.transparent,
       systemNavigationBarIconBrightness: Brightness.dark,
-      systemNavigationBarDividerColor: Colors.transparent,
       systemNavigationBarContrastEnforced: false,
     );
 
