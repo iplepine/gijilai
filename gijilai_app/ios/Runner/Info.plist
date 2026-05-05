@@ -20,6 +20,14 @@
 				<string>kakao8d63a45bb147379940cda43c72e841d6</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.googleusercontent.apps.247682708380-fhagldmd4r7s32efqp466ifc8prk8u6k</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.247682708380-fhagldmd4r7s32efqp466ifc8prk8u6k</string>
+			</array>
+		</dict>
 	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>

@@ -84,7 +84,10 @@ Future<void> main() async {
     () async {
       WidgetsFlutterBinding.ensureInitialized();
       await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-      KakaoSdk.init(nativeAppKey: '8d63a45bb147379940cda43c72e841d6');
+      KakaoSdk.init(
+        nativeAppKey: '8d63a45bb147379940cda43c72e841d6',
+        customScheme: 'kakao8d63a45bb147379940cda43c72e841d6',
+      );
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
@@ -189,6 +192,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   bool _externalAuthInProgress = false;
   bool _hasRenderedFirstPage = false;
   bool _isWebPageLoading = false;
+  bool _iapLaunchInProgress = false;
   int _webPageLoadProgress = 0;
 
   String get _subscriptionProductId => Platform.isIOS
@@ -200,10 +204,10 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _initAppLinks();
-    _initIAP();
-    _initLocalNotifications();
-    _initWebView();
+    unawaited(_initAppLinks());
+    unawaited(_initIAP());
+    unawaited(_initLocalNotifications());
+    unawaited(_initWebView());
   }
 
   @override
@@ -1000,7 +1004,9 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
     try {
       OAuthToken token;
-      if (await isKakaoTalkInstalled()) {
+      if (Platform.isAndroid) {
+        token = await UserApi.instance.loginWithKakaoAccount();
+      } else if (await isKakaoTalkInstalled()) {
         try {
           token = await UserApi.instance.loginWithKakaoTalk();
         } catch (e) {
@@ -1115,6 +1121,23 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     });
 
     try {
+      if (Platform.isAndroid && _googleWebClientId.isEmpty) {
+        debugPrint(
+          'Google native login skipped: GOOGLE_WEB_CLIENT_ID is not configured.',
+        );
+        FirebaseCrashlytics.instance.log(
+          'Google native login skipped: GOOGLE_WEB_CLIENT_ID is not configured.',
+        );
+        if (mounted) {
+          setState(() {
+            _authInProgress = false;
+          });
+        }
+        _externalAuthInProgress = false;
+        await _startNativeOAuth('google');
+        return;
+      }
+
       final googleSignIn = GoogleSignIn(
         scopes: const ['email', 'profile', 'openid'],
         clientId: Platform.isIOS && _googleIosClientId.isNotEmpty
@@ -1266,53 +1289,64 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   }
 
   Future<void> _initIAP() async {
-    final available = await _iap.isAvailable();
-    debugPrint(
-      'IAP init: storeAvailable=$available, platform=${Platform.operatingSystem}',
-    );
-    if (!available) {
-      debugPrint('IAP not available');
-      FirebaseCrashlytics.instance.log('IAP not available on current device');
-      return;
-    }
-
-    // 구매 상태 스트림 구독
-    _purchaseSubscription = _iap.purchaseStream.listen(
-      _onPurchaseUpdated,
-      onError: (error) {
-        debugPrint('IAP stream error: $error');
-        unawaited(
-          FirebaseCrashlytics.instance.recordError(
-            error,
-            StackTrace.current,
-            reason: 'IAP purchase stream error',
-          ),
-        );
-      },
-    );
-
-    // 상품 정보 로드
-    final response = await _iap.queryProductDetails({_subscriptionProductId});
-    debugPrint(
-      'IAP init product query: '
-      'productId=$_subscriptionProductId, '
-      'count=${response.productDetails.length}, '
-      'notFoundIDs=${response.notFoundIDs.join(",")}, '
-      'error=${response.error?.code ?? "none"}:${response.error?.message ?? "none"}',
-    );
-    if (response.error != null) {
-      debugPrint('IAP product query error: ${response.error}');
-      await FirebaseCrashlytics.instance.recordError(
-        response.error!,
-        StackTrace.current,
-        reason: 'IAP product query error',
+    try {
+      // 구매 결과를 놓치지 않도록 store availability 확인 전에 stream을 먼저 연결한다.
+      _purchaseSubscription ??= _iap.purchaseStream.listen(
+        _onPurchaseUpdated,
+        onError: (error) {
+          debugPrint('IAP stream error: $error');
+          unawaited(
+            FirebaseCrashlytics.instance.recordError(
+              error,
+              StackTrace.current,
+              reason: 'IAP purchase stream error',
+            ),
+          );
+        },
       );
-    }
-    if (response.notFoundIDs.isNotEmpty) {
-      debugPrint('IAP products not found: ${response.notFoundIDs}');
+
+      final available = await _iap.isAvailable();
+      debugPrint(
+        'IAP init: storeAvailable=$available, platform=${Platform.operatingSystem}',
+      );
+      if (!available) {
+        debugPrint('IAP not available');
+        FirebaseCrashlytics.instance.log('IAP not available on current device');
+        return;
+      }
+
+      // 상품 정보 로드
+      final response = await _iap.queryProductDetails({_subscriptionProductId});
+      debugPrint(
+        'IAP init product query: '
+        'productId=$_subscriptionProductId, '
+        'count=${response.productDetails.length}, '
+        'notFoundIDs=${response.notFoundIDs.join(",")}, '
+        'error=${response.error?.code ?? "none"}:${response.error?.message ?? "none"}',
+      );
+      if (response.error != null) {
+        debugPrint('IAP product query error: ${response.error}');
+        await FirebaseCrashlytics.instance.recordError(
+          response.error!,
+          StackTrace.current,
+          reason: 'IAP product query error',
+        );
+      }
+      if (response.notFoundIDs.isNotEmpty) {
+        debugPrint('IAP products not found: ${response.notFoundIDs}');
+        await FirebaseCrashlytics.instance.recordError(
+          Exception(
+            'IAP products not found: ${response.notFoundIDs.join(",")}',
+          ),
+          StackTrace.current,
+        );
+      }
+    } catch (e) {
+      debugPrint('IAP init error: $e');
       await FirebaseCrashlytics.instance.recordError(
-        Exception('IAP products not found: ${response.notFoundIDs.join(",")}'),
+        e,
         StackTrace.current,
+        reason: 'IAP init error',
       );
     }
   }
@@ -1321,7 +1355,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     try {
       final data = jsonDecode(message.message);
       if (data['type'] == 'PAYMENT_REQUEST') {
-        _startPurchase();
+        unawaited(_startPurchase());
       }
     } catch (e) {
       debugPrint('PaymentBridge parse error: $e');
@@ -1630,100 +1664,123 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   }
 
   Future<void> _startPurchase() async {
-    final available = await _iap.isAvailable();
-    if (!available) {
-      debugPrint('IAP purchase blocked: store is not available');
-      unawaited(
-        FirebaseCrashlytics.instance.recordError(
-          Exception('IAP store is not available'),
-          StackTrace.current,
-          reason: 'IAP purchase blocked before product query',
-        ),
+    if (_iapLaunchInProgress) {
+      debugPrint('IAP purchase ignored: launch already in progress');
+      FirebaseCrashlytics.instance.log(
+        'IAP purchase ignored: launch already in progress',
       );
-      _showSnackBar('인앱결제를 사용할 수 없습니다', isError: true);
       _notifyWebLoadingDone();
       return;
     }
 
-    final response = await _iap.queryProductDetails({_subscriptionProductId});
-    debugPrint(
-      'IAP purchase product query: '
-      'productId=$_subscriptionProductId, '
-      'count=${response.productDetails.length}, '
-      'notFoundIDs=${response.notFoundIDs.join(",")}, '
-      'error=${response.error?.code ?? "none"}:${response.error?.message ?? "none"}',
-    );
-    if (response.error != null) {
-      debugPrint(
-        'IAP product query failed before purchase: '
-        'code=${response.error!.code}, '
-        'message=${response.error!.message}, '
-        'details=${response.error!.details}',
-      );
-      unawaited(
-        FirebaseCrashlytics.instance.recordError(
-          response.error!,
-          StackTrace.current,
-          reason: 'IAP product query failed before purchase',
-        ),
-      );
-    }
-
-    if (response.productDetails.isEmpty) {
-      debugPrint(
-        'IAP product details empty: productId=$_subscriptionProductId, '
-        'notFoundIDs=${response.notFoundIDs.join(",")}',
-      );
-      unawaited(
-        FirebaseCrashlytics.instance.recordError(
-          Exception(
-            'IAP product not found: $_subscriptionProductId '
-            '(notFoundIDs=${response.notFoundIDs.join(",")})',
+    _iapLaunchInProgress = true;
+    try {
+      final available = await _iap.isAvailable();
+      if (!available) {
+        debugPrint('IAP purchase blocked: store is not available');
+        unawaited(
+          FirebaseCrashlytics.instance.recordError(
+            Exception('IAP store is not available'),
+            StackTrace.current,
+            reason: 'IAP purchase blocked before product query',
           ),
-          StackTrace.current,
-          reason: 'IAP product details empty before purchase',
-        ),
-      );
-      if (_useIosDebugPurchaseFallback) {
-        await _runIosDebugPurchaseFallback();
+        );
+        _showSnackBar('인앱결제를 사용할 수 없습니다', isError: true);
+        _finishIapPurchaseFlow();
         return;
       }
-      _showSnackBar('상품 정보를 찾을 수 없습니다', isError: true);
-      _notifyWebLoadingDone();
-      return;
-    }
 
-    // Android 구독: queryProductDetails가 offer별로 별도 ProductDetails 반환
-    // 첫 번째 항목 사용 (Google Play가 적격 offer를 우선 반환)
-    final product = response.productDetails.first;
-    debugPrint(
-      'IAP launching purchase: productId=${product.id}, '
-      'title=${product.title}, price=${product.price}',
-    );
-
-    try {
-      if (Platform.isAndroid && product is GooglePlayProductDetails) {
-        debugPrint('IAP Android offerToken=${product.offerToken}');
-        final purchaseParam = GooglePlayPurchaseParam(
-          productDetails: product,
-          offerToken: product.offerToken,
+      final response = await _iap.queryProductDetails({_subscriptionProductId});
+      debugPrint(
+        'IAP purchase product query: '
+        'productId=$_subscriptionProductId, '
+        'count=${response.productDetails.length}, '
+        'notFoundIDs=${response.notFoundIDs.join(",")}, '
+        'error=${response.error?.code ?? "none"}:${response.error?.message ?? "none"}',
+      );
+      if (response.error != null) {
+        debugPrint(
+          'IAP product query failed before purchase: '
+          'code=${response.error!.code}, '
+          'message=${response.error!.message}, '
+          'details=${response.error!.details}',
         );
-        await _iap.buyNonConsumable(purchaseParam: purchaseParam);
-      } else {
-        final purchaseParam = PurchaseParam(productDetails: product);
-        await _iap.buyNonConsumable(purchaseParam: purchaseParam);
+        unawaited(
+          FirebaseCrashlytics.instance.recordError(
+            response.error!,
+            StackTrace.current,
+            reason: 'IAP product query failed before purchase',
+          ),
+        );
+      }
+
+      if (response.productDetails.isEmpty) {
+        debugPrint(
+          'IAP product details empty: productId=$_subscriptionProductId, '
+          'notFoundIDs=${response.notFoundIDs.join(",")}',
+        );
+        unawaited(
+          FirebaseCrashlytics.instance.recordError(
+            Exception(
+              'IAP product not found: $_subscriptionProductId '
+              '(notFoundIDs=${response.notFoundIDs.join(",")})',
+            ),
+            StackTrace.current,
+            reason: 'IAP product details empty before purchase',
+          ),
+        );
+        if (_useIosDebugPurchaseFallback) {
+          await _runIosDebugPurchaseFallback();
+          return;
+        }
+        _showSnackBar('상품 정보를 찾을 수 없습니다', isError: true);
+        _finishIapPurchaseFlow();
+        return;
+      }
+
+      // Android 구독: queryProductDetails가 offer별로 별도 ProductDetails 반환
+      // 첫 번째 항목 사용 (Google Play가 적격 offer를 우선 반환)
+      final product = response.productDetails.first;
+      debugPrint(
+        'IAP launching purchase: productId=${product.id}, '
+        'title=${product.title}, price=${product.price}',
+      );
+
+      try {
+        if (Platform.isAndroid && product is GooglePlayProductDetails) {
+          debugPrint('IAP Android offerToken=${product.offerToken}');
+          final purchaseParam = GooglePlayPurchaseParam(
+            productDetails: product,
+            offerToken: product.offerToken,
+          );
+          await _iap.buyNonConsumable(purchaseParam: purchaseParam);
+        } else {
+          final purchaseParam = PurchaseParam(productDetails: product);
+          await _iap.buyNonConsumable(purchaseParam: purchaseParam);
+        }
+      } catch (e) {
+        debugPrint('IAP purchase launch threw: $e');
+        unawaited(
+          FirebaseCrashlytics.instance.recordError(
+            e,
+            StackTrace.current,
+            reason: 'IAP purchase launch threw',
+          ),
+        );
+        _showSnackBar('결제창을 열 수 없습니다', isError: true);
+        _finishIapPurchaseFlow();
       }
     } catch (e) {
-      debugPrint('IAP purchase launch threw: $e');
+      debugPrint('IAP purchase flow error: $e');
       unawaited(
         FirebaseCrashlytics.instance.recordError(
           e,
           StackTrace.current,
-          reason: 'IAP purchase launch threw',
+          reason: 'IAP purchase flow error',
         ),
       );
-      _showSnackBar('결제창을 열 수 없습니다', isError: true);
-      _notifyWebLoadingDone();
+      _showSnackBar('결제를 시작할 수 없습니다', isError: true);
+      _finishIapPurchaseFlow();
     }
   }
 
@@ -1763,7 +1820,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         break;
     }
 
-    _notifyWebLoadingDone();
+    _finishIapPurchaseFlow();
   }
 
   void _onPurchaseUpdated(List<PurchaseDetails> purchases) {
@@ -1771,7 +1828,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       switch (purchase.status) {
         case PurchaseStatus.purchased:
         case PurchaseStatus.restored:
-          _verifyAndDeliver(purchase);
+          unawaited(_verifyAndDeliver(purchase));
           break;
         case PurchaseStatus.error:
           debugPrint(
@@ -1790,13 +1847,13 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
             ),
           );
           _showSnackBar('결제에 실패했습니다', isError: true);
-          _notifyWebLoadingDone();
+          _finishIapPurchaseFlow();
           if (purchase.pendingCompletePurchase) {
-            _iap.completePurchase(purchase);
+            unawaited(_iap.completePurchase(purchase));
           }
           break;
         case PurchaseStatus.canceled:
-          _notifyWebLoadingDone();
+          _finishIapPurchaseFlow();
           break;
         case PurchaseStatus.pending:
           debugPrint('IAP purchase pending...');
@@ -1862,7 +1919,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
       if (resultJson == null || resultJson.isEmpty) {
         _showSnackBar('서버 응답 시간이 초과되었습니다', isError: true);
-        _notifyWebLoadingDone();
+        _finishIapPurchaseFlow();
         return;
       }
 
@@ -1887,7 +1944,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
             ? '결제 검증 설정에 문제가 있습니다. 잠시 후 다시 시도해주세요.'
             : errorCode ?? '검증 실패';
         _showSnackBar(errorMessage, isError: true);
-        _notifyWebLoadingDone();
+        _finishIapPurchaseFlow();
         await FirebaseCrashlytics.instance.recordError(
           Exception('IAP verification failed: ${data['error'] ?? 'unknown'}'),
           StackTrace.current,
@@ -1901,8 +1958,9 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         reason: 'IAP receipt verification error',
       );
       _showSnackBar('영수증 검증에 실패했습니다', isError: true);
-      _notifyWebLoadingDone();
+      _finishIapPurchaseFlow();
     } finally {
+      _iapLaunchInProgress = false;
       if (shouldCompletePurchase && purchase.pendingCompletePurchase) {
         await _iap.completePurchase(purchase);
       }
@@ -1924,6 +1982,11 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         duration: Duration(seconds: isError ? 4 : 3),
       ),
     );
+  }
+
+  void _finishIapPurchaseFlow() {
+    _iapLaunchInProgress = false;
+    _notifyWebLoadingDone();
   }
 
   /// 웹의 loading 상태를 해제

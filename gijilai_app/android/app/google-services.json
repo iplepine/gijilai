@@ -12,7 +12,20 @@
           "package_name": "com.devho.gijilai"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "247682708380-1jjlem9koupgnv2qunefbcg57ij4htbs.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.devho.gijilai",
+            "certificate_hash": "5e78c470a252ae501ec9eaac5e1eeaa1b47a9b31"
+          }
+        },
+        {
+          "client_id": "247682708380-ibd5vrskhud6dhqf3jca9v9hp1dadad0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCxPx6POWfc-9if4jAyN_7jUFBBogI3eWQ"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "247682708380-ibd5vrskhud6dhqf3jca9v9hp1dadad0.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "247682708380-fhagldmd4r7s32efqp466ifc8prk8u6k.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.devho.gijilai"
+              }
+            }
+          ]
         }
       }
     }

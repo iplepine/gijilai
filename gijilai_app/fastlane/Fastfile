@@ -11,6 +11,8 @@ PACKAGE_NAME = "com.devho.gijilai"
 FLUTTER_DIR = File.expand_path("..", __dir__)
 IOS_IPA_PATH = File.join(FLUTTER_DIR, "build", "ios", "ipa", "gijilai.ipa")
 ANDROID_RELEASE_NOTES_DIR = File.join(__dir__, "release_notes", "android")
+GOOGLE_WEB_CLIENT_ID = ENV.fetch("GOOGLE_WEB_CLIENT_ID", "247682708380-ibd5vrskhud6dhqf3jca9v9hp1dadad0.apps.googleusercontent.com")
+GOOGLE_IOS_CLIENT_ID = ENV.fetch("GOOGLE_IOS_CLIENT_ID", "247682708380-fhagldmd4r7s32efqp466ifc8prk8u6k.apps.googleusercontent.com")
 
 ANDROID_RELEASE_NOTE_SOURCES = {
   "ko-KR" => "ko-KR.txt",
@@ -84,6 +86,13 @@ def android_json_key_path
   return default_path if File.exist?(default_path)
 
   UI.user_error!("Missing Google Play service account key. Set GOOGLE_PLAY_JSON_KEY_PATH or add fastlane/json_key.json.")
+end
+
+def flutter_release_dart_defines
+  [
+    "--dart-define=GOOGLE_WEB_CLIENT_ID=#{GOOGLE_WEB_CLIENT_ID}",
+    "--dart-define=GOOGLE_IOS_CLIENT_ID=#{GOOGLE_IOS_CLIENT_ID}",
+  ].join(" ")
 end
 
 def upload_android_release(track:, skip_upload_metadata:, skip_upload_images:, skip_upload_screenshots:, skip_upload_changelogs:)
@@ -211,7 +220,7 @@ platform :android do
   desc "Flutter 빌드 → AAB (App Bundle)"
   lane :build do
     Dir.chdir(FLUTTER_DIR) do
-      sh("flutter build appbundle --release")
+      sh("flutter build appbundle --release #{flutter_release_dart_defines}")
     end
   end
 
@@ -379,7 +388,7 @@ platform :ios do
     Dir.chdir(FLUTTER_DIR) do
       # Run through a login shell so Flutter picks up the same Ruby/CocoaPods
       # environment that works in the developer terminal.
-      sh("zsh -lc 'flutter build ipa --release --export-options-plist=ios/ExportOptions.plist'")
+      sh("zsh -lc 'flutter build ipa --release #{flutter_release_dart_defines} --export-options-plist=ios/ExportOptions.plist'")
     end
   end
 

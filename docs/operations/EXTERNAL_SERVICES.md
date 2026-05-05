@@ -69,6 +69,8 @@
 - **운영 포인트**
 - 웹은 `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID`가 필요
 - 모바일 iOS는 dSYM 업로드 스크립트가 있어야 Crashlytics 심볼이 정상 해석됨
+- Android 릴리스 빌드는 `flutter_local_notifications`가 예약 알림을 복원할 때 필요한 Gson `TypeToken` generic signature가 R8에서 제거되지 않도록 `gijilai_app/android/app/proguard-rules.pro`를 유지해야 함
+- Android 릴리스 AAB는 Flutter native library와 함께 배포되는 `armeabi-v7a`, `arm64-v8a`, `x86_64` ABI만 포함한다. x86 전용 native split이 생기면 `libflutter.so` 로딩 실패가 날 수 있다.
 - 이벤트 스키마 변경 시 [docs/product/policies/analytics.md](../product/policies/analytics.md)도 같이 갱신
 
 ### OpenAI
@@ -136,6 +138,7 @@
 - 웹 공유 SDK는 `NEXT_PUBLIC_KAKAO_JS_KEY` 환경변수의 JavaScript 키로 초기화한다. 배포 환경변수가 빠져도 공유가 막히지 않도록 웹 코드에 공개 JavaScript 키 fallback을 둔다.
 - Flutter 앱 Native App Key: `8d63a45bb147379940cda43c72e841d6`
 - 앱 URL scheme: `kakao8d63a45bb147379940cda43c72e841d6`
+- Android Flutter 앱은 KakaoTalk 앱투앱 native activity 크래시를 피하기 위해 Kakao account 로그인 경로를 우선 사용한다. Kakao SDK 업그레이드 후 앱투앱 재활성화 여부를 Crashlytics로 확인한다.
 - 앱투앱 로그인 후 Supabase 세션으로 교환하려면 Kakao Developers에서 OpenID Connect를 활성화해 ID 토큰이 발급되어야 한다.
 - OAuth fallback은 Kakao Developers 개인정보 동의항목의 `account_email`이 필수 동의로 설정되어 있다는 전제로 `profile_nickname account_email` scope를 요청한다. 이 설정이 빠지면 `KOE205`가 날 수 있으므로 Kakao Developers 동의항목과 코드 scope를 함께 유지한다.
 - Android 앱 키 해시, iOS Bundle ID, 플랫폼별 Redirect URI를 Kakao Developers와 Supabase Auth provider 설정에 함께 등록해야 한다.
@@ -152,9 +155,9 @@
 - **운영 포인트**
 - 승인된 리디렉션 URI와 Supabase 설정을 함께 맞춰야 함
 - Flutter 앱은 Google 로그인을 네이티브 SDK로 먼저 시도하고, 받은 ID 토큰을 Supabase 세션으로 교환한다.
-- `GOOGLE_WEB_CLIENT_ID` dart define은 선택값이다. 있으면 `serverClientId`로 사용하고, 없어도 앱 기본 client로 네이티브 로그인을 시도한다.
+- `GOOGLE_WEB_CLIENT_ID` dart define은 선택값이다. 있으면 Android/iOS native Google 로그인에서 `serverClientId`로 사용한다. Android에서 값이 없으면 Play Services Auth native activity를 열지 않고 Supabase OAuth fallback을 사용한다.
 - iOS 네이티브 로그인을 안정적으로 쓰려면 `GOOGLE_IOS_CLIENT_ID` dart define과 `GoogleService-Info.plist`의 `CLIENT_ID`/`REVERSED_CLIENT_ID`, `Info.plist` URL scheme을 Google Cloud Console 값과 일치시킨다. 네이티브 설정 예외가 나면 앱은 Supabase OAuth fallback으로 전환한다.
-- Android는 Firebase/Google Cloud에 앱 SHA-1, SHA-256을 등록해야 `google-services.json`의 `oauth_client`가 채워지고 안정적으로 동작한다.
+- Android는 Firebase/Google Cloud에 앱 SHA-1, SHA-256을 등록해야 `google-services.json`의 `oauth_client`가 채워지고 안정적으로 동작한다. 이 값이 비어 있으면 Play Services Auth native activity 크래시 또는 로그인 실패가 Crashlytics에 잡힐 수 있다.
 
 ### Apple Developer
 
