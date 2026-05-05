@@ -9,6 +9,7 @@ import { TemperamentClassifier } from '@/lib/TemperamentClassifier';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { db } from '@/lib/db';
 import { useLocale } from '@/i18n/LocaleProvider';
+import { childNamePossessive } from '@/lib/koreanUtils';
 
 type TemperamentScores = { NS: number; HA: number; RD: number; P: number };
 type InsightItem = { scene: string; content: string };
@@ -42,7 +43,7 @@ export default function SharedReportPage() {
   const params = useParams();
   const reportId = params.id as string;
   const { user } = useAuth();
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
 
   const [report, setReport] = useState<SharedReport | null>(null);
   const [loading, setLoading] = useState(true);
@@ -84,6 +85,13 @@ export default function SharedReportPage() {
 
   const analysis = report?.analysis;
   const childName = report?.child?.name || t('report.child');
+  const childPossessiveName = locale === 'ko' ? childNamePossessive(childName) : childName;
+  const childTemperamentTypeTitle = locale === 'ko'
+    ? `${childPossessiveName} 기질 유형`
+    : `${childName}${t('shared.temperamentType')}`;
+  const childScoreTitle = locale === 'ko'
+    ? `${childPossessiveName} 기질 점수`
+    : `${childName}${t('report.temperamentScores')}`;
   const scores = report?.scores || analysis?.scores;
 
   const childType = (() => {
@@ -145,7 +153,7 @@ export default function SharedReportPage() {
 
           {/* Type Info */}
           <div className="dark:bg-surface-dark text-center px-6 pt-8 -mt-6 rounded-t-3xl pb-4 space-y-3 relative z-10" style={{ backgroundColor: 'var(--background-light)' }}>
-            <p className="text-text-sub text-sm font-medium">{childName}{t('shared.temperamentType')}</p>
+            <p className="text-text-sub text-sm font-medium">{childTemperamentTypeTitle}</p>
             <h1 className="text-3xl font-black text-text-main dark:text-white tracking-tight">
               {childType.label}
             </h1>
@@ -179,7 +187,7 @@ export default function SharedReportPage() {
             {scores && (
               <section className="bg-white dark:bg-surface-dark rounded-2xl px-6 py-6 shadow-card border border-beige-main/10 space-y-5">
                 <p className="text-[12px] font-black text-text-main dark:text-white flex items-center gap-1.5">
-                  <Icon name="bar_chart" size="sm" /> {childName}{t('report.temperamentScores')}
+                  <Icon name="bar_chart" size="sm" /> {childScoreTitle}
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   {([

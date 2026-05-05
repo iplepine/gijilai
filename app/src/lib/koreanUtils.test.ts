@@ -26,11 +26,25 @@ describe('koreanUtils', () => {
     expect(childNamePossessive('서아')).toBe('서아의');
   });
 
+  test('formats likely full Korean names with standard particles', () => {
+    expect(childNameTopic('박재윤')).toBe('박재윤은');
+    expect(childNameSubject('박재윤')).toBe('박재윤이');
+    expect(childNameObject('박재윤')).toBe('박재윤을');
+    expect(childNameWith('박재윤')).toBe('박재윤과');
+    expect(childNamePossessive('박재윤')).toBe('박재윤의');
+  });
+
   test('normalizes awkward child-name particles in report text', () => {
     expect(normalizeChildNameParticles('재윤은 새 환경을 살피고, 재윤을 기다려야 해요.', '재윤'))
       .toBe('재윤이는 새 환경을 살피고, 재윤이를 기다려야 해요.');
     expect(normalizeChildNameParticles('서아은 새 환경을 살피고, 서아와 대화해요.', '서아'))
       .toBe('서아는 새 환경을 살피고, 서아와 대화해요.');
+    expect(
+      normalizeChildNameParticles(
+        '박재윤이는 신중하고, 박재윤이가 고른 장난감을 박재윤이를 위해 두고, 박재윤이의 속도도 봐야 해요.',
+        '박재윤',
+      ),
+    ).toBe('박재윤은 신중하고, 박재윤이 고른 장난감을 박재윤을 위해 두고, 박재윤의 속도도 봐야 해요.');
   });
 
   test('normalizes nested report values without mutating non-string fields', () => {

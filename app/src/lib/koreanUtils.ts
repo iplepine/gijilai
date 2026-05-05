@@ -18,6 +18,16 @@ function hasRieulBatchim(str: string): boolean {
   return (lastChar - 0xAC00) % 28 === 8;
 }
 
+function isLikelyFullKoreanName(name: string): boolean {
+  const compact = name.trim().replace(/\s+/g, '');
+  return /^[가-힣]{3,}$/.test(compact);
+}
+
+function shouldUseFriendlyChildNameStem(name: string): boolean {
+  const normalized = name.trim();
+  return !!normalized && hasBatchim(normalized) && !isLikelyFullKoreanName(normalized);
+}
+
 /** 은/는 */
 export function eunNeun(name: string): string {
   return name + (hasBatchim(name) ? '은' : '는');
@@ -52,31 +62,35 @@ export function aYa(name: string): string {
 export function childNameStem(name: string): string {
   const normalized = name.trim();
   if (!normalized) return normalized;
-  return hasBatchim(normalized) ? `${normalized}이` : normalized;
+  return shouldUseFriendlyChildNameStem(normalized) ? `${normalized}이` : normalized;
 }
 
 /** 아이 이름 + 은/는. 재윤이는, 서아는 */
 export function childNameTopic(name: string): string {
   const stem = childNameStem(name);
-  return stem ? `${stem}는` : stem;
+  if (!stem) return stem;
+  return shouldUseFriendlyChildNameStem(name) ? `${stem}는` : eunNeun(stem);
 }
 
 /** 아이 이름 + 이/가. 재윤이가, 서아가 */
 export function childNameSubject(name: string): string {
   const stem = childNameStem(name);
-  return stem ? `${stem}가` : stem;
+  if (!stem) return stem;
+  return shouldUseFriendlyChildNameStem(name) ? `${stem}가` : iGa(stem);
 }
 
 /** 아이 이름 + 을/를. 재윤이를, 서아를 */
 export function childNameObject(name: string): string {
   const stem = childNameStem(name);
-  return stem ? `${stem}를` : stem;
+  if (!stem) return stem;
+  return shouldUseFriendlyChildNameStem(name) ? `${stem}를` : eulReul(stem);
 }
 
 /** 아이 이름 + 와/과. 재윤이와, 서아와 */
 export function childNameWith(name: string): string {
   const stem = childNameStem(name);
-  return stem ? `${stem}와` : stem;
+  if (!stem) return stem;
+  return shouldUseFriendlyChildNameStem(name) ? `${stem}와` : gwaWa(stem);
 }
 
 /** 아이 이름 + 의. 재윤이의, 서아의 */
@@ -94,6 +108,12 @@ export function normalizeChildNameParticles(text: string, childName: string): st
   if (!name || !text.includes(name)) return text;
 
   let normalized = text;
+  normalized = replaceAllLiteral(normalized, `${name}이는`, childNameTopic(name));
+  normalized = replaceAllLiteral(normalized, `${name}이가`, childNameSubject(name));
+  normalized = replaceAllLiteral(normalized, `${name}이를`, childNameObject(name));
+  normalized = replaceAllLiteral(normalized, `${name}이와`, childNameWith(name));
+  normalized = replaceAllLiteral(normalized, `${name}이의`, childNamePossessive(name));
+  normalized = replaceAllLiteral(normalized, `${name}이도`, `${childNameStem(name)}도`);
   normalized = replaceAllLiteral(normalized, `${name}은`, childNameTopic(name));
   normalized = replaceAllLiteral(normalized, `${name}는`, childNameTopic(name));
   normalized = replaceAllLiteral(normalized, `${name}가`, childNameSubject(name));
