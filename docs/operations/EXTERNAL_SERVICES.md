@@ -138,7 +138,7 @@
 - 웹 공유 SDK는 `NEXT_PUBLIC_KAKAO_JS_KEY` 환경변수의 JavaScript 키로 초기화한다. 배포 환경변수가 빠져도 공유가 막히지 않도록 웹 코드에 공개 JavaScript 키 fallback을 둔다.
 - Flutter 앱 Native App Key: `8d63a45bb147379940cda43c72e841d6`
 - 앱 URL scheme: `kakao8d63a45bb147379940cda43c72e841d6`
-- Android Flutter 앱은 KakaoTalk 설치 시 앱투앱 로그인을 우선 시도하고, KakaoTalk 미설치 또는 앱투앱 로그인 실패 시 Kakao SDK의 카카오계정 로그인 경로로 이어간다.
+- Android Flutter 앱은 KakaoTalk 설치 시 앱투앱 로그인을 시도하고, KakaoTalk 미설치 또는 앱투앱 로그인 실패 시 카카오계정 웹 fallback을 열지 않고 앱 안에서 실패를 안내한다.
 - Flutter 앱은 Kakao SDK 기반 네이티브 토큰 교환 경로가 있을 때 `window.__nativeCapabilities.nativeAuthProviders.kakao`를 `true`로 광고한다. ID 토큰이 없거나 세션 교환에 실패하면 Supabase OAuth fallback을 열지 않고 앱 안에서 실패를 안내한다.
 - Android 카카오 로그인 복귀 크래시를 피하기 위해 `MainActivity`에는 `android:taskAffinity=""`를 두지 않는다. 현재 Flutter 3.32/Dart 3.8 환경에서는 Kakao SDK 1.10.0 이상이 빌드 요구사항과 맞지 않으므로 `kakao_flutter_sdk_user` 1.9.7+3을 유지한다.
 - 앱투앱 로그인 후 Supabase 세션으로 교환하려면 Kakao Developers에서 OpenID Connect를 활성화해 ID 토큰이 발급되어야 한다.

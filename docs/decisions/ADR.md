@@ -566,6 +566,12 @@
 - **이유**: 실제 기기에서 `TalkAuthCodeActivity`가 카카오톡 복귀 URL을 처리할 때 `Reply already submitted` 네이티브 크래시가 발생했다. Kakao DevTalk의 공식 안내도 Flutter 3.22 이후 템플릿에 들어간 `android:taskAffinity=""`와 Kakao 로그인 복귀 문제가 있을 수 있어 해당 옵션 제거 또는 SDK 업데이트를 권장한다. 현재 프로젝트의 Flutter 3.32/Dart 3.8 조합에서는 Kakao SDK 1.10.0이 빌드되지 않으므로, 공식 안내의 manifest 수정으로 앱투앱 로그인 경로를 유지한다.
 - **대안**: 카카오톡 앱투앱 로그인을 끄고 카카오계정 웹 로그인만 사용 — 크래시는 피할 수 있지만 네이티브 카카오 로그인 요구를 약화해 기각. Kakao Flutter SDK 1.10.0 또는 v2로 즉시 올림 — 현재 Flutter/Dart 버전에서 빌드 또는 요구사항 문제가 있어 이번 수정 범위에서는 기각.
 
+## 2026-05-06 | Android 카카오 로그인은 카카오톡 앱투앱만 사용한다
+
+- **결정**: Android 카카오 로그인은 카카오톡 앱 설치가 확인될 때만 버튼을 노출하고, `loginWithKakaoTalk`만 호출한다. `loginWithKakaoTalk` 실패, 카카오톡 미설치, 추가 scope 확인 실패 시 `loginWithKakaoAccount` 또는 `loginWithNewScopes` 웹 fallback을 열지 않고 앱 안에서 실패를 안내한다. Manifest package visibility에는 `com.kakao.talk`, `com.kakao.onetalk`, 카카오톡 로그인 intent action을 함께 선언한다.
+- **이유**: 배포 앱에서 카카오 로그인 버튼을 눌렀을 때 앱투앱 대신 카카오계정 웹 화면으로 빠지는 동선이 확인됐다. 앱 로그인은 네이티브/앱투앱 경험이어야 하고, 웹 fallback은 iOS 심사 대응 정책 및 Android 네이티브 로그인 기대와 맞지 않는다.
+- **대안**: 카카오톡 실패 시 카카오계정 웹 fallback 유지 — 로그인 성공률은 높일 수 있지만 사용자가 기대한 앱투앱 동선을 깨고 웹 OAuth 표면을 다시 노출하므로 기각.
+
 ## 2026-05-05 | 앱 이메일 로그인/회원가입은 Flutter 네이티브 화면에서 제공한다
 
 - **결정**: 앱에서 사용자가 보는 로그인/회원가입 화면은 Flutter 네이티브 오버레이로 제공한다. 이메일 로그인/회원가입도 웹 `/login` 폼으로 전환하지 않고 네이티브 폼에서 입력받으며, WebView는 `/auth/native-email` API를 통해 Supabase 세션 쿠키를 설정하는 백그라운드 컨텍스트로만 사용한다. Android와 iOS 모두 Supabase OAuth authorize URL과 소셜 OAuth 도메인을 브라우저/Custom Tab으로 열지 않고, 네이티브 SDK 경로가 없으면 앱 안에서 실패를 안내한다.

@@ -83,6 +83,10 @@
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
         <package android:name="com.kakao.talk"/>
+        <package android:name="com.kakao.onetalk"/>
+        <intent>
+            <action android:name="com.kakao.talk.intent.action.CAPRI_LOGGED_IN_ACTIVITY"/>
+        </intent>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>

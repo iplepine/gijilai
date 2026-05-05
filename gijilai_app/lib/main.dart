@@ -105,12 +105,6 @@ const String _googleWebClientId = String.fromEnvironment(
 const String _googleIosClientId = String.fromEnvironment(
   'GOOGLE_IOS_CLIENT_ID',
 );
-const List<String> _kakaoRequiredScopes = [
-  'openid',
-  'account_email',
-  'profile_nickname',
-];
-
 Future<void> main() async {
   await runZonedGuarded(
     () async {
@@ -834,7 +828,6 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         _postNativeAuthNavigationInProgress = false;
         _isCompletingNativeAuth = false;
         _showNativeLogin = true;
-        _refreshNativeLoginAvailability();
       } else if (_postNativeAuthNavigationInProgress) {
         _showNativeLogin = true;
         _isWebEmailLoginVisible = false;
@@ -845,6 +838,9 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         _isCompletingNativeAuth = false;
       }
     });
+    if (isNativeLoginRoute) {
+      unawaited(_refreshNativeLoginAvailability());
+    }
   }
 
   void _syncNativeLoginRouteState({String? url, String? routePath}) {
@@ -859,13 +855,15 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         _postNativeAuthNavigationInProgress = false;
         _isCompletingNativeAuth = false;
         _showNativeLogin = true;
-        _refreshNativeLoginAvailability();
       } else {
         _showNativeLogin = false;
         _isWebEmailLoginVisible = false;
         _isCompletingNativeAuth = false;
       }
     });
+    if (isNativeLoginRoute) {
+      unawaited(_refreshNativeLoginAvailability());
+    }
   }
 
   void _handleLoadProgress(int progress) {
@@ -893,7 +891,6 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           _isCompletingNativeAuth = false;
           _showNativeLogin = true;
           _authInProgress = false;
-          _refreshNativeLoginAvailability();
         } else {
           _postNativeAuthNavigationInProgress = false;
           _isCompletingNativeAuth = false;
@@ -903,6 +900,9 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         }
         _hasRenderedFirstPage = true;
       });
+    }
+    if (isNativeLoginRoute) {
+      unawaited(_refreshNativeLoginAvailability());
     }
   }
 
@@ -922,7 +922,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       _isCompletingNativeAuth = false;
       _lastBackPressedAt = null;
     });
-    _refreshNativeLoginAvailability();
+    unawaited(_refreshNativeLoginAvailability());
   }
 
   Future<void> _openNativeLoginInfoPage(String path) async {
@@ -1640,6 +1640,11 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     if (_authInProgress) return;
 
     final isKakaoTalkAvailable = await isKakaoTalkInstalled();
+    if (!isKakaoTalkAvailable) {
+      await _finishNativeAuthFailure('카카오톡 앱을 설치한 뒤 다시 시도해주세요');
+      return;
+    }
+
     setState(() {
       _authInProgress = true;
     });
@@ -1647,57 +1652,14 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     try {
       final rawNonce = _generateNonce();
       final hashedNonce = sha256.convert(utf8.encode(rawNonce)).toString();
-      OAuthToken token;
-      if (isKakaoTalkAvailable) {
-        try {
-          token = await UserApi.instance.loginWithKakaoTalk(nonce: hashedNonce);
-        } catch (e) {
-          if (_isUserCancelledAuthError(e)) {
-            await _finishCancelledAuthHandoff();
-            return;
-          }
-          debugPrint('KakaoTalk login failed, falling back to account: $e');
-          token = await UserApi.instance.loginWithKakaoAccount(
-            nonce: hashedNonce,
-          );
-        }
-      } else {
-        token = await UserApi.instance.loginWithKakaoAccount(
-          nonce: hashedNonce,
-        );
-      }
+      final token = await UserApi.instance.loginWithKakaoTalk(
+        nonce: hashedNonce,
+      );
 
-      final grantedScopes = token.scopes ?? const <String>[];
-      final missingScopes = _kakaoRequiredScopes
-          .where((scope) => !grantedScopes.contains(scope))
-          .toList(growable: false);
-
-      if (token.idToken == null ||
-          token.idToken!.isEmpty ||
-          missingScopes.isNotEmpty) {
-        debugPrint(
-          'Kakao token is missing required scopes; requesting additional consent. '
-          'missingScopes=$missingScopes',
-        );
-        try {
-          token = await UserApi.instance.loginWithNewScopes(
-            _kakaoRequiredScopes,
-            nonce: hashedNonce,
-          );
-        } catch (e) {
-          debugPrint('Kakao additional scope request failed: $e');
-          await _finishNativeAuthFailure('카카오 로그인을 완료할 수 없습니다');
-          return;
-        }
-
-        if (token.idToken == null || token.idToken!.isEmpty) {
-          debugPrint(
-            'Kakao additional scope token did not include an ID token. '
-            'scopes=${token.scopes}',
-          );
-          await _finishNativeAuthFailure('카카오 로그인을 완료할 수 없습니다');
-          return;
-        }
+      if (token.idToken == null || token.idToken!.isEmpty) {
+        debugPrint('KakaoTalk token did not include an ID token.');
+        await _finishNativeAuthFailure('카카오 로그인을 완료할 수 없습니다');
+        return;
       }
 
       await _completeNativeSession(
@@ -1712,19 +1674,22 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         return;
       }
 
-      debugPrint('Kakao native login error: $e');
+      debugPrint('KakaoTalk native login error: $e');
       if (mounted) {
         setState(() {
           _authInProgress = false;
         });
       }
       await _notifyWebAuthLoadingDone();
-      _showSnackBar('카카오 로그인을 완료할 수 없습니다', isError: true);
+      _showSnackBar(
+        '카카오톡 앱으로 로그인할 수 없습니다. 카카오톡을 업데이트한 뒤 다시 시도해주세요',
+        isError: true,
+      );
       unawaited(
         FirebaseCrashlytics.instance.recordError(
           e,
           StackTrace.current,
-          reason: 'Kakao native login error',
+          reason: 'KakaoTalk native login error',
         ),
       );
     }
@@ -2191,8 +2156,22 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     }
   }
 
-  void _refreshNativeLoginAvailability() {
-    final isAvailable = Platform.isAndroid || Platform.isIOS;
+  Future<void> _refreshNativeLoginAvailability() async {
+    var isAvailable = false;
+    if (Platform.isAndroid || Platform.isIOS) {
+      try {
+        isAvailable = await isKakaoTalkInstalled();
+      } catch (e, stack) {
+        debugPrint('KakaoTalk availability check failed: $e');
+        unawaited(
+          FirebaseCrashlytics.instance.recordError(
+            e,
+            stack,
+            reason: 'KakaoTalk availability check failed',
+          ),
+        );
+      }
+    }
     if (!mounted || _canUseKakaoNativeLogin == isAvailable) return;
     setState(() {
       _canUseKakaoNativeLogin = isAvailable;

@@ -92,7 +92,7 @@
 - 알림 설정의 리마인더 시간 선택은 브라우저/WebView 기본 `input type="time"` picker를 쓰지 않고, 웹 커스텀 모달로 표시해 앱/웹에서 동일한 시각 언어를 유지한다.
 - Flutter 앱 WebView가 `/login`에 도달하면 WebView 위에 네이티브 로그인 화면을 오버레이한다.
 - Next.js 클라이언트 라우팅으로 `/login`에 도달하는 경우도 `RouteBridge`가 `history.pushState/replaceState/popstate`를 감지해 네이티브 로그인 오버레이 상태를 동기화한다.
-- 네이티브 로그인 화면은 Android에서 카카오톡 앱투앱 로그인이 가능한 경우 카카오, Apple, Google, 이메일 진입점을 제공하고, iOS 심사 빌드에서는 Apple과 이메일 진입점을 기본 제공한다. 사용자가 보는 로그인/회원가입 화면은 Flutter 네이티브 화면이어야 하며, 웹 `/login` 폼을 직접 노출하지 않는다.
+- 네이티브 로그인 화면은 Android에서 카카오톡 앱투앱 로그인이 가능한 경우에만 카카오 진입점을 제공하고, Apple, Google, 이메일 진입점도 함께 제공한다. iOS 심사 빌드에서는 Apple과 이메일 진입점을 기본 제공한다. 사용자가 보는 로그인/회원가입 화면은 Flutter 네이티브 화면이어야 하며, 웹 `/login` 폼을 직접 노출하지 않는다.
 - 네이티브 로그인 화면과 이메일 로그인 화면은 로그인 전에도 `기질아이 알아보기`, `개인정보처리방침`, `이용약관` 링크를 제공한다. 링크를 누르면 WebView의 `/legal/about`, `/legal/privacy`, `/legal/terms` 공개 페이지를 앱 안에서 열고, 뒤로 가면 로그인 흐름으로 돌아온다.
 - 카카오 버튼은 Kakao Flutter SDK 앱투앱 로그인을 먼저 시도하고, Kakao ID 토큰을 `/auth/native-session`으로 전달해 Supabase 세션 쿠키를 WebView에 설정한다. ID 토큰과 이메일을 받기 위해 Kakao Developers OpenID Connect와 `openid`, `account_email`, `profile_nickname` scope가 필요하며, nonce는 Kakao SDK에는 SHA-256 해시값을, Supabase 세션 교환에는 원본값을 전달한다. 카카오톡 앱투앱 로그인 또는 ID 토큰을 사용할 수 없으면 카카오 계정 웹/OAuth fallback을 열지 않고 앱 안에서 실패를 안내한다.
 - Apple은 iOS에서 `sign_in_with_apple` 네이티브 SDK를 우선 사용해 ID 토큰(+ nonce)을 받고 `/auth/native-session`으로 세션을 교환한다. Android는 Apple 네이티브 SDK가 없으므로 Supabase Apple OAuth URL을 Android Custom Tab으로 열고 `gijilai://auth/callback` 딥링크로 앱에 복귀한다.
