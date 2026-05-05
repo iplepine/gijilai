@@ -28,6 +28,7 @@ type SharedAnalysis = {
 const KAKAO_SDK_SCRIPT_ID = 'kakao-js-sdk';
 const KAKAO_SDK_URL = 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.0/kakao.min.js';
 const KAKAO_SDK_LOAD_TIMEOUT_MS = 8000;
+const KAKAO_JS_KEY = process.env.NEXT_PUBLIC_KAKAO_JS_KEY || 'a2f3421d6022ef27e61c610c4b8ad025';
 
 let kakaoSdkPromise: Promise<void> | null = null;
 
@@ -84,9 +85,6 @@ function loadKakaoSdk(): Promise<void> {
 }
 
 async function ensureKakaoReady() {
-  const key = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
-  if (!key) throw new Error('NEXT_PUBLIC_KAKAO_JS_KEY is not configured');
-
   await loadKakaoSdk();
 
   const kakao = window.Kakao;
@@ -96,7 +94,7 @@ async function ensureKakaoReady() {
   }
 
   if (!kakao.isInitialized()) {
-    kakao.init(key);
+    kakao.init(KAKAO_JS_KEY);
   }
 
   return kakao;

@@ -133,7 +133,7 @@
 - `gijilai_app/ios/Runner/Info.plist`
 - **운영 포인트**
 - 도메인, JavaScript 키, Redirect URI 불일치가 흔한 장애 원인
-- 웹 공유 SDK는 `NEXT_PUBLIC_KAKAO_JS_KEY` 환경변수의 JavaScript 키로 초기화한다.
+- 웹 공유 SDK는 `NEXT_PUBLIC_KAKAO_JS_KEY` 환경변수의 JavaScript 키로 초기화한다. 배포 환경변수가 빠져도 공유가 막히지 않도록 웹 코드에 공개 JavaScript 키 fallback을 둔다.
 - Flutter 앱 Native App Key: `8d63a45bb147379940cda43c72e841d6`
 - 앱 URL scheme: `kakao8d63a45bb147379940cda43c72e841d6`
 - 앱투앱 로그인 후 Supabase 세션으로 교환하려면 Kakao Developers에서 OpenID Connect를 활성화해 ID 토큰이 발급되어야 한다.
