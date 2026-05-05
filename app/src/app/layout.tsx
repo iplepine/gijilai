@@ -58,8 +58,11 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
           rel="stylesheet"
         />
-        {/* Kakao SDK */}
-        <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.0/kakao.min.js" async></script>
+        <Script
+          id="kakao-js-sdk"
+          src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.0/kakao.min.js"
+          strategy="afterInteractive"
+        />
         {/* PortOne V2 SDK */}
         <script src="https://cdn.portone.io/v2/browser-sdk.js" async></script>
         {measurementId ? (

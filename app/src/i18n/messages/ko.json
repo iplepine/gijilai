@@ -860,6 +860,7 @@
   "share": {
     "title": "결과 공유하기",
     "shareKakao": "카카오톡으로 공유",
+    "shareKakaoLoading": "카카오톡 여는 중...",
     "copied": "복사됨!",
     "copyLink": "링크 복사",
     "otherApps": "다른 앱",
@@ -871,6 +872,8 @@
     "defaultChildName": "우리 아이",
     "defaultDesc": "호기심이 많고 에너지가 넘치는 탐험가 기질을 가지고 있어요.",
     "kakaoDesc": "과학적인 기질 분석으로 우리 아이의 타고난 빛을 발견해보세요.",
+    "kakaoFallback": "카카오톡 공유를 열 수 없어 링크를 복사했어요.",
+    "kakaoFailed": "카카오톡 공유를 열 수 없습니다. 링크 복사를 이용해주세요.",
     "afterTest": "검사 후 결과가 공개됩니다"
   },
   "shared": {

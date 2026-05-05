@@ -28,6 +28,18 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import 'firebase_options.dart';
 
+class _AndroidIntentUri {
+  const _AndroidIntentUri({
+    required this.launchUri,
+    required this.browserFallbackUri,
+    required this.packageName,
+  });
+
+  final Uri? launchUri;
+  final Uri? browserFallbackUri;
+  final String? packageName;
+}
+
 class NativeCapabilityRegistry {
   const NativeCapabilityRegistry();
 
@@ -819,7 +831,57 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     }
   }
 
-  Future<bool> _launchExternalUrl(Uri uri) async {
+  _AndroidIntentUri _parseAndroidIntentUri(Uri uri) {
+    final rawUri = uri.toString();
+    const intentPrefix = 'intent://';
+    const intentMarker = '#Intent;';
+    final markerIndex = rawUri.indexOf(intentMarker);
+
+    if (!rawUri.startsWith(intentPrefix) || markerIndex < 0) {
+      return const _AndroidIntentUri(
+        launchUri: null,
+        browserFallbackUri: null,
+        packageName: null,
+      );
+    }
+
+    final dataPart = rawUri.substring(intentPrefix.length, markerIndex);
+    final intentPart = rawUri.substring(markerIndex + intentMarker.length);
+    String? scheme;
+    String? browserFallbackUrl;
+    String? packageName;
+
+    for (final entry in intentPart.split(';')) {
+      final separatorIndex = entry.indexOf('=');
+      if (separatorIndex <= 0) continue;
+
+      final key = entry.substring(0, separatorIndex);
+      final value = entry.substring(separatorIndex + 1);
+      if (key == 'scheme') {
+        scheme = value;
+      } else if (key == 'S.browser_fallback_url') {
+        browserFallbackUrl = value;
+      } else if (key == 'package') {
+        packageName = value;
+      }
+    }
+
+    final launchUri = scheme == null || scheme.isEmpty
+        ? null
+        : Uri.tryParse('$scheme://$dataPart');
+    final browserFallbackUri =
+        browserFallbackUrl == null || browserFallbackUrl.isEmpty
+        ? null
+        : Uri.tryParse(Uri.decodeComponent(browserFallbackUrl));
+
+    return _AndroidIntentUri(
+      launchUri: launchUri,
+      browserFallbackUri: browserFallbackUri,
+      packageName: packageName,
+    );
+  }
+
+  Future<bool> _tryLaunchExternalUri(Uri uri) async {
     try {
       final browserMode = uri.scheme == 'http' || uri.scheme == 'https'
           ? LaunchMode.inAppBrowserView
@@ -828,6 +890,47 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       if (!launched && browserMode != LaunchMode.externalApplication) {
         launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
+      return launched;
+    } catch (e) {
+      debugPrint('External URL candidate launch failed: $e');
+      return false;
+    }
+  }
+
+  Future<bool> _launchAndroidIntentUri(Uri uri) async {
+    final intentUri = _parseAndroidIntentUri(uri);
+
+    final launchUri = intentUri.launchUri;
+    if (launchUri != null && await _tryLaunchExternalUri(launchUri)) {
+      return true;
+    }
+
+    final browserFallbackUri = intentUri.browserFallbackUri;
+    if (browserFallbackUri != null &&
+        await _tryLaunchExternalUri(browserFallbackUri)) {
+      return true;
+    }
+
+    final packageName = intentUri.packageName;
+    if (packageName != null && packageName.isNotEmpty) {
+      final marketUri = Uri.parse('market://details?id=$packageName');
+      if (await _tryLaunchExternalUri(marketUri)) return true;
+
+      final playStoreUri = Uri.https('play.google.com', '/store/apps/details', {
+        'id': packageName,
+      });
+      if (await _tryLaunchExternalUri(playStoreUri)) return true;
+    }
+
+    return false;
+  }
+
+  Future<bool> _launchExternalUrl(Uri uri) async {
+    try {
+      final scheme = uri.scheme.toLowerCase();
+      final launched = Platform.isAndroid && scheme == 'intent'
+          ? await _launchAndroidIntentUri(uri)
+          : await _tryLaunchExternalUri(uri);
       if (!launched) {
         throw Exception('Unable to launch external URL: $uri');
       }

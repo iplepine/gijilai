@@ -25,6 +25,83 @@ type SharedAnalysis = {
   };
 };
 
+const KAKAO_SDK_SCRIPT_ID = 'kakao-js-sdk';
+const KAKAO_SDK_URL = 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.0/kakao.min.js';
+const KAKAO_SDK_LOAD_TIMEOUT_MS = 8000;
+
+let kakaoSdkPromise: Promise<void> | null = null;
+
+function getKakaoSdkScript(): HTMLScriptElement | null {
+  return (
+    document.getElementById(KAKAO_SDK_SCRIPT_ID) as HTMLScriptElement | null
+  ) ?? document.querySelector<HTMLScriptElement>('script[src*="kakao_js_sdk"]');
+}
+
+function loadKakaoSdk(): Promise<void> {
+  if (window.Kakao) return Promise.resolve();
+  if (kakaoSdkPromise) return kakaoSdkPromise;
+
+  kakaoSdkPromise = new Promise<void>((resolve, reject) => {
+    const existingScript = getKakaoSdkScript();
+    const script = existingScript ?? document.createElement('script');
+    let timeoutId: number | null = null;
+
+    function cleanup() {
+      if (timeoutId) window.clearTimeout(timeoutId);
+      script.removeEventListener('load', handleLoad);
+      script.removeEventListener('error', handleError);
+    }
+
+    function handleLoad() {
+      cleanup();
+      resolve();
+    }
+
+    function handleError() {
+      cleanup();
+      kakaoSdkPromise = null;
+      reject(new Error('Kakao SDK failed to load'));
+    }
+
+    script.addEventListener('load', handleLoad, { once: true });
+    script.addEventListener('error', handleError, { once: true });
+
+    if (!existingScript) {
+      script.id = KAKAO_SDK_SCRIPT_ID;
+      script.src = KAKAO_SDK_URL;
+      script.async = true;
+      document.head.appendChild(script);
+    }
+
+    timeoutId = window.setTimeout(() => {
+      cleanup();
+      kakaoSdkPromise = null;
+      reject(new Error('Kakao SDK load timed out'));
+    }, KAKAO_SDK_LOAD_TIMEOUT_MS);
+  });
+
+  return kakaoSdkPromise;
+}
+
+async function ensureKakaoReady() {
+  const key = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
+  if (!key) throw new Error('NEXT_PUBLIC_KAKAO_JS_KEY is not configured');
+
+  await loadKakaoSdk();
+
+  const kakao = window.Kakao;
+  if (!kakao) {
+    kakaoSdkPromise = null;
+    throw new Error('Kakao SDK is unavailable after loading');
+  }
+
+  if (!kakao.isInitialized()) {
+    kakao.init(key);
+  }
+
+  return kakao;
+}
+
 function parseAnalysis(value: Json | null): SharedAnalysis | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   return value as unknown as SharedAnalysis;
@@ -37,6 +114,8 @@ function SharePageContent() {
   const { intake, cbqResponses } = useAppStore();
   const { t } = useLocale();
   const [copied, setCopied] = useState(false);
+  const [isKakaoSharing, setIsKakaoSharing] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
 
   // DB-loaded data
   const [report, setReport] = useState<ReportData | null>(null);
@@ -86,18 +165,11 @@ function SharePageContent() {
 
   const referralCode = 'GIJILAI-' + (user?.id?.substring(0, 8) || 'FRIEND');
 
-  // Initialize Kakao
+  // Preload Kakao so the first tap does not race the async SDK script.
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.Kakao) {
-      if (!window.Kakao.isInitialized()) {
-        const key = process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
-        if (!key) {
-          console.warn('NEXT_PUBLIC_KAKAO_JS_KEY is not configured');
-          return;
-        }
-        window.Kakao.init(key);
-      }
-    }
+    ensureKakaoReady().catch((error) => {
+      console.warn('Kakao SDK is not ready:', error);
+    });
   }, []);
 
   // Calculate Temperament from DB report or local store
@@ -124,40 +196,58 @@ function SharePageContent() {
     return `${window.location.origin}?ref=${referralCode}`;
   };
 
-  const handleCopyCode = async () => {
+  const copyShareUrl = async () => {
     await navigator.clipboard.writeText(getShareUrl());
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleKakaoShare = () => {
-    if (!window.Kakao) return;
+  const handleCopyCode = async () => {
+    setShareError(null);
+    await copyShareUrl();
+  };
 
+  const handleKakaoShare = async () => {
     const shareUrl = getShareUrl();
 
-    window.Kakao.Share.sendDefault({
-      objectType: 'feed',
-      content: {
-        title: `${eunNeun(childName)} "${temperamentInfo?.label || '열정 탐험가'}"`,
-        description: temperamentInfo?.intro
-          ? `${temperamentInfo.desc}\n\n${temperamentInfo.intro}`.slice(0, 200)
-          : temperamentInfo?.desc || t('share.kakaoDesc'),
-        imageUrl: `https://gijilai.com${temperamentInfo?.image || '/child_type/type_lhl.jpg'}`,
-        link: {
-          mobileWebUrl: shareUrl,
-          webUrl: shareUrl,
-        },
-      },
-      buttons: [
-        {
-          title: t('share.tryTest'),
+    setIsKakaoSharing(true);
+    setShareError(null);
+    try {
+      const kakao = await ensureKakaoReady();
+      kakao.Share.sendDefault({
+        objectType: 'feed',
+        content: {
+          title: `${eunNeun(childName)} "${temperamentInfo?.label || '열정 탐험가'}"`,
+          description: temperamentInfo?.intro
+            ? `${temperamentInfo.desc}\n\n${temperamentInfo.intro}`.slice(0, 200)
+            : temperamentInfo?.desc || t('share.kakaoDesc'),
+          imageUrl: `https://gijilai.com${temperamentInfo?.image || '/child_type/type_lhl.jpg'}`,
           link: {
             mobileWebUrl: shareUrl,
             webUrl: shareUrl,
           },
         },
-      ],
-    });
+        buttons: [
+          {
+            title: t('share.tryTest'),
+            link: {
+              mobileWebUrl: shareUrl,
+              webUrl: shareUrl,
+            },
+          },
+        ],
+      });
+    } catch (error) {
+      console.error('Kakao share failed:', error);
+      try {
+        await copyShareUrl();
+        setShareError(t('share.kakaoFallback'));
+      } catch {
+        setShareError(t('share.kakaoFailed'));
+      }
+    } finally {
+      setIsKakaoSharing(false);
+    }
   };
 
   const handleNativeShare = async () => {
@@ -222,11 +312,17 @@ function SharePageContent() {
           <div className="space-y-3">
             <button
               onClick={handleKakaoShare}
+              disabled={isKakaoSharing}
               className="w-full h-14 rounded-2xl flex items-center justify-center gap-2 text-[15px] font-bold bg-[#FEE500] hover:bg-[#FADA0A] text-[#191919] active:scale-[0.98] transition-all"
             >
               <svg width="20" height="20" viewBox="0 0 256 256"><path d="M128 36C70.6 36 24 72.4 24 116.8c0 28.9 19.2 54.2 48.1 68.6l-9.8 36.2c-.8 2.9 2.6 5.2 5.1 3.5l42.5-28.4c5.9.8 12 1.3 18.1 1.3 57.4 0 104-36.4 104-80.8S185.4 36 128 36z" fill="#191919"/></svg>
-              {t('share.shareKakao')}
+              {isKakaoSharing ? t('share.shareKakaoLoading') : t('share.shareKakao')}
             </button>
+            {shareError && (
+              <p className="text-xs font-medium leading-relaxed text-red-500 dark:text-red-300 px-1">
+                {shareError}
+              </p>
+            )}
 
             <div className="flex gap-3">
               <button

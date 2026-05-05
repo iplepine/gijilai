@@ -859,6 +859,7 @@
   "share": {
     "title": "Share Results",
     "shareKakao": "Share via KakaoTalk",
+    "shareKakaoLoading": "Opening KakaoTalk...",
     "copied": "Copied!",
     "copyLink": "Copy link",
     "otherApps": "Other apps",
@@ -870,6 +871,8 @@
     "defaultChildName": "My child",
     "defaultDesc": "Has a curious and energetic explorer temperament.",
     "kakaoDesc": "Discover your child's innate light with scientific temperament analysis.",
+    "kakaoFallback": "Could not open KakaoTalk, so the link was copied.",
+    "kakaoFailed": "Could not open KakaoTalk. Please use Copy link.",
     "afterTest": "Results revealed after the test"
   },
   "shared": {
