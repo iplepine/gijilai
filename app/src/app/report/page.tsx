@@ -961,7 +961,7 @@ function ReportContent() {
   }, [harmonyAiReport, activeTab]);
 
   const isRadarLoading = activeTab === 'parenting' && !harmonyAiReport;
-  const shouldShowHarmonyRefreshNotice = !isChildOnly && !!harmonyRefreshSource;
+  const shouldShowHarmonyRefreshNotice = !isChildOnly && activeTab === 'parenting' && !!harmonyRefreshSource;
 
   const radarData = {
     labels: [
