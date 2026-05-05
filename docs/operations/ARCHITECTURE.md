@@ -129,6 +129,7 @@ app/src/components/
 | `/api/payment/cancel-subscription` | POST | 구독 취소 |
 | `/api/payment/verify` | POST | 결제 검증 |
 | `/api/payment/webhook` | POST | 포트원 웹훅 |
+| `/api/profile/marketing-preference` | GET/PATCH | 이벤트/마케팅 수신 동의 조회/저장 |
 | `/api/report/shared/[id]` | GET | 공유 리포트 조회 |
 | `/auth/native-session` | POST | 앱 네이티브 소셜 로그인 토큰을 Supabase 세션 쿠키로 교환 |
 

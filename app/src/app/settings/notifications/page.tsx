@@ -5,7 +5,6 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/Button";
 import { useLocale } from "@/i18n/LocaleProvider";
-import { db } from "@/lib/db";
 import {
   PRACTICE_REMINDER_STORAGE_KEY,
   formatPracticeReminderTime,
@@ -31,6 +30,11 @@ const WHEEL_VISIBLE_ROWS = 5;
 const WHEEL_SIDE_PADDING = (WHEEL_ROW_HEIGHT * (WHEEL_VISIBLE_ROWS - 1)) / 2;
 const HOUR_OPTIONS = Array.from({ length: 24 }, (_, index) => index);
 const MINUTE_OPTIONS = Array.from({ length: 12 }, (_, index) => index * 5);
+const MARKETING_PREFERENCE_API = "/api/profile/marketing-preference";
+
+type MarketingPreferenceResponse = {
+  marketing_opt_in?: boolean | null;
+};
 
 export default function NotificationsPage() {
   const { locale, t } = useLocale();
@@ -92,14 +96,15 @@ export default function NotificationsPage() {
 
     const loadMarketingPreference = async () => {
       try {
-        const profile = await db.getUserProfile(user.id);
+        const response = await fetch(MARKETING_PREFERENCE_API, {
+          cache: "no-store",
+        });
+        if (!response.ok) {
+          throw new Error(`Marketing preference load failed: ${response.status}`);
+        }
+        const profile = (await response.json()) as MarketingPreferenceResponse;
         if (isCancelled) return;
-        const marketingOptIn =
-          "marketing_opt_in" in profile
-            ? (profile as { marketing_opt_in?: boolean | null })
-                .marketing_opt_in
-            : false;
-        setMarketingEnabled(marketingOptIn ?? false);
+        setMarketingEnabled(profile.marketing_opt_in ?? false);
       } catch (error) {
         console.error("Failed to load marketing preference:", error);
         if (isCancelled) return;
@@ -238,7 +243,16 @@ export default function NotificationsPage() {
     setIsSavingMarketing(true);
 
     try {
-      await db.updateUserProfile(user.id, { marketing_opt_in: nextValue });
+      const response = await fetch(MARKETING_PREFERENCE_API, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ marketing_opt_in: nextValue }),
+      });
+      if (!response.ok) {
+        throw new Error(`Marketing preference update failed: ${response.status}`);
+      }
+      const profile = (await response.json()) as MarketingPreferenceResponse;
+      setMarketingEnabled(profile.marketing_opt_in ?? nextValue);
     } catch (error) {
       console.error("Failed to update marketing preference:", error);
       setMarketingEnabled(previousValue);
