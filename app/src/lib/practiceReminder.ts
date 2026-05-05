@@ -49,18 +49,18 @@ export function formatPracticeReminderTime(time: string, locale: "ko" | "en") {
   const [rawHours, rawMinutes] = time.split(":");
   const hours = Number.parseInt(rawHours ?? "20", 10);
   const minutes = Number.parseInt(rawMinutes ?? "0", 10);
-  const date = new Date(
-    2026,
-    0,
-    1,
-    Number.isNaN(hours) ? 20 : hours,
-    Number.isNaN(minutes) ? 0 : minutes,
-  );
+  const normalizedHours =
+    Number.isNaN(hours) || hours < 0 || hours > 23 ? 20 : hours;
+  const normalizedMinutes =
+    Number.isNaN(minutes) || minutes < 0 || minutes > 59 ? 0 : minutes;
+  const displayHours = normalizedHours % 12 || 12;
+  const displayMinutes = String(normalizedMinutes).padStart(2, "0");
 
-  return new Intl.DateTimeFormat(locale === "ko" ? "ko-KR" : "en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date);
+  if (locale === "ko") {
+    return `${normalizedHours < 12 ? "오전" : "오후"} ${displayHours}:${displayMinutes}`;
+  }
+
+  return `${displayHours}:${displayMinutes} ${normalizedHours < 12 ? "AM" : "PM"}`;
 }
 
 export function postPracticeReminderSync(payload: PracticeReminderSyncPayload) {

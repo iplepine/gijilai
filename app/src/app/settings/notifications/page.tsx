@@ -13,6 +13,11 @@ import {
   postPracticeReminderSync,
   readPracticeReminderPreferences,
 } from "@/lib/practiceReminder";
+import {
+  getCenteredWheelScrollTop,
+  getCenteredWheelSideSpacerHeight,
+  getCenteredWheelValue,
+} from "@/lib/timeWheel";
 
 interface NotificationSettings {
   pushEnabled: boolean;
@@ -27,8 +32,8 @@ const DEFAULT_SETTINGS: NotificationSettings = {
 };
 
 const WHEEL_ROW_HEIGHT = 44;
-const WHEEL_VISIBLE_ROWS = 5;
-const WHEEL_SIDE_PADDING = (WHEEL_ROW_HEIGHT * (WHEEL_VISIBLE_ROWS - 1)) / 2;
+const WHEEL_SIDE_SPACER_HEIGHT =
+  getCenteredWheelSideSpacerHeight(WHEEL_ROW_HEIGHT);
 const HOUR_OPTIONS = Array.from({ length: 24 }, (_, index) => index);
 const MINUTE_OPTIONS = Array.from({ length: 12 }, (_, index) => index * 5);
 
@@ -59,20 +64,21 @@ export default function NotificationsPage() {
     options: number[],
   ) => {
     if (!wheel) return;
-    const index = options.indexOf(value);
-    if (index < 0) return;
+    const scrollTop = getCenteredWheelScrollTop(
+      value,
+      options,
+      WHEEL_ROW_HEIGHT,
+    );
+    if (scrollTop === null) return;
+
     wheel.scrollTo({
-      top: index * WHEEL_ROW_HEIGHT,
+      top: scrollTop,
       behavior: "auto",
     });
   };
 
   const updateWheelValue = (value: number, options: number[]) => {
-    const clampedIndex = Math.max(
-      0,
-      Math.min(options.length - 1, Math.round(value / WHEEL_ROW_HEIGHT)),
-    );
-    return options[clampedIndex] ?? options[0] ?? 0;
+    return getCenteredWheelValue(value, options, WHEEL_ROW_HEIGHT);
   };
 
   useEffect(() => {
@@ -387,7 +393,7 @@ export default function NotificationsPage() {
                     onScroll={handleHourWheelScroll}
                     className="h-full snap-y snap-mandatory overflow-y-auto no-scrollbar"
                   >
-                    <div style={{ height: WHEEL_SIDE_PADDING }} />
+                    <div style={{ height: WHEEL_SIDE_SPACER_HEIGHT }} />
                     {HOUR_OPTIONS.map((hour) => {
                       const isSelected = selectedHour == hour;
                       return (
@@ -405,7 +411,7 @@ export default function NotificationsPage() {
                         </button>
                       );
                     })}
-                    <div style={{ height: WHEEL_SIDE_PADDING }} />
+                    <div style={{ height: WHEEL_SIDE_SPACER_HEIGHT }} />
                   </div>
                 </div>
               </section>
@@ -423,7 +429,7 @@ export default function NotificationsPage() {
                     onScroll={handleMinuteWheelScroll}
                     className="h-full snap-y snap-mandatory overflow-y-auto no-scrollbar"
                   >
-                    <div style={{ height: WHEEL_SIDE_PADDING }} />
+                    <div style={{ height: WHEEL_SIDE_SPACER_HEIGHT }} />
                     {MINUTE_OPTIONS.map((minute) => {
                       const isSelected = selectedMinute == minute;
                       return (
@@ -441,7 +447,7 @@ export default function NotificationsPage() {
                         </button>
                       );
                     })}
-                    <div style={{ height: WHEEL_SIDE_PADDING }} />
+                    <div style={{ height: WHEEL_SIDE_SPACER_HEIGHT }} />
                   </div>
                 </div>
               </section>
