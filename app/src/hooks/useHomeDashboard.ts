@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   db,
   UserProfile,
@@ -67,9 +67,19 @@ const INITIAL_STATE: HomeDashboardState = {
 export function useHomeDashboard(params: {
   userId?: string;
   authLoading: boolean;
+  refreshKey?: number;
 }) {
-  const { userId, authLoading } = params;
+  const { userId, authLoading, refreshKey } = params;
   const [state, setState] = useState<HomeDashboardState>(INITIAL_STATE);
+
+  const updateChild = useCallback((updatedChild: ChildProfile) => {
+    setState((previous) => ({
+      ...previous,
+      children: previous.children.map((child) =>
+        child.id === updatedChild.id ? updatedChild : child,
+      ),
+    }));
+  }, []);
 
   useEffect(() => {
     let isActive = true;
@@ -215,11 +225,11 @@ export function useHomeDashboard(params: {
     return () => {
       isActive = false;
     };
-  }, [authLoading, userId]);
+  }, [authLoading, refreshKey, userId]);
 
   if (!userId) {
-    return { ...INITIAL_STATE, loading: false };
+    return { ...INITIAL_STATE, loading: false, updateChild };
   }
 
-  return state;
+  return { ...state, updateChild };
 }

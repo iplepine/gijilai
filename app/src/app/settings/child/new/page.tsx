@@ -14,6 +14,7 @@ export default function RegisterChildPage() {
     const { t } = useLocale();
     const router = useRouter();
     const setSelectedChildId = useAppStore((s) => s.setSelectedChildId);
+    const bumpDashboardRevision = useAppStore((s) => s.bumpDashboardRevision);
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
@@ -79,6 +80,7 @@ export default function RegisterChildPage() {
                 setSelectedChildId(newChild.id);
             }
 
+            bumpDashboardRevision();
             router.refresh();
             router.replace('/');
         } catch (error) {

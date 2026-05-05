@@ -28,6 +28,10 @@ interface AppState {
   selectedChildId: string | null;
   setSelectedChildId: (id: string | null) => void;
 
+  // Dashboard refresh
+  dashboardRevision: number;
+  bumpDashboardRevision: () => void;
+
   // Restore from DB
   restoreSurveyFromDB: (data: {
     cbqResponses?: Record<string, number>;
@@ -87,6 +91,11 @@ export const useAppStore = create<AppState>()(
       // Selected Child
       selectedChildId: null,
       setSelectedChildId: (id) => set({ selectedChildId: id }),
+
+      // Dashboard refresh
+      dashboardRevision: 0,
+      bumpDashboardRevision: () =>
+        set((state) => ({ dashboardRevision: state.dashboardRevision + 1 })),
 
       // Analysis
       analysisResult: null,

@@ -50,6 +50,7 @@ export default function HomePage() {
     resetSurveyOnly,
     selectedChildId,
     setSelectedChildId,
+    dashboardRevision,
   } = useAppStore();
   const [uploading, setUploading] = useState(false);
   const [showSurveyIntro, setShowSurveyIntro] = useState(false);
@@ -67,9 +68,11 @@ export default function HomePage() {
     allMagicWords,
     subscription,
     loading,
+    updateChild,
   } = useHomeDashboard({
     userId: user?.id,
     authLoading,
+    refreshKey: dashboardRevision,
   });
 
   // Derived Child Profile (DB first, then local intake store)
@@ -313,12 +316,16 @@ export default function HomePage() {
     try {
       setUploading(true);
       const imageUrl = await db.uploadChildAvatar(file, user!.id);
-      await db.updateChildProfile(mainChild.id, { image_url: imageUrl });
+      const updatedChild = await db.updateChildProfile(mainChild.id, {
+        image_url: imageUrl,
+      });
+      updateChild(updatedChild);
     } catch (error) {
       console.error("Failed to update profile image:", error);
       alert(t("home.imageUploadFailed"));
     } finally {
       setUploading(false);
+      e.target.value = "";
     }
   };
 

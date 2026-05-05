@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { db } from '@/lib/db'; // Import db
+import { useAppStore } from '@/store/useAppStore';
 import { Icon } from '@/components/ui/Icon';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Navbar } from '@/components/layout/Navbar';
@@ -14,6 +15,7 @@ export default function EditChildPage() {
     const router = useRouter();
     const params = useParams();
     const childId = params.id as string;
+    const bumpDashboardRevision = useAppStore((s) => s.bumpDashboardRevision);
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -104,6 +106,7 @@ export default function EditChildPage() {
 
             if (error) throw error;
 
+            bumpDashboardRevision();
             router.refresh();
             router.replace('/');
         } catch (error) {
@@ -126,6 +129,7 @@ export default function EditChildPage() {
 
             if (error) throw error;
 
+            bumpDashboardRevision();
             router.refresh();
             router.replace('/');
         } catch (error) {
