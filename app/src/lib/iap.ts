@@ -31,6 +31,12 @@ export interface VerifiedIapPurchase {
   originalTransactionId: string;
   expiresDate: Date | null;
   cancelAtPeriodEnd?: boolean;
+  paymentAmount?: number;
+  paymentCurrency?: string;
+  introductoryPaymentAmount?: number;
+  introductoryPaymentCurrency?: string;
+  introductoryPricePeriod?: string;
+  introductoryPriceCycles?: number;
 }
 
 type AppleServerEnvironment = 'production' | 'sandbox';
@@ -495,7 +501,35 @@ export async function verifyGoogleSubscription(productId: string, purchaseToken:
     originalTransactionId: data.linkedPurchaseToken || purchaseToken,
     expiresDate: data.expiryTimeMillis ? new Date(parseInt(data.expiryTimeMillis, 10)) : null,
     cancelAtPeriodEnd: data.autoRenewing === false,
+    paymentAmount: parseGoogleMicrosAmount(data.priceAmountMicros),
+    paymentCurrency: typeof data.priceCurrencyCode === 'string' ? data.priceCurrencyCode : undefined,
+    introductoryPaymentAmount: parseGoogleMicrosAmount(
+      data.introductoryPriceInfo?.introductoryPriceAmountMicros
+    ),
+    introductoryPaymentCurrency:
+      typeof data.introductoryPriceInfo?.introductoryPriceCurrencyCode === 'string'
+        ? data.introductoryPriceInfo.introductoryPriceCurrencyCode
+        : undefined,
+    introductoryPricePeriod:
+      typeof data.introductoryPriceInfo?.introductoryPricePeriod === 'string'
+        ? data.introductoryPriceInfo.introductoryPricePeriod
+        : undefined,
+    introductoryPriceCycles:
+      typeof data.introductoryPriceInfo?.introductoryPriceCycles === 'number'
+        ? data.introductoryPriceInfo.introductoryPriceCycles
+        : undefined,
   };
+}
+
+function parseGoogleMicrosAmount(value: unknown): number | undefined {
+  const micros = typeof value === 'string'
+    ? Number(value)
+    : typeof value === 'number'
+      ? value
+      : undefined;
+
+  if (micros === undefined || !Number.isFinite(micros)) return undefined;
+  return Math.round(micros / 1_000_000);
 }
 
 function getIapProductIdFromPlan(
@@ -549,6 +583,12 @@ export async function refreshIapSubscriptionState(
       eventName: 'CLIENT_REFRESH_SUBSCRIPTION',
       cancelAtPeriodEnd:
         verified.cancelAtPeriodEnd ?? Boolean(subscription.cancelled_at),
+      paymentAmount: verified.paymentAmount,
+      paymentCurrency: verified.paymentCurrency,
+      introductoryPaymentAmount: verified.introductoryPaymentAmount,
+      introductoryPaymentCurrency: verified.introductoryPaymentCurrency,
+      introductoryPricePeriod: verified.introductoryPricePeriod,
+      introductoryPriceCycles: verified.introductoryPriceCycles,
     });
   }
 
@@ -566,6 +606,12 @@ type SyncInput = {
   paymentStatus?: PaymentStatus | null;
   eventName: string;
   cancelAtPeriodEnd?: boolean;
+  paymentAmount?: number;
+  paymentCurrency?: string;
+  introductoryPaymentAmount?: number;
+  introductoryPaymentCurrency?: string;
+  introductoryPricePeriod?: string;
+  introductoryPriceCycles?: number;
 };
 
 export async function syncIapSubscription(input: SyncInput) {
@@ -641,6 +687,14 @@ export async function syncIapSubscription(input: SyncInput) {
       existingSubscription && input.transactionId !== existingSubscription.app_transaction_id
         ? 'RENEWAL'
         : 'SUBSCRIPTION';
+    const paymentAmount =
+      paymentType === 'SUBSCRIPTION' && input.introductoryPaymentAmount !== undefined
+        ? input.introductoryPaymentAmount
+        : input.paymentAmount ?? config.amount;
+    const paymentCurrency =
+      paymentType === 'SUBSCRIPTION' && input.introductoryPaymentCurrency
+        ? input.introductoryPaymentCurrency
+        : input.paymentCurrency ?? config.currency;
 
     const { data: existingPayment } = await admin
       .from('payments')
@@ -654,8 +708,8 @@ export async function syncIapSubscription(input: SyncInput) {
       type: paymentType,
       portone_payment_id: paymentId,
       status: input.paymentStatus,
-      currency: config.currency,
-      amount: config.amount,
+      currency: paymentCurrency,
+      amount: paymentAmount,
       pg_provider: config.pgProvider[input.platform],
       pay_method: config.payMethod[input.platform],
       paid_at: input.paymentStatus === 'PAID' ? nowIso : null,
@@ -664,6 +718,12 @@ export async function syncIapSubscription(input: SyncInput) {
         eventName: input.eventName,
         productId: input.productId,
         platform: input.platform,
+        storePaymentAmount: input.paymentAmount ?? null,
+        storePaymentCurrency: input.paymentCurrency ?? null,
+        introductoryPaymentAmount: input.introductoryPaymentAmount ?? null,
+        introductoryPaymentCurrency: input.introductoryPaymentCurrency ?? null,
+        introductoryPricePeriod: input.introductoryPricePeriod ?? null,
+        introductoryPriceCycles: input.introductoryPriceCycles ?? null,
       },
     };
 

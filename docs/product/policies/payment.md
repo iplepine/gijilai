@@ -20,6 +20,7 @@
 | 상품 | 한국 (KRW) | 글로벌 (USD) |
 |------|-----------|-------------|
 | 월 구독 | 12,000원/월 | $9.99/month |
+| 첫 달 혜택 | 신규 첫 구독 8,400원 | 스토어/PG offer 설정 기준 |
 
 > 가격 상수: `app/src/lib/portone.ts` `PRICE_TABLE`, `app/src/app/pricing/page.tsx` `PRICES`
 
@@ -87,6 +88,7 @@
 - Flutter 앱은 `in_app_purchase`로 Apple App Store / Google Play 구독을 시작한다.
 - 웹 브라우저에서는 새 구독 결제를 직접 시작하지 않는다. 결제 CTA는 앱 설치 랜딩으로 연결하고, 실제 구독 시작은 설치된 앱 안의 IAP에서 처리한다.
 - 스토어 상품 ID는 플랫폼별로 다를 수 있으며, 현재 월 구독은 `APPLE_IAP = gijilai_premium_monthly`, `GOOGLE_PLAY = monthly_premium`으로 운영한다.
+- 첫 달 30% 할인은 스토어에 등록된 introductory/구독 offer를 사용한다. Android는 Google Play가 반환한 구독 offer 중 첫 결제 phase가 이후 recurring phase보다 낮은 offer를 선택해 `offerToken`으로 결제창을 연다.
 - iOS 시뮬레이터 `Debug` 실행에서는 앱이 번들된 `Configuration.storekit`으로 로컬 StoreKit 테스트를 시도한다. 다만 Flutter `in_app_purchase`의 iOS 시뮬레이터 상품 조회가 비는 경우를 대비해, 현재는 iOS 디버그에서 상품 조회 실패 시 네이티브 테스트 다이얼로그(`성공/실패/취소`)로 결제 UI 플로우를 계속 검증할 수 있게 유지한다.
 - 위 시뮬레이터 fallback은 개발용 UX 검증 경로다. 실제 영수증 검증, 구독 생성, 스토어 동기화는 실기기 샌드박스로 별도 확인한다.
 - 최초 구매는 `/api/payment/iap`에서 영수증 검증 후 `subscriptions`/`payments`에 반영한다.

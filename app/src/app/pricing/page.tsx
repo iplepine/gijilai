@@ -142,7 +142,7 @@ function PricingContent() {
   const getErrorMessage = useCallback((error: unknown) => (
     error instanceof Error ? error.message : t('common.error')
   ), [t]);
-  const hasFirstMonthDiscount = !isApp && isFirstSubscription;
+  const hasFirstMonthDiscount = isFirstSubscription;
   const currentPrice = hasFirstMonthDiscount ? FIRST_MONTH_PRICES[currency] : PRICES.MONTHLY[currency];
 
   useEffect(() => {

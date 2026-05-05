@@ -15,6 +15,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:in_app_purchase_android/billing_client_wrappers.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -2726,9 +2727,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         return;
       }
 
-      // Android 구독: queryProductDetails가 offer별로 별도 ProductDetails 반환
-      // 첫 번째 항목 사용 (Google Play가 적격 offer를 우선 반환)
-      final product = response.productDetails.first;
+      final product = _selectSubscriptionProduct(response.productDetails);
       debugPrint(
         'IAP launching purchase: productId=${product.id}, '
         'title=${product.title}, price=${product.price}',
@@ -2848,6 +2847,82 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           break;
       }
     }
+  }
+
+  ProductDetails _selectSubscriptionProduct(List<ProductDetails> products) {
+    if (!Platform.isAndroid) return products.first;
+
+    final googleProducts = products
+        .whereType<GooglePlayProductDetails>()
+        .toList(growable: false);
+    if (googleProducts.isEmpty) return products.first;
+
+    GooglePlayProductDetails? regularProduct;
+    GooglePlayProductDetails? discountedProduct;
+
+    for (final product in googleProducts) {
+      final offer = _androidSubscriptionOffer(product);
+      if (offer == null) continue;
+
+      debugPrint(
+        'IAP Android offer candidate: '
+        'basePlanId=${offer.basePlanId}, '
+        'offerId=${offer.offerId ?? "none"}, '
+        'tags=${offer.offerTags.join(",")}, '
+        'phases=${_androidPricingPhaseSummary(offer.pricingPhases)}, '
+        'token=${product.offerToken}',
+      );
+
+      if (_isAndroidIntroDiscountOffer(offer)) {
+        discountedProduct ??= product;
+      } else if (offer.offerId == null) {
+        regularProduct ??= product;
+      }
+    }
+
+    final selected =
+        discountedProduct ?? regularProduct ?? googleProducts.first;
+    final selectedOffer = _androidSubscriptionOffer(selected);
+    debugPrint(
+      'IAP Android selected offer: '
+      'basePlanId=${selectedOffer?.basePlanId ?? "unknown"}, '
+      'offerId=${selectedOffer?.offerId ?? "none"}, '
+      'price=${selected.price}',
+    );
+    return selected;
+  }
+
+  SubscriptionOfferDetailsWrapper? _androidSubscriptionOffer(
+    GooglePlayProductDetails product,
+  ) {
+    final index = product.subscriptionIndex;
+    final offers = product.productDetails.subscriptionOfferDetails;
+    if (index == null || offers == null || index >= offers.length) return null;
+    return offers[index];
+  }
+
+  bool _isAndroidIntroDiscountOffer(SubscriptionOfferDetailsWrapper offer) {
+    if (offer.offerId == null || offer.pricingPhases.length < 2) return false;
+
+    final firstPhase = offer.pricingPhases.first;
+    final recurringPrice = offer.pricingPhases
+        .skip(1)
+        .map((phase) => phase.priceAmountMicros)
+        .reduce(max);
+
+    return firstPhase.billingCycleCount == 1 &&
+        firstPhase.priceAmountMicros > 0 &&
+        firstPhase.priceAmountMicros < recurringPrice;
+  }
+
+  String _androidPricingPhaseSummary(List<PricingPhaseWrapper> phases) {
+    return phases
+        .map(
+          (phase) =>
+              '${phase.formattedPrice}/${phase.billingPeriod}'
+              'x${phase.billingCycleCount}',
+        )
+        .join(' -> ');
   }
 
   Future<void> _verifyAndDeliver(PurchaseDetails purchase) async {

@@ -70,6 +70,12 @@ export async function POST(req: Request) {
       paymentStatus: mapped.paymentStatus,
       eventName: `GOOGLE_${subNotification.notificationType}`,
       cancelAtPeriodEnd: mapped.cancelAtPeriodEnd,
+      paymentAmount: verified.paymentAmount,
+      paymentCurrency: verified.paymentCurrency,
+      introductoryPaymentAmount: verified.introductoryPaymentAmount,
+      introductoryPaymentCurrency: verified.introductoryPaymentCurrency,
+      introductoryPricePeriod: verified.introductoryPricePeriod,
+      introductoryPriceCycles: verified.introductoryPriceCycles,
     });
 
     return NextResponse.json({ received: true, ok: syncResult.ok });

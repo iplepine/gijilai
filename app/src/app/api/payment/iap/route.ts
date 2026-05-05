@@ -62,6 +62,12 @@ export async function POST(req: Request) {
       subscriptionStatus: 'ACTIVE',
       paymentStatus: 'PAID',
       eventName: 'CLIENT_VERIFIED_PURCHASE',
+      paymentAmount: verification.paymentAmount,
+      paymentCurrency: verification.paymentCurrency,
+      introductoryPaymentAmount: verification.introductoryPaymentAmount,
+      introductoryPaymentCurrency: verification.introductoryPaymentCurrency,
+      introductoryPricePeriod: verification.introductoryPricePeriod,
+      introductoryPriceCycles: verification.introductoryPriceCycles,
     });
 
     if (!syncResult.ok) {
