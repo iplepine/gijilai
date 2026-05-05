@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { isSharedReportType } from '@/lib/shareReport';
 
 type SharedReportRow = {
   id: string;
@@ -63,7 +64,7 @@ export async function GET(
 
     const report = data as unknown as SharedReportRow;
 
-    if (report.type !== 'CHILD') {
+    if (!isSharedReportType(report.type)) {
       return NextResponse.json({ error: 'This report type cannot be shared' }, { status: 403 });
     }
 

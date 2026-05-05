@@ -15,6 +15,8 @@
 
 ## 공유 버튼 노출
 
+- 리포트 공유는 `CHILD`, `PARENT`, `HARMONY` 리포트 타입을 모두 지원한다.
+- 리포트 화면의 각 탭 공유 버튼은 해당 탭의 리포트 ID를 `/share?id={reportId}`로 전달한다.
 - 카카오톡 공유와 링크 복사는 모든 환경에서 노출한다.
 - `다른 앱` 공유는 모바일 브라우저 또는 기질아이 앱 WebView에서만 노출한다.
 - 앱 WebView에서는 `ShareBridge` JavaScript channel로 Flutter에 공유 요청을 전달하고, Flutter가 OS 공유 시트를 연다.

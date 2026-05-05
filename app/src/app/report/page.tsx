@@ -241,6 +241,9 @@ function ReportContent() {
   const generatingRef = useRef<Set<string>>(new Set());
   const refreshedReportTypesRef = useRef<Set<string>>(new Set());
   const [reportDates, setReportDates] = useState<ReportDates>({});
+  const [childReportId, setChildReportId] = useState<string | null>(null);
+  const [parentReportId, setParentReportId] = useState<string | null>(null);
+  const [harmonyReportId, setHarmonyReportId] = useState<string | null>(null);
   const [hasSubscription, setHasSubscription] = useState(false);
   const [harmonyRefreshSource, setHarmonyRefreshSource] = useState<HarmonyRefreshSource>(() => getHarmonyRefreshSource(reportRefreshParam));
 
@@ -329,6 +332,13 @@ function ReportContent() {
   const currentParentReport = useMemo(() => {
     return reports.find((report) => report.type === 'PARENT') ?? null;
   }, [reports]);
+
+  const currentHarmonyReport = useMemo(() => {
+    if (!currentChild) return reports.find((report) => report.type === 'HARMONY') ?? null;
+    return reports.find((report) => report.type === 'HARMONY' && report.child_id === currentChild.id)
+      ?? reports.find((report) => report.type === 'HARMONY')
+      ?? null;
+  }, [currentChild, reports]);
 
   const currentParentSurvey = useMemo(() => {
     return surveys.find((survey) => survey.type === 'PARENT' && survey.status === 'COMPLETED') ?? null;
@@ -557,6 +567,8 @@ function ReportContent() {
 
         if (data.type === 'CHILD') {
           setChildAiReport(normalizeReportTextForName(asChildAiReport(data.analysis_json), childData?.name));
+          setChildReportId(data.id);
+          setReportDates(prev => ({ ...prev, child: data.created_at }));
           setSavedChildScores(
             extractReportScores(data.analysis_json)
             || (isTemperamentScores(surveyData?.scores) ? surveyData.scores : null)
@@ -568,6 +580,8 @@ function ReportContent() {
           setActiveTab('child');
         } else if (data.type === 'PARENT') {
           setParentAiReport(asParentAiReport(data.analysis_json));
+          setParentReportId(data.id);
+          setReportDates(prev => ({ ...prev, parent: data.created_at }));
           setSavedParentScores(
             extractReportScores(data.analysis_json)
             || (isTemperamentScores(surveyData?.scores) ? surveyData.scores : null)
@@ -579,6 +593,8 @@ function ReportContent() {
           setActiveTab('parent');
         } else if (data.type === 'HARMONY') {
           setHarmonyAiReport(normalizeReportTextForName(asHarmonyAiReport(data.analysis_json), childData?.name));
+          setHarmonyReportId(data.id);
+          setReportDates(prev => ({ ...prev, parenting: data.created_at }));
           setActiveTab('parenting');
         }
       }
@@ -605,6 +621,9 @@ function ReportContent() {
       setChildAiReport(null);
       setParentAiReport(null);
       setHarmonyAiReport(null);
+      setChildReportId(null);
+      setParentReportId(null);
+      setHarmonyReportId(null);
     }
   }, [selectedChildId]);
 
@@ -727,7 +746,26 @@ function ReportContent() {
 
   // 공통 API 호출 함수 (포맷 불일치 시 자동 재생성)
   // API에서 반환된 리포트 ID 저장 (공유 등에 활용)
-  const [childReportId, setChildReportId] = useState<string | null>(null);
+  const getShareReportId = useCallback((tab: ReportTab) => {
+    if (reportId && activeTab === tab) return reportId;
+    if (tab === 'child') return childReportId || currentChildReport?.id || null;
+    if (tab === 'parent') return parentReportId || currentParentReport?.id || null;
+    return harmonyReportId || currentHarmonyReport?.id || null;
+  }, [
+    activeTab,
+    childReportId,
+    currentChildReport?.id,
+    currentHarmonyReport?.id,
+    currentParentReport?.id,
+    harmonyReportId,
+    parentReportId,
+    reportId,
+  ]);
+
+  const buildSharePathForTab = useCallback((tab: ReportTab) => {
+    const shareReportId = getShareReportId(tab);
+    return buildTrackedPath(`/share${shareReportId ? `?id=${shareReportId}` : ''}`);
+  }, [buildTrackedPath, getShareReportId]);
 
   const fetchReport = useCallback(async (payload: ReportApiPayload): Promise<ReportApiResult | null> => {
     const resolvedChildId = currentChild?.id ?? selectedChildId;
@@ -1017,6 +1055,7 @@ function ReportContent() {
       });
       if (result) {
         setParentAiReport(asParentAiReport(result.report));
+        if (result.reportId) setParentReportId(result.reportId);
         setReportDates(prev => ({ ...prev, parent: result.createdAt }));
         if (refresh) setHarmonyRefreshSource('parent');
       }
@@ -1048,6 +1087,7 @@ function ReportContent() {
       });
       if (result) {
         setHarmonyAiReport(normalizeReportTextForName(asHarmonyAiReport(result.report), childName));
+        if (result.reportId) setHarmonyReportId(result.reportId);
         setReportDates(prev => ({ ...prev, parenting: result.createdAt }));
         return true;
       }
@@ -1886,7 +1926,7 @@ function ReportContent() {
                         variant="secondary"
                         onClick={() => {
                           trackReportCtaClick('share', 'footer', '/share');
-                          router.push(buildTrackedPath(`/share${(childReportId || reportId) ? `?id=${childReportId || reportId}` : ''}`));
+                          router.push(buildSharePathForTab('child'));
                         }}
                         fullWidth
                         className="h-14 rounded-2xl border-none bg-white shadow-lg"
@@ -2089,7 +2129,7 @@ function ReportContent() {
                       variant="secondary"
                       onClick={() => {
                         trackReportCtaClick('share', 'footer', '/share');
-                        router.push(buildTrackedPath(`/share${(childReportId || reportId) ? `?id=${childReportId || reportId}` : ''}`));
+                        router.push(buildSharePathForTab('parent'));
                       }}
                       fullWidth
                       className="h-14 rounded-2xl border-none bg-white shadow-lg"
@@ -2346,7 +2386,7 @@ function ReportContent() {
                     variant="secondary"
                     onClick={() => {
                       trackReportCtaClick('share', 'footer', '/share');
-                      router.push(buildTrackedPath(`/share${(childReportId || reportId) ? `?id=${childReportId || reportId}` : ''}`));
+                      router.push(buildSharePathForTab('parenting'));
                     }}
                     fullWidth
                     className="h-14 rounded-2xl border-none bg-white shadow-lg text-slate-800 font-bold"
@@ -2417,7 +2457,7 @@ function ReportContent() {
                 <button
                   onClick={() => {
                     trackReportCtaClick('share', 'sticky', '/share');
-                    router.push(buildTrackedPath(`/share${(childReportId || reportId) ? `?id=${childReportId || reportId}` : ''}`));
+                    router.push(buildSharePathForTab('child'));
                   }}
                   className="mt-2 w-full py-2.5 rounded-xl font-bold text-[13px] flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all text-slate-500 hover:text-primary"
                 >

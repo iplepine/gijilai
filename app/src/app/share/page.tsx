@@ -7,26 +7,21 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAppStore } from '@/store/useAppStore';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { TemperamentScorer } from '@/lib/TemperamentScorer';
-import { TemperamentClassifier } from '@/lib/TemperamentClassifier';
 import { CHILD_QUESTIONS } from '@/data/questions';
-import { eunNeun } from '@/lib/koreanUtils';
 import { Suspense } from 'react';
 import { useLocale } from '@/i18n/LocaleProvider';
 import type { Json } from '@/types/supabase';
+import {
+  buildSharedReportSummary,
+  parseSharedAnalysis,
+  type SharedReportSummary,
+  type TemperamentScores,
+} from '@/lib/shareReport';
 
-type SharedAnalysis = {
-  label?: string;
-  title?: string;
-  desc?: string;
+type ShareSummary = SharedReportSummary & {
   intro?: string;
-  shareText?: string;
-  scores?: { NS: number; HA: number; RD: number; P: number };
-  analysis?: {
-    strengths?: string;
-  };
+  strengths?: string;
 };
-
-type TemperamentScores = { NS: number; HA: number; RD: number; P: number };
 
 type SharedReport = {
   id: string;
@@ -112,23 +107,12 @@ async function ensureKakaoReady() {
   return kakao;
 }
 
-function parseAnalysis(value: Json | null): SharedAnalysis | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  return value as unknown as SharedAnalysis;
-}
-
-function isTemperamentScores(value: unknown): value is TemperamentScores {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-  const record = value as Record<string, unknown>;
-  return ['NS', 'HA', 'RD', 'P'].every((key) => typeof record[key] === 'number');
-}
-
 function SharePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
   const { intake, cbqResponses } = useAppStore();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [copied, setCopied] = useState(false);
   const [isKakaoSharing, setIsKakaoSharing] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
@@ -200,30 +184,36 @@ function SharePageContent() {
     });
   }, []);
 
-  // Calculate Temperament from DB report or local store
-  const temperamentInfo = (() => {
+  // Calculate share card from DB report or local child store fallback.
+  const shareInfo: ShareSummary | null = (() => {
     if (reportId && report) {
-      const analysis = parseAnalysis(report.analysis);
-      const reportScores = isTemperamentScores(report.scores)
-        ? report.scores
-        : (isTemperamentScores(analysis?.scores) ? analysis.scores : null);
-      const classified = reportScores ? TemperamentClassifier.analyzeChild(reportScores) : null;
+      const analysis = parseSharedAnalysis(report.analysis);
+      const summary = buildSharedReportSummary({
+        type: report.type,
+        analysis,
+        scores: report.scores,
+        childName,
+        locale,
+        t,
+      });
 
-      if (analysis || classified) {
-        return {
-          label: analysis?.label || classified?.label || analysis?.title || '열정 탐험가',
-          desc: analysis?.desc || classified?.desc || analysis?.shareText || analysis?.intro || t('share.defaultDesc'),
-          image: classified?.image || '',
-          intro: analysis?.intro,
-          strengths: analysis?.analysis?.strengths,
-        };
-      }
+      return {
+        ...summary,
+        intro: analysis?.intro,
+        strengths: analysis?.analysis?.strengths,
+      };
     }
 
     if (!cbqResponses || Object.keys(cbqResponses).length === 0) return null;
-    const scores = TemperamentScorer.calculate(CHILD_QUESTIONS, cbqResponses);
-    const classified = TemperamentClassifier.analyzeChild(scores);
-    return { label: classified.label, desc: classified.desc, image: classified.image, intro: undefined, strengths: undefined };
+    const scores = TemperamentScorer.calculate(CHILD_QUESTIONS, cbqResponses) as TemperamentScores;
+    return buildSharedReportSummary({
+      type: 'CHILD',
+      analysis: null,
+      scores,
+      childName,
+      locale,
+      t,
+    });
   })();
 
   const getShareUrl = () => {
@@ -252,11 +242,9 @@ function SharePageContent() {
       kakao.Share.sendDefault({
         objectType: 'feed',
         content: {
-          title: `${eunNeun(childName)} "${temperamentInfo?.label || '열정 탐험가'}"`,
-          description: temperamentInfo?.intro
-            ? `${temperamentInfo.desc}\n\n${temperamentInfo.intro}`.slice(0, 200)
-            : temperamentInfo?.desc || t('share.kakaoDesc'),
-          imageUrl: `https://gijilai.com${temperamentInfo?.image || '/child_type/type_lhl.jpg'}`,
+          title: `${shareInfo?.headline || childName} "${shareInfo?.label || t('share.childFallbackLabel')}"`,
+          description: shareInfo?.textParts.slice(1).join('\n\n').slice(0, 200) || t('share.kakaoDesc'),
+          imageUrl: `https://gijilai.com${shareInfo?.image || '/child_type/type_lhl.jpg'}`,
           link: {
             mobileWebUrl: shareUrl,
             webUrl: shareUrl,
@@ -287,13 +275,8 @@ function SharePageContent() {
 
   const handleNativeShare = async () => {
     const sharePayload = {
-      title: `${childName}${t('share.resultTitle')}`,
-      text: [
-        `${eunNeun(childName)} "${temperamentInfo?.label || '열정 탐험가'}"`,
-        temperamentInfo?.desc,
-        temperamentInfo?.intro,
-        temperamentInfo?.strengths,
-      ].filter(Boolean).join('\n\n'),
+      title: shareInfo?.title || `${childName}${t('share.resultTitle')}`,
+      text: shareInfo?.textParts.join('\n\n') || t('share.kakaoDesc'),
       url: getShareUrl(),
     };
 
@@ -338,16 +321,19 @@ function SharePageContent() {
             <div
               className="w-full aspect-[4/5] bg-cover bg-center relative"
               style={{
-                backgroundImage: `url("${temperamentInfo?.image || '/child_type/type_lhl.jpg'}")`,
+                backgroundImage: `url("${shareInfo?.image || '/child_type/type_lhl.jpg'}")`,
               }}
             >
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-7">
+                <p className="text-[11px] font-black tracking-widest uppercase text-white/55 mb-2">
+                  {shareInfo?.eyebrow || t('share.childReportEyebrow')}
+                </p>
                 <h3 className="text-2xl font-bold text-white mb-2 break-keep leading-snug">
-                  {eunNeun(childName)}<br />
-                  <span style={{ color: '#A8D8B9' }}>&quot;{temperamentInfo?.label || '열정 탐험가'}&quot;</span>
+                  {shareInfo?.headline || childName}<br />
+                  <span style={{ color: '#A8D8B9' }}>&quot;{shareInfo?.label || t('share.childFallbackLabel')}&quot;</span>
                 </h3>
                 <p className="text-sm text-white/80 leading-relaxed font-medium break-keep">
-                  {temperamentInfo?.desc || t('share.defaultDesc')}
+                  {shareInfo?.description || t('share.defaultDesc')}
                 </p>
                 <div className="mt-5 pt-4 border-t border-white/20">
                   <span className="text-[10px] font-bold tracking-widest uppercase text-white/40">{t('common.appName')}</span>
@@ -395,8 +381,8 @@ function SharePageContent() {
           {/* 안내 문구 */}
           <div className="bg-primary/5 dark:bg-primary/10 rounded-2xl p-5 border border-primary/10">
             <p className="text-[13px] text-text-sub dark:text-gray-400 leading-relaxed break-keep text-center">
-              {t('share.shareNotice')}<br />
-              <strong className="text-text-main dark:text-white">{t('share.shareNoticeBold')}</strong>{t('share.shareNoticeEnd')}
+              {shareInfo?.notice.prefix || t('share.shareNotice')}<br />
+              <strong className="text-text-main dark:text-white">{shareInfo?.notice.bold || t('share.shareNoticeBold')}</strong>{shareInfo?.notice.suffix || t('share.shareNoticeEnd')}
             </p>
           </div>
         </main>
