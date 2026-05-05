@@ -600,6 +600,7 @@
     "todayRecord": "Today's practice record",
     "didIt": "I did it",
     "didNot": "I couldn't",
+    "saveFailed": "Could not save this practice record. Please try again shortly.",
     "encourageMessage": "Busy day? It's okay, you can start again tomorrow.",
     "findAlternative": "Having trouble? Shall we find another approach?",
     "memoLabel": "Quick memo (optional)",

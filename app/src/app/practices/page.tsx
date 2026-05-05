@@ -214,11 +214,16 @@ export default function PracticesPage() {
       // 각 practice의 전체 로그 가져오기
       const practiceIds = practicesData.map((p) => p.id);
       if (practiceIds.length > 0) {
-        const { data: logsData } = await supabase
+        const { data: logsData, error: logsError } = await supabase
           .from("practice_logs")
           .select("*")
           .in("practice_id", practiceIds)
           .order("date", { ascending: false });
+        if (logsError) {
+          console.error("Failed to fetch practice logs:", logsError);
+          setAllLogs([]);
+          return;
+        }
         setAllLogs((logsData || []) as PracticeLogData[]);
       } else {
         setAllLogs([]);
@@ -435,36 +440,46 @@ export default function PracticesPage() {
           || (existingLog.child_reaction_note ?? null) !== (childReactionNote ?? null)
           || existingLog.parent_impression_type !== (parentImpressionType ?? null)
         );
-      const log = await db.createPracticeLog({
+      const logPayload: Parameters<typeof db.createPracticeLog>[0] = {
         practice_id: checkModal.practice.id,
         user_id: user.id,
         date: today,
         done,
         memo: checkModal.enableChildReactionFeedback ? null : memo,
-        practice_attempt_type: checkModal.enableChildReactionFeedback
-          ? practiceAttemptType ?? null
-          : null,
-        practice_attempt_note: checkModal.enableChildReactionFeedback
-          ? practiceAttemptNote ?? null
-          : null,
-        child_reaction_type: checkModal.enableChildReactionFeedback
-          ? childReactionType ?? null
-          : null,
-        child_reaction_note: checkModal.enableChildReactionFeedback
-          ? childReactionNote ?? null
-          : null,
-        parent_impression_type: checkModal.enableChildReactionFeedback
-          ? parentImpressionType ?? null
-          : null,
-        ...(feedbackInputsChanged
-          ? {
-              ai_feedback: null,
-              ai_feedback_created_at: null,
-              ai_feedback_model: null,
-              ai_feedback_depth: null,
-            }
-          : {}),
-      });
+      };
+
+      if (checkModal.enableChildReactionFeedback) {
+        Object.assign(logPayload, {
+          practice_attempt_type: practiceAttemptType ?? null,
+          practice_attempt_note: practiceAttemptNote ?? null,
+          child_reaction_type: childReactionType ?? null,
+          child_reaction_note: childReactionNote ?? null,
+          parent_impression_type: parentImpressionType ?? null,
+        });
+      }
+
+      if (feedbackInputsChanged) {
+        Object.assign(logPayload, {
+          ai_feedback: null,
+          ai_feedback_created_at: null,
+          ai_feedback_model: null,
+          ai_feedback_depth: null,
+        });
+      }
+
+      const log = await db.createPracticeLog(logPayload);
+      await fetchData();
+
+      const createFeedbackSignal = () => {
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), 15000);
+        return { controller, timeoutId };
+      };
+
+      const clearFeedbackTimeout = (timeoutId: number) => {
+        window.clearTimeout(timeoutId);
+      };
+
       trackEvent("practice_log_saved", {
         done,
         first_log: previousLogCount === 0,
@@ -476,10 +491,12 @@ export default function PracticesPage() {
 
       let aiFeedback: PracticeAiFeedback | null = null;
       if (checkModal.enableChildReactionFeedback && childReactionType) {
+        const { controller, timeoutId } = createFeedbackSignal();
         try {
           const response = await fetch("/api/consult/practice-feedback", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            signal: controller.signal,
             body: JSON.stringify({
               logId: log.id,
               practiceId: checkModal.practice.id,
@@ -493,6 +510,8 @@ export default function PracticesPage() {
           }
         } catch (error) {
           console.error("Failed to generate practice feedback:", error);
+        } finally {
+          clearFeedbackTimeout(timeoutId);
         }
       }
       if (aiFeedback) {
@@ -502,9 +521,9 @@ export default function PracticesPage() {
           child_reaction_type: childReactionType,
           parent_impression_type: parentImpressionType ?? undefined,
         });
+        await fetchData();
       }
 
-      await fetchData();
       return { aiFeedback };
     },
     [allLogs, checkModal, fetchData, hasFullAccess, today, user],
