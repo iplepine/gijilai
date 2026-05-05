@@ -153,6 +153,7 @@ export default function HomePage() {
     !subscription && !!trialStatus?.isActive && trialStatus.daysRemaining <= 2;
   const hasCompleteLocalChildResponses = Object.keys(cbqResponses).length >= CHILD_QUESTIONS.length;
   const hasCompleteLocalParentResponses = Object.keys(atqResponses).length >= PARENT_QUESTIONS.length;
+  const shouldUseNativeLogin = !authLoading && !user && isAppWebView();
 
   // Derived Temperament (Parent = Soil, Child = Seed + Plant)
   // 양육자 기질은 아이와 무관하게 하나
@@ -265,7 +266,7 @@ export default function HomePage() {
   }, [loading, user, children, intake.childName]);
 
   useEffect(() => {
-    if (loading || !isAppWebView()) return;
+    if (loading || !user || !isAppWebView()) return;
 
     const preferences = readPracticeReminderPreferences(
       DEFAULT_REMINDER_PREFERENCES,
@@ -301,7 +302,13 @@ export default function HomePage() {
     practices.uncheckedCount,
     practices.uncheckedItems,
     t,
+    user,
   ]);
+
+  useEffect(() => {
+    if (!shouldUseNativeLogin) return;
+    router.replace("/login");
+  }, [router, shouldUseNativeLogin]);
 
   const handleProfileClick = () => {
     fileInputRef.current?.click();
@@ -324,6 +331,10 @@ export default function HomePage() {
   };
 
   // Not logged in state (only after auth check completes)
+  if (shouldUseNativeLogin) {
+    return <HomeLoadingScreen />;
+  }
+
   if (!authLoading && !user) {
     return <LandingPage />;
   }

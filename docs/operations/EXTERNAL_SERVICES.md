@@ -155,7 +155,7 @@
 - **운영 포인트**
 - 승인된 리디렉션 URI와 Supabase 설정을 함께 맞춰야 함
 - Flutter 앱은 Google 로그인을 네이티브 SDK로 먼저 시도하고, 받은 ID 토큰을 Supabase 세션으로 교환한다.
-- `GOOGLE_WEB_CLIENT_ID` dart define은 선택값이다. 있으면 Android/iOS native Google 로그인에서 `serverClientId`로 사용한다. Android에서 값이 없으면 Play Services Auth native activity를 열지 않고 Supabase OAuth fallback을 사용한다.
+- `GOOGLE_WEB_CLIENT_ID` dart define은 선택값이다. 있으면 Android/iOS native Google 로그인에서 `serverClientId`로 사용한다. 값이 없어도 모바일 앱 기본 설정(`GoogleService-Info.plist`, `google-services.json`)으로 네이티브 로그인을 먼저 시도하고, ID 토큰을 받을 수 없을 때만 Supabase OAuth fallback을 사용한다.
 - iOS 네이티브 로그인을 안정적으로 쓰려면 `GOOGLE_IOS_CLIENT_ID` dart define과 `GoogleService-Info.plist`의 `CLIENT_ID`/`REVERSED_CLIENT_ID`, `Info.plist` URL scheme을 Google Cloud Console 값과 일치시킨다. 네이티브 설정 예외가 나면 앱은 Supabase OAuth fallback으로 전환한다.
 - Android는 Firebase/Google Cloud에 앱 SHA-1, SHA-256을 등록해야 `google-services.json`의 `oauth_client`가 채워지고 안정적으로 동작한다. 이 값이 비어 있으면 Play Services Auth native activity 크래시 또는 로그인 실패가 Crashlytics에 잡힐 수 있다.
 

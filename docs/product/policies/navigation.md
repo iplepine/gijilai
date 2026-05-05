@@ -66,8 +66,8 @@
 - 리포트의 다시 분석 플로우에서 진입한 설문은 `refresh=child` 또는 `refresh=all` 값을 유지해, 설문 완료 후 `/report`가 이전 캐시 대신 새 응답 기준 리포트를 생성한다.
 - 모든 헤더는 absolute positioning으로 타이틀 중앙 정렬
 - 노치/상태표시줄 대응을 위한 상단 여백 통일 (pt-12, pb-4)
-- Flutter 앱 WebView의 루트(`/`) 진입 시 로그인 세션이 없으면 웹 랜딩 화면을 먼저 보여준다. 로그인 세션이 있으면 홈을 그대로 렌더링한다.
-- 앱 로그인은 랜딩 CTA 이후 `/login`에서 네이티브 로그인 화면 오버레이로 시작한다.
+- Flutter 앱 WebView의 루트(`/`) 진입 시 로그인 세션이 없으면 웹 랜딩 화면을 렌더링하지 않고 `/login`으로 이동해 네이티브 로그인 화면을 먼저 보여준다. 로그인 세션이 있으면 홈을 그대로 렌더링한다.
+- 앱 로그인은 `/login` 라우트를 트리거로 Flutter 네이티브 로그인 화면 오버레이에서 시작한다. WebView의 웹 로그인 화면은 이메일/소셜 로그인 fallback으로만 남긴다.
 - 앱 설치 유도 화면(`/install-app`)과 앱 설치/다운로드 CTA는 웹 브라우저 전용이다. 네이티브 앱 WebView에서는 렌더링하지 않고, `/install-app`이 앱 안에서 열리면 `from` 값에 따라 `/pricing`, `/payment`, 또는 홈으로 되돌린다.
 - PC 웹의 `/install-app`은 OS를 직접 선택하게 하는 화면이 아니라 QR 코드와 설치 링크 복사로 휴대폰에서 이어가게 한다. 모바일 웹의 `/install-app`은 `gijilai://open?path=...` 딥링크를 먼저 시도하고, 앱이 열리지 않으면 iOS는 App Store, Android는 Google Play로 이동한다.
 - Flutter 앱은 `gijilai://open` 딥링크를 받으면 WebView를 전달된 내부 path로 이동한다. 인증 콜백(`gijilai://auth/callback`)은 기존처럼 `/auth/callback`으로만 소비한다.
@@ -88,12 +88,12 @@
 - Flutter 앱 WebView에서 웹 JavaScript `alert`, `confirm`, `prompt`가 호출되면 플랫폼 기본 시스템 다이얼로그 대신 앱 테마의 Flutter 다이얼로그로 표시한다.
 - Flutter 앱 WebView는 `HapticBridge`를 통해 웹 공통 CTA/내비게이션 탭에 가벼운 네이티브 햅틱을 연결한다. 웹은 bridge/capability가 확인된 경우에만 요청하고, 네이티브 로그인/다이얼로그 버튼도 같은 강도의 탭 피드백을 사용한다.
 - 알림 설정의 리마인더 시간 선택은 브라우저/WebView 기본 `input type="time"` picker를 쓰지 않고, 웹 커스텀 모달로 표시해 앱/웹에서 동일한 시각 언어를 유지한다.
-- Flutter 앱 WebView가 `/login`에 도달하면 WebView 위에 네이티브 로그인 화면을 오버레이한다.
-- 네이티브 로그인 화면은 카카오, Apple, Google, 이메일 진입점을 제공한다.
+- Flutter 앱 WebView가 `/login`에 도달하면 WebView 위에 네이티브 로그인 화면을 오버레이한다. 앱 사용자가 보는 기본 로그인 화면은 Flutter 네이티브 UI다.
+- 네이티브 로그인 화면은 카카오, Apple, Google, 이메일 진입점을 제공한다. 이메일 로그인/회원가입도 Flutter 네이티브 폼에서 처리하고 `/auth/native-email-session`으로 Supabase 세션 쿠키를 설정한다.
 - 카카오 버튼은 Kakao Flutter SDK 앱투앱 로그인을 먼저 시도하고, Kakao ID 토큰을 `/auth/native-session`으로 전달해 Supabase 세션 쿠키를 WebView에 설정한다.
 - Apple은 iOS에서 `sign_in_with_apple` 네이티브 SDK를 우선 사용해 ID 토큰(+ nonce)을 받고 `/auth/native-session`으로 세션을 교환한다.
 - Google은 `google_sign_in` 네이티브 SDK를 우선 사용해 ID 토큰을 받고 `/auth/native-session`으로 세션을 교환한다.
-- `GOOGLE_WEB_CLIENT_ID` dart define은 선택값이다. 있으면 `serverClientId`로 함께 주입하고, 없어도 모바일 앱 기본 설정(`GoogleService-Info.plist`, `google-services.json`)만으로 네이티브 로그인부터 시도한다.
+- `GOOGLE_WEB_CLIENT_ID` dart define은 선택값이다. 있으면 `serverClientId`로 함께 주입하고, 없어도 모바일 앱 기본 설정(`GoogleService-Info.plist`, `google-services.json`)만으로 네이티브 로그인부터 시도한다. ID 토큰을 받을 수 없을 때만 OAuth fallback으로 전환한다.
 - Apple/Google/Kakao 네이티브 토큰을 받을 수 없는 환경에서는 앱이 WebView의 `AuthProvider` OAuth 훅을 우선 호출해 Supabase auth-js가 PKCE 및 `gijilai://auth/callback` 리다이렉트를 생성하게 한다. 훅을 사용할 수 없는 경우에만 Supabase OAuth authorize URL을 외부 앱/브라우저로 직접 열고, 딥링크를 받아 WebView의 `/auth/callback`으로 다시 로드한다.
 - iOS에서 OAuth 후 앱이 콜드 스타트되는 경우를 위해 `AppDelegate`는 `launchOptions`의 초기 URL을 `app_links`로 직접 브리지한다.
 - iOS `Info.plist`의 `FlutterDeepLinkingEnabled`는 `false`로 유지해 Flutter 기본 딥링크 처리와 `app_links`가 같은 커스텀 스킴을 중복 처리하지 않게 한다.

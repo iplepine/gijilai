@@ -189,8 +189,10 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       FlutterLocalNotificationsPlugin();
   Uri? _pendingAuthCallbackUri;
   Uri? _pendingAppOpenUri;
+  String? _pendingLoginRedirectPath;
   DateTime? _lastBackPressedAt;
   bool _showNativeLogin = false;
+  bool _showNativeEmailLogin = false;
   bool _isNativeDialogVisible = false;
   bool _authInProgress = false;
   bool _externalAuthInProgress = false;
@@ -772,6 +774,10 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         uri.path == '/login' &&
         _nativeCapabilities.supportsScreen('login');
 
+    if (shouldShowLogin) {
+      _rememberLoginRedirect(uri.queryParameters['redirect']);
+    }
+
     setState(() {
       _isWebPageLoading = true;
       _webPageLoadProgress = 0;
@@ -805,8 +811,18 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         _isWebPageLoading = false;
         _webPageLoadProgress = 100;
         _showNativeLogin = shouldShowLogin;
+        if (!shouldShowLogin) {
+          _showNativeEmailLogin = false;
+        }
         _hasRenderedFirstPage = true;
       });
+    }
+  }
+
+  void _rememberLoginRedirect(String? rawRedirect) {
+    final safeRedirect = _safeInternalPath(rawRedirect);
+    if (safeRedirect != null) {
+      _pendingLoginRedirectPath = safeRedirect;
     }
   }
 
@@ -977,22 +993,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     if (uri == null || controller == null) return;
 
     _pendingAppOpenUri = null;
-    final targetUri = Uri.parse(MainWebView.targetUrl);
     final rawPath = uri.queryParameters['path'] ?? '/';
-    final pathUri = Uri.tryParse(rawPath);
-    final safePath =
-        pathUri != null &&
-            pathUri.path.startsWith('/') &&
-            !pathUri.path.startsWith('//')
-        ? pathUri.path
-        : '/';
-    final webUri = targetUri.replace(
-      path: safePath,
-      queryParameters: pathUri != null && pathUri.queryParameters.isNotEmpty
-          ? pathUri.queryParameters
-          : null,
-      fragment: null,
-    );
+    final webUri = _webUriForInternalPath(rawPath);
 
     await controller.loadRequest(webUri);
     if (mounted) {
@@ -1001,6 +1003,61 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         _isWebPageLoading = true;
       });
     }
+  }
+
+  String? _safeInternalPath(String? rawPath) {
+    if (rawPath == null || rawPath.isEmpty) return null;
+    final pathUri = Uri.tryParse(rawPath);
+    if (pathUri == null ||
+        !pathUri.path.startsWith('/') ||
+        pathUri.path.startsWith('//')) {
+      return null;
+    }
+    return pathUri.hasQuery ? '${pathUri.path}?${pathUri.query}' : pathUri.path;
+  }
+
+  Uri _webUriForInternalPath(String rawPath) {
+    final targetUri = Uri.parse(MainWebView.targetUrl);
+    final safePath = _safeInternalPath(rawPath) ?? '/';
+    final pathUri = Uri.parse(safePath);
+    return targetUri.replace(
+      path: pathUri.path,
+      queryParameters: pathUri.queryParameters.isNotEmpty
+          ? pathUri.queryParameters
+          : null,
+      fragment: null,
+    );
+  }
+
+  Uri _postLoginUri() {
+    final redirectPath = _pendingLoginRedirectPath;
+    _pendingLoginRedirectPath = null;
+    return _webUriForInternalPath(redirectPath ?? '/');
+  }
+
+  Future<WebViewController> _waitForWebAuthDocument() async {
+    final controller = _controller;
+    if (controller == null) {
+      throw Exception('WebView is not ready');
+    }
+
+    for (var i = 0; i < 30; i++) {
+      try {
+        final raw = await controller.runJavaScriptReturningResult(
+          'document.readyState || ""',
+        );
+        final readyState = raw.toString().replaceAll('"', '');
+        if (readyState == 'interactive' || readyState == 'complete') {
+          return controller;
+        }
+      } catch (_) {
+        // The document may still be swapping during navigation.
+      }
+
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+    }
+
+    throw Exception('Web login page is not ready');
   }
 
   void _onAuthMessage(JavaScriptMessage message) {
@@ -1155,6 +1212,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     if (_authInProgress) return;
     setState(() {
       _authInProgress = true;
+      _showNativeEmailLogin = false;
     });
 
     if (await _startOAuthThroughWebAuth(provider, attempts: 8)) {
@@ -1202,12 +1260,16 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     if (_authInProgress) return;
 
     if (Platform.isIOS && !await isKakaoTalkInstalled()) {
+      FirebaseCrashlytics.instance.log(
+        'Kakao native login fallback: KakaoTalk is not installed on iOS.',
+      );
       await _startNativeOAuth('kakao');
       return;
     }
 
     setState(() {
       _authInProgress = true;
+      _showNativeEmailLogin = false;
     });
 
     try {
@@ -1234,6 +1296,9 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
       if (token.idToken == null || token.idToken!.isEmpty) {
         debugPrint('Kakao ID token was not returned. Falling back to OAuth.');
+        FirebaseCrashlytics.instance.log(
+          'Kakao native login fallback: missing ID token.',
+        );
         if (mounted) {
           setState(() {
             _authInProgress = false;
@@ -1272,12 +1337,16 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     if (_authInProgress) return;
 
     if (!Platform.isIOS) {
+      FirebaseCrashlytics.instance.log(
+        'Apple native login fallback: platform is not iOS.',
+      );
       await _startNativeOAuth('apple');
       return;
     }
 
     setState(() {
       _authInProgress = true;
+      _showNativeEmailLogin = false;
     });
 
     try {
@@ -1295,6 +1364,9 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       final identityToken = credential.identityToken;
       if (identityToken == null || identityToken.isEmpty) {
         debugPrint('Apple identity token missing. Falling back to OAuth.');
+        FirebaseCrashlytics.instance.log(
+          'Apple native login fallback: missing identity token.',
+        );
         if (mounted) {
           setState(() {
             _authInProgress = false;
@@ -1333,26 +1405,10 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     if (_authInProgress) return;
     setState(() {
       _authInProgress = true;
+      _showNativeEmailLogin = false;
     });
 
     try {
-      if (Platform.isAndroid && _googleWebClientId.isEmpty) {
-        debugPrint(
-          'Google native login skipped: GOOGLE_WEB_CLIENT_ID is not configured.',
-        );
-        FirebaseCrashlytics.instance.log(
-          'Google native login skipped: GOOGLE_WEB_CLIENT_ID is not configured.',
-        );
-        if (mounted) {
-          setState(() {
-            _authInProgress = false;
-          });
-        }
-        _externalAuthInProgress = false;
-        await _startNativeOAuth('google');
-        return;
-      }
-
       final googleSignIn = GoogleSignIn(
         scopes: const ['email', 'profile', 'openid'],
         clientId: Platform.isIOS && _googleIosClientId.isNotEmpty
@@ -1371,6 +1427,9 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       final idToken = authentication.idToken;
       if (idToken == null || idToken.isEmpty) {
         debugPrint('Google ID token missing. Falling back to OAuth.');
+        FirebaseCrashlytics.instance.log(
+          'Google native login fallback: missing ID token.',
+        );
         try {
           await googleSignIn.signOut();
         } catch (_) {}
@@ -1391,6 +1450,9 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       );
     } catch (e) {
       debugPrint('Google native login error: $e');
+      FirebaseCrashlytics.instance.log(
+        'Google native login fallback: native SDK error.',
+      );
       if (mounted) {
         setState(() {
           _authInProgress = false;
@@ -1414,6 +1476,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     String? accessToken,
     String? nonce,
   }) async {
+    final controller = await _waitForWebAuthDocument();
     final payload = jsonEncode({
       'provider': provider,
       'idToken': idToken,
@@ -1440,12 +1503,12 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       })();
     ''';
 
-    await _controller!.runJavaScript(jsCode);
+    await controller.runJavaScript(jsCode);
 
     Map<String, dynamic>? result;
     for (var i = 0; i < 30; i++) {
       await Future.delayed(const Duration(milliseconds: 300));
-      final raw = await _controller!.runJavaScriptReturningResult(
+      final raw = await controller.runJavaScriptReturningResult(
         'window.__nativeAuthResult || ""',
       );
       if (raw.toString().isNotEmpty && raw.toString() != '""') {
@@ -1454,7 +1517,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           jsonStr = jsonDecode(jsonStr) as String;
         }
         result = jsonDecode(jsonStr) as Map<String, dynamic>;
-        await _controller!.runJavaScript('delete window.__nativeAuthResult;');
+        await controller.runJavaScript('delete window.__nativeAuthResult;');
         break;
       }
     }
@@ -1466,11 +1529,114 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     if (mounted) {
       setState(() {
         _showNativeLogin = false;
+        _showNativeEmailLogin = false;
         _authInProgress = false;
       });
     }
     _externalAuthInProgress = false;
-    await _controller!.loadRequest(Uri.parse(MainWebView.targetUrl));
+    await controller.loadRequest(_postLoginUri());
+  }
+
+  Future<void> _startNativeEmailAuth({
+    required String email,
+    required String password,
+    required bool signUp,
+  }) async {
+    if (_authInProgress) return;
+    setState(() {
+      _authInProgress = true;
+    });
+
+    try {
+      await _completeNativeEmailSession(
+        email: email,
+        password: password,
+        signUp: signUp,
+      );
+    } catch (e, stack) {
+      debugPrint('Native email auth error: $e');
+      if (mounted) {
+        setState(() {
+          _authInProgress = false;
+        });
+      }
+      unawaited(
+        FirebaseCrashlytics.instance.recordError(
+          e,
+          stack,
+          reason: 'Native email auth error',
+        ),
+      );
+      rethrow;
+    }
+  }
+
+  Future<void> _completeNativeEmailSession({
+    required String email,
+    required String password,
+    required bool signUp,
+  }) async {
+    final controller = await _waitForWebAuthDocument();
+    final payload = jsonEncode({
+      'mode': signUp ? 'signup' : 'login',
+      'email': email,
+      'password': password,
+    });
+
+    final jsCode =
+        '''
+      (async () => {
+        try {
+          const r = await fetch('/auth/native-email-session', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: ${_escapeForJsStringLiteral(payload)}
+          });
+          const data = await r.json().catch(() => ({}));
+          window.__nativeEmailAuthResult = JSON.stringify({ ok: r.ok, ...data });
+        } catch (e) {
+          window.__nativeEmailAuthResult = JSON.stringify({ ok: false, error: e.message });
+        }
+      })();
+    ''';
+
+    await controller.runJavaScript(jsCode);
+
+    Map<String, dynamic>? result;
+    for (var i = 0; i < 30; i++) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final raw = await controller.runJavaScriptReturningResult(
+        'window.__nativeEmailAuthResult || ""',
+      );
+      if (raw.toString().isNotEmpty && raw.toString() != '""') {
+        var jsonStr = raw.toString();
+        if (jsonStr.startsWith('"') && jsonStr.endsWith('"')) {
+          jsonStr = jsonDecode(jsonStr) as String;
+        }
+        result = jsonDecode(jsonStr) as Map<String, dynamic>;
+        await controller.runJavaScript(
+          'delete window.__nativeEmailAuthResult;',
+        );
+        break;
+      }
+    }
+
+    if (result == null || result['ok'] != true) {
+      throw Exception(
+        result?['error']?.toString() ?? 'Native email auth failed',
+      );
+    }
+
+    if (mounted) {
+      setState(() {
+        _showNativeLogin = false;
+        _showNativeEmailLogin = false;
+        _authInProgress = false;
+      });
+    }
+    _externalAuthInProgress = false;
+    await controller.loadRequest(_postLoginUri());
   }
 
   String _generateNonce({int length = 32}) {
@@ -1751,9 +1917,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     if (!enabled) {
       if (showFeedback) {
         _showSnackBar(
-          storedEnabled == true
-              ? '진행 중인 실천이 있을 때 알림을 보낼게요'
-              : '실천 리마인더가 꺼졌습니다',
+          storedEnabled == true ? '진행 중인 실천이 있을 때 알림을 보낼게요' : '실천 리마인더가 꺼졌습니다',
         );
       }
       return;
@@ -1838,9 +2002,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     await _localNotifications.show(
       _practiceReminderTestNotificationId,
       title?.trim().isNotEmpty == true ? title!.trim() : '테스트 알림입니다',
-      body?.trim().isNotEmpty == true
-          ? body!.trim()
-          : '실천 리마인더가 이렇게 표시됩니다.',
+      body?.trim().isNotEmpty == true ? body!.trim() : '실천 리마인더가 이렇게 표시됩니다.',
       const NotificationDetails(android: androidDetails, iOS: iosDetails),
       payload: payload ?? _practiceReminderPayload(),
     );
@@ -2395,17 +2557,27 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
               ),
             ),
             if (_showNativeLogin)
-              NativeLoginScreen(
-                isLoading: _authInProgress,
-                onKakaoPressed: _startKakaoNativeLogin,
-                onApplePressed: _startAppleNativeLogin,
-                onGooglePressed: _startGoogleNativeLogin,
-                onEmailPressed: () {
-                  setState(() {
-                    _showNativeLogin = false;
-                  });
-                },
-              ),
+              _showNativeEmailLogin
+                  ? NativeEmailAuthScreen(
+                      isLoading: _authInProgress,
+                      onBackPressed: () {
+                        setState(() {
+                          _showNativeEmailLogin = false;
+                        });
+                      },
+                      onSubmit: _startNativeEmailAuth,
+                    )
+                  : NativeLoginScreen(
+                      isLoading: _authInProgress,
+                      onKakaoPressed: _startKakaoNativeLogin,
+                      onApplePressed: _startAppleNativeLogin,
+                      onGooglePressed: _startGoogleNativeLogin,
+                      onEmailPressed: () {
+                        setState(() {
+                          _showNativeEmailLogin = true;
+                        });
+                      },
+                    ),
             Positioned(
               top: topInset,
               left: 0,
@@ -2843,6 +3015,429 @@ class NativeLoginScreen extends StatelessWidget {
               const SizedBox(height: 24),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+typedef NativeEmailAuthSubmit =
+    Future<void> Function({
+      required String email,
+      required String password,
+      required bool signUp,
+    });
+
+class NativeEmailAuthScreen extends StatefulWidget {
+  const NativeEmailAuthScreen({
+    super.key,
+    required this.isLoading,
+    required this.onBackPressed,
+    required this.onSubmit,
+  });
+
+  final bool isLoading;
+  final VoidCallback onBackPressed;
+  final NativeEmailAuthSubmit onSubmit;
+
+  @override
+  State<NativeEmailAuthScreen> createState() => _NativeEmailAuthScreenState();
+}
+
+class _NativeEmailAuthScreenState extends State<NativeEmailAuthScreen> {
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  bool _isSignUp = false;
+  bool _isSubmitting = false;
+  bool _obscurePassword = true;
+  String? _errorMessage;
+
+  static const _primary = Color(0xFF2F4F3E);
+  static const _textMain = Color(0xFF26382F);
+  static const _textSub = Color(0xFF7B847E);
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  bool get _isBusy => widget.isLoading || _isSubmitting;
+
+  Future<void> _submit() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    setState(() {
+      _errorMessage = null;
+    });
+
+    if (!email.contains('@') || !email.contains('.')) {
+      setState(() {
+        _errorMessage = '이메일 주소를 확인해주세요.';
+      });
+      return;
+    }
+
+    if (password.length < 6) {
+      setState(() {
+        _errorMessage = '비밀번호는 6자 이상 입력해주세요.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      await widget.onSubmit(
+        email: email,
+        password: password,
+        signUp: _isSignUp,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = _formatEmailAuthError(e);
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
+  }
+
+  String _formatEmailAuthError(Object error) {
+    final message = error.toString().replaceFirst('Exception: ', '');
+    final normalized = message.toLowerCase();
+    if (normalized.contains('invalid login') ||
+        normalized.contains('invalid credentials')) {
+      return '이메일 또는 비밀번호를 확인해주세요.';
+    }
+    if (normalized.contains('already registered') ||
+        normalized.contains('already been registered') ||
+        normalized.contains('user already registered')) {
+      return '이미 가입된 이메일입니다. 로그인으로 이용해주세요.';
+    }
+    if (normalized.contains('password')) {
+      return '비밀번호를 확인해주세요.';
+    }
+    if (normalized.contains('rate limit') || normalized.contains('too many')) {
+      return '요청이 잠시 많습니다. 조금 뒤에 다시 시도해주세요.';
+    }
+    return message.isEmpty ? '이메일 로그인을 완료할 수 없습니다.' : message;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFFFBFAF6),
+      child: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight:
+                  MediaQuery.sizeOf(context).height -
+                  MediaQuery.viewPaddingOf(context).top -
+                  MediaQuery.viewPaddingOf(context).bottom -
+                  36,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: IconButton(
+                    onPressed: _isBusy
+                        ? null
+                        : () {
+                            unawaited(HapticFeedback.lightImpact());
+                            widget.onBackPressed();
+                          },
+                    icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                    color: _textMain,
+                    tooltip: '뒤로',
+                  ),
+                ),
+                const SizedBox(height: 30),
+                const Text(
+                  '이메일로 계속하기',
+                  style: TextStyle(
+                    color: _textMain,
+                    fontSize: 28,
+                    height: 1.18,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  '기질아이 계정으로 안전하게 로그인하세요.',
+                  style: TextStyle(
+                    color: _textSub,
+                    fontSize: 15,
+                    height: 1.45,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0,
+                  ),
+                ),
+                const SizedBox(height: 28),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0EDE5),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Row(
+                      children: [
+                        _EmailModeButton(
+                          label: '로그인',
+                          selected: !_isSignUp,
+                          onPressed: _isBusy
+                              ? null
+                              : () {
+                                  setState(() {
+                                    _isSignUp = false;
+                                    _errorMessage = null;
+                                  });
+                                },
+                        ),
+                        _EmailModeButton(
+                          label: '회원가입',
+                          selected: _isSignUp,
+                          onPressed: _isBusy
+                              ? null
+                              : () {
+                                  setState(() {
+                                    _isSignUp = true;
+                                    _errorMessage = null;
+                                  });
+                                },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                _NativeEmailTextField(
+                  controller: _emailController,
+                  enabled: !_isBusy,
+                  keyboardType: TextInputType.emailAddress,
+                  label: '이메일',
+                  icon: Icons.mail_outline_rounded,
+                  textInputAction: TextInputAction.next,
+                ),
+                const SizedBox(height: 12),
+                _NativeEmailTextField(
+                  controller: _passwordController,
+                  enabled: !_isBusy,
+                  label: '비밀번호',
+                  icon: Icons.lock_outline_rounded,
+                  obscureText: _obscurePassword,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) {
+                    if (!_isBusy) {
+                      unawaited(_submit());
+                    }
+                  },
+                  suffixIcon: IconButton(
+                    onPressed: _isBusy
+                        ? null
+                        : () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                    ),
+                    color: _textSub,
+                    tooltip: _obscurePassword ? '비밀번호 보기' : '비밀번호 숨기기',
+                  ),
+                ),
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    _errorMessage!,
+                    style: const TextStyle(
+                      color: Color(0xFFB44B4B),
+                      fontSize: 13,
+                      height: 1.35,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 22),
+                SizedBox(
+                  height: 56,
+                  child: FilledButton(
+                    onPressed: _isBusy
+                        ? null
+                        : () {
+                            unawaited(HapticFeedback.lightImpact());
+                            unawaited(_submit());
+                          },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _primary,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: _primary.withValues(alpha: 0.55),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: _isBusy
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(
+                            _isSignUp ? '회원가입' : '로그인',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0,
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 34),
+                const Text(
+                  '로그인하면 이용약관과 개인정보처리방침에 동의하게 됩니다.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Color(0xFF9A9F99),
+                    fontSize: 12,
+                    height: 1.4,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmailModeButton extends StatelessWidget {
+  const _EmailModeButton({
+    required this.label,
+    required this.selected,
+    required this.onPressed,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: SizedBox(
+        height: 44,
+        child: TextButton(
+          onPressed: onPressed,
+          style: TextButton.styleFrom(
+            backgroundColor: selected ? Colors.white : Colors.transparent,
+            foregroundColor: selected
+                ? const Color(0xFF26382F)
+                : const Color(0xFF7B847E),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            textStyle: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0,
+            ),
+          ),
+          child: Text(label),
+        ),
+      ),
+    );
+  }
+}
+
+class _NativeEmailTextField extends StatelessWidget {
+  const _NativeEmailTextField({
+    required this.controller,
+    required this.enabled,
+    required this.label,
+    required this.icon,
+    this.keyboardType,
+    this.obscureText = false,
+    this.textInputAction,
+    this.onSubmitted,
+    this.suffixIcon,
+  });
+
+  final TextEditingController controller;
+  final bool enabled;
+  final String label;
+  final IconData icon;
+  final TextInputType? keyboardType;
+  final bool obscureText;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onSubmitted;
+  final Widget? suffixIcon;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      enabled: enabled,
+      keyboardType: keyboardType,
+      obscureText: obscureText,
+      textInputAction: textInputAction,
+      onSubmitted: onSubmitted,
+      autocorrect: false,
+      enableSuggestions: !obscureText,
+      style: const TextStyle(
+        color: Color(0xFF26382F),
+        fontSize: 15,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0,
+      ),
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: const Color(0xFF7B847E)),
+        suffixIcon: suffixIcon,
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
+        labelStyle: const TextStyle(
+          color: Color(0xFF7B847E),
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFFE6E2D8)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFF2F4F3E), width: 1.4),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Color(0xFFE6E2D8)),
         ),
       ),
     );

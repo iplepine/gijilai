@@ -52,7 +52,7 @@
 ### 인증
 - **위치**: `app/src/lib/supabase.ts`, `app/src/lib/supabaseServer.ts`, `app/src/components/auth/AuthProvider.tsx`
 - **역할**: Supabase Auth를 통한 인증 (Apple OAuth, Google OAuth, Kakao OAuth, 이메일/비밀번호)
-- **앱 WebView**: `/login` 도달 시 Flutter 네이티브 로그인 화면을 오버레이한다. 카카오 버튼은 Kakao Flutter SDK 앱투앱 로그인을 먼저 사용하고, Kakao ID 토큰을 `/auth/native-session`으로 전달해 Supabase 세션 쿠키를 WebView에 설정한다. Apple/Google 로그인과 카카오 ID 토큰을 받을 수 없는 환경에서는 Supabase OAuth authorize URL + `gijilai://auth/callback` 딥링크 경로를 사용한다. 웹 `AuthBridge` 경로는 fallback으로 유지한다.
+- **앱 WebView**: 비로그인 상태에서는 웹 랜딩/로그인 UI를 노출하지 않고 Flutter 네이티브 로그인 화면을 오버레이한다. 카카오, Apple, Google은 네이티브 SDK ID 토큰을 `/auth/native-session`으로 전달해 Supabase 세션 쿠키를 WebView에 설정한다. 이메일 로그인/회원가입은 네이티브 폼에서 `/auth/native-email-session`으로 세션 쿠키를 설정한다. 네이티브 토큰을 받을 수 없는 환경에서는 Supabase OAuth authorize URL + `gijilai://auth/callback` 딥링크 경로를 fallback으로 사용한다.
 - **의존**: Supabase Auth
 - **사용처**: API 라우트 (세션 검증), 보호된 페이지
 
@@ -131,6 +131,7 @@ app/src/components/
 | `/api/payment/webhook` | POST | 포트원 웹훅 |
 | `/api/report/shared/[id]` | GET | 공유 리포트 조회 (`CHILD`, `PARENT`, `HARMONY`) |
 | `/auth/native-session` | POST | 앱 네이티브 소셜 로그인 토큰을 Supabase 세션 쿠키로 교환 |
+| `/auth/native-email-session` | POST | 앱 네이티브 이메일 로그인/회원가입을 Supabase 세션 쿠키로 교환 |
 
 ## 외부 의존성
 
