@@ -48,6 +48,10 @@ function getSafeRedirect(value: string | null) {
     return value;
 }
 
+function isAppWebView() {
+    return typeof window !== 'undefined' && window.navigator.userAgent.includes('gijilai_app');
+}
+
 export default function LoginPage() {
     const { t } = useLocale();
     const {
@@ -63,8 +67,9 @@ export default function LoginPage() {
         isLoadingEmail,
     } = useAuth();
     const router = useRouter();
+    const useNativeLoginShell = isAppWebView();
 
-    const [showEmailLogin, setShowEmailLogin] = useState(false);
+    const [showEmailLogin, setShowEmailLogin] = useState(useNativeLoginShell);
     const [emailMode, setEmailMode] = useState<'login' | 'signup'>('login');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -134,67 +139,71 @@ export default function LoginPage() {
                     {t('auth.tagline')}
                 </p>
 
-                <div className="space-y-3">
-                    <button
-                        onClick={() => {
-                            trackEvent('login_attempt', { provider: 'kakao' });
-                            signInWithKakao();
-                        }}
-                        disabled={isLoadingKakao}
-                        className="w-full bg-[#FEE500] text-[#191919] py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-[#FADA0A] transition-all active:scale-[0.98] disabled:opacity-50"
-                    >
-                        {isLoadingKakao ? (
-                            <div className="w-5 h-5 border-2 border-[#191919]/20 border-t-[#191919] rounded-full animate-spin" />
-                        ) : (
-                            <KakaoLoginSymbol />
-                        )}
-                        {isLoadingKakao ? t('auth.loggingIn') : t('auth.continueWithKakao')}
-                    </button>
+                {!useNativeLoginShell && (
+                    <>
+                        <div className="space-y-3">
+                            <button
+                                onClick={() => {
+                                    trackEvent('login_attempt', { provider: 'kakao' });
+                                    signInWithKakao();
+                                }}
+                                disabled={isLoadingKakao}
+                                className="w-full bg-[#FEE500] text-[#191919] py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-[#FADA0A] transition-all active:scale-[0.98] disabled:opacity-50"
+                            >
+                                {isLoadingKakao ? (
+                                    <div className="w-5 h-5 border-2 border-[#191919]/20 border-t-[#191919] rounded-full animate-spin" />
+                                ) : (
+                                    <KakaoLoginSymbol />
+                                )}
+                                {isLoadingKakao ? t('auth.loggingIn') : t('auth.continueWithKakao')}
+                            </button>
 
-                    <button
-                        onClick={() => {
-                            trackEvent('login_attempt', { provider: 'apple' });
-                            signInWithApple();
-                        }}
-                        disabled={isLoadingApple}
-                        className="w-full bg-black text-white py-4 rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 transition-all active:scale-[0.98]"
-                    >
-                        {isLoadingApple ? (
-                            <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                        ) : (
-                            <AppleLoginSymbol />
-                        )}
-                        {isLoadingApple ? t('auth.loggingIn') : t('auth.continueWithApple')}
-                    </button>
+                            <button
+                                onClick={() => {
+                                    trackEvent('login_attempt', { provider: 'apple' });
+                                    signInWithApple();
+                                }}
+                                disabled={isLoadingApple}
+                                className="w-full bg-black text-white py-4 rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 transition-all active:scale-[0.98]"
+                            >
+                                {isLoadingApple ? (
+                                    <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                                ) : (
+                                    <AppleLoginSymbol />
+                                )}
+                                {isLoadingApple ? t('auth.loggingIn') : t('auth.continueWithApple')}
+                            </button>
 
-                    <button
-                        onClick={() => {
-                            trackEvent('login_attempt', { provider: 'google' });
-                            signInWithGoogle();
-                        }}
-                        disabled={isLoadingGoogle}
-                        className="w-full bg-white dark:bg-surface-dark border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 py-4 rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 transition-all active:scale-[0.98]"
-                    >
-                        {isLoadingGoogle ? (
-                            <div className="w-5 h-5 border-2 border-gray-200 dark:border-gray-600 border-t-gray-800 dark:border-t-gray-200 rounded-full animate-spin" />
-                        ) : (
-                            <GoogleLoginSymbol />
-                        )}
-                        {isLoadingGoogle ? t('auth.loggingIn') : t('auth.continueWithGoogle')}
-                    </button>
-                </div>
+                            <button
+                                onClick={() => {
+                                    trackEvent('login_attempt', { provider: 'google' });
+                                    signInWithGoogle();
+                                }}
+                                disabled={isLoadingGoogle}
+                                className="w-full bg-white dark:bg-surface-dark border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 py-4 rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 transition-all active:scale-[0.98]"
+                            >
+                                {isLoadingGoogle ? (
+                                    <div className="w-5 h-5 border-2 border-gray-200 dark:border-gray-600 border-t-gray-800 dark:border-t-gray-200 rounded-full animate-spin" />
+                                ) : (
+                                    <GoogleLoginSymbol />
+                                )}
+                                {isLoadingGoogle ? t('auth.loggingIn') : t('auth.continueWithGoogle')}
+                            </button>
+                        </div>
 
-                <div className="mt-6 flex items-center gap-3">
-                    <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
-                    <button
-                        type="button"
-                        onClick={() => setShowEmailLogin(!showEmailLogin)}
-                        className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                    >
-                        {t('auth.emailAuth')}
-                    </button>
-                    <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
-                </div>
+                        <div className="mt-6 flex items-center gap-3">
+                            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                            <button
+                                type="button"
+                                onClick={() => setShowEmailLogin(!showEmailLogin)}
+                                className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                            >
+                                {t('auth.emailAuth')}
+                            </button>
+                            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                        </div>
+                    </>
+                )}
 
                 {showEmailLogin && (
                     <form onSubmit={handleEmailLogin} className="mt-4 space-y-3">
