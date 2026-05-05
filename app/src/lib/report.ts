@@ -136,6 +136,7 @@ export type ReportApiResult = {
     report: Json;
     reportId?: string;
     createdAt: string;
+    persisted?: boolean;
 };
 
 type JsonRecord = Record<string, Json | undefined>;

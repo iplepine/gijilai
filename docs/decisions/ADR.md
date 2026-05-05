@@ -148,9 +148,15 @@
 
 ---
 
+## 2026-05-05 | Android 프로덕션 배포는 내부 테스트 트랙을 먼저 확보한다
+
+- **결정**: Android 기본 프로덕션 배포(`deploy_production`, `release_production`, `scripts/deploy_android_production.sh`)는 `pubspec.yaml` build number를 한 번만 증가시키고 AAB를 한 번 빌드한 뒤, Google Play `internal` 트랙에 먼저 업로드하고 같은 versionCode를 `production` 트랙으로 promote한다. 프로덕션 트랙에만 직접 올리는 예외용 lane은 `deploy_production_only`로 분리한다.
+- **이유**: Google Play 프로덕션 검토/반영은 지연될 수 있으므로, 배포 직후 실제 스토어 배포 산출물을 내부 테스트 트랙에서 바로 설치 확인할 수 있어야 한다. 같은 AAB/versionCode를 사용하면 내부 테스트와 프로덕션 후보가 갈라지지 않는다.
+- **대안**: 내부 테스트와 프로덕션을 각각 별도 build number로 업로드 — 테스트한 빌드와 프로덕션 후보가 달라져 검증 신뢰가 떨어져 기각. 내부 테스트 업로드 후 프로덕션 수동 promote — 배포 절차가 두 단계로 남아 누락 가능성이 있어 기각. 프로덕션만 업로드 — 검토 지연 중 즉시 설치 검증 경로가 없어 기각.
+
 ## 2026-04-29 | Android 배포는 build number 기준 출시노트를 자동 생성한다
 
-- **결정**: Android Fastlane 배포(`deploy_internal`, `deploy_production`)는 `pubspec.yaml` build number를 증가시킨 직후, `fastlane/release_notes/android/ko-KR.txt`와 `en-US.txt`를 읽어 Play Console 표준 경로인 `fastlane/metadata/android/<locale>/changelogs/<versionCode>.txt`를 자동 생성한다. 프로덕션 배포 진입점은 `release_production` lane과 `scripts/deploy_android_production.sh`로 제공한다.
+- **결정**: Android Fastlane 배포(`deploy_internal`, `deploy_production`, `deploy_production_only`)는 `pubspec.yaml` build number를 증가시킨 직후, `fastlane/release_notes/android/ko-KR.txt`와 `en-US.txt`를 읽어 Play Console 표준 경로인 `fastlane/metadata/android/<locale>/changelogs/<versionCode>.txt`를 자동 생성한다. 프로덕션 배포 진입점은 `release_production` lane과 `scripts/deploy_android_production.sh`로 제공한다.
 - **이유**: 프로덕션 배포가 가능해진 시점부터 내부 테스트와 운영 배포 모두에서 build number와 출시노트 파일명이 어긋나지 않아야 한다. 출시노트 원본을 언어별 단일 파일로 두고 배포 시점에 버전별 changelog를 렌더링하면, 운영자가 한글/영문 문구를 한 곳에서 수정하면서도 Play Console 업로드 규칙을 자동으로 맞출 수 있다.
 - **대안**: 배포 때마다 `metadata/android/.../changelogs/<versionCode>.txt`를 수동 생성 — build number와 파일명을 자주 맞춰야 해 실수 가능성이 높아 기각. 릴리즈 노트를 Fastfile 코드에 직접 하드코딩 — 문구 수정 때 코드 변경 범위가 커지고 운영성이 떨어져 기각.
 

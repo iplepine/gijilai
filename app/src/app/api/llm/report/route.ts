@@ -43,9 +43,19 @@ type ChildReportStreamModule =
     | { module: 'strengths'; data: { strengths?: string } }
     | { module: 'parentingTips'; data: { parentingTips?: ChildAiReport['parentingTips'] } }
     | { module: 'scripts'; data: { scripts?: ChildAiReport['scripts']; shareText?: string } };
+const CHILD_REPORT_STREAM_MODULES = ['intro', 'dimensions', 'insight', 'strengths', 'parentingTips', 'scripts'] as const;
 
 function isReportType(value: unknown): value is ReportType {
     return value === 'PARENT' || value === 'CHILD' || value === 'HARMONY';
+}
+
+function isChildReportStreamModule(value: unknown): value is ChildReportStreamModule {
+    if (!value || typeof value !== 'object') return false;
+    const item = value as { module?: unknown; data?: unknown };
+    return typeof item.module === 'string'
+        && CHILD_REPORT_STREAM_MODULES.includes(item.module as typeof CHILD_REPORT_STREAM_MODULES[number])
+        && !!item.data
+        && typeof item.data === 'object';
 }
 
 function isChildReportValid(value: unknown): value is ChildAiReport {
@@ -335,7 +345,25 @@ function streamChildReportResponse(params: {
                     const line = normalizeStreamLine(rawLine);
                     if (!line || !line.startsWith('{')) return;
 
-                    const parsed = JSON.parse(line) as ChildReportStreamModule;
+                    let parsed: ChildReportStreamModule;
+                    try {
+                        parsed = JSON.parse(line) as ChildReportStreamModule;
+                    } catch (error) {
+                        if (isChildReportComplete(report)) {
+                            console.warn('[Report Stream API] Ignoring malformed trailing JSONL line after complete report:', line);
+                            return;
+                        }
+                        throw error;
+                    }
+
+                    if (!isChildReportStreamModule(parsed)) {
+                        if (isChildReportComplete(report)) {
+                            console.warn('[Report Stream API] Ignoring unknown trailing JSONL object after complete report:', line);
+                            return;
+                        }
+                        throw new Error('INVALID_CHILD_REPORT_STREAM_MODULE');
+                    }
+
                     applyChildReportStreamModule(report, parsed);
                     perf.mark(`module_${parsed.module}`);
                     send('module', parsed as unknown as Record<string, unknown>);
@@ -364,42 +392,52 @@ function streamChildReportResponse(params: {
                     throw new Error('INVALID_STREAMED_CHILD_REPORT');
                 }
 
-                const { data: savedReport, error: reportError } = await params.supabase
-                    .from('reports')
-                    .insert({
-                        user_id: params.userId,
-                        child_id: childId,
-                        survey_id: surveyId,
-                        type: 'CHILD',
-                        analysis_json: report as Json,
-                        model_used: REPORT_MODEL,
-                        is_paid: false,
-                    })
-                    .select('id')
-                    .single();
-                if (reportError) throw reportError;
-                perf.mark('report_insert', { hasReportId: !!savedReport?.id });
-
-                if (params.refresh && savedReport?.id) {
-                    let deleteQuery = params.supabase
+                let savedReportId: string | null = null;
+                let persisted = false;
+                try {
+                    const { data: savedReport, error: reportError } = await params.supabase
                         .from('reports')
-                        .delete()
-                        .eq('user_id', params.userId)
-                        .eq('type', 'CHILD')
-                        .neq('id', savedReport.id);
-                    if (childId) {
-                        deleteQuery = deleteQuery.eq('child_id', childId);
+                        .insert({
+                            user_id: params.userId,
+                            child_id: childId,
+                            survey_id: surveyId,
+                            type: 'CHILD',
+                            analysis_json: report as Json,
+                            model_used: REPORT_MODEL,
+                            is_paid: false,
+                        })
+                        .select('id')
+                        .single();
+                    if (reportError) throw reportError;
+                    savedReportId = savedReport?.id || null;
+                    persisted = !!savedReportId;
+                    perf.mark('report_insert', { hasReportId: persisted });
+
+                    if (params.refresh && savedReportId) {
+                        let deleteQuery = params.supabase
+                            .from('reports')
+                            .delete()
+                            .eq('user_id', params.userId)
+                            .eq('type', 'CHILD')
+                            .neq('id', savedReportId);
+                        if (childId) {
+                            deleteQuery = deleteQuery.eq('child_id', childId);
+                        }
+                        const { error: deleteError } = await deleteQuery;
+                        if (deleteError) console.error('[Report Stream API] Delete previous reports error:', deleteError);
+                        perf.mark('refresh_cleanup');
                     }
-                    const { error: deleteError } = await deleteQuery;
-                    if (deleteError) console.error('[Report Stream API] Delete previous reports error:', deleteError);
-                    perf.mark('refresh_cleanup');
+                } catch (persistenceError) {
+                    console.error('[Report Stream API] Report persistence error after complete stream:', persistenceError);
+                    perf.mark('report_persist_failed');
                 }
 
                 send('completed', {
                     report: report as Json,
-                    reportId: savedReport?.id || null,
+                    reportId: savedReportId,
                     createdAt: new Date().toISOString(),
                     cached: false,
+                    persisted,
                     timings: perf.getSegments(),
                 });
             } catch (error) {

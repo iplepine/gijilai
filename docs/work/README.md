@@ -1,6 +1,6 @@
 # 작업 관리
 
-마지막 갱신일: 2026-05-04
+마지막 갱신일: 2026-05-05
 
 ## 현재 집중
 
@@ -8,7 +8,7 @@
 
 현재 active roadmap: `R-001-consult-report-conversion`
 
-현재 active task: 없음
+현재 active task: `GJ-005-report-trust-baseline-qa`
 
 다음 후보 task: 없음
 

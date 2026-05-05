@@ -14,6 +14,7 @@ interface TemperamentLoadingStateProps {
   typeLabel?: string;
   className?: string;
   imagePriority?: boolean;
+  showImage?: boolean;
   progressStyle?: ProgressStyle;
   size?: LoadingSize;
 }
@@ -30,6 +31,7 @@ export function TemperamentLoadingState({
   typeLabel,
   className = '',
   imagePriority = false,
+  showImage = true,
   progressStyle = 'bar',
   size = 'regular',
 }: TemperamentLoadingStateProps) {
@@ -41,25 +43,27 @@ export function TemperamentLoadingState({
       aria-live="polite"
       className={`flex w-full flex-col items-center text-center animate-fade-in ${isCompact ? 'gap-3' : 'gap-5'} ${className}`}
     >
-      <div
-        className={`relative overflow-hidden rounded-[1.75rem] border border-white/80 bg-white shadow-[0_18px_42px_rgba(47,79,62,0.14)] dark:border-white/10 dark:bg-surface-dark dark:shadow-black/20 ${
-          isCompact ? 'w-[10.5rem]' : 'w-[14rem]'
-        } max-w-full aspect-[11/6]`}
-      >
-        <Image
-          src={imageSrc || DEFAULT_IMAGE}
-          alt={imageAlt}
-          width={704}
-          height={384}
-          priority={imagePriority}
-          quality={75}
-          sizes={isCompact ? '168px' : '224px'}
-          className="h-full w-full object-cover"
-        />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/10 to-transparent" />
-      </div>
+      {showImage && (
+        <div
+          className={`relative overflow-hidden rounded-[1.75rem] border border-white/80 bg-white shadow-[0_18px_42px_rgba(47,79,62,0.14)] dark:border-white/10 dark:bg-surface-dark dark:shadow-black/20 ${
+            isCompact ? 'w-[10.5rem]' : 'w-[14rem]'
+          } max-w-full aspect-[11/6]`}
+        >
+          <Image
+            src={imageSrc || DEFAULT_IMAGE}
+            alt={imageAlt}
+            width={704}
+            height={384}
+            priority={imagePriority}
+            quality={75}
+            sizes={isCompact ? '168px' : '224px'}
+            className="h-full w-full object-cover"
+          />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/10 to-transparent" />
+        </div>
+      )}
 
-      {typeLabel && (
+      {showImage && typeLabel && (
         <p className="rounded-full bg-primary/10 px-3 py-1 text-[11px] font-black text-primary dark:bg-white/10 dark:text-primary-light">
           {typeLabel}
         </p>

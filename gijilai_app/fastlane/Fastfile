@@ -99,7 +99,24 @@ def upload_android_release(track:, skip_upload_metadata:, skip_upload_images:, s
   )
 end
 
-def deploy_android_track(track:)
+def promote_android_release(from_track:, to_track:, build_number:)
+  upload_to_play_store(
+    package_name: PACKAGE_NAME,
+    track: from_track,
+    track_promote_to: to_track,
+    track_promote_release_status: "completed",
+    version_code: build_number,
+    json_key: android_json_key_path,
+    skip_upload_apk: true,
+    skip_upload_aab: true,
+    skip_upload_metadata: true,
+    skip_upload_images: true,
+    skip_upload_screenshots: true,
+    skip_upload_changelogs: false,
+  )
+end
+
+def prepare_android_release_build
   bump_pubspec_build_number
 
   version_info = read_pubspec_version_info
@@ -108,6 +125,10 @@ def deploy_android_track(track:)
   prepare_android_release_notes(build_number: build_number)
   build
 
+  build_number
+end
+
+def upload_android_track_with_retry(track:)
   begin
     upload_android_release(
       track: track,
@@ -128,6 +149,20 @@ def deploy_android_track(track:)
       skip_upload_changelogs: false,
     )
   end
+end
+
+def deploy_android_track(track:)
+  prepare_android_release_build
+  upload_android_track_with_retry(track: track)
+end
+
+def deploy_android_internal_and_production
+  build_number = prepare_android_release_build
+
+  upload_android_track_with_retry(track: "internal")
+  promote_android_release(from_track: "internal", to_track: "production", build_number: build_number)
+
+  UI.success("Android build #{build_number} uploaded to internal testing and promoted to production")
 end
 
 # ─────────────────────────────────────────────
@@ -306,8 +341,13 @@ platform :android do
     deploy_android_track(track: "internal")
   end
 
-  desc "Google Play 프로덕션 배포"
+  desc "Google Play 내부 테스트 + 프로덕션 동시 배포"
   lane :deploy_production do
+    deploy_android_internal_and_production
+  end
+
+  desc "Google Play 프로덕션 트랙에만 직접 배포"
+  lane :deploy_production_only do
     deploy_android_track(track: "production")
   end
 
@@ -316,16 +356,16 @@ platform :android do
     prepare_android_release_notes(build_number: read_pubspec_version_info[:build_number])
   end
 
-  desc "Google Play 프로덕션 릴리스"
+  desc "Google Play 내부 테스트 + 프로덕션 릴리스"
   lane :release_production do
     deploy_production
   end
 
-  desc "스크린샷 + 메타데이터 + 빌드 + 업로드 한번에"
+  desc "스크린샷 + 메타데이터 + 빌드 + 내부 테스트/프로덕션 업로드 한번에"
   lane :release do
     screenshots
     metadata
-    deploy_internal
+    deploy_production
   end
 end
 

@@ -6,7 +6,7 @@ ID: `R-001-consult-report-conversion`
 
 연결 Goal: `G-001-paid-conversion-trust`
 
-마지막 갱신일: 2026-05-04
+마지막 갱신일: 2026-05-05
 
 ## 목적
 
@@ -34,7 +34,7 @@ ID: `R-001-consult-report-conversion`
 
 ## Active Tasks
 
-- 없음
+- `GJ-005-report-trust-baseline-qa`
 
 ## Backlog Tasks
 
