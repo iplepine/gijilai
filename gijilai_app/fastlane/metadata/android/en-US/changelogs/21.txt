@@ -1,0 +1,4 @@
+Improved KakaoTalk sharing reliability.
+• More reliable KakaoTalk sharing from inside the app
+• Improved share link and app handoff handling
+• Refined where some report guidance appears
