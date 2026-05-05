@@ -192,6 +192,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   DateTime? _lastBackPressedAt;
   bool _showNativeLogin = false;
   bool _isWebEmailLoginVisible = false;
+  bool _canUseKakaoNativeLogin = !Platform.isIOS;
   bool _isNativeDialogVisible = false;
   bool _authInProgress = false;
   bool _externalAuthInProgress = false;
@@ -378,6 +379,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         'VoiceInputBridge',
         onMessageReceived: _onVoiceInputMessage,
       )
+      ..addJavaScriptChannel('RouteBridge', onMessageReceived: _onRouteMessage)
       ..addJavaScriptChannel('AuthBridge', onMessageReceived: _onAuthMessage)
       ..addJavaScriptChannel('ShareBridge', onMessageReceived: _onShareMessage)
       ..loadRequest(Uri.parse(MainWebView.targetUrl));
@@ -756,6 +758,16 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     }
 
     if (_shouldOpenExternally(uri)) {
+      if (Platform.isIOS && _isOAuthNavigationUri(uri)) {
+        final provider = _authProviderFromOAuthUri(uri);
+        if (provider == null) {
+          unawaited(_finishNativeAuthFailure('앱 안에서 지원되는 로그인 수단을 이용해주세요'));
+        } else {
+          unawaited(_startNativeLoginForProvider(provider));
+        }
+        return NavigationDecision.prevent;
+      }
+
       unawaited(_launchExternalUrl(uri));
       return NavigationDecision.prevent;
     }
@@ -765,8 +777,9 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
   bool _isNativeLoginRoute(Uri? uri) {
     if (uri == null) return false;
+    final path = uri.path.replaceFirst(RegExp(r'/+$'), '');
     return uri.host == Uri.parse(MainWebView.targetUrl).host &&
-        uri.path == '/login' &&
+        (path == '/login' || path.endsWith('/login')) &&
         _nativeCapabilities.supportsScreen('login');
   }
 
@@ -779,6 +792,22 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       _webPageLoadProgress = 0;
       if (isNativeLoginRoute) {
         _showNativeLogin = !_isWebEmailLoginVisible;
+        _refreshNativeLoginAvailability();
+      } else {
+        _showNativeLogin = false;
+        _isWebEmailLoginVisible = false;
+      }
+    });
+  }
+
+  void _syncNativeLoginRouteState(String url) {
+    if (!mounted) return;
+
+    final isNativeLoginRoute = _isNativeLoginRoute(Uri.tryParse(url));
+    setState(() {
+      if (isNativeLoginRoute) {
+        _showNativeLogin = !_isWebEmailLoginVisible;
+        _refreshNativeLoginAvailability();
       } else {
         _showNativeLogin = false;
         _isWebEmailLoginVisible = false;
@@ -806,6 +835,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         _webPageLoadProgress = 100;
         if (isNativeLoginRoute) {
           _showNativeLogin = !_isWebEmailLoginVisible;
+          _refreshNativeLoginAvailability();
         } else {
           _showNativeLogin = false;
           _isWebEmailLoginVisible = false;
@@ -829,6 +859,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       _isWebEmailLoginVisible = false;
       _lastBackPressedAt = null;
     });
+    _refreshNativeLoginAvailability();
   }
 
   Future<void> _syncWebAppContext() async {
@@ -873,6 +904,30 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           }
         }));
 
+        if (!window.__nativeRouteBridgeInstalled && window.RouteBridge) {
+          const notifyRoute = () => {
+            try {
+              window.RouteBridge.postMessage(window.location.href);
+            } catch (_) {}
+          };
+          const wrapHistory = (name) => {
+            const original = window.history[name];
+            if (typeof original !== 'function' || original.__nativeRouteWrapped) return;
+            const wrapped = function(...args) {
+              const result = original.apply(this, args);
+              setTimeout(notifyRoute, 0);
+              return result;
+            };
+            wrapped.__nativeRouteWrapped = true;
+            window.history[name] = wrapped;
+          };
+          wrapHistory('pushState');
+          wrapHistory('replaceState');
+          window.addEventListener('popstate', notifyRoute);
+          window.__nativeRouteBridgeInstalled = true;
+          notifyRoute();
+        }
+
         if (!window.__nativeDialogTapGuard) {
           const guard = {
             activeUntil: 0,
@@ -907,6 +962,84 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
             wrapped.__nativeGuardWrapped = true;
             window[name] = wrapped;
           });
+        }
+      })();
+    ''');
+
+    await _applyAppLoginWebOverrides();
+  }
+
+  Future<void> _applyAppLoginWebOverrides() async {
+    final controller = _controller;
+    if (controller == null) return;
+
+    await controller.runJavaScript(r'''
+      (function() {
+        const socialLabels = [
+          '카카오로 계속하기',
+          'Apple로 계속하기',
+          '구글로 계속하기',
+          'Continue with Kakao',
+          'Continue with Apple',
+          'Continue with Google',
+          'Log in with Kakao',
+          'Log in with Apple',
+          'Log in with Google'
+        ];
+        const emailLabels = [
+          '이메일로 로그인/회원가입',
+          'Log in / sign up with email'
+        ];
+
+        function normalizeText(node) {
+          return (node && node.textContent ? node.textContent : '')
+            .replace(/\s+/g, ' ')
+            .trim();
+        }
+
+        function hideElement(element) {
+          if (!element) return;
+          element.style.setProperty('display', 'none', 'important');
+          element.setAttribute('aria-hidden', 'true');
+          element.setAttribute('data-native-hidden-auth', 'true');
+        }
+
+        function applyLoginOverrides() {
+          const path = window.location && window.location.pathname
+            ? window.location.pathname.replace(/\/+$/, '')
+            : '';
+          if (path !== '/login' && !path.endsWith('/login')) return;
+
+          const buttons = Array.from(document.querySelectorAll('button'));
+          for (const button of buttons) {
+            const text = normalizeText(button);
+            if (socialLabels.some((label) => text.includes(label))) {
+              hideElement(button.parentElement || button);
+            }
+          }
+
+          const emailInput = document.querySelector('input[type="email"]');
+          if (!emailInput) {
+            const emailToggle = buttons.find((button) => {
+              const text = normalizeText(button);
+              return emailLabels.some((label) => text.includes(label));
+            });
+            if (emailToggle && !emailToggle.dataset.nativeEmailOpened) {
+              emailToggle.dataset.nativeEmailOpened = 'true';
+              emailToggle.click();
+            }
+          }
+        }
+
+        applyLoginOverrides();
+
+        if (!window.__nativeLoginOverrideObserver) {
+          const observer = new MutationObserver(applyLoginOverrides);
+          observer.observe(document.documentElement, {
+            childList: true,
+            subtree: true
+          });
+          window.__nativeLoginOverrideObserver = observer;
         }
       })();
     ''');
@@ -945,6 +1078,35 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
     return host.contains('supabase.co') &&
         path.startsWith('/auth/v1/authorize');
+  }
+
+  String? _authProviderFromValue(Object? rawProvider) {
+    final provider = rawProvider?.toString().toLowerCase();
+    if (provider == 'kakao' || provider == 'apple' || provider == 'google') {
+      return provider;
+    }
+    return null;
+  }
+
+  String? _authProviderFromOAuthUri(Uri uri) {
+    final queryProvider = _authProviderFromValue(
+      uri.queryParameters['provider'],
+    );
+    if (queryProvider != null) return queryProvider;
+
+    final host = uri.host.toLowerCase();
+    if (host == 'accounts.google.com' ||
+        host == 'oauth2.googleapis.com' ||
+        host.endsWith('.googleusercontent.com')) {
+      return 'google';
+    }
+    if (host == 'appleid.apple.com') return 'apple';
+    if (host == 'kauth.kakao.com' ||
+        host == 'accounts.kakao.com' ||
+        host.endsWith('.kakao.com')) {
+      return 'kakao';
+    }
+    return null;
   }
 
   bool _isAuthCallbackUri(Uri uri) {
@@ -1026,11 +1188,27 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     }
   }
 
+  void _onRouteMessage(JavaScriptMessage message) {
+    _syncNativeLoginRouteState(message.message);
+  }
+
   void _onAuthMessage(JavaScriptMessage message) {
     try {
       final data = jsonDecode(message.message);
       if (data['type'] == 'OAUTH_URL' && data['url'] is String) {
         final uri = Uri.parse(data['url'] as String);
+        final provider =
+            _authProviderFromValue(data['provider']) ??
+            _authProviderFromOAuthUri(uri);
+        if (Platform.isIOS) {
+          if (provider == null) {
+            unawaited(_finishNativeAuthFailure('앱 안에서 지원되는 로그인 수단을 이용해주세요'));
+          } else {
+            unawaited(_startNativeLoginForProvider(provider));
+          }
+          return;
+        }
+
         _externalAuthInProgress = true;
         unawaited(_launchAuthUrlFromBridge(uri));
       }
@@ -1047,6 +1225,16 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   }
 
   Future<void> _launchAuthUrlFromBridge(Uri uri) async {
+    if (Platform.isIOS && _isOAuthNavigationUri(uri)) {
+      final provider = _authProviderFromOAuthUri(uri);
+      if (provider == null) {
+        await _finishNativeAuthFailure('앱 안에서 지원되는 로그인 수단을 이용해주세요');
+        return;
+      }
+      await _startNativeLoginForProvider(provider);
+      return;
+    }
+
     final launched = await _launchExternalUrl(uri);
     if (!launched) {
       await _finishCancelledAuthHandoff(showMessage: true);
@@ -1153,6 +1341,10 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
   Future<bool> _launchExternalUrl(Uri uri) async {
     try {
+      if (Platform.isIOS && _isOAuthNavigationUri(uri)) {
+        throw Exception('iOS OAuth browser fallback is blocked: $uri');
+      }
+
       final scheme = uri.scheme.toLowerCase();
       final launched = Platform.isAndroid && scheme == 'intent'
           ? await _launchAndroidIntentUri(uri)
@@ -1175,6 +1367,11 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   }
 
   Future<void> _startNativeOAuth(String provider) async {
+    if (Platform.isIOS) {
+      await _finishNativeAuthFailure('앱 안에서 지원되는 로그인 수단을 이용해주세요');
+      return;
+    }
+
     if (_authInProgress) return;
     setState(() {
       _authInProgress = true;
@@ -1187,6 +1384,28 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
     debugPrint('Web OAuth handoff hook was not ready.');
     await _finishCancelledAuthHandoff(showMessage: true);
+  }
+
+  Future<void> _startNativeLoginForProvider(String provider) async {
+    final normalizedProvider = _authProviderFromValue(provider);
+    if (normalizedProvider == 'kakao') {
+      await _startKakaoNativeLogin();
+      return;
+    }
+    if (normalizedProvider == 'apple') {
+      await _startAppleNativeLogin();
+      return;
+    }
+    if (normalizedProvider == 'google') {
+      if (Platform.isIOS) {
+        await _finishNativeAuthFailure('Apple 또는 이메일로 로그인해주세요');
+        return;
+      }
+      await _startGoogleNativeLogin();
+      return;
+    }
+
+    await _finishNativeAuthFailure('앱 안에서 지원되는 로그인 수단을 이용해주세요');
   }
 
   Future<bool> _startOAuthThroughWebAuth(
@@ -1224,8 +1443,9 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   Future<void> _startKakaoNativeLogin() async {
     if (_authInProgress) return;
 
-    if (Platform.isIOS && !await isKakaoTalkInstalled()) {
-      await _startNativeOAuth('kakao');
+    final isKakaoTalkAvailable = await isKakaoTalkInstalled();
+    if (Platform.isIOS && !isKakaoTalkAvailable) {
+      await _finishNativeAuthFailure('카카오톡 앱 설치 후 카카오 로그인을 이용해주세요');
       return;
     }
 
@@ -1235,18 +1455,13 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
     try {
       OAuthToken token;
-      if (await isKakaoTalkInstalled()) {
+      if (isKakaoTalkAvailable) {
         try {
           token = await UserApi.instance.loginWithKakaoTalk();
         } catch (e) {
-          debugPrint('KakaoTalk login failed, fallback to account: $e');
+          debugPrint('KakaoTalk login failed: $e');
           if (Platform.isIOS) {
-            if (mounted) {
-              setState(() {
-                _authInProgress = false;
-              });
-            }
-            await _startNativeOAuth('kakao');
+            await _finishNativeAuthFailure('카카오 로그인을 완료할 수 없습니다');
             return;
           }
           token = await UserApi.instance.loginWithKakaoAccount();
@@ -1256,7 +1471,11 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       }
 
       if (token.idToken == null || token.idToken!.isEmpty) {
-        debugPrint('Kakao ID token was not returned. Falling back to OAuth.');
+        debugPrint('Kakao ID token was not returned.');
+        if (Platform.isIOS) {
+          await _finishNativeAuthFailure('카카오 로그인을 완료할 수 없습니다');
+          return;
+        }
         if (mounted) {
           setState(() {
             _authInProgress = false;
@@ -1280,6 +1499,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           _authInProgress = false;
         });
       }
+      await _notifyWebAuthLoadingDone();
       _showSnackBar('카카오 로그인을 완료할 수 없습니다', isError: true);
       unawaited(
         FirebaseCrashlytics.instance.recordError(
@@ -1317,7 +1537,11 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
       final identityToken = credential.identityToken;
       if (identityToken == null || identityToken.isEmpty) {
-        debugPrint('Apple identity token missing. Falling back to OAuth.');
+        debugPrint('Apple identity token missing.');
+        if (Platform.isIOS) {
+          await _finishNativeAuthFailure('Apple 로그인을 완료할 수 없습니다');
+          return;
+        }
         if (mounted) {
           setState(() {
             _authInProgress = false;
@@ -1341,6 +1565,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           _authInProgress = false;
         });
       }
+      await _notifyWebAuthLoadingDone();
       _showSnackBar('Apple 로그인을 완료할 수 없습니다', isError: true);
       unawaited(
         FirebaseCrashlytics.instance.recordError(
@@ -1354,6 +1579,12 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
   Future<void> _startGoogleNativeLogin() async {
     if (_authInProgress) return;
+
+    if (Platform.isIOS) {
+      await _finishNativeAuthFailure('Apple 또는 이메일로 로그인해주세요');
+      return;
+    }
+
     setState(() {
       _authInProgress = true;
     });
@@ -1393,10 +1624,14 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       final authentication = await account.authentication;
       final idToken = authentication.idToken;
       if (idToken == null || idToken.isEmpty) {
-        debugPrint('Google ID token missing. Falling back to OAuth.');
+        debugPrint('Google ID token missing.');
         try {
           await googleSignIn.signOut();
         } catch (_) {}
+        if (Platform.isIOS) {
+          await _finishNativeAuthFailure('구글 로그인을 완료할 수 없습니다');
+          return;
+        }
         if (mounted) {
           setState(() {
             _authInProgress = false;
@@ -1414,6 +1649,17 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       );
     } catch (e) {
       debugPrint('Google native login error: $e');
+      if (Platform.isIOS) {
+        unawaited(
+          FirebaseCrashlytics.instance.recordError(
+            e,
+            StackTrace.current,
+            reason: 'Google native login error',
+          ),
+        );
+        await _finishNativeAuthFailure('구글 로그인을 완료할 수 없습니다');
+        return;
+      }
       if (mounted) {
         setState(() {
           _authInProgress = false;
@@ -1514,6 +1760,17 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     await _finishCancelledAuthHandoff();
   }
 
+  Future<void> _finishNativeAuthFailure(String message) async {
+    _externalAuthInProgress = false;
+    if (mounted) {
+      setState(() {
+        _authInProgress = false;
+      });
+    }
+    await _notifyWebAuthLoadingDone();
+    _showSnackBar(message, isError: true);
+  }
+
   Future<void> _finishCancelledAuthHandoff({bool showMessage = false}) async {
     _externalAuthInProgress = false;
     if (mounted) {
@@ -1525,6 +1782,25 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     if (showMessage) {
       _showSnackBar('로그인을 시작할 수 없습니다', isError: true);
     }
+  }
+
+  void _refreshNativeLoginAvailability() {
+    if (!Platform.isIOS) {
+      if (!_canUseKakaoNativeLogin && mounted) {
+        setState(() {
+          _canUseKakaoNativeLogin = true;
+        });
+      }
+      return;
+    }
+
+    unawaited(() async {
+      final isAvailable = await isKakaoTalkInstalled();
+      if (!mounted || _canUseKakaoNativeLogin == isAvailable) return;
+      setState(() {
+        _canUseKakaoNativeLogin = isAvailable;
+      });
+    }());
   }
 
   Future<void> _initIAP() async {
@@ -1775,9 +2051,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     if (!enabled) {
       if (showFeedback) {
         _showSnackBar(
-          storedEnabled == true
-              ? '진행 중인 실천이 있을 때 알림을 보낼게요'
-              : '실천 리마인더가 꺼졌습니다',
+          storedEnabled == true ? '진행 중인 실천이 있을 때 알림을 보낼게요' : '실천 리마인더가 꺼졌습니다',
         );
       }
       return;
@@ -1862,9 +2136,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     await _localNotifications.show(
       _practiceReminderTestNotificationId,
       title?.trim().isNotEmpty == true ? title!.trim() : '테스트 알림입니다',
-      body?.trim().isNotEmpty == true
-          ? body!.trim()
-          : '실천 리마인더가 이렇게 표시됩니다.',
+      body?.trim().isNotEmpty == true ? body!.trim() : '실천 리마인더가 이렇게 표시됩니다.',
       const NotificationDetails(android: androidDetails, iOS: iosDetails),
       payload: payload ?? _practiceReminderPayload(),
     );
@@ -2426,6 +2698,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
             if (_showNativeLogin)
               NativeLoginScreen(
                 isLoading: _authInProgress,
+                showKakaoLogin: _canUseKakaoNativeLogin,
+                showGoogleLogin: !Platform.isIOS,
                 onKakaoPressed: _startKakaoNativeLogin,
                 onApplePressed: _startAppleNativeLogin,
                 onGooglePressed: _startGoogleNativeLogin,
@@ -2782,6 +3056,8 @@ class NativeLoginScreen extends StatelessWidget {
   const NativeLoginScreen({
     super.key,
     required this.isLoading,
+    required this.showKakaoLogin,
+    required this.showGoogleLogin,
     required this.onKakaoPressed,
     required this.onApplePressed,
     required this.onGooglePressed,
@@ -2789,6 +3065,8 @@ class NativeLoginScreen extends StatelessWidget {
   });
 
   final bool isLoading;
+  final bool showKakaoLogin;
+  final bool showGoogleLogin;
   final VoidCallback onKakaoPressed;
   final VoidCallback onApplePressed;
   final VoidCallback onGooglePressed;
@@ -2853,15 +3131,17 @@ class NativeLoginScreen extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              _LoginButton(
-                label: '카카오로 계속하기',
-                backgroundColor: const Color(0xFFFEE500),
-                foregroundColor: const Color(0xFF191919),
-                enabled: !isLoading,
-                icon: const _KakaoLoginSymbol(size: 20),
-                onPressed: onKakaoPressed,
-              ),
-              const SizedBox(height: 12),
+              if (showKakaoLogin) ...[
+                _LoginButton(
+                  label: '카카오로 계속하기',
+                  backgroundColor: const Color(0xFFFEE500),
+                  foregroundColor: const Color(0xFF191919),
+                  enabled: !isLoading,
+                  icon: const _KakaoLoginSymbol(size: 20),
+                  onPressed: onKakaoPressed,
+                ),
+                const SizedBox(height: 12),
+              ],
               _LoginButton(
                 label: 'Apple로 계속하기',
                 backgroundColor: const Color(0xFF111111),
@@ -2870,16 +3150,18 @@ class NativeLoginScreen extends StatelessWidget {
                 icon: const Icon(Icons.apple, size: 20, color: Colors.white),
                 onPressed: onApplePressed,
               ),
-              const SizedBox(height: 12),
-              _LoginButton(
-                label: '구글로 계속하기',
-                backgroundColor: Colors.white,
-                foregroundColor: _textMain,
-                borderColor: const Color(0xFFE6E2D8),
-                enabled: !isLoading,
-                icon: const _GoogleLoginSymbol(size: 20),
-                onPressed: onGooglePressed,
-              ),
+              if (showGoogleLogin) ...[
+                const SizedBox(height: 12),
+                _LoginButton(
+                  label: '구글로 계속하기',
+                  backgroundColor: Colors.white,
+                  foregroundColor: _textMain,
+                  borderColor: const Color(0xFFE6E2D8),
+                  enabled: !isLoading,
+                  icon: const _GoogleLoginSymbol(size: 20),
+                  onPressed: onGooglePressed,
+                ),
+              ],
               if (isLoading) ...[
                 const SizedBox(height: 18),
                 const SizedBox(
