@@ -11,6 +11,7 @@ import { CHILD_QUESTIONS } from '@/data/questions';
 import { Suspense } from 'react';
 import { useLocale } from '@/i18n/LocaleProvider';
 import type { Json } from '@/types/supabase';
+import { supabase } from '@/lib/supabase';
 import {
   buildSharedReportSummary,
   parseSharedAnalysis,
@@ -122,6 +123,7 @@ function SharePageContent() {
   const [report, setReport] = useState<SharedReport | null>(null);
 
   const reportId = searchParams.get('id');
+  const [resolvedReportId, setResolvedReportId] = useState<string | null>(reportId);
 
   const getNativeShareBridge = () => {
     if (typeof window === 'undefined') return null;
@@ -133,12 +135,46 @@ function SharePageContent() {
     return /gijilai_app|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   };
 
-  // Load the exact shared report row when reportId is provided.
+  // Resolve report id so that sharing from /share (without id) still links to a public report.
+  useEffect(() => {
+    let isActive = true;
+
+    async function resolveReportId() {
+      if (reportId) {
+        setResolvedReportId(reportId);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('reports')
+        .select('id')
+        .in('type', ['CHILD', 'PARENT', 'HARMONY'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!isActive) return;
+      if (error || !data?.id) {
+        setResolvedReportId(null);
+        return;
+      }
+
+      setResolvedReportId(data.id);
+    }
+
+    resolveReportId();
+
+    return () => {
+      isActive = false;
+    };
+  }, [reportId]);
+
+  // Load the exact shared report row when reportId is resolved.
   useEffect(() => {
     let isActive = true;
 
     async function loadReport() {
-      if (!reportId) {
+      if (!resolvedReportId) {
         setReport(null);
         setIsReportLoading(false);
         return;
@@ -146,7 +182,7 @@ function SharePageContent() {
 
       setIsReportLoading(true);
       try {
-        const res = await fetch(`/api/report/shared/${reportId}`, { cache: 'no-store' });
+        const res = await fetch(`/api/report/shared/${resolvedReportId}`, { cache: 'no-store' });
         if (!res.ok) {
           throw new Error(`Shared report load failed: ${res.status}`);
         }
@@ -165,7 +201,7 @@ function SharePageContent() {
     return () => {
       isActive = false;
     };
-  }, [reportId]);
+  }, [resolvedReportId]);
 
   const canShareToOtherApps = useSyncExternalStore(
     () => () => undefined,
@@ -186,7 +222,7 @@ function SharePageContent() {
 
   // Calculate share card from DB report or local child store fallback.
   const shareInfo: ShareSummary | null = (() => {
-    if (reportId && report) {
+    if (resolvedReportId && report) {
       const analysis = parseSharedAnalysis(report.analysis);
       const summary = buildSharedReportSummary({
         type: report.type,
@@ -217,7 +253,7 @@ function SharePageContent() {
   })();
 
   const getShareUrl = () => {
-    if (reportId) return `${window.location.origin}/shared/${reportId}`;
+    if (resolvedReportId) return `${window.location.origin}/shared/${resolvedReportId}`;
     return `${window.location.origin}?ref=${referralCode}`;
   };
 
