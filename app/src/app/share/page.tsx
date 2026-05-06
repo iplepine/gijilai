@@ -270,6 +270,7 @@ function SharePageContent() {
 
   const handleKakaoShare = async () => {
     const shareUrl = getShareUrl();
+    const shareDescription = `${shareInfo?.textParts.slice(1).join('\n\n').slice(0, 200) || t('share.kakaoDesc')}\n\n${shareUrl}`;
 
     setIsKakaoSharing(true);
     setShareError(null);
@@ -279,7 +280,7 @@ function SharePageContent() {
         objectType: 'feed',
         content: {
           title: `${shareInfo?.headline || childName} "${shareInfo?.label || t('share.childFallbackLabel')}"`,
-          description: shareInfo?.textParts.slice(1).join('\n\n').slice(0, 200) || t('share.kakaoDesc'),
+          description: shareDescription,
           imageUrl: `https://gijilai.com${shareInfo?.image || '/child_type/type_lhl.jpg'}`,
           link: {
             mobileWebUrl: shareUrl,
@@ -310,10 +311,11 @@ function SharePageContent() {
   };
 
   const handleNativeShare = async () => {
+    const shareUrl = getShareUrl();
     const sharePayload = {
       title: shareInfo?.title || `${childName}${t('share.resultTitle')}`,
-      text: shareInfo?.textParts.join('\n\n') || t('share.kakaoDesc'),
-      url: getShareUrl(),
+      text: `${shareInfo?.textParts.join('\n\n') || t('share.kakaoDesc')}\n\n${shareUrl}`,
+      url: shareUrl,
     };
 
     const bridge = getNativeShareBridge();
