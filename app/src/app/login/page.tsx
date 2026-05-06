@@ -3,7 +3,6 @@
 import { useAuth } from '@/components/auth/AuthProvider';
 import { HomeLogoButton } from '@/components/layout/HomeLogoButton';
 import { trackEvent } from '@/lib/analytics';
-import { notifyNativeRouteChange } from '@/lib/nativeCapabilities';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useLocale } from '@/i18n/LocaleProvider';
@@ -48,9 +47,6 @@ function getSafeRedirect(value: string | null) {
     return value;
 }
 
-function isAppWebView() {
-    return typeof window !== 'undefined' && window.navigator.userAgent.includes('gijilai_app');
-}
 
 export default function LoginPage() {
     const { t } = useLocale();
@@ -67,18 +63,14 @@ export default function LoginPage() {
         isLoadingEmail,
     } = useAuth();
     const router = useRouter();
-    const useNativeLoginShell = isAppWebView();
+    const useNativeLoginShell = false;
 
-    const [showEmailLogin, setShowEmailLogin] = useState(useNativeLoginShell);
+    const [showEmailLogin, setShowEmailLogin] = useState(false);
     const [emailMode, setEmailMode] = useState<'login' | 'signup'>('login');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [emailError, setEmailError] = useState('');
     const [emailMessage, setEmailMessage] = useState('');
-
-    useEffect(() => {
-        notifyNativeRouteChange('/login');
-    }, []);
 
     const getErrorMessage = (error: unknown) => {
         if (error instanceof Error) {
