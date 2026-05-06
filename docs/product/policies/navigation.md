@@ -98,7 +98,7 @@
 - Apple은 iOS에서 `sign_in_with_apple` 네이티브 SDK를 우선 사용해 ID 토큰(+ nonce)을 받고 `/auth/native-session`으로 세션을 교환한다. Android는 Apple 네이티브 SDK가 없으므로 Supabase Apple OAuth URL을 Android Custom Tab으로 열고 `gijilai://auth/callback` 딥링크로 앱에 복귀한다.
 - Google은 Android에서 `google_sign_in` 네이티브 SDK를 우선 사용해 ID 토큰을 받고 `/auth/native-session`으로 세션을 교환한다. 네이티브 ID 토큰을 받을 수 없으면 브라우저 OAuth fallback을 열지 않고 실패를 안내한다. iOS에서는 Google Sign-In이 심사 환경에서 웹 인증 표면으로 이어질 수 있어 숨기고, Apple 또는 이메일 로그인을 안내한다.
 - 이메일 로그인/회원가입은 Flutter 네이티브 폼에서 입력을 받고 WebView 내부의 `/auth/native-email` API를 호출해 Supabase 세션 쿠키만 설정한다.
-- `GOOGLE_WEB_CLIENT_ID` dart define은 선택값이다. 있으면 `serverClientId`로 함께 주입하고, 없어도 모바일 앱 기본 설정(`GoogleService-Info.plist`, `google-services.json`)만으로 네이티브 로그인부터 시도한다.
+- `GOOGLE_WEB_CLIENT_ID` dart define은 Android Google 네이티브 로그인 필수값이다. 앱은 이 값을 `serverClientId`로 주입해 Supabase Google provider의 Client ID와 ID token audience를 맞추며, 값이 없으면 Google 네이티브 로그인 capability를 광고하지 않는다.
 - Android와 iOS에서는 Supabase OAuth authorize URL, Google/Apple/Kakao OAuth 도메인, WebView `AuthBridge` OAuth URL을 기본적으로 외부 브라우저나 인앱 브라우저로 열지 않는다. WebView에서 소셜 OAuth URL이 발생하면 지원 가능한 네이티브 SDK 로그인으로 다시 라우팅하고, 네이티브 경로가 없으면 앱 안에서 실패를 안내한다. 단, Android의 Apple 로그인은 Apple 공식 네이티브 SDK가 없으므로 Apple OAuth URL만 Android Custom Tab으로 열 수 있다.
 - 앱 WebView의 웹 `/login` 화면은 네이티브 로그인 오버레이 뒤에서만 존재한다. 웹 소셜 로그인 버튼은 숨기고, 이메일 폼도 사용자가 보는 주 로그인 화면으로 쓰지 않는다.
 - iOS에서 OAuth 후 앱이 콜드 스타트되는 경우를 위해 `AppDelegate`는 `launchOptions`의 초기 URL을 `app_links`로 직접 브리지한다.

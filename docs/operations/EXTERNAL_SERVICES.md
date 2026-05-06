@@ -132,6 +132,7 @@
 - `app/src/app/auth/native-session/route.ts`
 - `gijilai_app/lib/main.dart`
 - `gijilai_app/android/app/src/main/AndroidManifest.xml`
+- `gijilai_app/third_party/kakao_flutter_sdk_common/android/src/main/kotlin/com/kakao/sdk/flutter/KakaoFlutterSdkPlugin.kt`
 - `gijilai_app/ios/Runner/Info.plist`
 - **운영 포인트**
 - 도메인, JavaScript 키, Redirect URI 불일치가 흔한 장애 원인
@@ -141,6 +142,7 @@
 - Android Flutter 앱은 KakaoTalk 설치 시 앱투앱 로그인을 시도하고, KakaoTalk 미설치 또는 앱투앱 로그인 실패 시 카카오계정 웹 fallback을 열지 않고 앱 안에서 실패를 안내한다.
 - Flutter 앱은 Kakao SDK 기반 네이티브 토큰 교환 경로가 있을 때 `window.__nativeCapabilities.nativeAuthProviders.kakao`를 `true`로 광고한다. ID 토큰이 없거나 세션 교환에 실패하면 Supabase OAuth fallback을 열지 않고 앱 안에서 실패를 안내한다.
 - Android 카카오 로그인 복귀 크래시를 피하기 위해 `MainActivity`에는 `android:taskAffinity=""`를 두지 않는다. 현재 Flutter 3.32/Dart 3.8 환경에서는 Kakao SDK 1.10.0 이상이 빌드 요구사항과 맞지 않으므로 `kakao_flutter_sdk_user` 1.9.7+3을 유지한다.
+- Kakao Flutter SDK common 1.9.7+3은 앱투앱 로그인 복귀 중 다른 Kakao method call이 전역 `MethodChannel.Result`를 덮어 `Reply already submitted` 크래시를 낼 수 있어, `gijilai_app/third_party/kakao_flutter_sdk_common` 로컬 override에서 pending result를 요청별로 캡처한다. SDK를 올릴 때 이 로컬 패치가 upstream에 반영됐는지 확인한 뒤 override 제거 여부를 판단한다.
 - 앱투앱 로그인 후 Supabase 세션으로 교환하려면 Kakao Developers에서 OpenID Connect를 활성화해 ID 토큰이 발급되어야 한다.
 - Kakao Flutter SDK로 받은 ID 토큰의 audience는 SDK 초기화에 사용한 Native App Key다. Supabase Kakao provider가 REST API key만 Client ID로 설정되어 있으면 `Unacceptable audience in id_token` 오류가 난다. 웹 Kakao OAuth와 앱 네이티브 로그인을 같이 유지하려면 Supabase Custom OIDC provider의 acceptable client IDs에 Native App Key를 추가하거나, 앱 전용 REST/OAuth 교환 경로를 별도로 둔다. 내장 Kakao provider의 Client ID를 Native App Key로 바꾸면 웹 Kakao OAuth가 깨질 수 있다.
 - Kakao 네이티브 로그인 nonce는 Supabase ID token 검증 방식에 맞춰 Kakao SDK에는 SHA-256 해시 nonce를 보내고, `/auth/native-session`에는 원본 nonce를 전달한다. 이메일 기반 계정 생성이 필요하므로 네이티브 로그인은 `openid`, `account_email`, `profile_nickname` 동의를 요청한다.
@@ -159,9 +161,9 @@
 - **운영 포인트**
 - 승인된 리디렉션 URI와 Supabase 설정을 함께 맞춰야 함
 - Flutter 앱은 `nativeAuthProviders.google`이 `true`인 환경에서 Google 로그인을 네이티브 SDK로 먼저 시도하고, 받은 ID 토큰을 Supabase 세션으로 교환한다.
-- `GOOGLE_WEB_CLIENT_ID` dart define은 모바일 Google ID 토큰의 audience를 Supabase Google provider와 맞추는 값이다. Android/iOS 모두 이 값이 있을 때만 `window.__nativeCapabilities.nativeAuthProviders.google`을 `true`로 광고하고 네이티브 Google 로그인을 연다. 값이 없거나 세션 교환이 실패하면 Supabase OAuth fallback을 사용한다.
+- `GOOGLE_WEB_CLIENT_ID` dart define은 모바일 Google ID 토큰의 audience를 Supabase Google provider와 맞추는 값이다. Android는 이 값이 있을 때만 `window.__nativeCapabilities.nativeAuthProviders.google`을 `true`로 광고하고 네이티브 Google 로그인을 연다. 값이 없거나 세션 교환이 실패하면 브라우저 OAuth fallback을 열지 않고 앱 안에서 실패를 안내한다.
 - iOS 네이티브 로그인을 안정적으로 쓰려면 `GOOGLE_IOS_CLIENT_ID` dart define과 `GoogleService-Info.plist`의 `CLIENT_ID`/`REVERSED_CLIENT_ID`, `Info.plist` URL scheme을 Google Cloud Console 값과 일치시킨다. 네이티브 설정 예외가 나면 앱은 Supabase OAuth fallback으로 전환한다.
-- Android는 Firebase/Google Cloud에 앱 SHA-1, SHA-256을 등록해야 `google-services.json`의 `oauth_client`가 채워지고 안정적으로 동작한다. 이 값이 비어 있으면 Play Services Auth native activity 크래시 또는 로그인 실패가 Crashlytics에 잡힐 수 있다.
+- Android는 Firebase/Google Cloud에 앱 SHA-1, SHA-256을 등록해야 `google-services.json`의 `oauth_client`가 채워지고 안정적으로 동작한다. 현재 `google-services.json`의 Android OAuth client는 업로드/릴리스 키 SHA-1 `5E:78:C4:70:A2:52:AE:50:1E:C9:EA:AC:5E:1E:EA:A1:B4:7A:9B:31`에 맞춰져 있으므로, debug APK로 Google 로그인을 테스트하려면 로컬 debug keystore SHA도 추가 등록해야 한다. Play Store 설치본은 Play App Signing SHA를 별도로 등록해야 하며, SHA가 맞지 않으면 Google Sign-In이 계정 선택 후 `ApiException: 10`으로 실패한다.
 
 ### Apple Developer
 

@@ -2,6 +2,7 @@
 
 ## 최근 배포
 
+- 2026-05-06: Android Google Play internal/production `1.0.5+31` 배포 완료. AAB: `gijilai_app/build/app/outputs/bundle/release/app-release.aab`. 카카오톡 앱 로그인 복귀와 Google 릴리스 로그인 동작을 확인했다.
 - 2026-05-06: Android Google Play internal/production `1.0.3+29` 배포 완료. AAB: `gijilai_app/build/app/outputs/bundle/release/app-release.aab`.
 - 2026-05-06: Android production Fastlane lane은 다음 배포부터 marketing patch version과 build number를 함께 올린 뒤 업로드하도록 변경했다.
 

@@ -449,12 +449,11 @@ packages:
     source: hosted
     version: "1.9.7+3"
   kakao_flutter_sdk_common:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: kakao_flutter_sdk_common
-      sha256: "1c4944cc50c363d4626e9006ab39ee496c8f5ca602b96154272b90d40544aaca"
-      url: "https://pub.dev"
-    source: hosted
+      path: "third_party/kakao_flutter_sdk_common"
+      relative: true
+    source: path
     version: "1.9.7+3"
   kakao_flutter_sdk_user:
     dependency: "direct main"

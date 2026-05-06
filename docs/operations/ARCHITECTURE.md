@@ -52,7 +52,7 @@
 ### 인증
 - **위치**: `app/src/lib/supabase.ts`, `app/src/lib/supabaseServer.ts`, `app/src/components/auth/AuthProvider.tsx`
 - **역할**: Supabase Auth를 통한 인증 (Apple OAuth, Google OAuth, Kakao OAuth, 이메일/비밀번호)
-- **앱 WebView**: 비로그인 상태 또는 `/login` 도달 시 Flutter 네이티브 로그인 화면을 오버레이한다. 앱은 `window.__nativeCapabilities.supportedScreens.login`과 `nativeAuthProviders`로 로그인 화면 및 provider별 네이티브 토큰 교환 지원 여부를 광고한다. Next.js client-side route 변경은 `RouteBridge`로 Flutter에 전달해 full page load 없이도 네이티브 인터셉트가 동작하게 한다. 카카오, Apple, Google은 네이티브 SDK ID 토큰을 `/auth/native-session`으로 전달해 Supabase 세션 쿠키를 WebView에 설정한다. 이메일 로그인/회원가입은 네이티브 폼에서 `/auth/native-email-session`으로 세션 쿠키를 설정한다. 네이티브 토큰을 받을 수 없거나 세션 교환이 실패하는 환경에서는 Supabase OAuth authorize URL + `gijilai://auth/callback` 딥링크 경로를 fallback으로 사용한다. 웹 `AuthBridge` 경로는 fallback으로 유지한다.
+- **앱 WebView**: 비로그인 상태 또는 `/login` 도달 시 Flutter 네이티브 로그인 화면을 오버레이한다. 앱은 `window.__nativeCapabilities.supportedScreens.login`과 `nativeAuthProviders`로 로그인 화면 및 provider별 네이티브 토큰 교환 지원 여부를 광고한다. Next.js client-side route 변경은 `RouteBridge`로 Flutter에 전달해 full page load 없이도 네이티브 인터셉트가 동작하게 한다. 카카오, Apple, Google은 네이티브 SDK ID 토큰을 `/auth/native-session`으로 전달해 Supabase 세션 쿠키를 WebView에 설정한다. 이메일 로그인/회원가입은 네이티브 폼에서 `/auth/native-email-session`으로 세션 쿠키를 설정한다. Android Apple 로그인만 Supabase OAuth authorize URL + `gijilai://auth/callback` 딥링크 경로를 Custom Tab fallback으로 사용하고, Google/Kakao 네이티브 토큰 실패는 앱 안에서 실패로 안내한다. 웹 `AuthBridge` 경로는 네이티브 재라우팅 안전장치로 유지한다.
 - **의존**: Supabase Auth
 - **사용처**: API 라우트 (세션 검증), 보호된 페이지
 

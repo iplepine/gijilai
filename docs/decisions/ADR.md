@@ -572,6 +572,18 @@
 - **이유**: 배포 앱에서 카카오 로그인 버튼을 눌렀을 때 앱투앱 대신 카카오계정 웹 화면으로 빠지는 동선이 확인됐다. 앱 로그인은 네이티브/앱투앱 경험이어야 하고, 웹 fallback은 iOS 심사 대응 정책 및 Android 네이티브 로그인 기대와 맞지 않는다.
 - **대안**: 카카오톡 실패 시 카카오계정 웹 fallback 유지 — 로그인 성공률은 높일 수 있지만 사용자가 기대한 앱투앱 동선을 깨고 웹 OAuth 표면을 다시 노출하므로 기각.
 
+## 2026-05-06 | Kakao Flutter common 1.9.7+3은 로컬 패치로 고정한다
+
+- **결정**: `kakao_flutter_sdk_user`는 1.9.7+3을 유지하되, transitive `kakao_flutter_sdk_common`은 `gijilai_app/third_party/kakao_flutter_sdk_common` path override로 고정한다. 로컬 패치는 앱투앱 로그인 복귀 시 `MethodChannel.Result`를 전역 필드가 아니라 요청별 pending result로 캡처하고 한 번만 응답하게 한다.
+- **이유**: 실기기에서 KakaoTalk 복귀 URL 수신 직후 `Reply already submitted` 크래시가 재현됐다. common plugin이 하나의 전역 result 필드를 공유해, 복귀 직전/직후의 다른 Kakao method call이 pending login result를 덮을 수 있다. 현재 Flutter 3.32/Dart 3.8 조합에서는 상위 Kakao SDK로 즉시 올리는 선택지가 안정적이지 않다.
+- **대안**: pub.dev 패키지를 그대로 사용 — 실기기 카카오 로그인 복귀 크래시가 남아 기각. SDK 2.x로 즉시 업그레이드 — 인증 플로우와 빌드 요구사항 변경이 커 이번 장애 수정 범위를 넘어서 기각. 앱 코드에서 호출 순서를 지연 — race를 줄일 수는 있지만 plugin 전역 result 구조를 해결하지 못해 기각.
+
+## 2026-05-06 | Android Google 로그인 QA는 APK 서명 SHA 기준으로 분리한다
+
+- **결정**: Android Google 네이티브 로그인 smoke는 Firebase/Google Cloud에 등록된 서명 인증서로 빌드한 APK에서 검증한다. 현재 `google-services.json`의 Android OAuth client는 업로드/릴리스 키 SHA-1 `5E:78:C4:70:A2:52:AE:50:1E:C9:EA:AC:5E:1E:EA:A1:B4:7A:9B:31`에 맞춰져 있으므로, 연결 기기에서 Google 로그인을 확인할 때는 `ANDROID_BUILD_MODE=release ANDROID_FORCE_REINSTALL=1 ./scripts/install_android_default.sh`로 릴리스 서명 APK를 설치한다. debug APK로도 확인해야 하면 해당 개발자의 debug keystore SHA-1/SHA-256을 Firebase/Google Cloud에 추가 등록한다.
+- **이유**: 실기기 debug APK는 Google 계정 선택 후 `ApiException: 10`으로 실패했지만, 같은 코드와 같은 `GOOGLE_WEB_CLIENT_ID`를 릴리스 서명 APK로 설치하면 Google 로그인과 Supabase 세션 교환이 완료됐다. Google Sign-In은 package name뿐 아니라 APK signing certificate SHA를 Android OAuth client와 대조하므로, code path가 같아도 서명 키가 다르면 로그인 단계에서 차단된다.
+- **대안**: debug 빌드를 항상 업로드 키로 서명 — Google 로그인은 통과하지만 개발 빌드와 배포 키의 경계가 흐려지고 같은 package name의 설치 교체가 혼란스러워 기각. Google 실패 시 브라우저 OAuth fallback 허용 — 앱 로그인 정책과 iOS 심사 대응 원칙을 약화하므로 기각.
+
 ## 2026-05-05 | 앱 이메일 로그인/회원가입은 Flutter 네이티브 화면에서 제공한다
 
 - **결정**: 앱에서 사용자가 보는 로그인/회원가입 화면은 Flutter 네이티브 오버레이로 제공한다. 이메일 로그인/회원가입도 웹 `/login` 폼으로 전환하지 않고 네이티브 폼에서 입력받으며, WebView는 `/auth/native-email` API를 통해 Supabase 세션 쿠키를 설정하는 백그라운드 컨텍스트로만 사용한다. Android와 iOS 모두 Supabase OAuth authorize URL과 소셜 OAuth 도메인을 브라우저/Custom Tab으로 열지 않고, 네이티브 SDK 경로가 없으면 앱 안에서 실패를 안내한다.
