@@ -93,9 +93,9 @@
               "locale" : "ko_KR"
             }
           ],
-          "productID" : "gijilai_premium_monthly",
+          "productID" : "gijilai_premium_montly",
           "recurringSubscriptionPeriod" : "P1M",
-          "referenceName" : "gijilai_premium_monthly",
+          "referenceName" : "gijilai_premium_montly",
           "subscriptionGroupID" : "8C5E7D10",
           "type" : "RecurringSubscription",
           "winbackOffers" : [

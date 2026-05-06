@@ -161,8 +161,8 @@
 - **운영 포인트**
 - 승인된 리디렉션 URI와 Supabase 설정을 함께 맞춰야 함
 - Flutter 앱은 `nativeAuthProviders.google`이 `true`인 환경에서 Google 로그인을 네이티브 SDK로 먼저 시도하고, 받은 ID 토큰을 Supabase 세션으로 교환한다.
-- `GOOGLE_WEB_CLIENT_ID` dart define은 모바일 Google ID 토큰의 audience를 Supabase Google provider와 맞추는 값이다. Android는 이 값이 있을 때만 `window.__nativeCapabilities.nativeAuthProviders.google`을 `true`로 광고하고 네이티브 Google 로그인을 연다. 값이 없거나 세션 교환이 실패하면 브라우저 OAuth fallback을 열지 않고 앱 안에서 실패를 안내한다.
-- iOS 네이티브 로그인을 안정적으로 쓰려면 `GOOGLE_IOS_CLIENT_ID` dart define과 `GoogleService-Info.plist`의 `CLIENT_ID`/`REVERSED_CLIENT_ID`, `Info.plist` URL scheme을 Google Cloud Console 값과 일치시킨다. 네이티브 설정 예외가 나면 앱은 Supabase OAuth fallback으로 전환한다.
+- `GOOGLE_WEB_CLIENT_ID` dart define은 모바일 Google ID 토큰의 audience를 Supabase Google provider와 맞추는 값이다. 앱에는 기본 웹 client ID가 내장되어 있어 iOS/Android 모두 `window.__nativeCapabilities.nativeAuthProviders.google`을 `true`로 광고하고 네이티브 Google 로그인을 연다. 환경별 client ID를 바꿔야 할 때만 dart define으로 override한다.
+- iOS 네이티브 로그인을 안정적으로 쓰려면 `GOOGLE_IOS_CLIENT_ID` dart define 기본값 또는 `GoogleService-Info.plist`의 `CLIENT_ID`/`REVERSED_CLIENT_ID`, `Info.plist` URL scheme을 Google Cloud Console 값과 일치시킨다. 네이티브 설정 예외가 나면 앱 안에서 실패를 안내한다.
 - Android는 Firebase/Google Cloud에 앱 SHA-1, SHA-256을 등록해야 `google-services.json`의 `oauth_client`가 채워지고 안정적으로 동작한다. 현재 `google-services.json`의 Android OAuth client는 업로드/릴리스 키 SHA-1 `5E:78:C4:70:A2:52:AE:50:1E:C9:EA:AC:5E:1E:EA:A1:B4:7A:9B:31`에 맞춰져 있으므로, debug APK로 Google 로그인을 테스트하려면 로컬 debug keystore SHA도 추가 등록해야 한다. Play Store 설치본은 Play App Signing SHA를 별도로 등록해야 하며, SHA가 맞지 않으면 Google Sign-In이 계정 선택 후 `ApiException: 10`으로 실패한다.
 
 ### Apple Developer
@@ -171,6 +171,7 @@
 - **코드 접점**: `app/src/components/auth/AuthProvider.tsx`, `app/src/app/login/page.tsx`, `gijilai_app/lib/main.dart`
 - **운영 포인트**
 - Supabase Auth의 Apple provider에 Team ID, Service ID, Key ID, private key를 연결해야 함
+- iOS 네이티브 Apple 로그인 토큰의 audience는 Bundle ID(`com.devho.gijilai`)로 내려오므로, Supabase Auth Apple provider의 Client IDs/authorized client IDs에는 웹 Service ID와 함께 `com.devho.gijilai`도 반드시 포함해야 함. 빠져 있으면 `/auth/native-session`에서 `Unacceptable audience in id_token: [com.devho.gijilai]`로 세션 교환이 실패한다.
 - Flutter 앱은 iOS와 Android에서 `window.__nativeCapabilities.nativeAuthProviders.apple`을 `true`로 광고한다. iOS는 `sign_in_with_apple` ID 토큰을 `/auth/native-session`으로 교환하고, Android는 Apple 네이티브 SDK가 없으므로 Supabase Apple OAuth URL을 Android Custom Tab으로 열어 `gijilai://auth/callback`으로 복귀한다.
 - Apple 로그인은 `https://gijilai.com/auth/callback`, `gijilai://auth/callback` 리다이렉트 경로와 함께 검증해야 함
 - iOS App Store 심사에서 제3자 로그인(Google/Kakao)을 유지할 경우 Sign in with Apple 제공 여부를 함께 확인해야 함

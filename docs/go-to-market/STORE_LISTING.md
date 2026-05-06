@@ -377,8 +377,8 @@ gijilai_app/
 - [ ] 스크린샷 (fastlane ios screenshots)
 - [ ] 연령 등급 설문
 - [ ] 앱 개인정보 보호 선언
-- [ ] iOS 구독 상품 생성 (`gijilai_premium_monthly`)
-- [ ] Sign in with Apple provider 설정 (Apple Developer + Supabase Auth)
+- [ ] iOS 구독 상품 생성 (`gijilai_premium_montly`)
+- [ ] Sign in with Apple provider 설정 (Apple Developer + Supabase Auth Client IDs에 웹 Service ID와 `com.devho.gijilai` 포함)
 - [ ] `APPLE_IAP_ISSUER_ID`, `APPLE_IAP_KEY_ID`, `APPLE_IAP_PRIVATE_KEY`, `APPLE_BUNDLE_ID`, `APPLE_APP_STORE_ROOT_CERT_PEM` 환경변수
 - [ ] App Store Server Notifications V2 → `/api/payment/iap/apple-notifications` 연결
 - [ ] Appfile에 apple_id, team_id 설정

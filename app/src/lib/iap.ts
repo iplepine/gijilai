@@ -58,6 +58,7 @@ const MONTHLY_IAP_PRODUCT = {
 const IAP_PRODUCTS = {
   monthly_premium: MONTHLY_IAP_PRODUCT,
   gijilai_premium_monthly: MONTHLY_IAP_PRODUCT,
+  gijilai_premium_montly: MONTHLY_IAP_PRODUCT,
 } as const;
 
 export function getSupabaseAdmin() {
@@ -538,7 +539,7 @@ function getIapProductIdFromPlan(
 ): string | null {
   if (plan === 'MONTHLY') {
     return platform === 'APPLE_IAP'
-      ? 'gijilai_premium_monthly'
+      ? 'gijilai_premium_montly'
       : 'monthly_premium';
   }
   return null;
