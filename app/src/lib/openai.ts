@@ -39,6 +39,14 @@ type ReportPayload = {
     };
 };
 
+const SURVEY_EVIDENCE_COPY_GUARD = [
+    '[설문 응답 사용 원칙]',
+    '아래 Q/A는 리포트 작성을 위한 내부 근거입니다.',
+    '리포트 본문에는 질문, 선택지, 점수 문장을 그대로 복사하거나 거의 같은 문장으로 재작성하지 마세요.',
+    '"문항", "선택지", "몇 점", "Q/A", "설문에서" 같은 메타 표현을 사용자에게 노출하지 마세요.',
+    '응답들을 기질 차원과 생활 패턴으로 묶어 한 단계 추상화한 표현으로 바꾸세요.',
+].join('\n');
+
 export function formatSurveyAnswersForPrompt(
     type: ReportType,
     answers?: { questionId: string; score: number }[]
@@ -51,7 +59,7 @@ export function formatSurveyAnswersForPrompt(
         questions = [...CHILD_QUESTIONS, ...PARENT_QUESTIONS, ...PARENTING_STYLE_QUESTIONS];
     }
 
-    return answers.map(ans => {
+    const formattedAnswers = answers.map(ans => {
         const question = questions.find(q => String(q.id) === String(ans.questionId));
         if (!question) return null;
 
@@ -62,6 +70,10 @@ export function formatSurveyAnswersForPrompt(
         const questionText = question.context || question.text || '(질문 없음)';
         return `Q. ${questionText}\nA. ${answerText}`;
     }).filter(Boolean).join('\n\n');
+
+    return formattedAnswers
+        ? `${SURVEY_EVIDENCE_COPY_GUARD}\n\n${formattedAnswers}`
+        : '';
 }
 
 export const generateReport = async (

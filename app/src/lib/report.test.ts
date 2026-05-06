@@ -1,5 +1,6 @@
 import {
   asChildAiReport,
+  buildParentReportStreamModules,
   normalizeTemperamentDimensions,
 } from './report';
 import type { Json } from '@/types/supabase';
@@ -30,5 +31,39 @@ describe('report normalization', () => {
     } as Json);
 
     expect(report?.analysis?.dimensions?.NS).toBe('새로운 것에 끌리는 정도입니다.');
+  });
+
+  it('breaks a parent report into display modules in render order', () => {
+    const modules = buildParentReportStreamModules({
+      intro: '양육자 설명',
+      dimensions: {
+        '자극 추구': '새로운 것에 끌리는 정도입니다.',
+      },
+      sections: [
+        { id: 'shining', content: '빛나는 순간' },
+        { id: 'vulnerability', content: '고갈 신호' },
+      ],
+      parentingStyle: [{ scene: '강점', content: '강점 설명' }],
+      solutions: [{ name: '숨 고르기', action: '잠시 멈춘다', reason: '속도를 늦춘다' }],
+      letter: '편지',
+    });
+
+    expect(modules.map((module) => module.module)).toEqual([
+      'intro',
+      'dimensions',
+      'shining',
+      'parentingStyle',
+      'vulnerability',
+      'solutions',
+      'letter',
+    ]);
+    expect(modules[1]).toEqual({
+      module: 'dimensions',
+      data: {
+        dimensions: {
+          NS: '새로운 것에 끌리는 정도입니다.',
+        },
+      },
+    });
   });
 });
