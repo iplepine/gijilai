@@ -16,6 +16,7 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
+import 'package:in_app_purchase_storekit/in_app_purchase_storekit.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:share_plus/share_plus.dart';
@@ -99,9 +100,16 @@ class NativeCapabilityRegistry {
 
 const String _googleWebClientId = String.fromEnvironment(
   'GOOGLE_WEB_CLIENT_ID',
+  defaultValue:
+      '247682708380-ibd5vrskhud6dhqf3jca9v9hp1dadad0.apps.googleusercontent.com',
 );
 const String _googleIosClientId = String.fromEnvironment(
   'GOOGLE_IOS_CLIENT_ID',
+  defaultValue:
+      '247682708380-fhagldmd4r7s32efqp466ifc8prk8u6k.apps.googleusercontent.com',
+);
+const bool _enableIosIapFallback = bool.fromEnvironment(
+  'GIJILAI_ENABLE_IOS_IAP_FALLBACK',
 );
 
 Future<void> main() async {
@@ -129,6 +137,8 @@ Future<void> main() async {
         MainWebView.targetUrl,
       );
 
+      await _configureDebugStoreKit();
+
       FlutterError.onError =
           FirebaseCrashlytics.instance.recordFlutterFatalError;
       PlatformDispatcher.instance.onError = (error, stack) {
@@ -142,6 +152,24 @@ Future<void> main() async {
       FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
     },
   );
+}
+
+Future<void> _configureDebugStoreKit() async {
+  if (!Platform.isIOS || kReleaseMode || !_enableIosIapFallback) return;
+
+  try {
+    // ignore: deprecated_member_use
+    await InAppPurchaseStoreKitPlatform.enableStoreKit1();
+    InAppPurchaseStoreKitPlatform.registerPlatform();
+    debugPrint('IAP debug: StoreKit 1 platform registered for simulator tests');
+  } catch (e) {
+    debugPrint('IAP debug StoreKit configuration failed: $e');
+    await FirebaseCrashlytics.instance.recordError(
+      e,
+      StackTrace.current,
+      reason: 'IAP debug StoreKit configuration failed',
+    );
+  }
 }
 
 class GijilaiApp extends StatelessWidget {
@@ -191,7 +219,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   static const _permissionsChannel = MethodChannel(
     'com.devho.gijilai/permissions',
   );
-  static const _iosSubscriptionProductId = 'gijilai_premium_monthly';
+  static const _iosSubscriptionProductId = 'gijilai_premium_montly';
   static const _androidSubscriptionProductId = 'monthly_premium';
   static const _practiceReminderNotificationId = 1001;
   static const _practiceReminderTestNotificationId = 1002;
@@ -216,7 +244,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   DateTime? _lastBackPressedAt;
   bool _showNativeLogin = false;
   bool _isWebEmailLoginVisible = false;
-  bool _canUseKakaoNativeLogin = false;
+  bool _canUseKakaoNativeLogin =
+      NativeCapabilityRegistry.supportsKakaoNativeAuth;
   bool _isNativeDialogVisible = false;
   bool _authInProgress = false;
   bool _externalAuthInProgress = false;
@@ -224,12 +253,16 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   bool _isWebPageLoading = false;
   bool _iapLaunchInProgress = false;
   bool _nativeVoiceInputInProgress = false;
+  Timer? _nativeAuthWatchdogTimer;
+  AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
+  bool _pendingAuthLoadingResetOnResume = false;
   int _webPageLoadProgress = 0;
 
   String get _subscriptionProductId => Platform.isIOS
       ? _iosSubscriptionProductId
       : _androidSubscriptionProductId;
-  bool get _useIosDebugPurchaseFallback => Platform.isIOS && !kReleaseMode;
+  bool get _useIosDebugPurchaseFallback =>
+      Platform.isIOS && !kReleaseMode && _enableIosIapFallback;
 
   @override
   void initState() {
@@ -243,11 +276,19 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state != AppLifecycleState.resumed || !_externalAuthInProgress) {
+    _appLifecycleState = state;
+    if (state != AppLifecycleState.resumed) {
       return;
     }
 
-    unawaited(_resetAuthLoadingAfterCancelledHandoff());
+    if (_pendingAuthLoadingResetOnResume) {
+      _pendingAuthLoadingResetOnResume = false;
+      unawaited(_notifyWebAuthLoadingDone());
+    }
+
+    if (_externalAuthInProgress) {
+      unawaited(_resetAuthLoadingAfterCancelledHandoff());
+    }
   }
 
   @override
@@ -784,12 +825,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     if (_shouldOpenExternally(uri)) {
       if ((Platform.isIOS || Platform.isAndroid) &&
           _isOAuthNavigationUri(uri)) {
-        final provider = _authProviderFromOAuthUri(uri);
-        if (provider == null) {
-          unawaited(_finishNativeAuthFailure('앱 안에서 지원되는 로그인 수단을 이용해주세요'));
-        } else {
-          unawaited(_startNativeLoginForProvider(provider));
-        }
+        debugPrint('Blocked WebView OAuth navigation on mobile: $uri');
+        unawaited(_notifyWebAuthLoadingDone());
         return NavigationDecision.prevent;
       }
 
@@ -1298,11 +1335,11 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
             _authProviderFromValue(data['provider']) ??
             _authProviderFromOAuthUri(uri);
         if (Platform.isIOS || Platform.isAndroid) {
-          if (provider == null) {
-            unawaited(_finishNativeAuthFailure('앱 안에서 지원되는 로그인 수단을 이용해주세요'));
-          } else {
-            unawaited(_startNativeLoginForProvider(provider));
-          }
+          debugPrint(
+            'Ignored mobile AuthBridge OAuth request: '
+            'provider=${provider ?? "unknown"}, uri=$uri',
+          );
+          unawaited(_notifyWebAuthLoadingDone());
           return;
         }
 
@@ -1342,12 +1379,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
   Future<void> _launchAuthUrlFromBridge(Uri uri) async {
     if ((Platform.isIOS || Platform.isAndroid) && _isOAuthNavigationUri(uri)) {
-      final provider = _authProviderFromOAuthUri(uri);
-      if (provider == null) {
-        await _finishNativeAuthFailure('앱 안에서 지원되는 로그인 수단을 이용해주세요');
-        return;
-      }
-      await _startNativeLoginForProvider(provider);
+      debugPrint('Blocked mobile OAuth launch from bridge: $uri');
+      await _notifyWebAuthLoadingDone();
       return;
     }
 
@@ -1503,28 +1536,6 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     await _finishCancelledAuthHandoff(showMessage: true);
   }
 
-  Future<void> _startNativeLoginForProvider(String provider) async {
-    final normalizedProvider = _authProviderFromValue(provider);
-    if (normalizedProvider == 'kakao') {
-      await _startKakaoNativeLogin();
-      return;
-    }
-    if (normalizedProvider == 'apple') {
-      await _startAppleNativeLogin();
-      return;
-    }
-    if (normalizedProvider == 'google') {
-      if (Platform.isIOS) {
-        await _finishNativeAuthFailure('Apple 또는 이메일로 로그인해주세요');
-        return;
-      }
-      await _startGoogleNativeLogin();
-      return;
-    }
-
-    await _finishNativeAuthFailure('앱 안에서 지원되는 로그인 수단을 이용해주세요');
-  }
-
   Future<bool> _startOAuthThroughWebAuth(
     String provider, {
     int attempts = 1,
@@ -1561,14 +1572,11 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     if (_authInProgress) return;
 
     final isKakaoTalkAvailable = await isKakaoTalkInstalled();
-    if (!isKakaoTalkAvailable) {
-      await _finishNativeAuthFailure('카카오톡 앱 설치 후 카카오 로그인을 이용해주세요');
-      return;
-    }
 
     setState(() {
       _authInProgress = true;
     });
+    _startNativeAuthWatchdog('kakao');
 
     try {
       OAuthToken token;
@@ -1576,14 +1584,12 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         try {
           token = await UserApi.instance.loginWithKakaoTalk();
         } catch (e) {
-          debugPrint('KakaoTalk login failed: $e');
-          if (Platform.isIOS || Platform.isAndroid) {
-            await _finishNativeAuthFailure('카카오 로그인을 완료할 수 없습니다');
-            return;
-          }
+          if (_isUserCancelledAuthError(e)) rethrow;
+          debugPrint('KakaoTalk login failed; using Kakao account login: $e');
           token = await UserApi.instance.loginWithKakaoAccount();
         }
       } else {
+        debugPrint('KakaoTalk is not installed; using Kakao account login.');
         token = await UserApi.instance.loginWithKakaoAccount();
       }
 
@@ -1603,6 +1609,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         return;
       }
 
+      if (!_authInProgress) return;
       await _completeNativeSession(
         provider: 'kakao',
         idToken: token.idToken!,
@@ -1614,6 +1621,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         return;
       }
 
+      _clearNativeAuthWatchdog();
       debugPrint('Kakao native login error: $e');
       if (mounted) {
         setState(() {
@@ -1643,6 +1651,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     setState(() {
       _authInProgress = true;
     });
+    _startNativeAuthWatchdog('apple');
 
     try {
       final rawNonce = _generateNonce();
@@ -1673,6 +1682,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         return;
       }
 
+      if (!_authInProgress) return;
       await _completeNativeSession(
         provider: 'apple',
         idToken: identityToken,
@@ -1684,6 +1694,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         return;
       }
 
+      _clearNativeAuthWatchdog();
       debugPrint('Apple native login error: $e');
       if (mounted) {
         setState(() {
@@ -1705,11 +1716,6 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   Future<void> _startGoogleNativeLogin() async {
     if (_authInProgress) return;
 
-    if (Platform.isIOS) {
-      await _finishNativeAuthFailure('Apple 또는 이메일로 로그인해주세요');
-      return;
-    }
-
     if (!_nativeCapabilities.supportsNativeAuthProvider('google')) {
       await _finishNativeAuthFailure('구글 로그인을 완료할 수 없습니다');
       return;
@@ -1718,6 +1724,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     setState(() {
       _authInProgress = true;
     });
+    _startNativeAuthWatchdog('google');
 
     try {
       if (Platform.isAndroid && _googleWebClientId.isEmpty) {
@@ -1772,6 +1779,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         return;
       }
 
+      if (!_authInProgress) return;
       await _completeNativeSession(
         provider: 'google',
         idToken: idToken,
@@ -1891,6 +1899,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         _authInProgress = false;
       });
     }
+    _clearNativeAuthWatchdog();
     _externalAuthInProgress = false;
     await controller.loadRequest(_postLoginUri());
   }
@@ -2075,6 +2084,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   }
 
   Future<void> _finishNativeAuthFailure(String message) async {
+    _clearNativeAuthWatchdog();
     _externalAuthInProgress = false;
     if (mounted) {
       setState(() {
@@ -2086,6 +2096,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   }
 
   Future<void> _finishCancelledAuthHandoff({bool showMessage = false}) async {
+    _clearNativeAuthWatchdog();
     _externalAuthInProgress = false;
     if (mounted) {
       setState(() {
@@ -2100,17 +2111,54 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
   void _refreshNativeLoginAvailability() {
     unawaited(() async {
-      var isAvailable = false;
-      try {
-        isAvailable = await isKakaoTalkInstalled();
-      } catch (e) {
-        debugPrint('KakaoTalk availability check failed: $e');
-      }
+      final isAvailable = NativeCapabilityRegistry.supportsKakaoNativeAuth;
       if (!mounted || _canUseKakaoNativeLogin == isAvailable) return;
       setState(() {
         _canUseKakaoNativeLogin = isAvailable;
       });
     }());
+  }
+
+  void _startNativeAuthWatchdog(
+    String provider, {
+    Duration timeout = const Duration(seconds: 45),
+  }) {
+    _nativeAuthWatchdogTimer?.cancel();
+    _nativeAuthWatchdogTimer = Timer(timeout, () {
+      if (!mounted || !_authInProgress) return;
+      debugPrint('Native auth watchdog reset: $provider');
+      unawaited(
+        FirebaseCrashlytics.instance.recordError(
+          TimeoutException('Native auth timed out: $provider'),
+          StackTrace.current,
+          reason: 'Native auth watchdog timeout',
+        ),
+      );
+      unawaited(_finishNativeAuthTimeout());
+    });
+  }
+
+  void _clearNativeAuthWatchdog() {
+    _nativeAuthWatchdogTimer?.cancel();
+    _nativeAuthWatchdogTimer = null;
+  }
+
+  Future<void> _finishNativeAuthTimeout() async {
+    _clearNativeAuthWatchdog();
+    _externalAuthInProgress = false;
+    if (mounted) {
+      setState(() {
+        _authInProgress = false;
+      });
+    }
+
+    if (_appLifecycleState != AppLifecycleState.resumed) {
+      _pendingAuthLoadingResetOnResume = true;
+      return;
+    }
+
+    await _notifyWebAuthLoadingDone();
+    _showSnackBar('로그인을 완료할 수 없습니다. 다시 시도해주세요', isError: true);
   }
 
   Future<void> _initIAP() async {
@@ -2151,20 +2199,26 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       );
       if (response.error != null) {
         debugPrint('IAP product query error: ${response.error}');
-        await FirebaseCrashlytics.instance.recordError(
-          response.error!,
-          StackTrace.current,
-          reason: 'IAP product query error',
-        );
+        if (!_useIosDebugPurchaseFallback) {
+          await FirebaseCrashlytics.instance.recordError(
+            response.error!,
+            StackTrace.current,
+            reason: 'IAP product query error',
+          );
+        }
       }
       if (response.notFoundIDs.isNotEmpty) {
         debugPrint('IAP products not found: ${response.notFoundIDs}');
-        await FirebaseCrashlytics.instance.recordError(
-          Exception(
-            'IAP products not found: ${response.notFoundIDs.join(",")}',
-          ),
-          StackTrace.current,
-        );
+        if (_useIosDebugPurchaseFallback) {
+          debugPrint('IAP debug fallback is available when purchase starts.');
+        } else {
+          await FirebaseCrashlytics.instance.recordError(
+            Exception(
+              'IAP products not found: ${response.notFoundIDs.join(",")}',
+            ),
+            StackTrace.current,
+          );
+        }
       }
     } catch (e) {
       debugPrint('IAP init error: $e');
@@ -2608,13 +2662,15 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           'message=${response.error!.message}, '
           'details=${response.error!.details}',
         );
-        unawaited(
-          FirebaseCrashlytics.instance.recordError(
-            response.error!,
-            StackTrace.current,
-            reason: 'IAP product query failed before purchase',
-          ),
-        );
+        if (!_useIosDebugPurchaseFallback) {
+          unawaited(
+            FirebaseCrashlytics.instance.recordError(
+              response.error!,
+              StackTrace.current,
+              reason: 'IAP product query failed before purchase',
+            ),
+          );
+        }
       }
 
       if (response.productDetails.isEmpty) {
@@ -2622,6 +2678,10 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           'IAP product details empty: productId=$_subscriptionProductId, '
           'notFoundIDs=${response.notFoundIDs.join(",")}',
         );
+        if (_useIosDebugPurchaseFallback) {
+          await _runIosDebugPurchaseFallback();
+          return;
+        }
         unawaited(
           FirebaseCrashlytics.instance.recordError(
             Exception(
@@ -2632,10 +2692,6 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
             reason: 'IAP product details empty before purchase',
           ),
         );
-        if (_useIosDebugPurchaseFallback) {
-          await _runIosDebugPurchaseFallback();
-          return;
-        }
         _showSnackBar('상품 정보를 찾을 수 없습니다', isError: true);
         _finishIapPurchaseFlow();
         return;
@@ -2693,7 +2749,9 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       builder: (dialogContext) {
         return AlertDialog(
           title: const Text('시뮬레이터 결제 테스트'),
-          content: const Text('로컬 StoreKit 상품 조회가 비어 시뮬레이터 테스트 모드로 전환합니다.'),
+          content: const Text(
+            '스토어 상품 조회가 비어 시뮬레이터 테스트 모드로 전환합니다. 이 테스트는 실제 구독을 생성하지 않습니다.',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop('cancel'),
@@ -2714,7 +2772,13 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
     switch (action) {
       case 'success':
-        _showSnackBar('시뮬레이터 결제 테스트 성공');
+        _showSnackBar('시뮬레이터 결제 테스트 성공: 실제 구독은 생성되지 않습니다');
+        await _controller?.runJavaScript(
+          'window.__iapPaymentCompleted && window.__iapPaymentCompleted();',
+        );
+        await _controller?.runJavaScript(
+          'window.__iapLoadingDone && window.__iapLoadingDone();',
+        );
         break;
       case 'fail':
         _showSnackBar('시뮬레이터 결제 테스트 실패', isError: true);
@@ -2964,6 +3028,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _clearNativeAuthWatchdog();
     _purchaseSubscription?.cancel();
     _appLinkSubscription?.cancel();
     super.dispose();
@@ -3011,9 +3076,9 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
                 showEmailForm: _isWebEmailLoginVisible,
                 showKakaoLogin: _canUseKakaoNativeLogin,
                 showAppleLogin: Platform.isIOS,
-                showGoogleLogin:
-                    !Platform.isIOS &&
-                    _nativeCapabilities.supportsNativeAuthProvider('google'),
+                showGoogleLogin: _nativeCapabilities.supportsNativeAuthProvider(
+                  'google',
+                ),
                 onKakaoPressed: _startKakaoNativeLogin,
                 onApplePressed: _startAppleNativeLogin,
                 onGooglePressed: _startGoogleNativeLogin,
@@ -3431,7 +3496,7 @@ class _NativeLoginScreenState extends State<_NativeLoginScreen> {
                 SizedBox(height: compact ? 26 : 58),
                 if (widget.showKakaoLogin) ...[
                   _LoginButton(
-                    label: '카카오로 계속하기',
+                    label: '카카오톡으로 계속하기',
                     backgroundColor: const Color(0xFFFEE500),
                     foregroundColor: const Color(0xFF191919),
                     enabled: !widget.isLoading,

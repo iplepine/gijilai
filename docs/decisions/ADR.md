@@ -514,7 +514,7 @@
 
 ## 2026-05-01 | iOS 로컬 결제 테스트는 전용 StoreKit 스킴으로 분리한다
 
-- **결정**: iOS 시뮬레이터 결제 플로우 테스트는 기본 `Runner` 스킴을 바꾸지 않고 `Runner Local StoreKit` 공유 스킴으로 분리한다. 이 스킴은 `gijilai_app/ios/Runner/Configuration.storekit`을 연결해 `gijilai_premium_monthly` 상품을 로컬 StoreKit으로 제공한다.
+- **결정**: iOS 시뮬레이터 결제 플로우 테스트는 기본 `Runner` 스킴을 바꾸지 않고 `Runner Local StoreKit` 공유 스킴으로 분리한다. 이 스킴은 `gijilai_app/ios/Runner/Configuration.storekit`을 연결해 App Store Connect에 등록된 `gijilai_premium_montly` 상품을 로컬 StoreKit으로 제공한다.
 - **이유**: 팀은 시뮬레이터에서 상품 조회·구매 UI·취소 같은 앱 내부 흐름을 빠르게 확인해야 하지만, 같은 스킴으로 실기기 샌드박스와 App Store Connect 실상품 테스트도 유지해야 한다. 로컬 StoreKit을 기본 스킴에 고정하면 실기기 디버그에서도 실제 스토어 조회가 가려져 운영 검증과 개발 검증이 섞인다. 전용 스킴으로 분리하면 시뮬레이터 로컬 테스트와 실기기 샌드박스 테스트를 명확히 나눌 수 있다.
 - **대안**: 기본 `Runner` 스킴에 항상 `.storekit` 연결 — 실기기에서 실제 스토어 상품 테스트가 헷갈려 기각. 시뮬레이터에서는 결제를 아예 포기하고 실기기만 사용 — UI/상태 플로우 반복 검증 속도가 너무 느려 기각. 앱 코드에 시뮬레이터 전용 가짜 결제 분기 추가 — 실제 StoreKit 동작과 멀어져 회귀 탐지력이 떨어져 기각.
 
@@ -529,6 +529,18 @@
 - **결정**: iOS `Debug`에서는 먼저 로컬 StoreKit 상품 조회를 시도하되, `queryProductDetails`가 비면 네이티브 테스트 다이얼로그(`성공/실패/취소`)로 결제 플로우를 이어간다. 동시에 iOS 디버그는 StoreKit 1 경로를 우선 사용해 StoreKit 2 전용 `storekit_no_response` 오류를 피한다.
 - **이유**: 현재 Flutter `in_app_purchase`의 iOS 시뮬레이터 조합에서는 런타임 StoreKit 세션을 올려도 상품 조회가 안정적으로 반환되지 않았다. StoreKit 2 경로는 `storekit_no_response`, StoreKit 1 경로는 단순 `notFound`로 끝나 실제 구매 UI까지 진입하지 못했다. 팀이 시뮬레이터에서 확인하려는 것은 주로 로딩/취소/성공/실패 같은 앱 내부 UX이므로, 디버그 전용 fallback을 두는 편이 반복 검증 속도와 예측 가능성이 높다.
 - **대안**: 시뮬레이터에서는 끝까지 실제 StoreKit 응답만 고집 — 현재 도구 조합에서 재현이 불안정해 개발 흐름을 막아 기각. 완전 가짜 상품/구독 상태를 웹과 서버까지 연결 — 범위가 커지고 운영 코드와 테스트 코드가 과도하게 섞여 기각. 실기기 샌드박스만 허용 — UI 회귀 확인 속도가 너무 느려 기각.
+
+## 2026-05-06 | Apple 첫 구독 심사 전에는 시뮬레이터 UX와 실결제 검증을 분리한다
+
+- **결정**: `gijilai_premium_montly`가 App Store Connect에서 `심사 대기 중`인 동안에는 실제 App Store/Sandbox 상품 조회 실패를 제품 결제 구현 실패로 단정하지 않는다. iOS 디버그 앱은 `GIJILAI_ENABLE_IOS_IAP_FALLBACK=true` dart define이 있을 때만 StoreKit 1 경로와 네이티브 시뮬레이터 테스트 다이얼로그 fallback을 사용한다. fallback 성공은 웹 결제 완료 콜백까지 호출하되 실제 서버 구독은 생성하지 않는다. 실기기 Sandbox/TestFlight 검증에서는 이 fallback을 켜지 않는다.
+- **이유**: Apple 첫 구독은 새 앱 버전과 함께 심사를 통과해야 실제 스토어 상품 조회와 영수증 검증 흐름을 안정적으로 확인할 수 있다. 반면 심사 대기 중에도 앱 내부 결제 CTA, 로딩 해제, 성공/실패 메시지, 분석 콜백은 반복 검증해야 한다. 둘을 분리하면 심사 상태 때문에 막히는 외부 스토어 검증과 앱 내부 UX 회귀를 혼동하지 않는다.
+- **대안**: 심사 전에도 실제 App Store 상품 조회만 기준으로 삼기 — 외부 상태 때문에 개발 검증이 막히므로 기각. 시뮬레이터 fallback에서 서버 구독까지 생성 — 생산 DB나 운영 권한을 잘못 열 수 있어 기각. 상품 조회 실패를 계속 Crashlytics 에러로 기록 — 의도된 디버그 fallback을 운영 장애처럼 오인하게 되어 기각.
+
+## 2026-05-06 | Apple 월 구독 Product ID 오타는 운영 식별자로 유지한다
+
+- **결정**: App Store Connect에 이미 저장된 Apple 월 구독 Product ID `gijilai_premium_montly`를 운영 식별자로 유지한다. Flutter 앱, WebView 가격 페이지, 서버 IAP 검증/갱신, 로컬 StoreKit 설정은 모두 이 ID를 기준으로 맞춘다. 서버의 `IAP_PRODUCTS` 매핑에는 향후 정정 상품을 만들 때의 호환성을 위해 `gijilai_premium_monthly`도 같은 월 구독 상품으로 남겨둔다.
+- **이유**: 2026-05-06 App Store Connect API 조회에서 실제 구독 상품은 `gijilai_premium_montly` 1개뿐이고 상태는 `WAITING_FOR_REVIEW`였다. Apple Product ID는 저장 후 수정할 수 없고, 기존 ID를 앱 코드의 `gijilai_premium_monthly`와 맞지 않게 둔 것이 실기기 샌드박스에서 `"상품 정보를 찾을 수 없습니다"` 오류를 만든 직접 원인이었다. 사용자는 Product ID를 보지 않으므로 내부 오타 자체보다 앱/서버/문서의 일관성이 더 중요하다.
+- **대안**: 새 구독을 `gijilai_premium_monthly`로 생성 — 표기는 깔끔하지만 심사 중인 첫 구독을 다시 구성해야 하고 App Store Connect 전파/첨부 상태를 다시 확인해야 해 현재 제출 일정에는 불리해 기각. 앱만 `montly`로 바꾸고 서버는 `monthly` 유지 — 구매 성공 후 영수증 검증/구독 갱신에서 다시 실패할 수 있어 기각. 기존 오타 상품을 삭제 후 재사용 — Apple은 같은 앱 안에서 삭제된 Product ID도 재사용할 수 없어 불가능.
 
 ## 2026-05-01 | 앱 WebView 버튼 탭에는 공통 네이티브 햅틱을 연결한다
 
@@ -553,6 +565,13 @@
 - **결정**: iOS 앱에서는 Supabase OAuth authorize URL과 Google/Apple/Kakao OAuth 도메인을 외부 브라우저나 인앱 브라우저로 열지 않는다. WebView `AuthBridge`가 OAuth URL을 전달해도 Flutter가 provider를 식별해 심사 안전한 네이티브 경로로만 라우팅한다. 카카오 로그인은 iOS에서 카카오톡 앱투앱 로그인이 가능한 경우에만 노출하며, 카카오 계정 웹 fallback은 사용하지 않는다. Google은 iOS 심사 환경에서 웹 인증 표면으로 이어질 수 있어 노출하지 않고 Apple 또는 이메일 로그인을 안내한다. 앱 WebView의 웹 `/login` 화면은 이메일 로그인/회원가입 폼만 노출해 심사자가 웹 소셜 OAuth 버튼을 누를 표면도 제거한다. Next.js 클라이언트 라우팅으로 `/login`에 도달해도 `RouteBridge`로 네이티브 오버레이 상태를 동기화한다.
 - **이유**: App Review에서 앱 로그인 중 외부 브라우저 기반 인증이 노출되는 흐름이 리젝 요인이 될 수 있다. iOS 심사 환경에서는 카카오톡이 설치되어 있지 않을 수 있으므로 카카오 웹 fallback을 열면 같은 문제가 재현된다.
 - **대안**: 기존 fallback 유지 — 심사 리젝을 반복할 수 있어 기각. iOS에서 모든 소셜 로그인을 제거 — 리스크는 낮지만 Apple 네이티브 로그인은 심사 권장 흐름이고 이메일 대안도 있어 과도하므로 기각.
+- **후속 변경(2026-05-06)**: iOS 네이티브 로그인 오버레이에 카카오톡과 Google 버튼을 다시 노출한다. 단, 둘 다 Supabase 웹 OAuth fallback은 열지 않고 네이티브 SDK 경로만 사용한다. 카카오톡이 설치되어 있지 않으면 Kakao SDK의 카카오계정 로그인으로 전환하고, Google ID 토큰을 받지 못하면 앱 안에서 실패를 안내한다.
+
+## 2026-05-06 | iOS 로그인 오버레이는 카카오톡·Apple·Google을 함께 제공한다
+
+- **결정**: iOS Flutter 네이티브 로그인 오버레이는 카카오톡, Apple, Google, 이메일 진입점을 모두 제공한다. Google client ID는 release fastlane 기본값과 같은 값을 앱의 dart define 기본값으로 내장해 직접 `flutter run`으로 설치한 디버그 빌드에서도 Google 버튼이 노출되게 한다. 카카오톡 버튼은 설치 여부로 숨기지 않고, 미설치 상태에서는 Kakao SDK의 카카오계정 로그인으로 전환한다.
+- **이유**: 실제 실기기 검증에서 iOS 로그인 화면에 Apple과 이메일만 보이면 사용자가 기존 계정 수단인 카카오톡/Google을 찾지 못한다. Google Sign-In과 Kakao SDK 모두 네이티브 경로로 처리하고 웹 OAuth fallback은 계속 차단하면 App Review 리스크를 낮추면서도 기존 가입자의 복귀 경로를 유지할 수 있다.
+- **대안**: iOS에서 Apple/이메일만 유지 — 심사 리스크는 낮지만 기존 소셜 가입 사용자가 앱에서 로그인할 수 없어 기각. 카카오/Google을 Supabase 웹 OAuth fallback으로 열기 — 외부 브라우저 인증 표면이 다시 생겨 기각. 카카오톡 설치 여부에 따라 버튼을 숨기기 — 기능이 사라진 것처럼 보여 디버깅과 사용자 안내가 어려워 기각.
 
 ## 2026-05-05 | 앱 이메일 로그인/회원가입은 Flutter 네이티브 화면에서 제공한다
 

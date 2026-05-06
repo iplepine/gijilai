@@ -2,13 +2,13 @@ import Flutter
 import Foundation
 import UIKit
 import app_links
-#if DEBUG
+#if DEBUG && canImport(StoreKitTest)
 import StoreKitTest
 #endif
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
-  #if DEBUG
+  #if DEBUG && canImport(StoreKitTest)
   private var storeKitTestSession: SKTestSession?
   #endif
 
@@ -16,7 +16,7 @@ import StoreKitTest
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    #if DEBUG
+    #if DEBUG && canImport(StoreKitTest)
     #if targetEnvironment(simulator)
     configureLocalStoreKitSessionIfNeeded()
     #endif
@@ -26,13 +26,12 @@ import StoreKitTest
 
     if let url = AppLinks.shared.getLink(launchOptions: launchOptions) {
       AppLinks.shared.handleLink(url: url)
-      return true
     }
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
-  #if DEBUG
+  #if DEBUG && canImport(StoreKitTest)
   #if targetEnvironment(simulator)
   private func configureLocalStoreKitSessionIfNeeded() {
     guard storeKitTestSession == nil else { return }

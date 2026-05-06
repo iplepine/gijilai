@@ -92,10 +92,10 @@
 - 알림 설정의 리마인더 시간 선택은 브라우저/WebView 기본 `input type="time"` picker를 쓰지 않고, 웹 커스텀 모달로 표시해 앱/웹에서 동일한 시각 언어를 유지한다.
 - Flutter 앱 WebView가 `/login`에 도달하면 WebView 위에 네이티브 로그인 화면을 오버레이한다.
 - Next.js 클라이언트 라우팅으로 `/login`에 도달하는 경우도 `RouteBridge`가 `history.pushState/replaceState/popstate`를 감지해 네이티브 로그인 오버레이 상태를 동기화한다.
-- 네이티브 로그인 화면은 Android에서 카카오톡 앱투앱 로그인이 가능한 경우 카카오와 Google, 이메일 진입점을 제공하고, iOS 심사 빌드에서는 Apple과 이메일 진입점을 기본 제공한다. 사용자가 보는 로그인/회원가입 화면은 Flutter 네이티브 화면이어야 하며, 웹 `/login` 폼을 직접 노출하지 않는다.
-- 카카오 버튼은 Kakao Flutter SDK 앱투앱 로그인을 먼저 시도하고, Kakao ID 토큰을 `/auth/native-session`으로 전달해 Supabase 세션 쿠키를 WebView에 설정한다. 카카오톡 앱투앱 로그인 또는 ID 토큰을 사용할 수 없으면 카카오 계정 웹/OAuth fallback을 열지 않고 앱 안에서 실패를 안내한다.
+- 네이티브 로그인 화면은 iOS에서 카카오톡, Apple, Google, 이메일 진입점을 제공하고 Android에서 카카오톡, Google, 이메일 진입점을 제공한다. 사용자가 보는 로그인/회원가입 화면은 Flutter 네이티브 화면이어야 하며, 웹 `/login` 폼을 직접 노출하지 않는다.
+- 카카오 버튼은 Kakao Flutter SDK 앱투앱 로그인을 먼저 시도하고, 카카오톡이 설치되어 있지 않거나 앱투앱 로그인을 완료할 수 없으면 Kakao SDK의 카카오계정 로그인으로 전환한다. Kakao ID 토큰을 받으면 `/auth/native-session`으로 전달해 Supabase 세션 쿠키를 WebView에 설정하고, ID 토큰을 받을 수 없으면 앱 안에서 실패를 안내한다.
 - Apple은 iOS에서 `sign_in_with_apple` 네이티브 SDK를 우선 사용해 ID 토큰(+ nonce)을 받고 `/auth/native-session`으로 세션을 교환한다.
-- Google은 Android에서 `google_sign_in` 네이티브 SDK를 우선 사용해 ID 토큰을 받고 `/auth/native-session`으로 세션을 교환한다. 네이티브 ID 토큰을 받을 수 없으면 브라우저 OAuth fallback을 열지 않고 실패를 안내한다. iOS에서는 Google Sign-In이 심사 환경에서 웹 인증 표면으로 이어질 수 있어 숨기고, Apple 또는 이메일 로그인을 안내한다.
+- Google은 iOS와 Android에서 `google_sign_in` 네이티브 SDK를 우선 사용해 ID 토큰을 받고 `/auth/native-session`으로 세션을 교환한다. 네이티브 ID 토큰을 받을 수 없으면 브라우저 OAuth fallback을 열지 않고 실패를 안내한다.
 - 이메일 로그인/회원가입은 Flutter 네이티브 폼에서 입력을 받고 WebView 내부의 `/auth/native-email` API를 호출해 Supabase 세션 쿠키만 설정한다.
 - `GOOGLE_WEB_CLIENT_ID` dart define은 선택값이다. 있으면 `serverClientId`로 함께 주입하고, 없어도 모바일 앱 기본 설정(`GoogleService-Info.plist`, `google-services.json`)만으로 네이티브 로그인부터 시도한다.
 - Android와 iOS에서는 Supabase OAuth authorize URL, Google/Apple/Kakao OAuth 도메인, WebView `AuthBridge` OAuth URL을 외부 브라우저나 인앱 브라우저로 열지 않는다. WebView에서 소셜 OAuth URL이 발생하면 지원 가능한 네이티브 SDK 로그인으로 다시 라우팅하고, 네이티브 경로가 없으면 앱 안에서 실패를 안내한다.

@@ -105,7 +105,7 @@ function getAppIapProductId(): string {
 
   const ua = window.navigator.userAgent.toLowerCase();
   return /iphone|ipad|ipod/.test(ua)
-    ? 'gijilai_premium_monthly'
+    ? 'gijilai_premium_montly'
     : 'monthly_premium';
 }
 
