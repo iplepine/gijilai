@@ -116,10 +116,11 @@ function isParentReportValid(value: unknown): value is ParentAiReport {
 function isParentReportComplete(value: unknown): value is ParentAiReport {
     if (!isParentReportValid(value)) return false;
     const report = value as ParentAiReport;
+    const dimensions = normalizeTemperamentDimensions(report.dimensions);
     return !!(
-        report.dimensions
+        dimensions
         && REPORT_SCORE_KEYS.every((key) => {
-            const dimension = report.dimensions?.[key];
+            const dimension = dimensions[key];
             return typeof dimension === 'string' && dimension.trim().length > 0;
         })
         && report.shining
@@ -368,6 +369,105 @@ async function insertCompletedSurvey(params: {
     return data?.id ?? null;
 }
 
+async function persistGeneratedReport(params: {
+    supabase: SupabaseServerClient;
+    userId: string;
+    childId: string | null;
+    surveyId: string | null;
+    type: 'CHILD' | 'PARENT' | 'HARMONY';
+    report: Json;
+    refresh: boolean;
+    logPrefix: string;
+}) {
+    let savedReportId: string | null = null;
+    let persisted = false;
+
+    try {
+        const { data: savedReport, error: reportError } = await params.supabase
+            .from('reports')
+            .insert({
+                user_id: params.userId,
+                child_id: params.childId,
+                survey_id: params.surveyId,
+                type: params.type,
+                analysis_json: params.report,
+                model_used: REPORT_MODEL,
+                is_paid: false,
+            })
+            .select('id')
+            .single();
+        if (reportError) throw reportError;
+
+        savedReportId = savedReport?.id || null;
+        persisted = !!savedReportId;
+
+        if (params.refresh && savedReportId) {
+            let deleteQuery = params.supabase
+                .from('reports')
+                .delete()
+                .eq('user_id', params.userId)
+                .eq('type', params.type)
+                .neq('id', savedReportId);
+            if (params.childId) {
+                deleteQuery = deleteQuery.eq('child_id', params.childId);
+            }
+            const { error: deleteError } = await deleteQuery;
+            if (deleteError) console.error(`${params.logPrefix} Delete previous reports error:`, deleteError);
+        }
+    } catch (persistenceError) {
+        console.error(`${params.logPrefix} Report persistence error:`, persistenceError);
+    }
+
+    return { savedReportId, persisted };
+}
+
+async function generateStreamFallbackReport(params: {
+    supabase: SupabaseServerClient;
+    userId: string;
+    userName: string;
+    scores: TemperamentScores;
+    type: 'CHILD' | 'PARENT';
+    answers?: AnswerItem[];
+    childType?: TemperamentSummary;
+    parentType?: TemperamentSummary;
+    childInfo: ChildInfo | null;
+    childId: string | null;
+    surveyId: string | null;
+    refresh: boolean;
+}) {
+    const report = await generateReport(
+        params.userName,
+        params.scores,
+        params.type,
+        undefined,
+        params.answers,
+        undefined,
+        params.type === 'CHILD' ? params.childType : undefined,
+        params.type === 'PARENT' ? params.parentType : undefined,
+        params.childInfo,
+    );
+
+    if (!report) throw new Error(`EMPTY_${params.type}_FALLBACK_REPORT`);
+
+    const isComplete = params.type === 'CHILD'
+        ? isChildReportComplete(report)
+        : isParentReportComplete(report);
+    if (!isComplete) throw new Error(`INVALID_${params.type}_FALLBACK_REPORT`);
+
+    const { savedReportId, persisted } = await persistGeneratedReport({
+        supabase: params.supabase,
+        userId: params.userId,
+        childId: params.childId,
+        surveyId: params.surveyId,
+        type: params.type,
+        report: report as Json,
+        refresh: params.refresh,
+        logPrefix: `[Report Stream API] ${params.type} fallback`,
+    });
+
+    return { report: report as Json, savedReportId, persisted };
+}
+
 function streamChildReportResponse(params: {
     supabase: SupabaseServerClient;
     userId: string;
@@ -388,6 +488,10 @@ function streamChildReportResponse(params: {
             const send = (event: string, data: Record<string, unknown>) => {
                 controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
             };
+            let childIdForReport: string | null = null;
+            let childInfoForReport: ChildInfo | null = null;
+            let surveyIdForReport: string | null = null;
+            let canRetryWithJsonFallback = false;
 
             try {
                 send('started', { type: 'CHILD' });
@@ -434,6 +538,8 @@ function streamChildReportResponse(params: {
                     clientChildId: params.clientChildId,
                     intake: params.intake,
                 });
+                childIdForReport = childId;
+                childInfoForReport = childInfo;
                 perf.mark('child_lookup', { childId });
 
                 const surveyId = await insertCompletedSurvey({
@@ -444,6 +550,7 @@ function streamChildReportResponse(params: {
                     answers: params.answers,
                     scores: params.scores,
                 });
+                surveyIdForReport = surveyId;
                 perf.mark('survey_insert', { hasSurveyId: !!surveyId });
 
                 const userMessage = buildChildReportStreamPayload({
@@ -454,6 +561,7 @@ function streamChildReportResponse(params: {
                     childInfo,
                 });
                 perf.mark('prompt_prepared', { payloadBytes: userMessage.length });
+                canRetryWithJsonFallback = true;
 
                 const completionStream = await openai.chat.completions.create({
                     model: REPORT_MODEL,
@@ -518,45 +626,18 @@ function streamChildReportResponse(params: {
                     throw new Error('INVALID_STREAMED_CHILD_REPORT');
                 }
 
-                let savedReportId: string | null = null;
-                let persisted = false;
-                try {
-                    const { data: savedReport, error: reportError } = await params.supabase
-                        .from('reports')
-                        .insert({
-                            user_id: params.userId,
-                            child_id: childId,
-                            survey_id: surveyId,
-                            type: 'CHILD',
-                            analysis_json: report as Json,
-                            model_used: REPORT_MODEL,
-                            is_paid: false,
-                        })
-                        .select('id')
-                        .single();
-                    if (reportError) throw reportError;
-                    savedReportId = savedReport?.id || null;
-                    persisted = !!savedReportId;
-                    perf.mark('report_insert', { hasReportId: persisted });
-
-                    if (params.refresh && savedReportId) {
-                        let deleteQuery = params.supabase
-                            .from('reports')
-                            .delete()
-                            .eq('user_id', params.userId)
-                            .eq('type', 'CHILD')
-                            .neq('id', savedReportId);
-                        if (childId) {
-                            deleteQuery = deleteQuery.eq('child_id', childId);
-                        }
-                        const { error: deleteError } = await deleteQuery;
-                        if (deleteError) console.error('[Report Stream API] Delete previous reports error:', deleteError);
-                        perf.mark('refresh_cleanup');
-                    }
-                } catch (persistenceError) {
-                    console.error('[Report Stream API] Report persistence error after complete stream:', persistenceError);
-                    perf.mark('report_persist_failed');
-                }
+                const { savedReportId, persisted } = await persistGeneratedReport({
+                    supabase: params.supabase,
+                    userId: params.userId,
+                    childId,
+                    surveyId,
+                    type: 'CHILD',
+                    report: report as Json,
+                    refresh: params.refresh,
+                    logPrefix: '[Report Stream API] CHILD stream',
+                });
+                perf.mark(persisted ? 'report_insert' : 'report_persist_failed', { hasReportId: persisted });
+                if (params.refresh && savedReportId) perf.mark('refresh_cleanup');
 
                 send('completed', {
                     report: report as Json,
@@ -567,10 +648,45 @@ function streamChildReportResponse(params: {
                     timings: perf.getSegments(),
                 });
             } catch (error) {
-                perf.fail(error);
                 console.error('[Report Stream API] Error:', error);
                 const code = getKnownReportErrorCode(error);
-                send('error', code ? { error: code, code } : { error: 'Failed to generate streamed report' });
+                if (code || !canRetryWithJsonFallback) {
+                    perf.fail(error);
+                    send('error', code ? { error: code, code } : { error: 'Failed to generate streamed report' });
+                    return;
+                }
+
+                try {
+                    perf.mark('stream_fallback_started');
+                    console.warn('[Report Stream API] CHILD stream failed; retrying non-stream fallback.');
+                    const fallback = await generateStreamFallbackReport({
+                        supabase: params.supabase,
+                        userId: params.userId,
+                        userName: params.userName,
+                        scores: params.scores,
+                        type: 'CHILD',
+                        answers: params.answers,
+                        childType: params.childType,
+                        childInfo: childInfoForReport,
+                        childId: childIdForReport,
+                        surveyId: surveyIdForReport,
+                        refresh: params.refresh,
+                    });
+                    perf.mark('stream_fallback_completed', { persisted: fallback.persisted });
+                    send('completed', {
+                        report: fallback.report,
+                        reportId: fallback.savedReportId,
+                        createdAt: new Date().toISOString(),
+                        cached: false,
+                        persisted: fallback.persisted,
+                        fallback: true,
+                        timings: perf.getSegments(),
+                    });
+                } catch (fallbackError) {
+                    perf.fail(fallbackError);
+                    console.error('[Report Stream API] CHILD fallback failed:', fallbackError);
+                    send('error', { error: 'Failed to generate streamed report' });
+                }
             } finally {
                 controller.close();
             }
@@ -607,6 +723,10 @@ function streamParentReportResponse(params: {
             const send = (event: string, data: Record<string, unknown>) => {
                 controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
             };
+            let childIdForReport: string | null = null;
+            let childInfoForReport: ChildInfo | null = null;
+            let surveyIdForReport: string | null = null;
+            let canRetryWithJsonFallback = false;
 
             try {
                 send('started', { type: 'PARENT' });
@@ -646,13 +766,15 @@ function streamParentReportResponse(params: {
                     }
                 }
 
-                const { childId } = await resolveChildForReport({
+                const { childId, childInfo } = await resolveChildForReport({
                     supabase: params.supabase,
                     userId: params.userId,
                     userCreatedAt: params.userCreatedAt,
                     clientChildId: params.clientChildId,
                     intake: params.intake,
                 });
+                childIdForReport = childId;
+                childInfoForReport = childInfo;
                 perf.mark('child_lookup', { childId });
 
                 const surveyId = await insertCompletedSurvey({
@@ -663,6 +785,7 @@ function streamParentReportResponse(params: {
                     answers: params.answers,
                     scores: params.scores,
                 });
+                surveyIdForReport = surveyId;
                 perf.mark('survey_insert', { hasSurveyId: !!surveyId });
 
                 const userMessage = buildParentReportStreamPayload({
@@ -672,6 +795,7 @@ function streamParentReportResponse(params: {
                     parentType: params.parentType,
                 });
                 perf.mark('prompt_prepared', { payloadBytes: userMessage.length });
+                canRetryWithJsonFallback = true;
 
                 const completionStream = await openai.chat.completions.create({
                     model: REPORT_MODEL,
@@ -736,45 +860,18 @@ function streamParentReportResponse(params: {
                     throw new Error('INVALID_STREAMED_PARENT_REPORT');
                 }
 
-                let savedReportId: string | null = null;
-                let persisted = false;
-                try {
-                    const { data: savedReport, error: reportError } = await params.supabase
-                        .from('reports')
-                        .insert({
-                            user_id: params.userId,
-                            child_id: childId,
-                            survey_id: surveyId,
-                            type: 'PARENT',
-                            analysis_json: report as Json,
-                            model_used: REPORT_MODEL,
-                            is_paid: false,
-                        })
-                        .select('id')
-                        .single();
-                    if (reportError) throw reportError;
-                    savedReportId = savedReport?.id || null;
-                    persisted = !!savedReportId;
-                    perf.mark('report_insert', { hasReportId: persisted });
-
-                    if (params.refresh && savedReportId) {
-                        let deleteQuery = params.supabase
-                            .from('reports')
-                            .delete()
-                            .eq('user_id', params.userId)
-                            .eq('type', 'PARENT')
-                            .neq('id', savedReportId);
-                        if (childId) {
-                            deleteQuery = deleteQuery.eq('child_id', childId);
-                        }
-                        const { error: deleteError } = await deleteQuery;
-                        if (deleteError) console.error('[Report Stream API] Delete previous parent reports error:', deleteError);
-                        perf.mark('refresh_cleanup');
-                    }
-                } catch (persistenceError) {
-                    console.error('[Report Stream API] Parent report persistence error after complete stream:', persistenceError);
-                    perf.mark('report_persist_failed');
-                }
+                const { savedReportId, persisted } = await persistGeneratedReport({
+                    supabase: params.supabase,
+                    userId: params.userId,
+                    childId,
+                    surveyId,
+                    type: 'PARENT',
+                    report: report as Json,
+                    refresh: params.refresh,
+                    logPrefix: '[Report Stream API] PARENT stream',
+                });
+                perf.mark(persisted ? 'report_insert' : 'report_persist_failed', { hasReportId: persisted });
+                if (params.refresh && savedReportId) perf.mark('refresh_cleanup');
 
                 send('completed', {
                     report: report as Json,
@@ -785,10 +882,45 @@ function streamParentReportResponse(params: {
                     timings: perf.getSegments(),
                 });
             } catch (error) {
-                perf.fail(error);
                 console.error('[Report Stream API] Parent error:', error);
                 const code = getKnownReportErrorCode(error);
-                send('error', code ? { error: code, code } : { error: 'Failed to generate streamed parent report' });
+                if (code || !canRetryWithJsonFallback) {
+                    perf.fail(error);
+                    send('error', code ? { error: code, code } : { error: 'Failed to generate streamed parent report' });
+                    return;
+                }
+
+                try {
+                    perf.mark('stream_fallback_started');
+                    console.warn('[Report Stream API] PARENT stream failed; retrying non-stream fallback.');
+                    const fallback = await generateStreamFallbackReport({
+                        supabase: params.supabase,
+                        userId: params.userId,
+                        userName: params.userName,
+                        scores: params.scores,
+                        type: 'PARENT',
+                        answers: params.answers,
+                        parentType: params.parentType,
+                        childInfo: childInfoForReport,
+                        childId: childIdForReport,
+                        surveyId: surveyIdForReport,
+                        refresh: params.refresh,
+                    });
+                    perf.mark('stream_fallback_completed', { persisted: fallback.persisted });
+                    send('completed', {
+                        report: fallback.report,
+                        reportId: fallback.savedReportId,
+                        createdAt: new Date().toISOString(),
+                        cached: false,
+                        persisted: fallback.persisted,
+                        fallback: true,
+                        timings: perf.getSegments(),
+                    });
+                } catch (fallbackError) {
+                    perf.fail(fallbackError);
+                    console.error('[Report Stream API] PARENT fallback failed:', fallbackError);
+                    send('error', { error: 'Failed to generate streamed parent report' });
+                }
             } finally {
                 controller.close();
             }

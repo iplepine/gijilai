@@ -154,6 +154,15 @@ export type HarmonyAiReport = {
     dailyReminder?: string;
 };
 
+export type ParentReportStreamModule =
+    | { module: 'intro'; data: Pick<ParentAiReport, 'intro'> & { title?: string } }
+    | { module: 'dimensions'; data: Pick<ParentAiReport, 'dimensions'> }
+    | { module: 'shining'; data: Pick<ParentAiReport, 'shining'> }
+    | { module: 'parentingStyle'; data: Pick<ParentAiReport, 'parentingStyle'> }
+    | { module: 'vulnerability'; data: Pick<ParentAiReport, 'vulnerability'> }
+    | { module: 'solutions'; data: Pick<ParentAiReport, 'solutions'> }
+    | { module: 'letter'; data: Pick<ParentAiReport, 'letter'> };
+
 export type ReportDates = Partial<Record<ReportTab, string>>;
 
 export type ReportApiPayload = {
@@ -218,6 +227,31 @@ export function asHarmonyAiReport(value: Json | null | undefined): HarmonyAiRepo
 
 export function getParentSectionContent(report: ParentAiReport | null, id: string): string | undefined {
     return report?.sections?.find((section) => section.id === id)?.content;
+}
+
+export function buildParentReportStreamModules(
+    report: ParentAiReport | null | undefined,
+): ParentReportStreamModule[] {
+    if (!report) return [];
+
+    const modules: ParentReportStreamModule[] = [];
+    const dimensions = normalizeTemperamentDimensions(report.dimensions);
+    const shining = report.shining || getParentSectionContent(report, 'shining');
+    const vulnerability = report.vulnerability || getParentSectionContent(report, 'vulnerability');
+
+    if (report.intro) modules.push({ module: 'intro', data: { intro: report.intro } });
+    if (dimensions) modules.push({ module: 'dimensions', data: { dimensions } });
+    if (shining) modules.push({ module: 'shining', data: { shining } });
+    if (Array.isArray(report.parentingStyle) && report.parentingStyle.length > 0) {
+        modules.push({ module: 'parentingStyle', data: { parentingStyle: report.parentingStyle } });
+    }
+    if (vulnerability) modules.push({ module: 'vulnerability', data: { vulnerability } });
+    if (Array.isArray(report.solutions) && report.solutions.length > 0) {
+        modules.push({ module: 'solutions', data: { solutions: report.solutions } });
+    }
+    if (report.letter) modules.push({ module: 'letter', data: { letter: report.letter } });
+
+    return modules;
 }
 
 export function sanitizeQuotedText(value: string): string {

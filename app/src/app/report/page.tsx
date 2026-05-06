@@ -40,6 +40,7 @@ import {
   asChildAiReport,
   asHarmonyAiReport,
   asParentAiReport,
+  buildParentReportStreamModules,
   getParentSectionContent,
   normalizeTemperamentDimensions,
   sanitizeQuotedText,
@@ -47,6 +48,7 @@ import {
   type HarmonyAiReport,
   type ParentingStyleScores,
   type ParentAiReport,
+  type ParentReportStreamModule,
   type ReportApiPayload,
   type ReportApiResult,
   type ReportDates,
@@ -77,14 +79,6 @@ type ChildReportStreamModule =
   | { module: 'strengths'; data: { strengths?: string } }
   | { module: 'parentingTips'; data: Pick<ChildAiReport, 'parentingTips'> }
   | { module: 'scripts'; data: Pick<ChildAiReport, 'scripts' | 'shareText'> };
-type ParentReportStreamModule =
-  | { module: 'intro'; data: Pick<ParentAiReport, 'intro'> & { title?: string } }
-  | { module: 'dimensions'; data: Pick<ParentAiReport, 'dimensions'> }
-  | { module: 'shining'; data: Pick<ParentAiReport, 'shining'> }
-  | { module: 'parentingStyle'; data: Pick<ParentAiReport, 'parentingStyle'> }
-  | { module: 'vulnerability'; data: Pick<ParentAiReport, 'vulnerability'> }
-  | { module: 'solutions'; data: Pick<ParentAiReport, 'solutions'> }
-  | { module: 'letter'; data: Pick<ParentAiReport, 'letter'> };
 type ChildReportLoadingKey =
   | 'intro'
   | 'scores'
@@ -116,10 +110,33 @@ type ReportLoadingSection<Key extends string = string> = {
 type ReanalysisTarget = 'child' | 'parent' | 'harmony';
 type SurveyReanalysisTarget = Exclude<ReanalysisTarget, 'harmony'>;
 type HarmonyRefreshSource = 'child' | 'parent' | null;
+const PARENT_REPORT_MODULE_REVEAL_DELAY_MS = 280;
 
 function getHarmonyRefreshSource(refreshParam: string | null): HarmonyRefreshSource {
   if (refreshParam === 'child' || refreshParam === 'parent') return refreshParam;
   return null;
+}
+
+function wait(ms: number) {
+  return new Promise(resolve => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+async function revealParentReportModules(
+  report: ParentAiReport | null | undefined,
+  onModule: (item: ParentReportStreamModule) => void,
+) {
+  const modules = buildParentReportStreamModules(report);
+
+  for (const [index, module] of modules.entries()) {
+    onModule(module);
+    if (index < modules.length - 1) {
+      await wait(PARENT_REPORT_MODULE_REVEAL_DELAY_MS);
+    }
+  }
+
+  return modules.length;
 }
 
 function applyChildReportStreamModule(report: ChildAiReport, item: ChildReportStreamModule): ChildAiReport {
@@ -1106,14 +1123,29 @@ function ReportContent() {
     const decoder = new TextDecoder();
     let buffer = '';
     let result: ReportApiResult | null = null;
+    let streamedModuleCount = 0;
+    let revealedReportFallback = false;
 
-    const handleBlock = (block: string) => {
+    const revealReportFallback = async (report: Parameters<typeof asParentAiReport>[0]) => {
+      if (streamedModuleCount > 0 || revealedReportFallback) return;
+
+      const parentReport = asParentAiReport(report);
+      const revealedCount = await revealParentReportModules(parentReport, onModule);
+      if (revealedCount > 0) {
+        streamedModuleCount += revealedCount;
+        revealedReportFallback = true;
+      }
+    };
+
+    const handleBlock = async (block: string) => {
       const { event, data } = parseSseBlock(block);
       if (!data) return;
 
       const parsed = JSON.parse(data);
       if (event === 'module') {
+        streamedModuleCount += 1;
         onModule(parsed as ParentReportStreamModule);
+        await wait(PARENT_REPORT_MODULE_REVEAL_DELAY_MS);
         return;
       }
 
@@ -1125,6 +1157,9 @@ function ReportContent() {
             createdAt: parsed.createdAt,
             persisted: parsed.persisted,
           };
+        }
+        if (parsed.report && (event === 'cached' || streamedModuleCount === 0)) {
+          await revealReportFallback(parsed.report);
         }
         if (event === 'completed') {
           perf.mark('stream_completed', { cached: !!parsed.cached, persisted: parsed.persisted !== false });
@@ -1149,13 +1184,13 @@ function ReportContent() {
       while (delimiterIndex >= 0) {
         const block = buffer.slice(0, delimiterIndex);
         buffer = buffer.slice(delimiterIndex + 2);
-        handleBlock(block);
+        await handleBlock(block);
         delimiterIndex = buffer.indexOf('\n\n');
       }
     }
 
     buffer += decoder.decode();
-    if (buffer.trim()) handleBlock(buffer);
+    if (buffer.trim()) await handleBlock(buffer);
     perf.mark('response_parsed');
 
     return result;
