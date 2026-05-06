@@ -1585,7 +1585,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   Future<void> _startNativeLoginForProvider(String provider) async {
     final normalizedProvider = _authProviderFromValue(provider);
     if (normalizedProvider == 'kakao') {
-      await _startKakaoNativeLogin();
+      await _startWebOAuth('kakao');
       return;
     }
     if (normalizedProvider == 'apple') {
@@ -1602,6 +1602,21 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     }
 
     await _finishNativeAuthFailure('앱 안에서 지원되는 로그인 수단을 이용해주세요');
+  }
+
+  Future<void> _startWebOAuth(String provider) async {
+    if (_authInProgress) return;
+    setState(() {
+      _authInProgress = true;
+    });
+
+    if (await _startOAuthThroughWebAuth(provider, attempts: 8)) {
+      _externalAuthInProgress = true;
+      return;
+    }
+
+    debugPrint('Web OAuth handoff hook was not ready.');
+    await _finishCancelledAuthHandoff(showMessage: true);
   }
 
   Future<bool> _startOAuthThroughWebAuth(
@@ -3150,14 +3165,14 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
                   : _NativeLoginScreen(
                       isLoading: _authInProgress,
                       showEmailForm: _isWebEmailLoginVisible,
-                      showKakaoLogin: _canUseKakaoNativeLogin,
+                      showKakaoLogin: true,
                       showAppleLogin: Platform.isIOS || Platform.isAndroid,
                       showGoogleLogin:
                           !Platform.isIOS &&
                           _nativeCapabilities.supportsNativeAuthProvider(
                             'google',
                           ),
-                      onKakaoPressed: _startKakaoNativeLogin,
+                      onKakaoPressed: () => _startWebOAuth('kakao'),
                       onApplePressed: _startAppleNativeLogin,
                       onGooglePressed: _startGoogleNativeLogin,
                       onEmailPressed: _showEmailLoginWebView,
