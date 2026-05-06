@@ -455,7 +455,7 @@ platform :ios do
     if ios_screenshots_available?
       deliver_options[:screenshots_path] = "./fastlane/screenshots/ios"
     else
-      deliver_options[:skip_upload_screenshots] = true
+      deliver_options[:skip_screenshots] = true
       UI.important("No iOS screenshots found in fastlane/screenshots/ios. Skipping screenshot upload.")
     end
 
