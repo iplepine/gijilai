@@ -48,12 +48,13 @@ class NativeCapabilityRegistry {
   static const int contractVersion = 2;
   static const bool supportsHaptics = true;
   static bool get supportsVoiceInput => Platform.isAndroid;
-  static bool get supportsKakaoNativeAuth =>
-      Platform.isAndroid || Platform.isIOS;
-  static bool get supportsAppleNativeAuth =>
-      Platform.isIOS || Platform.isAndroid;
+  static bool get supportsKakaoLogin => Platform.isAndroid || Platform.isIOS;
+  static bool get supportsKakaoNativeAuth => Platform.isIOS;
+  static bool get supportsAppleNativeAuth => Platform.isIOS;
+  static bool get supportsGoogleLogin =>
+      (Platform.isAndroid || Platform.isIOS) && _googleWebClientId.isNotEmpty;
   static bool get supportsGoogleNativeAuth {
-    if (Platform.isIOS || Platform.isAndroid) {
+    if (Platform.isIOS) {
       return _googleWebClientId.isNotEmpty;
     }
     return false;
@@ -79,6 +80,15 @@ class NativeCapabilityRegistry {
 
   bool supportsNativeAuthProvider(String provider) {
     return nativeAuthProviders[provider] ?? false;
+  }
+
+  bool supportsLoginProvider(String provider) {
+    return switch (provider) {
+      'kakao' => supportsKakaoLogin,
+      'apple' => Platform.isIOS || Platform.isAndroid,
+      'google' => supportsGoogleLogin,
+      _ => false,
+    };
   }
 
   String toJavaScriptObjectLiteral() {
@@ -245,8 +255,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   DateTime? _lastBackPressedAt;
   bool _showNativeLogin = false;
   bool _isWebEmailLoginVisible = false;
-  bool _canUseKakaoNativeLogin =
-      NativeCapabilityRegistry.supportsKakaoNativeAuth;
+  bool _canUseKakaoLogin = NativeCapabilityRegistry.supportsKakaoLogin;
   bool _isNativeDialogVisible = false;
   bool _authInProgress = false;
   bool _externalAuthInProgress = false;
@@ -1248,7 +1257,13 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   }
 
   bool _canUseMobileOAuthBrowser(Uri uri) {
-    return Platform.isAndroid && _authProviderFromOAuthUri(uri) == 'apple';
+    final provider = _authProviderFromOAuthUri(uri);
+    return provider != null && _usesAndroidOAuthBrowserAuth(provider);
+  }
+
+  bool _usesAndroidOAuthBrowserAuth(String provider) {
+    return Platform.isAndroid &&
+        (provider == 'apple' || provider == 'kakao' || provider == 'google');
   }
 
   bool _isAuthCallbackUri(Uri uri) {
@@ -1603,8 +1618,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   }
 
   Future<void> _startNativeOAuth(String provider) async {
-    final canUseMobileOAuthBrowser = Platform.isAndroid && provider == 'apple';
-    if ((Platform.isIOS || Platform.isAndroid) && !canUseMobileOAuthBrowser) {
+    if ((Platform.isIOS || Platform.isAndroid) &&
+        !_usesAndroidOAuthBrowserAuth(provider)) {
       await _finishNativeAuthFailure('앱 안에서 지원되는 로그인 수단을 이용해주세요');
       return;
     }
@@ -1626,7 +1641,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   Future<void> _startNativeLoginForProvider(String provider) async {
     final normalizedProvider = _authProviderFromValue(provider);
     if (normalizedProvider == 'kakao') {
-      await _startKakaoNativeLogin();
+      await _startKakaoLogin();
       return;
     }
     if (normalizedProvider == 'apple') {
@@ -1634,7 +1649,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       return;
     }
     if (normalizedProvider == 'google') {
-      await _startGoogleNativeLogin();
+      await _startGoogleLogin();
       return;
     }
 
@@ -1671,6 +1686,15 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     }
 
     return false;
+  }
+
+  Future<void> _startKakaoLogin() async {
+    if (_usesAndroidOAuthBrowserAuth('kakao')) {
+      await _startNativeOAuth('kakao');
+      return;
+    }
+
+    await _startKakaoNativeLogin();
   }
 
   Future<void> _startKakaoNativeLogin() async {
@@ -1925,6 +1949,15 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       );
       await _startNativeOAuth('google');
     }
+  }
+
+  Future<void> _startGoogleLogin() async {
+    if (_usesAndroidOAuthBrowserAuth('google')) {
+      await _startNativeOAuth('google');
+      return;
+    }
+
+    await _startGoogleNativeLogin();
   }
 
   bool _isUserCancelledAuthError(Object error) {
@@ -2214,10 +2247,10 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   }
 
   Future<void> _refreshNativeLoginAvailability() async {
-    final isAvailable = NativeCapabilityRegistry.supportsKakaoNativeAuth;
-    if (!mounted || _canUseKakaoNativeLogin == isAvailable) return;
+    final isAvailable = NativeCapabilityRegistry.supportsKakaoLogin;
+    if (!mounted || _canUseKakaoLogin == isAvailable) return;
     setState(() {
-      _canUseKakaoNativeLogin = isAvailable;
+      _canUseKakaoLogin = isAvailable;
     });
   }
 
@@ -2806,16 +2839,30 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       );
 
       try {
+        bool purchaseLaunched;
         if (Platform.isAndroid && product is GooglePlayProductDetails) {
           debugPrint('IAP Android offerToken=${product.offerToken}');
           final purchaseParam = GooglePlayPurchaseParam(
             productDetails: product,
             offerToken: product.offerToken,
           );
-          await _iap.buyNonConsumable(purchaseParam: purchaseParam);
+          purchaseLaunched = await _iap.buyNonConsumable(
+            purchaseParam: purchaseParam,
+          );
         } else {
           final purchaseParam = PurchaseParam(productDetails: product);
-          await _iap.buyNonConsumable(purchaseParam: purchaseParam);
+          purchaseLaunched = await _iap.buyNonConsumable(
+            purchaseParam: purchaseParam,
+          );
+        }
+
+        if (!purchaseLaunched) {
+          debugPrint('IAP purchase launch returned false.');
+          FirebaseCrashlytics.instance.log(
+            'IAP purchase launch returned false.',
+          );
+          _showSnackBar('결제창을 열 수 없습니다', isError: true);
+          _finishIapPurchaseFlow();
         }
       } catch (e) {
         debugPrint('IAP purchase launch threw: $e');
@@ -3252,13 +3299,13 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
                   : _NativeLoginScreen(
                       isLoading: _authInProgress,
                       showEmailForm: _isWebEmailLoginVisible,
-                      showKakaoLogin: _canUseKakaoNativeLogin,
+                      showKakaoLogin: _canUseKakaoLogin,
                       showAppleLogin: Platform.isIOS || Platform.isAndroid,
                       showGoogleLogin: _nativeCapabilities
-                          .supportsNativeAuthProvider('google'),
-                      onKakaoPressed: _startKakaoNativeLogin,
+                          .supportsLoginProvider('google'),
+                      onKakaoPressed: _startKakaoLogin,
                       onApplePressed: _startAppleNativeLogin,
-                      onGooglePressed: _startGoogleNativeLogin,
+                      onGooglePressed: _startGoogleLogin,
                       onEmailPressed: _showEmailLoginWebView,
                       onEmailBackPressed: _showNativeLoginOptions,
                       onEmailSubmitted: _startNativeEmailAuth,
