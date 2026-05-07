@@ -37,6 +37,7 @@
 - Android 앱 WebView에서는 Web Speech API 지원 여부와 별개로 `window.__nativeCapabilities.voiceInput`과 `VoiceInputBridge`가 확인되면 네이티브 speech-to-text bridge를 우선 사용한다.
 - 데스크톱에서는 버튼을 숨기고, 모바일 미지원 브라우저에서는 음성 버튼을 탭했을 때 안내 문구를 제공하며, 키보드 입력 흐름은 변경하지 않는다.
 - 음성으로 입력된 텍스트는 현재 입력값 뒤에 이어 붙이고, 각 textarea의 기존 글자 수 제한을 넘지 않게 자른다.
+- 브라우저 `SpeechRecognition` 결과는 세션 안에서 `resultIndex` 기준으로 병합하고, iOS/Safari 계열에서 같은 interim/final 조각이 인접 중복으로 전달되면 한 번만 반영한다.
 - 음성 오류 안내는 실제 오류 코드에 맞춰 분기한다. `not-allowed`는 권한 거부, `audio-capture`는 마이크 장치 접근 실패, `network`는 네트워크 오류, `service-not-allowed`는 현재 환경의 음성 인식 서비스 제한, `language-not-supported`는 언어 미지원, `no-speech`는 음성 미감지로 안내한다. 실제 오류 코드는 콘솔에 남긴다.
 
 ### API 구조

@@ -3,6 +3,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocale } from '@/i18n/LocaleProvider';
 import { getNativeCapabilities } from '@/lib/nativeCapabilities';
+import {
+    appendTranscript,
+    buildSpeechRecognitionTranscript,
+    mergeSpeechRecognitionResults,
+    type SpeechRecognitionEventLike,
+    type SpeechRecognitionTranscriptSegment,
+} from '@/lib/voiceInput';
 
 type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 
@@ -15,26 +22,6 @@ interface SpeechRecognitionLike {
     onend: (() => void) | null;
     start: () => void;
     stop: () => void;
-}
-
-interface SpeechRecognitionEventLike {
-    results: SpeechRecognitionResultListLike;
-}
-
-interface SpeechRecognitionResultListLike {
-    length: number;
-    item: (index: number) => SpeechRecognitionResultLike;
-    [index: number]: SpeechRecognitionResultLike;
-}
-
-interface SpeechRecognitionResultLike {
-    isFinal: boolean;
-    item: (index: number) => SpeechRecognitionAlternativeLike;
-    [index: number]: SpeechRecognitionAlternativeLike;
-}
-
-interface SpeechRecognitionAlternativeLike {
-    transcript: string;
 }
 
 interface SpeechRecognitionErrorEventLike {
@@ -100,15 +87,6 @@ function supportsVoiceInput() {
 function isCoarsePointer() {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
     return window.matchMedia('(pointer: coarse)').matches;
-}
-
-function appendTranscript(baseValue: string, transcript: string, maxLength?: number) {
-    const cleanTranscript = transcript.replace(/\s+/g, ' ').trim();
-    if (!cleanTranscript) return baseValue;
-
-    const separator = baseValue.trim().length > 0 && !/\s$/.test(baseValue) ? ' ' : '';
-    const nextValue = `${baseValue}${separator}${cleanTranscript}`;
-    return typeof maxLength === 'number' ? nextValue.slice(0, maxLength) : nextValue;
 }
 
 function normalizeMediaError(error: unknown): VoiceInputErrorCode {
@@ -216,6 +194,7 @@ export function VoiceInputButton({ value, onChange, maxLength, className = '' }:
     const { locale, t } = useLocale();
     const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
     const baseValueRef = useRef(value);
+    const transcriptSegmentsRef = useRef<SpeechRecognitionTranscriptSegment[]>([]);
     const [isSupported, setIsSupported] = useState(false);
     const [isMobileInput, setIsMobileInput] = useState(false);
     const [isStarting, setIsStarting] = useState(false);
@@ -243,6 +222,7 @@ export function VoiceInputButton({ value, onChange, maxLength, className = '' }:
     const stopListening = () => {
         recognitionRef.current?.stop();
         recognitionRef.current = null;
+        transcriptSegmentsRef.current = [];
         setIsListening(false);
     };
 
@@ -286,12 +266,14 @@ export function VoiceInputButton({ value, onChange, maxLength, className = '' }:
         recognition.interimResults = true;
         recognition.lang = languageTag;
         baseValueRef.current = value;
+        transcriptSegmentsRef.current = [];
 
         recognition.onresult = (event) => {
-            let transcript = '';
-            for (let i = 0; i < event.results.length; i += 1) {
-                transcript += event.results[i][0].transcript;
-            }
+            transcriptSegmentsRef.current = mergeSpeechRecognitionResults(
+                transcriptSegmentsRef.current,
+                event,
+            );
+            const transcript = buildSpeechRecognitionTranscript(transcriptSegmentsRef.current);
             onChange(appendTranscript(baseValueRef.current, transcript, maxLength));
         };
 
@@ -304,6 +286,7 @@ export function VoiceInputButton({ value, onChange, maxLength, className = '' }:
 
         recognition.onend = () => {
             recognitionRef.current = null;
+            transcriptSegmentsRef.current = [];
             setIsListening(false);
         };
 
