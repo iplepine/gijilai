@@ -346,6 +346,15 @@ function SurveyContent() {
   };
 
   const handleExit = () => {
+    trackEvent('survey_abandoned', {
+      module: currentModule,
+      answered_questions: answeredCount,
+      current_question_index: currentIndex + 1,
+      exit_type: 'confirmed_exit',
+      source: entrySource,
+      report_tab: reportTab ?? undefined,
+      report_kind: reportKind ?? undefined,
+    });
     router.replace('/');
   };
 

@@ -10,6 +10,7 @@ import { TemperamentScorer } from '@/lib/TemperamentScorer';
 import { CHILD_QUESTIONS } from '@/data/questions';
 import { Suspense } from 'react';
 import { useLocale } from '@/i18n/LocaleProvider';
+import { trackEvent } from '@/lib/analytics';
 import type { Json } from '@/types/supabase';
 import { supabase } from '@/lib/supabase';
 import {
@@ -123,6 +124,9 @@ function SharePageContent() {
   const [report, setReport] = useState<SharedReport | null>(null);
 
   const reportId = searchParams.get('id');
+  const entrySource = searchParams.get('source') ?? 'direct';
+  const entryCta = searchParams.get('entry_cta') ?? undefined;
+  const reportKindParam = searchParams.get('report_kind') ?? undefined;
   const [resolvedReportId, setResolvedReportId] = useState<string | null>(reportId);
 
   const getNativeShareBridge = () => {
@@ -257,6 +261,15 @@ function SharePageContent() {
     return `${window.location.origin}?ref=${referralCode}`;
   };
 
+  const getShareAnalyticsParams = (channel: string, extra: Record<string, string | number | boolean | undefined> = {}) => ({
+    channel,
+    source: entrySource,
+    entry_cta: entryCta,
+    report_kind: reportKindParam ?? report?.type?.toLowerCase(),
+    has_report_id: !!resolvedReportId,
+    ...extra,
+  });
+
   const copyShareUrl = async () => {
     await navigator.clipboard.writeText(getShareUrl());
     setCopied(true);
@@ -266,6 +279,7 @@ function SharePageContent() {
   const handleCopyCode = async () => {
     setShareError(null);
     await copyShareUrl();
+    trackEvent('share_action_completed', getShareAnalyticsParams('link_copy'));
   };
 
   const handleKakaoShare = async () => {
@@ -297,12 +311,22 @@ function SharePageContent() {
           },
         ],
       });
+      trackEvent('share_action_completed', getShareAnalyticsParams('kakao'));
     } catch (error) {
       console.error('Kakao share failed:', error);
       try {
         await copyShareUrl();
+        trackEvent('share_action_failed', getShareAnalyticsParams('kakao', {
+          fallback_used: true,
+        }));
+        trackEvent('share_action_completed', getShareAnalyticsParams('link_copy', {
+          fallback_from: 'kakao',
+        }));
         setShareError(t('share.kakaoFallback'));
       } catch {
+        trackEvent('share_action_failed', getShareAnalyticsParams('kakao', {
+          fallback_used: false,
+        }));
         setShareError(t('share.kakaoFailed'));
       }
     } finally {
@@ -321,6 +345,7 @@ function SharePageContent() {
     const bridge = getNativeShareBridge();
     if (bridge) {
       bridge.postMessage(JSON.stringify({ type: 'SHARE_REQUEST', ...sharePayload }));
+      trackEvent('share_action_completed', getShareAnalyticsParams('native_bridge'));
       return;
     }
 
@@ -330,8 +355,13 @@ function SharePageContent() {
         return;
       }
       await navigator.share(sharePayload);
-    } catch {
+      trackEvent('share_action_completed', getShareAnalyticsParams('web_share'));
+    } catch (error) {
       // User cancelled share - ignore
+      const isUserCancelled = error instanceof DOMException && error.name === 'AbortError';
+      trackEvent(isUserCancelled ? 'share_action_cancelled' : 'share_action_failed', getShareAnalyticsParams('web_share', {
+        reason: isUserCancelled ? 'user_cancelled' : 'share_error',
+      }));
     }
   };
 

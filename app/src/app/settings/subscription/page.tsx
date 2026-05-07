@@ -8,6 +8,7 @@ import { Icon } from '@/components/ui/Icon';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { db, PaymentData, SubscriptionData } from '@/lib/db';
 import { useLocale } from '@/i18n/LocaleProvider';
+import { trackEvent } from '@/lib/analytics';
 import { getApiErrorMessage, readJsonResponse } from '@/lib/api';
 
 type PaymentMethodMetadata = {
@@ -84,6 +85,7 @@ type FeedbackDialogState = {
   message: string;
   actionLabel?: string;
   actionHref?: string;
+  actionSource?: string | null;
 };
 
 type SubscriptionResponse = {
@@ -149,6 +151,12 @@ export default function SubscriptionPage() {
   const openStoreManagementPage = (source?: string | null) => {
     const url = getStoreManagementUrl(source);
     if (!url) return;
+    trackEvent('subscription_action_clicked', {
+      action: 'store_manage',
+      source: 'subscription_settings',
+      subscription_source: source ?? 'unknown',
+      subscription_status: subscription?.status ?? 'unknown',
+    });
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
@@ -160,6 +168,7 @@ export default function SubscriptionPage() {
         : t('settings.cancelGooglePlayDescription'),
       actionLabel: t('settings.openStoreSubscriptions'),
       actionHref: getStoreManagementUrl(source),
+      actionSource: source,
     });
   };
 
@@ -204,6 +213,14 @@ export default function SubscriptionPage() {
   const handleCancelClick = () => {
     if (!subscription) return;
 
+    trackEvent('subscription_action_clicked', {
+      action: 'cancel_subscription',
+      source: 'subscription_settings',
+      subscription_source: subscription.source ?? 'unknown',
+      subscription_status: subscription.status,
+      store_managed: subscription.source !== 'PORTONE',
+    });
+
     if (subscription.source !== 'PORTONE') {
       openStoreManagementDialog(subscription.source);
       return;
@@ -216,11 +233,22 @@ export default function SubscriptionPage() {
     setIsCancelDialogOpen(false);
 
     setCancelling(true);
+    trackEvent('subscription_action_requested', {
+      action: 'cancel_subscription',
+      source: 'subscription_settings',
+      subscription_source: subscription?.source ?? 'unknown',
+      subscription_status: subscription?.status ?? 'unknown',
+    });
     try {
       const res = await fetch('/api/payment/cancel-subscription', { method: 'POST' });
       const data = await res.json();
       if (res.ok) {
         setSubscription((prev) => prev ? { ...prev, cancelled_at: new Date().toISOString() } : null);
+        trackEvent('subscription_action_completed', {
+          action: 'cancel_subscription',
+          source: 'subscription_settings',
+          subscription_source: subscription?.source ?? 'unknown',
+        });
         setFeedbackDialog({
           title: t('settings.cancelSubscription'),
           message: t('settings.cancelSuccess').replace('{date}', formatLocalDate(data.activeUntil)),
@@ -229,6 +257,12 @@ export default function SubscriptionPage() {
         if (data.error === 'STORE_MANAGED_SUBSCRIPTION') {
           openStoreManagementDialog(data.source);
         } else {
+          trackEvent('subscription_action_failed', {
+            action: 'cancel_subscription',
+            source: 'subscription_settings',
+            subscription_source: subscription?.source ?? 'unknown',
+            reason: 'server_error',
+          });
           setFeedbackDialog({
             title: t('common.error'),
             message: data.error || t('settings.cancelError'),
@@ -236,6 +270,12 @@ export default function SubscriptionPage() {
         }
       }
     } catch (error) {
+      trackEvent('subscription_action_failed', {
+        action: 'cancel_subscription',
+        source: 'subscription_settings',
+        subscription_source: subscription?.source ?? 'unknown',
+        reason: 'network_error',
+      });
       setFeedbackDialog({
         title: t('common.error'),
         message: getErrorMessage(error),
@@ -247,22 +287,45 @@ export default function SubscriptionPage() {
 
   const handleReactivate = async () => {
     setReactivating(true);
+    trackEvent('subscription_action_requested', {
+      action: 'reactivate_subscription',
+      source: 'subscription_settings',
+      subscription_source: subscription?.source ?? 'unknown',
+      subscription_status: subscription?.status ?? 'unknown',
+    });
     try {
       const res = await fetch('/api/payment/reactivate-subscription', { method: 'POST' });
       const data = await res.json();
       if (res.ok) {
         setSubscription(data.subscription);
+        trackEvent('subscription_action_completed', {
+          action: 'reactivate_subscription',
+          source: 'subscription_settings',
+          subscription_source: subscription?.source ?? 'unknown',
+        });
         setFeedbackDialog({
           title: t('settings.reactivateSubscription'),
           message: t('settings.reactivateSuccess'),
         });
       } else {
+        trackEvent('subscription_action_failed', {
+          action: 'reactivate_subscription',
+          source: 'subscription_settings',
+          subscription_source: subscription?.source ?? 'unknown',
+          reason: 'server_error',
+        });
         setFeedbackDialog({
           title: t('common.error'),
           message: data.error || t('settings.reactivateError'),
         });
       }
     } catch {
+      trackEvent('subscription_action_failed', {
+        action: 'reactivate_subscription',
+        source: 'subscription_settings',
+        subscription_source: subscription?.source ?? 'unknown',
+        reason: 'network_error',
+      });
       setFeedbackDialog({
         title: t('common.error'),
         message: t('settings.reactivateError'),
@@ -471,7 +534,15 @@ export default function SubscriptionPage() {
                     variant="primary"
                     size="sm"
                     fullWidth
-                    onClick={() => router.push('/pricing?source=subscription_settings&entry_cta=reactivate_subscription')}
+                    onClick={() => {
+                      trackEvent('subscription_action_clicked', {
+                        action: 'reactivate_subscription',
+                        source: 'subscription_settings',
+                        subscription_source: subscription?.source ?? 'unknown',
+                        subscription_status: subscription?.status ?? 'unknown',
+                      });
+                      router.push('/pricing?source=subscription_settings&entry_cta=reactivate_subscription');
+                    }}
                     className="mt-2"
                   >
                     {t('settings.startSubscription')}
@@ -483,7 +554,15 @@ export default function SubscriptionPage() {
             <section className="text-center space-y-4 py-12">
               <Icon name="credit_card_off" className="text-text-sub/30 text-5xl" size="lg" />
               <p className="text-text-sub text-sm">{t('settings.noSubscription')}</p>
-              <Button variant="primary" onClick={() => router.push('/pricing?source=subscription_settings&entry_cta=start_subscription')}>
+              <Button variant="primary" onClick={() => {
+                trackEvent('subscription_action_clicked', {
+                  action: 'start_subscription',
+                  source: 'subscription_settings',
+                  subscription_source: 'none',
+                  subscription_status: 'none',
+                });
+                router.push('/pricing?source=subscription_settings&entry_cta=start_subscription');
+              }}>
                 {t('settings.startSubscription')}
               </Button>
             </section>
@@ -603,10 +682,16 @@ export default function SubscriptionPage() {
                   type="button"
                   variant="primary"
                   size="md"
-                  onClick={() => {
-                    window.open(feedbackDialog.actionHref, '_blank', 'noopener,noreferrer');
-                    setFeedbackDialog(null);
-                  }}
+	                  onClick={() => {
+	                    trackEvent('subscription_action_clicked', {
+	                      action: 'store_manage',
+	                      source: 'subscription_settings_dialog',
+	                      subscription_source: feedbackDialog.actionSource ?? 'unknown',
+	                      subscription_status: subscription?.status ?? 'unknown',
+	                    });
+	                    window.open(feedbackDialog.actionHref, '_blank', 'noopener,noreferrer');
+	                    setFeedbackDialog(null);
+	                  }}
                   className="h-12 rounded-xl"
                 >
                   {feedbackDialog.actionLabel || t('common.confirm')}

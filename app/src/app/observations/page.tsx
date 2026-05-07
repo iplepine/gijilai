@@ -9,6 +9,7 @@ import { db, ObservationData, ChildProfile } from '@/lib/db';
 import { Button } from '@/components/ui/Button';
 import { Navbar } from '@/components/layout/Navbar';
 import { useLocale } from '@/i18n/LocaleProvider';
+import { trackEvent } from '@/lib/analytics';
 import type { Database } from '@/types/supabase';
 
 interface Consultation {
@@ -145,8 +146,19 @@ export default function RecordPage() {
             });
             setObservations(prev => [newObs, ...prev]);
             setShowModal(false);
+            trackEvent('observation_saved', {
+                has_note: !!note.trim(),
+                has_consultation: !!modalConsultId,
+                child_count: children.length,
+            });
         } catch (error) {
             console.error('Error saving observation:', error);
+            trackEvent('observation_save_failed', {
+                has_note: !!note.trim(),
+                has_consultation: !!modalConsultId,
+                child_count: children.length,
+                reason: 'db_error',
+            });
             alert(t('observations.saveFailed'));
         } finally {
             setIsSubmitting(false);
@@ -159,8 +171,14 @@ export default function RecordPage() {
         setObservations(obs => obs.filter(o => o.id !== id));
         try {
             await db.deleteObservation(id);
+            trackEvent('observation_deleted', {
+                remaining_count: Math.max(0, prev.length - 1),
+            });
         } catch (error) {
             console.error('Error deleting observation:', error);
+            trackEvent('observation_delete_failed', {
+                reason: 'db_error',
+            });
             setObservations(prev);
             alert(t('observations.deleteFailed'));
         }

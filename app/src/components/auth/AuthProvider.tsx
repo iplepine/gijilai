@@ -129,6 +129,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
         } catch (error) {
             console.error(`${provider} sign in error:`, error);
+            trackEvent('login_failed', {
+                provider,
+                reason: 'oauth_error',
+            });
             setProviderLoading(false);
         }
     }, []);

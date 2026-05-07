@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Icon } from '@/components/ui/Icon';
+import { trackEvent } from '@/lib/analytics';
 import Link from 'next/link';
 
 function parseHashParams() {
@@ -22,6 +23,11 @@ function parseHashParams() {
 function ErrorContent() {
     const searchParams = useSearchParams();
     const [fragmentParams] = useState<Record<string, string>>(() => parseHashParams());
+    const trackedErrorRef = useRef(false);
+
+    const error = searchParams.get('error') || fragmentParams.error;
+    const description = searchParams.get('description') || fragmentParams.error_description;
+    const message = searchParams.get('message') || fragmentParams.message;
 
     useEffect(() => {
         // If we have an access_token, it means the login actually succeeded (Implicit Flow fallback)
@@ -34,9 +40,16 @@ function ErrorContent() {
         }
     }, [fragmentParams]);
 
-    const error = searchParams.get('error') || fragmentParams.error;
-    const description = searchParams.get('description') || fragmentParams.error_description;
-    const message = searchParams.get('message') || fragmentParams.message;
+    useEffect(() => {
+        if (fragmentParams.access_token || trackedErrorRef.current) return;
+        if (!error && !message && !description) return;
+
+        trackedErrorRef.current = true;
+        trackEvent('login_failed', {
+            provider: 'oauth',
+            reason: 'callback_error',
+        });
+    }, [description, error, fragmentParams.access_token, message]);
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-[#F9F8F4] p-6 text-center">

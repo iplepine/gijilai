@@ -69,6 +69,11 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
+function isPaymentCancelled(code?: string, message?: string) {
+  const value = `${code ?? ''} ${message ?? ''}`.toLowerCase();
+  return value.includes('cancel');
+}
+
 export default function PaymentPage() {
   const router = useRouter();
   const { user } = useAuth();
@@ -136,7 +141,21 @@ export default function PaymentPage() {
 
     // Flutter 결제 콜백
     window.onPaymentComplete = (data: { status?: string }) => {
-      if (data.status === 'success') handlePaymentSuccess();
+      if (data.status === 'success') {
+        handlePaymentSuccess();
+        return;
+      }
+      trackEvent(data.status === 'cancelled' ? 'payment_cancelled' : 'payment_failed', {
+        source: entrySource,
+        entry_cta: entryCta,
+        pay_method: 'APPLE_GOOGLE',
+        stage: 'iap_callback',
+        reason: data.status === 'cancelled' ? 'user_cancelled' : 'payment_error',
+        used_coupon: useCoupon,
+        final_amount: finalAmount,
+        report_tab: reportTab,
+        report_kind: reportKind,
+      });
     };
 
     // 쿠폰 로드
@@ -149,7 +168,7 @@ export default function PaymentPage() {
     }
 
     return () => { delete window.onPaymentComplete; };
-  }, [handlePaymentSuccess, router, t, user]);
+  }, [entryCta, entrySource, finalAmount, handlePaymentSuccess, payMethod, reportKind, reportTab, router, t, useCoupon, user]);
 
   // 분석 로딩 애니메이션
   useEffect(() => {
@@ -217,6 +236,17 @@ export default function PaymentPage() {
           productName: t('payment.productName')
         }));
       } else {
+        trackEvent('payment_failed', {
+          source: entrySource,
+          entry_cta: entryCta,
+          pay_method: 'APPLE_GOOGLE',
+          stage: 'iap_bridge',
+          reason: 'bridge_unavailable',
+          used_coupon: useCoupon,
+          final_amount: finalAmount,
+          report_tab: reportTab,
+          report_kind: reportKind,
+        });
         alert(t('payment.appBridgeNotFound'));
       }
       return;
@@ -224,11 +254,23 @@ export default function PaymentPage() {
 
     // 포트원 V2 결제
     if (!window.PortOne) {
+      trackEvent('payment_failed', {
+        source: entrySource,
+        entry_cta: entryCta,
+        pay_method: payMethod,
+        stage: 'payment_module',
+        reason: 'module_unavailable',
+        used_coupon: useCoupon,
+        final_amount: finalAmount,
+        report_tab: reportTab,
+        report_kind: reportKind,
+      });
       alert(t('payment.payModuleLoading'));
       return;
     }
 
     setStatus('paying');
+    let paymentStage = 'payment_request';
 
     try {
       const paymentId = `pay_${user.id.substring(0, 8)}_${Date.now()}`;
@@ -260,10 +302,25 @@ export default function PaymentPage() {
       }
 
       if (result.code) {
+        if (isPaymentCancelled(result.code, result.message)) {
+          trackEvent('payment_cancelled', {
+            source: entrySource,
+            entry_cta: entryCta,
+            pay_method: payMethod,
+            stage: paymentStage,
+            used_coupon: useCoupon,
+            final_amount: finalAmount,
+            report_tab: reportTab,
+            report_kind: reportKind,
+          });
+          setStatus('idle');
+          return;
+        }
         throw new Error(result.message || t('payment.paymentFailed', { message: '' }));
       }
 
       // 서버에서 결제 검증
+      paymentStage = 'payment_verify';
       const verifyRes = await fetch('/api/payment/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -289,7 +346,29 @@ export default function PaymentPage() {
       console.error('Payment error:', error);
       setStatus('idle');
       const message = getErrorMessage(error, t('payment.paymentFailed', { message: '' }));
-      if (message !== 'User cancelled') {
+      if (isPaymentCancelled(undefined, message) || message === 'User cancelled') {
+        trackEvent('payment_cancelled', {
+          source: entrySource,
+          entry_cta: entryCta,
+          pay_method: payMethod,
+          stage: paymentStage,
+          used_coupon: useCoupon,
+          final_amount: finalAmount,
+          report_tab: reportTab,
+          report_kind: reportKind,
+        });
+      } else {
+        trackEvent('payment_failed', {
+          source: entrySource,
+          entry_cta: entryCta,
+          pay_method: payMethod,
+          stage: paymentStage,
+          reason: 'payment_error',
+          used_coupon: useCoupon,
+          final_amount: finalAmount,
+          report_tab: reportTab,
+          report_kind: reportKind,
+        });
         alert(t('payment.paymentFailed', { message }));
       }
     }

@@ -60,7 +60,12 @@ function isSubscriptionSummary(value: unknown): value is Exclude<ExistingSubscri
   return typeof candidate.id === 'string'
     && (candidate.source === 'PORTONE' || candidate.source === 'APPLE_IAP' || candidate.source === 'GOOGLE_PLAY')
     && (candidate.cancelled_at === null || typeof candidate.cancelled_at === 'string')
-    && typeof candidate.current_period_end === 'string';
+	    && typeof candidate.current_period_end === 'string';
+}
+
+function getExistingSubscriptionStatus(subscription: ExistingSubscriptionSummary) {
+  if (!subscription) return 'none';
+  return subscription.cancelled_at ? 'cancel_scheduled' : 'active';
 }
 
 function formatPrice(amount: number, curr: 'KRW' | 'USD'): string {
@@ -99,6 +104,11 @@ function getStoreManagementUrl(source?: SubscriptionSource): string | undefined 
   }
 
   return undefined;
+}
+
+function isPaymentCancelled(code?: string, message?: string) {
+  const value = `${code ?? ''} ${message ?? ''}`.toLowerCase();
+  return value.includes('cancel');
 }
 
 function getAppIapProductId(): string {
@@ -267,7 +277,18 @@ function PricingContent() {
 
     // 앱 → IAP (Apple/Google이 결제수단 처리)
     if (isApp) {
-      if (!window.PaymentBridge) return;
+      if (!window.PaymentBridge) {
+        trackEvent('payment_failed', {
+          source: entrySource,
+          entry_cta: entryCta,
+          pay_method: 'APPLE_GOOGLE',
+          stage: 'iap_bridge',
+          reason: 'bridge_unavailable',
+          report_tab: reportTab ?? undefined,
+          report_kind: reportKind ?? undefined,
+        });
+        return;
+      }
       trackEvent('payment_started', {
         source: entrySource,
         entry_cta: entryCta,
@@ -287,7 +308,18 @@ function PricingContent() {
     }
 
     // 웹 → PortOne
-    if (!window.PortOne) return;
+    if (!window.PortOne) {
+      trackEvent('payment_failed', {
+        source: entrySource,
+        entry_cta: entryCta,
+        pay_method: payMethod,
+        stage: 'payment_module',
+        reason: 'module_unavailable',
+        report_tab: reportTab ?? undefined,
+        report_kind: reportKind ?? undefined,
+      });
+      return;
+    }
     const requiresBuyerPhone = locale === 'ko' && payMethod === 'INICIS_CARD';
     const buyerPhoneDigits = normalizePhoneNumber(phoneOverride ?? buyerPhone);
 
@@ -307,6 +339,7 @@ function PricingContent() {
       report_kind: reportKind ?? undefined,
     });
     setLoading(true);
+    let paymentStage = 'billing_key';
 
     try {
       const storeId = process.env.NEXT_PUBLIC_PORTONE_STORE_ID;
@@ -369,11 +402,24 @@ function PricingContent() {
       }
 
       if (issueResult.code) {
-        if (issueResult.code === 'PAY_PROCESS_CANCELED') return;
+        if (isPaymentCancelled(issueResult.code, issueResult.message)) {
+          trackEvent('payment_cancelled', {
+            source: entrySource,
+            entry_cta: entryCta,
+            pay_method: payMethod,
+            stage: paymentStage,
+            used_coupon: isFirstSubscription,
+            final_amount: currentPrice,
+            report_tab: reportTab ?? undefined,
+            report_kind: reportKind ?? undefined,
+          });
+          return;
+        }
         throw new Error(issueResult.message || '빌링키 발급 실패');
       }
 
       // 서버에서 구독 생성 + 첫 결제
+      paymentStage = 'subscription_create';
       const response = await fetch('/api/payment/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -404,6 +450,17 @@ function PricingContent() {
       router.replace('/settings/subscription');
     } catch (error) {
       console.error('Subscribe error:', error);
+      trackEvent('payment_failed', {
+        source: entrySource,
+        entry_cta: entryCta,
+        pay_method: payMethod,
+        stage: paymentStage,
+        reason: 'payment_error',
+        used_coupon: isFirstSubscription,
+        final_amount: currentPrice,
+        report_tab: reportTab ?? undefined,
+        report_kind: reportKind ?? undefined,
+      });
       alert(t('pricing.subscribeError', { message: getErrorMessage(error) }));
     } finally {
       setLoading(false);
@@ -427,6 +484,13 @@ function PricingContent() {
 
   const handleReactivate = async () => {
     setReactivating(true);
+    trackEvent('subscription_action_requested', {
+      action: 'reactivate_subscription',
+      source: entrySource,
+      entry_cta: entryCta,
+      subscription_source: existingSubscription?.source ?? 'unknown',
+      subscription_status: getExistingSubscriptionStatus(existingSubscription),
+    });
     try {
       const response = await fetch('/api/payment/reactivate-subscription', { method: 'POST' });
       const data = await response.json();
@@ -434,9 +498,22 @@ function PricingContent() {
         throw new Error(data.error || t('settings.reactivateError'));
       }
       setExistingSubscription(data.subscription);
+      trackEvent('subscription_action_completed', {
+        action: 'reactivate_subscription',
+        source: entrySource,
+        entry_cta: entryCta,
+        subscription_source: existingSubscription?.source ?? 'unknown',
+      });
       router.refresh();
       router.replace('/settings/subscription');
     } catch (error) {
+      trackEvent('subscription_action_failed', {
+        action: 'reactivate_subscription',
+        source: entrySource,
+        entry_cta: entryCta,
+        subscription_source: existingSubscription?.source ?? 'unknown',
+        reason: 'server_error',
+      });
       alert(t('settings.reactivateError'));
       console.error('Reactivate subscription error:', error);
     } finally {
@@ -447,6 +524,13 @@ function PricingContent() {
   const handleOpenStoreSubscriptions = () => {
     const url = getStoreManagementUrl(existingSubscription?.source);
     if (!url) return;
+    trackEvent('subscription_action_clicked', {
+      action: 'store_manage',
+      source: entrySource,
+      entry_cta: entryCta,
+      subscription_source: existingSubscription?.source ?? 'unknown',
+      subscription_status: getExistingSubscriptionStatus(existingSubscription),
+    });
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
@@ -493,7 +577,16 @@ function PricingContent() {
                 </p>
               </div>
             )}
-            <Button variant="secondary" onClick={() => router.replace('/settings/subscription')}>
+            <Button variant="secondary" onClick={() => {
+              trackEvent('subscription_action_clicked', {
+                action: 'manage_subscription',
+                source: entrySource,
+                entry_cta: entryCta,
+                subscription_source: existingSubscription.source ?? 'unknown',
+                subscription_status: getExistingSubscriptionStatus(existingSubscription),
+              });
+              router.replace('/settings/subscription');
+            }}>
               {t('pricing.manageSubscription')}
             </Button>
           </div>
@@ -515,7 +608,16 @@ function PricingContent() {
             <p className="text-text-sub text-sm">
               {t('pricing.monthlyActive')}
             </p>
-            <Button variant="secondary" onClick={() => router.replace('/settings/subscription')}>
+            <Button variant="secondary" onClick={() => {
+              trackEvent('subscription_action_clicked', {
+                action: 'manage_subscription',
+                source: entrySource,
+                entry_cta: entryCta,
+                subscription_source: existingSubscription.source ?? 'unknown',
+                subscription_status: getExistingSubscriptionStatus(existingSubscription),
+              });
+              router.replace('/settings/subscription');
+            }}>
               {t('pricing.manageSubscription')}
             </Button>
           </div>
@@ -726,7 +828,17 @@ function PricingContent() {
             variant="primary"
             size="lg"
             fullWidth
-            onClick={() => void handleSubscribe()}
+            onClick={() => {
+              trackEvent('subscription_action_clicked', {
+                action: 'start_subscription',
+                source: entrySource,
+                entry_cta: entryCta,
+                subscription_source: 'none',
+                subscription_status: 'none',
+                placement: 'pricing_footer',
+              });
+              void handleSubscribe();
+            }}
             disabled={loading || !user}
             className="h-14 rounded-xl text-[15px] font-bold shadow-glow"
           >

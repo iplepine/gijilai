@@ -23,16 +23,29 @@
 | `landing_cta_clicked` | 랜딩 CTA 위치별 클릭률 비교 | `placement` |
 | `login_attempt` | 로그인 수단별 시도량 확인 | `provider` |
 | `login_success` | 로그인 완료율 확인 | `provider` |
+| `login_failed` | 로그인 실패 지점 확인 | `provider`, `reason` |
+| `signup_attempt` | 이메일 가입 시도량 확인 | `provider` |
+| `signup_failed` | 이메일 가입 실패 지점 확인 | `provider`, `reason` |
 | `logout` | 세션 종료 추적 | 없음 |
 | `intake_completed` | 접수 완료율 확인 | `child_gender`, `concern_count` |
 | `survey_module_started` | 설문 모듈 진입량 확인 | `module`, `source`, `report_tab`, `report_kind` |
 | `survey_module_completed` | 모듈별 완료율 확인 | `module`, `answered_questions`, `source`, `report_tab`, `report_kind` |
 | `survey_flow_completed` | 전체 설문 완료율 확인 | `answered_questions`, `source`, `report_tab`, `report_kind` |
+| `survey_abandoned` | 설문 이탈 위치 확인 | `module`, `answered_questions`, `current_question_index`, `exit_type`, `source`, `report_tab`, `report_kind` |
 | `report_viewed` | 리포트 탭별 열람량과 진입 소스 확인 | `tab`, `child_only`, `report_kind`, `has_saved_report`, `source`, `has_subscription` |
 | `report_primary_cta_clicked` | 리포트에서 다음 행동 CTA 클릭률 확인 | `cta_type`, `placement`, `report_tab`, `report_kind`, `child_only`, `source` |
+| `share_action_completed` | 공유 채널별 완료량 확인 | `channel`, `source`, `entry_cta`, `report_kind`, `has_report_id`, `fallback_from` |
+| `share_action_failed` | 공유 실패와 복사 fallback 확인 | `channel`, `source`, `entry_cta`, `report_kind`, `has_report_id`, `fallback_used` |
+| `share_action_cancelled` | 네이티브/Web Share 취소 확인 | `channel`, `source`, `entry_cta`, `report_kind`, `has_report_id`, `reason` |
 | `pricing_viewed` | 가격 페이지 유입 소스와 리포트 연계 전환 확인 | `source`, `entry_cta`, `is_app`, `report_tab`, `report_kind` |
 | `payment_started` | 결제 시도량 및 결제수단 비중 확인 | `source`, `entry_cta`, `pay_method`, `used_coupon`, `final_amount`, `report_tab`, `report_kind` |
 | `payment_completed` | 결제 완료율 및 쿠폰 효과 확인 | `source`, `entry_cta`, `pay_method`, `used_coupon`, `final_amount`, `report_tab`, `report_kind` |
+| `payment_cancelled` | 결제창/리다이렉트/IAP 취소 확인 | `source`, `entry_cta`, `pay_method`, `stage`, `reason`, `used_coupon`, `final_amount`, `report_tab`, `report_kind` |
+| `payment_failed` | 결제 모듈/검증/구독 생성 실패 확인 | `source`, `entry_cta`, `pay_method`, `stage`, `reason`, `used_coupon`, `final_amount`, `report_tab`, `report_kind` |
+| `subscription_action_clicked` | 구독 관리 CTA 클릭 확인 | `action`, `source`, `entry_cta`, `subscription_source`, `subscription_status`, `placement` |
+| `subscription_action_requested` | 구독 해지/재활성화 서버 요청 시작 확인 | `action`, `source`, `entry_cta`, `subscription_source`, `subscription_status` |
+| `subscription_action_completed` | 구독 해지/재활성화 완료 확인 | `action`, `source`, `entry_cta`, `subscription_source` |
+| `subscription_action_failed` | 구독 해지/재활성화 실패 확인 | `action`, `source`, `entry_cta`, `subscription_source`, `reason` |
 | `consult_started` | 상담 진입량과 후속 상담 비중 확인 | `source`, `has_child_report`, `has_subscription`, `is_trial`, `is_followup`, `report_tab`, `report_kind` |
 | `consult_completed` | 상담 결과까지 도달했는지 확인 | `source`, `has_subscription`, `is_trial`, `is_followup`, `action_item_count` |
 | `practice_item_saved` | 상담 결과에서 실천 항목을 저장했는지 확인 | `source`, `has_subscription`, `is_trial`, `is_followup`, `action_index`, `duration`, `replaced_practice`, `saved` |
@@ -41,6 +54,15 @@
 | `practice_review_saved` | 실천 기간 회고 완료 여부 확인 | `done_days`, `review_mode`, `has_full_access` |
 | `followup_context_viewed` | 후속 상담 진입 시 이전 실천 맥락 노출 여부 확인 | `source`, `has_subscription`, `is_trial`, `practice_count`, `log_count`, `review_count` |
 | `trial_conversion_cta_clicked` | 체험 종료/만료 전후 구독 CTA 클릭 확인 | `source`, `entry_cta`, `placement`, `trial_state`, `trial_days_remaining`, `has_subscription`, `has_practice_priority`, `has_consult_priority` |
+| `observation_saved` | 관찰 기록 작성 완료 확인 | `has_note`, `has_consultation`, `child_count` |
+| `observation_save_failed` | 관찰 기록 저장 실패 확인 | `has_note`, `has_consultation`, `child_count`, `reason` |
+| `observation_deleted` | 관찰 기록 삭제 완료 확인 | `remaining_count` |
+| `observation_delete_failed` | 관찰 기록 삭제 실패 확인 | `reason` |
+| `notification_setting_changed` | 푸시/실천 리마인더 토글 변경 확인 | `setting`, `enabled`, `is_app`, `active_practice_count`, `pending_practice_count` |
+| `practice_reminder_time_changed` | 실천 리마인더 시간 변경 확인 | `reminder_hour`, `reminder_minute`, `is_app`, `active_practice_count`, `pending_practice_count` |
+| `practice_reminder_test_sent` | 실천 리마인더 테스트 발송 확인 | `is_app`, `active_practice_count`, `pending_practice_count` |
+| `marketing_opt_in_changed` | 마케팅 수신 동의 변경 확인 | `enabled` |
+| `marketing_opt_in_change_failed` | 마케팅 수신 동의 저장 실패 확인 | `attempted_enabled`, `reason` |
 | `app_install_landing_viewed` | 웹 브라우저에서 앱 설치 유도 화면 도달 확인 | `source`, `entry_cta`, `report_tab`, `report_kind`, `platform` |
 | `app_install_store_clicked` | 설치 유도 화면에서 스토어 이동 클릭 확인 | `source`, `entry_cta`, `report_tab`, `report_kind`, `platform`, `store` |
 | `app_install_app_open_clicked` | 모바일 설치 유도 화면에서 앱 딥링크 열기 시도 확인 | `source`, `entry_cta`, `report_tab`, `report_kind`, `platform`, `target_path` |

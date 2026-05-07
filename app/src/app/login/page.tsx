@@ -47,6 +47,25 @@ function getSafeRedirect(value: string | null) {
     return value;
 }
 
+function getAuthFailureReason(error: unknown) {
+    if (!(error instanceof Error)) return 'unknown';
+
+    const message = error.message.toLowerCase();
+    if (message.includes('rate limit') || message.includes('too many')) {
+        return 'rate_limited';
+    }
+    if (message.includes('already registered') || message.includes('already been registered') || message.includes('user already registered')) {
+        return 'already_registered';
+    }
+    if (message.includes('invalid login') || message.includes('invalid credentials')) {
+        return 'invalid_credentials';
+    }
+    if (message.includes('email not confirmed')) {
+        return 'email_unconfirmed';
+    }
+    return 'auth_error';
+}
+
 
 export default function LoginPage() {
     const { t } = useLocale();
@@ -101,6 +120,10 @@ export default function LoginPage() {
             trackEvent('login_attempt', { provider: 'email' });
             await signInWithEmail(email, password);
         } catch (error) {
+            trackEvent(emailMode === 'signup' ? 'signup_failed' : 'login_failed', {
+                provider: 'email',
+                reason: getAuthFailureReason(error),
+            });
             setEmailError(getErrorMessage(error));
         }
     };

@@ -16,6 +16,11 @@ type SubscriptionCheckResponse = {
   } | null;
 };
 
+function isPaymentCancelled(code?: string, message?: string) {
+  const value = `${code ?? ''} ${message ?? ''}`.toLowerCase();
+  return value.includes('cancel');
+}
+
 function PricingCompleteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -43,6 +48,17 @@ function PricingCompleteContent() {
       const finalAmount = Number(searchParams.get('final_amount') ?? 0) || undefined;
 
       if (code) {
+        trackEvent(isPaymentCancelled(code, message ?? undefined) ? 'payment_cancelled' : 'payment_failed', {
+          source: entrySource,
+          entry_cta: entryCta,
+          pay_method: payMethod,
+          stage: 'payment_redirect',
+          reason: isPaymentCancelled(code, message ?? undefined) ? 'user_cancelled' : 'provider_error',
+          used_coupon: usedCoupon,
+          final_amount: finalAmount,
+          report_tab: reportTab,
+          report_kind: reportKind,
+        });
         setErrorMessage(message || code);
         setStatus('error');
         return;
@@ -71,6 +87,17 @@ function PricingCompleteContent() {
           setStatus('success');
           setTimeout(() => router.replace('/settings/subscription'), 1200);
         } catch (error: unknown) {
+          trackEvent('payment_failed', {
+            source: entrySource,
+            entry_cta: entryCta,
+            pay_method: payMethod,
+            stage: 'iap_complete',
+            reason: 'subscription_check_failed',
+            used_coupon: usedCoupon,
+            final_amount: finalAmount,
+            report_tab: reportTab,
+            report_kind: reportKind,
+          });
           setErrorMessage(error instanceof Error ? error.message : t('settings.cancelError'));
           setStatus('error');
         }
@@ -78,6 +105,17 @@ function PricingCompleteContent() {
       }
 
       if (!billingKey) {
+        trackEvent('payment_failed', {
+          source: entrySource,
+          entry_cta: entryCta,
+          pay_method: payMethod,
+          stage: 'payment_redirect',
+          reason: 'missing_billing_key',
+          used_coupon: usedCoupon,
+          final_amount: finalAmount,
+          report_tab: reportTab,
+          report_kind: reportKind,
+        });
         setErrorMessage('빌링키 발급 결과를 확인할 수 없습니다.');
         setStatus('error');
         return;
@@ -110,6 +148,17 @@ function PricingCompleteContent() {
         setStatus('success');
         setTimeout(() => router.replace('/settings/subscription'), 1200);
       } catch (error: unknown) {
+        trackEvent('payment_failed', {
+          source: entrySource,
+          entry_cta: entryCta,
+          pay_method: payMethod,
+          stage: 'subscription_create',
+          reason: 'server_error',
+          used_coupon: usedCoupon,
+          final_amount: finalAmount,
+          report_tab: reportTab,
+          report_kind: reportKind,
+        });
         setErrorMessage(error instanceof Error ? error.message : t('pricing.subscribeError', { message: '' }));
         setStatus('error');
       }

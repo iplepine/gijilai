@@ -6,6 +6,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { useLocale } from "@/i18n/LocaleProvider";
+import { trackEvent } from "@/lib/analytics";
 import { db, type PracticeItemData, type PracticeLogData } from "@/lib/db";
 import { getLocalDateString } from "@/lib/date";
 import { getPracticeLifecycle } from "@/lib/practiceLifecycle";
@@ -264,6 +265,15 @@ export default function NotificationsPage() {
     value: NotificationSettings[K],
   ) => {
     reminderSyncUserInitiatedRef.current = true;
+    if (key !== "practiceReminderTime") {
+      trackEvent("notification_setting_changed", {
+        setting: key,
+        enabled: Boolean(value),
+        is_app: isAppWebView(),
+        active_practice_count: reminderSnapshot.activePracticeCount,
+        pending_practice_count: reminderSnapshot.pendingPracticeCount,
+      });
+    }
     setSettings((current) => ({ ...current, [key]: value }));
   };
 
@@ -313,6 +323,16 @@ export default function NotificationsPage() {
   };
 
   const saveReminderTime = () => {
+    const [nextHour = "20", nextMinute = "0"] = draftReminderTime.split(":");
+    if (draftReminderTime !== settings.practiceReminderTime) {
+      trackEvent("practice_reminder_time_changed", {
+        reminder_hour: Number.parseInt(nextHour, 10),
+        reminder_minute: Number.parseInt(nextMinute, 10),
+        is_app: isAppWebView(),
+        active_practice_count: reminderSnapshot.activePracticeCount,
+        pending_practice_count: reminderSnapshot.pendingPracticeCount,
+      });
+    }
     reminderSyncUserInitiatedRef.current = true;
     updateSetting("practiceReminderTime", draftReminderTime);
     setIsTimePickerOpen(false);
@@ -385,6 +405,11 @@ export default function NotificationsPage() {
     isAppWebView() && settings.pushEnabled && settings.practiceReminderEnabled;
 
   const sendTestReminder = () => {
+    trackEvent("practice_reminder_test_sent", {
+      is_app: isAppWebView(),
+      active_practice_count: reminderSnapshot.activePracticeCount,
+      pending_practice_count: reminderSnapshot.pendingPracticeCount,
+    });
     postPracticeReminderTest(
       buildPracticeReminderPlan({
         preferences: settings,
@@ -410,8 +435,15 @@ export default function NotificationsPage() {
 
     try {
       await db.updateUserProfile(user.id, { marketing_opt_in: nextValue });
+      trackEvent("marketing_opt_in_changed", {
+        enabled: nextValue,
+      });
     } catch (error) {
       console.error("Failed to update marketing preference:", error);
+      trackEvent("marketing_opt_in_change_failed", {
+        attempted_enabled: nextValue,
+        reason: "db_error",
+      });
       setMarketingEnabled(previousValue);
       alert(t("settings.marketingUpdateError"));
     } finally {
