@@ -20,11 +20,12 @@ declare global {
     };
     PaymentBridge?: { postMessage: (msg: string) => void };
     __iapLoadingDone?: () => void;
-    __iapPaymentCompleted?: () => void;
+    __iapPaymentCompleted?: (payload?: IapPaymentCompletedPayload) => void;
   }
 }
 
 type PayMethodOption = 'KCP_CARD' | 'INICIS_CARD';
+type IapPaymentCompletedPayload = { shouldNavigate?: boolean };
 
 const PRICES = {
   MONTHLY: { KRW: 12000, USD: 999 },
@@ -107,6 +108,29 @@ function getAppIapProductId(): string {
   return /iphone|ipad|ipod/.test(ua)
     ? 'gijilai_premium_montly'
     : 'monthly_premium';
+}
+
+function buildIapCompletePath(params: {
+  source: string;
+  entryCta?: string;
+  reportTab?: string | null;
+  reportKind?: string | null;
+  usedCoupon: boolean;
+  finalAmount: number;
+}) {
+  const search = new URLSearchParams({
+    iap: 'true',
+    payMethod: 'APPLE_GOOGLE',
+    source: params.source,
+    used_coupon: String(params.usedCoupon),
+    final_amount: String(params.finalAmount),
+  });
+
+  if (params.entryCta) search.set('entry_cta', params.entryCta);
+  if (params.reportTab) search.set('report_tab', params.reportTab);
+  if (params.reportKind) search.set('report_kind', params.reportKind);
+
+  return `/pricing/complete?${search.toString()}`;
 }
 
 export default function PricingPage() {
@@ -204,27 +228,28 @@ function PricingContent() {
     };
   }, [getErrorMessage, isApp, isEnvironmentReady, t, user]);
 
-  // 앱 IAP: Flutter가 결과를 네이티브 SnackBar로 처리, 웹은 loading 해제만 담당
+  // 앱 IAP: Flutter가 검증을 완료하면 웹은 완료 플로우로 라우팅한다.
   useEffect(() => {
     if (!isApp) return;
     window.__iapLoadingDone = () => setLoading(false);
-    window.__iapPaymentCompleted = () => {
-      trackEvent('payment_completed', {
-        source: entrySource,
-        entry_cta: entryCta,
-        pay_method: 'APPLE_GOOGLE',
-        used_coupon: hasFirstMonthDiscount,
-        final_amount: currentPrice,
-        report_tab: reportTab ?? undefined,
-        report_kind: reportKind ?? undefined,
-      });
+    window.__iapPaymentCompleted = (payload) => {
       setLoading(false);
+      if (payload?.shouldNavigate === false) return;
+      router.refresh();
+      router.replace(buildIapCompletePath({
+        source: entrySource,
+        entryCta,
+        reportTab,
+        reportKind,
+        usedCoupon: hasFirstMonthDiscount,
+        finalAmount: currentPrice,
+      }));
     };
     return () => {
       window.__iapLoadingDone = undefined;
       window.__iapPaymentCompleted = undefined;
     };
-  }, [currentPrice, entryCta, entrySource, hasFirstMonthDiscount, isApp, reportKind, reportTab]);
+  }, [currentPrice, entryCta, entrySource, hasFirstMonthDiscount, isApp, reportKind, reportTab, router]);
 
   if (!isEnvironmentReady || !isApp) {
     return (

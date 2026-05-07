@@ -30,6 +30,8 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import 'firebase_options.dart';
 
+enum _IapDeliveryResult { delivered, failed, authRequired, deferred }
+
 class _AndroidIntentUri {
   const _AndroidIntentUri({
     required this.launchUri,
@@ -251,6 +253,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       FlutterLocalNotificationsPlugin();
   Uri? _pendingAuthCallbackUri;
   Uri? _pendingAppOpenUri;
+  final List<PurchaseDetails> _pendingIapDeliveries = <PurchaseDetails>[];
   String? _pendingLoginRedirectPath;
   DateTime? _lastBackPressedAt;
   bool _showNativeLogin = false;
@@ -264,6 +267,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   bool _hasRenderedFirstPage = false;
   bool _isWebPageLoading = false;
   bool _iapLaunchInProgress = false;
+  bool _iapDeliveryInProgress = false;
+  bool _iapDeliveryWaitingForAuth = false;
   bool _nativeVoiceInputInProgress = false;
   Timer? _nativeAuthWatchdogTimer;
   AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
@@ -953,6 +958,13 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     }
     if (isNativeLoginRoute) {
       unawaited(_refreshNativeLoginAvailability());
+    }
+    if (_pendingIapDeliveries.isNotEmpty) {
+      final shouldRetryPendingIap = !isNativeLoginRoute;
+      if (shouldRetryPendingIap) {
+        _iapDeliveryWaitingForAuth = false;
+      }
+      unawaited(_processPendingIapDeliveries(force: shouldRetryPendingIap));
     }
   }
 
@@ -2920,12 +2932,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     switch (action) {
       case 'success':
         _showSnackBar('시뮬레이터 결제 테스트 성공: 실제 구독은 생성되지 않습니다');
-        await _controller?.runJavaScript(
-          'window.__iapPaymentCompleted && window.__iapPaymentCompleted();',
-        );
-        await _controller?.runJavaScript(
-          'window.__iapLoadingDone && window.__iapLoadingDone();',
-        );
+        await _notifyWebIapPaymentCompleted(shouldNavigate: false);
+        _notifyWebLoadingDone();
         break;
       case 'fail':
         _showSnackBar('시뮬레이터 결제 테스트 실패', isError: true);
@@ -2942,7 +2950,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       switch (purchase.status) {
         case PurchaseStatus.purchased:
         case PurchaseStatus.restored:
-          unawaited(_verifyAndDeliver(purchase));
+          _queueIapDelivery(purchase);
           break;
         case PurchaseStatus.error:
           debugPrint(
@@ -2971,8 +2979,58 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           break;
         case PurchaseStatus.pending:
           debugPrint('IAP purchase pending...');
+          _showSnackBar('결제 승인을 기다리고 있습니다. 승인 후 자동으로 반영됩니다.');
+          _finishIapPurchaseFlow();
           break;
       }
+    }
+  }
+
+  String _iapPurchaseKey(PurchaseDetails purchase) {
+    final token = purchase.purchaseID?.isNotEmpty == true
+        ? purchase.purchaseID
+        : purchase.verificationData.serverVerificationData;
+    return '${purchase.productID}:$token';
+  }
+
+  void _queueIapDelivery(PurchaseDetails purchase) {
+    final key = _iapPurchaseKey(purchase);
+    final alreadyQueued = _pendingIapDeliveries.any(
+      (pending) => _iapPurchaseKey(pending) == key,
+    );
+    if (!alreadyQueued) {
+      _pendingIapDeliveries.add(purchase);
+    }
+    unawaited(_processPendingIapDeliveries());
+  }
+
+  Future<void> _processPendingIapDeliveries({bool force = false}) async {
+    if (_iapDeliveryInProgress) return;
+    if (_pendingIapDeliveries.isEmpty) return;
+    if (_controller == null || !_hasRenderedFirstPage) return;
+    if (_iapDeliveryWaitingForAuth && !force) return;
+
+    _iapDeliveryInProgress = true;
+    try {
+      while (_pendingIapDeliveries.isNotEmpty &&
+          _controller != null &&
+          _hasRenderedFirstPage) {
+        final purchase = _pendingIapDeliveries.first;
+        final result = await _verifyAndDeliver(purchase);
+
+        if (result == _IapDeliveryResult.authRequired) {
+          _iapDeliveryWaitingForAuth = true;
+          break;
+        }
+
+        if (result == _IapDeliveryResult.deferred) {
+          break;
+        }
+
+        _pendingIapDeliveries.removeAt(0);
+      }
+    } finally {
+      _iapDeliveryInProgress = false;
     }
   }
 
@@ -3052,14 +3110,30 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         .join(' -> ');
   }
 
-  Future<void> _verifyAndDeliver(PurchaseDetails purchase) async {
+  Future<_IapDeliveryResult> _verifyAndDeliver(PurchaseDetails purchase) async {
     var shouldCompletePurchase = false;
     try {
+      final controller = _controller;
+      if (controller == null || !_hasRenderedFirstPage) {
+        return _IapDeliveryResult.deferred;
+      }
+
       final platform = Platform.isIOS ? 'APPLE_IAP' : 'GOOGLE_PLAY';
 
       final receiptToken = Platform.isIOS
           ? purchase.purchaseID ?? ''
           : purchase.verificationData.serverVerificationData;
+
+      if (receiptToken.isEmpty) {
+        _showSnackBar('결제 거래 정보를 확인할 수 없습니다', isError: true);
+        _finishIapPurchaseFlow();
+        await FirebaseCrashlytics.instance.recordError(
+          Exception('IAP receipt token is empty'),
+          StackTrace.current,
+          reason: 'IAP receipt token missing',
+        );
+        return _IapDeliveryResult.failed;
+      }
 
       // WebView 쿠키/세션을 활용하기 위해 JavaScript fetch로 서버 검증
       // 결과를 window.__iapResult에 저장하여 Flutter에서 읽음
@@ -3077,32 +3151,36 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
                 originalTransactionId: '${_escapeForJs(purchase.purchaseID ?? '')}'
               })
             });
-            const data = await r.json();
-            window.__iapResult = JSON.stringify(data);
+            const data = await r.json().catch(() => ({}));
+            window.__iapResult = JSON.stringify({
+              ...data,
+              httpOk: r.ok,
+              httpStatus: r.status
+            });
           } catch (e) {
             window.__iapResult = JSON.stringify({ error: e.message });
           }
         })();
       ''';
 
-      await _controller!.runJavaScript(jsCode);
+      await controller.runJavaScript(jsCode);
 
       // 결과 폴링 (fetch 완료 대기)
       String? resultJson;
       for (int i = 0; i < 30; i++) {
         await Future.delayed(const Duration(milliseconds: 500));
-        final raw = await _controller!.runJavaScriptReturningResult(
+        final raw = await controller.runJavaScriptReturningResult(
           'window.__iapResult || ""',
         );
         final cleaned = raw.toString().replaceAll('"', '').replaceAll("'", '');
         if (cleaned.isNotEmpty && cleaned != 'null') {
           // runJavaScriptReturningResult는 JSON 문자열을 이스케이프해서 반환하므로 복원
           resultJson =
-              await _controller!.runJavaScriptReturningResult(
+              await controller.runJavaScriptReturningResult(
                     'window.__iapResult',
                   )
                   as String?;
-          await _controller!.runJavaScript('delete window.__iapResult;');
+          await controller.runJavaScript('delete window.__iapResult;');
           break;
         }
       }
@@ -3110,7 +3188,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       if (resultJson == null || resultJson.isEmpty) {
         _showSnackBar('서버 응답 시간이 초과되었습니다', isError: true);
         _finishIapPurchaseFlow();
-        return;
+        return _IapDeliveryResult.failed;
       }
 
       // JSON 파싱 — runJavaScriptReturningResult가 문자열을 따옴표로 감싸서 반환
@@ -3123,12 +3201,29 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       if (data['success'] == true) {
         shouldCompletePurchase = true;
         _showSnackBar('구독이 시작되었습니다!');
-        await _controller!.runJavaScript(
-          'window.__iapPaymentCompleted && window.__iapPaymentCompleted();',
-        );
-        // WebView 새로고침으로 구독 상태 반영
-        await _controller!.loadRequest(Uri.parse(MainWebView.targetUrl));
+        final callbackHandled = await _notifyWebIapPaymentCompleted();
+        if (!callbackHandled) {
+          _notifyWebLoadingDone();
+          await controller.loadRequest(
+            _webUriForInternalPath(
+              '/pricing/complete?iap=true&payMethod=APPLE_GOOGLE&source=iap_native',
+            ),
+          );
+        }
+        return _IapDeliveryResult.delivered;
       } else {
+        if (data['httpStatus'] == 401 || data['error'] == 'Unauthorized') {
+          _showSnackBar('로그인이 만료되었습니다. 로그인 후 구독 연결을 마무리할게요.', isError: true);
+          _finishIapPurchaseFlow();
+          final redirect = Uri.encodeComponent(
+            '/pricing?source=iap_reconnect&entry_cta=finish_iap',
+          );
+          await controller.loadRequest(
+            _webUriForInternalPath('/login?redirect=$redirect'),
+          );
+          return _IapDeliveryResult.authRequired;
+        }
+
         final errorCode = data['error']?.toString();
         final errorMessage = errorCode == 'IAP_SERVER_MISCONFIGURED'
             ? '결제 검증 설정에 문제가 있습니다. 잠시 후 다시 시도해주세요.'
@@ -3139,6 +3234,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           Exception('IAP verification failed: ${data['error'] ?? 'unknown'}'),
           StackTrace.current,
         );
+        return _IapDeliveryResult.failed;
       }
     } catch (e) {
       debugPrint('IAP verify error: $e');
@@ -3149,11 +3245,35 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       );
       _showSnackBar('영수증 검증에 실패했습니다', isError: true);
       _finishIapPurchaseFlow();
+      return _IapDeliveryResult.failed;
     } finally {
       _iapLaunchInProgress = false;
       if (shouldCompletePurchase && purchase.pendingCompletePurchase) {
         await _iap.completePurchase(purchase);
       }
+    }
+  }
+
+  Future<bool> _notifyWebIapPaymentCompleted({
+    bool shouldNavigate = true,
+  }) async {
+    final controller = _controller;
+    if (controller == null) return false;
+
+    try {
+      final result = await controller.runJavaScriptReturningResult('''
+        (function() {
+          if (typeof window.__iapPaymentCompleted !== 'function') {
+            return false;
+          }
+          window.__iapPaymentCompleted({ shouldNavigate: $shouldNavigate });
+          return true;
+        })();
+      ''');
+      return result == true || result.toString() == 'true';
+    } catch (e) {
+      debugPrint('IAP completion callback failed: $e');
+      return false;
     }
   }
 

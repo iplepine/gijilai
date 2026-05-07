@@ -92,6 +92,7 @@
 - iOS 시뮬레이터 `Debug` 실행에서는 `GIJILAI_ENABLE_IOS_IAP_FALLBACK=true` dart define을 넘겼을 때만 앱이 번들된 `Configuration.storekit`으로 로컬 StoreKit 테스트와 네이티브 테스트 다이얼로그(`성공/실패/취소`) fallback을 사용한다. 실기기 Sandbox/TestFlight 검증에서는 이 fallback을 켜지 않는다.
 - 위 시뮬레이터 fallback은 개발용 UX 검증 경로다. 실제 영수증 검증, 구독 생성, 스토어 동기화는 실기기 샌드박스로 별도 확인한다. Apple 첫 구독 상품은 앱 버전과 함께 심사를 통과해야 실제 App Store/Sandbox 상품 조회와 검증 흐름을 안정적으로 확인할 수 있다.
 - 최초 구매는 `/api/payment/iap`에서 영수증 검증 후 `subscriptions`/`payments`에 반영한다.
+- 앱 IAP 구매 성공 후에는 웹 완료 플로우(`/pricing/complete?iap=true`)를 거쳐 구독 관리 화면으로 이동한다. pending/취소/실패 상태는 가격 화면 loading을 즉시 해제하고, WebView 세션 만료로 검증이 401이 되면 거래를 완료 처리하지 않은 채 로그인 후 재검증한다.
 - 이후 상태 변경은 스토어 서버 알림으로 동기화한다.
   - Apple App Store Server Notifications V2: `/api/payment/iap/apple-notifications`
   - Google Real-time Developer Notifications: `/api/payment/iap/google-rtdn`

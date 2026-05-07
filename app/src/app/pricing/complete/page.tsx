@@ -10,6 +10,11 @@ import { getApiErrorMessage, readJsonResponse } from '@/lib/api';
 import { trackEvent } from '@/lib/analytics';
 
 type CompleteStatus = 'loading' | 'success' | 'error';
+type SubscriptionCheckResponse = {
+  subscription?: {
+    id: string;
+  } | null;
+};
 
 function PricingCompleteContent() {
   const router = useRouter();
@@ -28,6 +33,7 @@ function PricingCompleteContent() {
       const message = searchParams.get('message');
       const billingKey = searchParams.get('billingKey');
       const payMethod = searchParams.get('payMethod') || 'INICIS_CARD';
+      const isIapCompletion = searchParams.get('iap') === 'true';
       const requestLocale = searchParams.get('locale') || locale;
       const entrySource = searchParams.get('source') ?? 'direct';
       const entryCta = searchParams.get('entry_cta') ?? undefined;
@@ -39,6 +45,35 @@ function PricingCompleteContent() {
       if (code) {
         setErrorMessage(message || code);
         setStatus('error');
+        return;
+      }
+
+      if (isIapCompletion) {
+        try {
+          const response = await fetch('/api/payment/subscription');
+          const data = await readJsonResponse<SubscriptionCheckResponse>(response);
+          if (!response.ok) {
+            throw new Error(getApiErrorMessage(data, '구독 상태 확인 실패'));
+          }
+          if (!data?.subscription) {
+            throw new Error('구독 상태를 아직 확인할 수 없습니다.');
+          }
+
+          trackEvent('payment_completed', {
+            source: entrySource,
+            entry_cta: entryCta,
+            pay_method: payMethod,
+            used_coupon: usedCoupon,
+            final_amount: finalAmount,
+            report_tab: reportTab,
+            report_kind: reportKind,
+          });
+          setStatus('success');
+          setTimeout(() => router.replace('/settings/subscription'), 1200);
+        } catch (error: unknown) {
+          setErrorMessage(error instanceof Error ? error.message : t('settings.cancelError'));
+          setStatus('error');
+        }
         return;
       }
 
