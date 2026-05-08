@@ -18,6 +18,8 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:in_app_purchase_android/billing_client_wrappers.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 import 'package:in_app_purchase_storekit/in_app_purchase_storekit.dart';
+import 'package:kakao_flutter_sdk_share/kakao_flutter_sdk_share.dart'
+    as kakao_share;
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:share_plus/share_plus.dart';
@@ -463,6 +465,10 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       )
       ..addJavaScriptChannel('RouteBridge', onMessageReceived: _onRouteMessage)
       ..addJavaScriptChannel('AuthBridge', onMessageReceived: _onAuthMessage)
+      ..addJavaScriptChannel(
+        'KakaoShareBridge',
+        onMessageReceived: _onKakaoShareMessage,
+      )
       ..addJavaScriptChannel('ShareBridge', onMessageReceived: _onShareMessage)
       ..loadRequest(Uri.parse(MainWebView.targetUrl));
 
@@ -2507,6 +2513,82 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           e,
           StackTrace.current,
           reason: 'ReminderBridge parse error',
+        ),
+      );
+    }
+  }
+
+  Future<void> _onKakaoShareMessage(JavaScriptMessage message) async {
+    try {
+      final data = jsonDecode(message.message) as Map<String, dynamic>;
+      if (data['type'] != 'KAKAO_SHARE_REQUEST') return;
+
+      final title = data['title']?.toString() ?? '기질아이';
+      final description = data['description']?.toString() ?? '';
+      final imageUrl =
+          data['imageUrl']?.toString() ??
+          'https://gijilai.com/gijilai_icon_kakao.png';
+      final shareUrl = data['shareUrl']?.toString() ?? '';
+      final sharePath = data['sharePath']?.toString() ?? '/';
+      final buttonTitle = data['buttonTitle']?.toString() ?? '나도 검사해보기';
+      final buttonUrl =
+          data['buttonUrl']?.toString() ??
+          '${Uri.parse(MainWebView.targetUrl).origin}/survey/intro';
+      final buttonPath = data['buttonPath']?.toString() ?? '/survey/intro';
+
+      if (shareUrl.isEmpty) {
+        throw Exception('Missing Kakao share URL');
+      }
+
+      final template = kakao_share.FeedTemplate(
+        content: kakao_share.Content(
+          title: title,
+          description: description,
+          imageUrl: Uri.parse(imageUrl),
+          link: kakao_share.Link(
+            webUrl: Uri.parse(shareUrl),
+            mobileWebUrl: Uri.parse(shareUrl),
+            androidExecutionParams: {'path': sharePath},
+            iosExecutionParams: {'path': sharePath},
+          ),
+        ),
+        buttons: [
+          kakao_share.Button(
+            title: buttonTitle,
+            link: kakao_share.Link(
+              webUrl: Uri.parse(buttonUrl),
+              mobileWebUrl: Uri.parse(buttonUrl),
+              androidExecutionParams: {'path': buttonPath},
+              iosExecutionParams: {'path': buttonPath},
+            ),
+          ),
+        ],
+      );
+
+      final canShareWithTalk = await kakao_share.ShareClient.instance
+          .isKakaoTalkSharingAvailable();
+      if (canShareWithTalk) {
+        final shareUri = await kakao_share.ShareClient.instance.shareDefault(
+          template: template,
+        );
+        await kakao_share.ShareClient.instance.launchKakaoTalk(shareUri);
+        return;
+      }
+
+      final sharerUrl = await kakao_share.WebSharerClient.instance
+          .makeDefaultUrl(template: template);
+      final launched = await _tryLaunchExternalUri(sharerUrl);
+      if (!launched) {
+        throw Exception('Unable to launch Kakao web sharer: $sharerUrl');
+      }
+    } catch (e) {
+      debugPrint('KakaoShareBridge error: $e');
+      _showSnackBar('카카오톡 공유를 열 수 없습니다', isError: true);
+      unawaited(
+        FirebaseCrashlytics.instance.recordError(
+          e,
+          StackTrace.current,
+          reason: 'KakaoShareBridge error',
         ),
       );
     }

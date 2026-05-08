@@ -28,6 +28,7 @@ dependencies:
   kakao_flutter_sdk_user: 1.9.7+3
   sign_in_with_apple: ^6.1.4
   package_info_plus: ^9.0.1
+  kakao_flutter_sdk_share: 1.9.7+3
 
 dev_dependencies:
   flutter_test:

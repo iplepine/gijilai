@@ -145,6 +145,11 @@ function SharePageContent() {
     return (window as Window & { ShareBridge?: { postMessage: (message: string) => void } }).ShareBridge || null;
   };
 
+  const getNativeKakaoShareBridge = () => {
+    if (typeof window === 'undefined') return null;
+    return (window as Window & { KakaoShareBridge?: { postMessage: (message: string) => void } }).KakaoShareBridge || null;
+  };
+
   const isMobileOrApp = () => {
     if (typeof navigator === 'undefined') return false;
     return /gijilai_app|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -405,6 +410,23 @@ function SharePageContent() {
       href: window.location.href,
       userAgent: navigator.userAgent,
     });
+
+    const kakaoBridge = getNativeKakaoShareBridge();
+    if (kakaoBridge) {
+      kakaoBridge.postMessage(JSON.stringify({
+        type: 'KAKAO_SHARE_REQUEST',
+        title: kakaoPayload.content.title,
+        description: kakaoPayload.content.description,
+        imageUrl: kakaoPayload.content.imageUrl,
+        shareUrl,
+        sharePath,
+        buttonTitle: t('share.tryTest'),
+        buttonUrl: tryTestUrl,
+        buttonPath: tryTestPath,
+      }));
+      trackEvent('share_action_completed', getShareAnalyticsParams('kakao_native_bridge'));
+      return;
+    }
 
     setIsKakaoSharing(true);
     setShareError(null);
