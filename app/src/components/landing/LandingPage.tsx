@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { trackEvent } from '@/lib/analytics';
 import { Icon } from '@/components/ui/Icon';
 import { Button } from '@/components/ui/Button';
+import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { HomeLogoButton } from '@/components/layout/HomeLogoButton';
 import { useLocale } from '@/i18n/LocaleProvider';
 
@@ -130,26 +131,30 @@ export default function LandingPage() {
             {/* Process Section */}
             <section className="py-20 md:py-28 bg-white dark:bg-background-dark">
                 <div className="container max-w-5xl mx-auto px-6">
-                    <div className="text-center mb-16 space-y-4">
-                        <span className="text-primary font-black tracking-widest text-xs uppercase">How it works</span>
-                        <h2 className="text-3xl md:text-4xl font-black text-text-main dark:text-white tracking-tight break-keep">
-                            {t('landing.processTitle')}
-                        </h2>
-                    </div>
+                    <ScrollReveal>
+                        <div className="text-center mb-16 space-y-4">
+                            <span className="text-primary font-black tracking-widest text-xs uppercase">How it works</span>
+                            <h2 className="text-3xl md:text-4xl font-black text-text-main dark:text-white tracking-tight break-keep">
+                                {t('landing.processTitle')}
+                            </h2>
+                        </div>
+                    </ScrollReveal>
 
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-6">
                         {STEPS.map((s, i) => (
-                            <div key={s.step} className="relative flex flex-col items-center text-center">
-                                {i < STEPS.length - 1 && (
-                                    <div className="hidden md:block absolute top-8 left-[60%] w-[80%] h-px border-t-2 border-dashed border-beige-main/40" />
-                                )}
-                                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-5">
-                                    <Icon name={s.icon} className="text-primary w-7 h-7" />
+                            <ScrollReveal key={s.step} delayMs={i * 80}>
+                                <div className="relative flex flex-col items-center text-center">
+                                    {i < STEPS.length - 1 && (
+                                        <div className="hidden md:block absolute top-8 left-[60%] w-[80%] h-px border-t-2 border-dashed border-beige-main/40" />
+                                    )}
+                                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-5">
+                                        <Icon name={s.icon} className="text-primary w-7 h-7" />
+                                    </div>
+                                    <span className="text-[11px] font-black text-primary tracking-widest mb-2">{s.step}</span>
+                                    <h3 className="text-lg font-black text-text-main dark:text-white mb-2">{s.title}</h3>
+                                    <p className="text-sm text-text-sub leading-relaxed break-keep max-w-[240px]">{s.desc}</p>
                                 </div>
-                                <span className="text-[11px] font-black text-primary tracking-widest mb-2">{s.step}</span>
-                                <h3 className="text-lg font-black text-text-main dark:text-white mb-2">{s.title}</h3>
-                                <p className="text-sm text-text-sub leading-relaxed break-keep max-w-[240px]">{s.desc}</p>
-                            </div>
+                            </ScrollReveal>
                         ))}
                     </div>
                 </div>
@@ -158,43 +163,51 @@ export default function LandingPage() {
             {/* Features Section */}
             <section className="py-20 md:py-28 bg-beige-light dark:bg-background-dark/50">
                 <div className="container max-w-5xl mx-auto px-6">
-                    <div className="text-center mb-16 space-y-4">
-                        <span className="text-primary font-black tracking-widest text-xs uppercase">Features</span>
-                        <h2 className="text-3xl md:text-4xl font-black text-text-main dark:text-white tracking-tight break-keep">
-                            {t('landing.featuresTitle')}
-                        </h2>
-                    </div>
+                    <ScrollReveal>
+                        <div className="text-center mb-16 space-y-4">
+                            <span className="text-primary font-black tracking-widest text-xs uppercase">Features</span>
+                            <h2 className="text-3xl md:text-4xl font-black text-text-main dark:text-white tracking-tight break-keep">
+                                {t('landing.featuresTitle')}
+                            </h2>
+                        </div>
+                    </ScrollReveal>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        <div className="p-8 rounded-2xl bg-white dark:bg-surface-dark border border-beige-main/30 shadow-soft">
-                            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
-                                <Icon name="psychology" className="text-primary w-7 h-7" />
+                        <ScrollReveal delayMs={0}>
+                            <div className="p-8 rounded-2xl bg-white dark:bg-surface-dark border border-beige-main/30 shadow-soft">
+                                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
+                                    <Icon name="psychology" className="text-primary w-7 h-7" />
+                                </div>
+                                <h3 className="text-lg font-black text-text-main dark:text-white mb-3">{t('landing.feature1Title')}</h3>
+                                <p className="text-sm text-text-sub leading-relaxed break-keep">
+                                    {t('landing.feature1Desc')}
+                                </p>
                             </div>
-                            <h3 className="text-lg font-black text-text-main dark:text-white mb-3">{t('landing.feature1Title')}</h3>
-                            <p className="text-sm text-text-sub leading-relaxed break-keep">
-                                {t('landing.feature1Desc')}
-                            </p>
-                        </div>
+                        </ScrollReveal>
 
-                        <div className="p-8 rounded-2xl bg-white dark:bg-surface-dark border border-beige-main/30 shadow-soft">
-                            <div className="w-14 h-14 rounded-2xl bg-secondary/10 flex items-center justify-center mb-6">
-                                <Icon name="forum" className="text-secondary w-7 h-7" />
+                        <ScrollReveal delayMs={80}>
+                            <div className="p-8 rounded-2xl bg-white dark:bg-surface-dark border border-beige-main/30 shadow-soft">
+                                <div className="w-14 h-14 rounded-2xl bg-secondary/10 flex items-center justify-center mb-6">
+                                    <Icon name="forum" className="text-secondary w-7 h-7" />
+                                </div>
+                                <h3 className="text-lg font-black text-text-main dark:text-white mb-3">{t('landing.feature2Title')}</h3>
+                                <p className="text-sm text-text-sub leading-relaxed break-keep">
+                                    {t('landing.feature2Desc')}
+                                </p>
                             </div>
-                            <h3 className="text-lg font-black text-text-main dark:text-white mb-3">{t('landing.feature2Title')}</h3>
-                            <p className="text-sm text-text-sub leading-relaxed break-keep">
-                                {t('landing.feature2Desc')}
-                            </p>
-                        </div>
+                        </ScrollReveal>
 
-                        <div className="p-8 rounded-2xl bg-white dark:bg-surface-dark border border-beige-main/30 shadow-soft">
-                            <div className="w-14 h-14 rounded-2xl bg-primary-light/10 flex items-center justify-center mb-6">
-                                <Icon name="task_alt" className="text-primary-light w-7 h-7" />
+                        <ScrollReveal delayMs={160}>
+                            <div className="p-8 rounded-2xl bg-white dark:bg-surface-dark border border-beige-main/30 shadow-soft">
+                                <div className="w-14 h-14 rounded-2xl bg-primary-light/10 flex items-center justify-center mb-6">
+                                    <Icon name="task_alt" className="text-primary-light w-7 h-7" />
+                                </div>
+                                <h3 className="text-lg font-black text-text-main dark:text-white mb-3">{t('landing.feature3Title')}</h3>
+                                <p className="text-sm text-text-sub leading-relaxed break-keep">
+                                    {t('landing.feature3Desc')}
+                                </p>
                             </div>
-                            <h3 className="text-lg font-black text-text-main dark:text-white mb-3">{t('landing.feature3Title')}</h3>
-                            <p className="text-sm text-text-sub leading-relaxed break-keep">
-                                {t('landing.feature3Desc')}
-                            </p>
-                        </div>
+                        </ScrollReveal>
                     </div>
                 </div>
             </section>
@@ -202,7 +215,8 @@ export default function LandingPage() {
             {/* Example: Magic Word */}
             <section className="py-20 md:py-28 bg-beige-light dark:bg-background-dark/50">
                 <div className="container max-w-4xl mx-auto px-6">
-                    <div className="bg-white dark:bg-surface-dark rounded-2xl p-8 md:p-14 shadow-card">
+                    <ScrollReveal durationMs={720}>
+                        <div className="bg-white dark:bg-surface-dark rounded-2xl p-8 md:p-14 shadow-card">
                         <div className="text-center mb-10 space-y-3">
                             <span className="text-primary font-black tracking-widest text-xs uppercase">Magic Words</span>
                             <h2 className="text-2xl md:text-3xl font-black text-text-main dark:text-white break-keep">
@@ -227,7 +241,8 @@ export default function LandingPage() {
                                 </div>
                             </div>
                         </div>
-                    </div>
+                        </div>
+                    </ScrollReveal>
                 </div>
             </section>
 
@@ -236,25 +251,29 @@ export default function LandingPage() {
                 <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-[#2F4F3E]/20 rounded-full blur-[150px] -mr-48 -mt-48" />
                 <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-[#E5A150]/10 rounded-full blur-[150px] -ml-48 -mb-48" />
 
-                <div className="container max-w-3xl mx-auto text-center space-y-8 relative z-10">
-                    <h2 className="text-3xl md:text-5xl font-black text-white leading-tight tracking-tight break-keep">
-                        {t('landing.ctaTitle')}<br />
-                        <span className="text-[#F0B86E]">{t('landing.ctaHighlight')}</span>{t('landing.ctaTitleEnd')}
-                    </h2>
-                    <p className="text-white/60 text-base md:text-lg max-w-xl mx-auto break-keep">
-                        {t('landing.ctaDesc')}
-                    </p>
-                    <div className="flex flex-col items-center gap-4">
-                        <Link
-                            href="/login"
-                            className="w-full max-w-sm"
-                            onClick={() => trackEvent('landing_cta_clicked', { placement: 'final_cta' })}
-                        >
-                            <Button variant="secondary" size="lg" fullWidth className="h-16 rounded-2xl !bg-white !text-[#1F3629] text-lg font-black hover:bg-gray-100 transition-all shadow-glow">
-                                {t('landing.startTest')}
-                            </Button>
-                        </Link>
-                    </div>
+                <div className="container max-w-3xl mx-auto relative z-10">
+                    <ScrollReveal durationMs={760}>
+                        <div className="text-center space-y-8">
+                            <h2 className="text-3xl md:text-5xl font-black text-white leading-tight tracking-tight break-keep">
+                                {t('landing.ctaTitle')}<br />
+                                <span className="text-[#F0B86E]">{t('landing.ctaHighlight')}</span>{t('landing.ctaTitleEnd')}
+                            </h2>
+                            <p className="text-white/60 text-base md:text-lg max-w-xl mx-auto break-keep">
+                                {t('landing.ctaDesc')}
+                            </p>
+                            <div className="flex flex-col items-center gap-4">
+                                <Link
+                                    href="/login"
+                                    className="w-full max-w-sm"
+                                    onClick={() => trackEvent('landing_cta_clicked', { placement: 'final_cta' })}
+                                >
+                                    <Button variant="secondary" size="lg" fullWidth className="h-16 rounded-2xl !bg-white !text-[#1F3629] text-lg font-black hover:bg-gray-100 transition-all shadow-glow">
+                                        {t('landing.startTest')}
+                                    </Button>
+                                </Link>
+                            </div>
+                        </div>
+                    </ScrollReveal>
                 </div>
             </section>
 

@@ -188,10 +188,42 @@ body {
 }
 
 /* Material Icons Settings */
+.material-symbols-outlined,
+.material-icons-round {
+  display: inline-flex;
+  width: 1em;
+  min-width: 1em;
+  height: 1em;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  font-style: normal;
+  font-weight: normal;
+  font-feature-settings: 'liga';
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  vertical-align: -0.125em;
+}
+
 .material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
   font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
 }
 
+.material-icons-round {
+  font-family: 'Material Icons Round';
+}
+
+html:not(.material-icons-ready) .material-symbols-outlined,
+html:not(.material-icons-ready) .material-icons-round {
+  color: transparent !important;
+}
 
 .fill-1 {
   font-variation-settings: 'FILL' 1, 'wght' 300, 'GRAD' 0, 'opsz' 24;
@@ -263,6 +295,8 @@ html[data-native-platform='android'] .consult-problem-voice-button {
 
 .app-bottom-nav-scroll {
   padding-bottom: var(--bottom-nav-content-offset);
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .app-bottom-nav-spacer {
@@ -303,6 +337,22 @@ html[data-native-platform='android'] .consult-problem-voice-button {
   animation-name: question-slide-prev;
 }
 
+.scroll-reveal {
+  opacity: 0;
+  transform: translate3d(0, var(--scroll-reveal-y, 18px), 0) scale(0.992);
+  transition:
+    opacity var(--scroll-reveal-duration, 640ms) cubic-bezier(0.22, 1, 0.36, 1),
+    transform var(--scroll-reveal-duration, 640ms) cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--scroll-reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+
+.scroll-reveal.is-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+  will-change: auto;
+}
+
 @keyframes question-slide-next {
   from {
     opacity: 0;
@@ -331,6 +381,13 @@ html[data-native-platform='android'] .consult-problem-voice-button {
   .question-slide {
     animation-duration: 1ms;
     transform: none;
+  }
+
+  .scroll-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+    will-change: auto;
   }
 }
 

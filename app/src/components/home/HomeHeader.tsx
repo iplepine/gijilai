@@ -21,7 +21,7 @@ export function HomeHeader({
     const trial = userCreatedAt ? db.getTrialStatus(userCreatedAt) : null;
 
     return (
-        <header className="app-top-bar sticky top-0 z-40 border-b border-gray-100 bg-background-light/80 backdrop-blur-xl dark:border-gray-800 dark:bg-background-dark/80">
+        <header className="app-top-bar relative z-40 border-b border-gray-100 bg-background-light dark:border-gray-800 dark:bg-background-dark">
             <div className="app-top-bar-inner flex items-center justify-between px-4">
                 <HomeLogoButton
                     variant="brand"

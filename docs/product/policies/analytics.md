@@ -49,7 +49,8 @@
 | `consult_started` | 상담 진입량과 후속 상담 비중 확인 | `source`, `has_child_report`, `has_subscription`, `is_trial`, `is_followup`, `report_tab`, `report_kind` |
 | `consult_completed` | 상담 결과까지 도달했는지 확인 | `source`, `has_subscription`, `is_trial`, `is_followup`, `action_item_count` |
 | `practice_item_saved` | 상담 결과에서 실천 항목을 저장했는지 확인 | `source`, `has_subscription`, `is_trial`, `is_followup`, `action_index`, `duration`, `replaced_practice`, `saved` |
-| `practice_log_saved` | 실천 기록 완료율과 첫 기록 여부 확인 | `done`, `first_log`, `has_full_access`, `with_reaction_feedback`, `child_reaction_type`, `parent_impression_type` |
+| `home_next_action_clicked` | 홈 상단 다음행동 카드가 실제 행동으로 이어지는지 확인 | `source`, `entry_cta`, `next_action_type`, `action_type` |
+| `practice_log_saved` | 실천 기록 완료율과 첫 기록 여부 확인 | `source`, `entry_cta`, `done`, `first_log`, `has_full_access`, `with_reaction_feedback`, `child_reaction_type`, `parent_impression_type` |
 | `practice_feedback_viewed` | 기록 후 AI 피드백 노출 여부 확인 | `first_log`, `has_full_access`, `child_reaction_type`, `parent_impression_type` |
 | `practice_review_saved` | 실천 기간 회고 완료 여부 확인 | `done_days`, `review_mode`, `has_full_access` |
 | `followup_context_viewed` | 후속 상담 진입 시 이전 실천 맥락 노출 여부 확인 | `source`, `has_subscription`, `is_trial`, `practice_count`, `log_count`, `review_count` |

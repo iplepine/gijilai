@@ -18,7 +18,7 @@ export default function BottomNav() {
     ];
 
     return (
-        <nav className="app-bottom-nav fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white/80 dark:bg-surface-dark/80 backdrop-blur-lg border-t border-primary/5 px-4 pt-2 flex justify-between items-end z-50 rounded-t-[2rem] shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
+        <nav className="app-bottom-nav fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white dark:bg-surface-dark border-t border-primary/5 px-4 pt-2 flex justify-between items-end z-50 rounded-t-[2rem] shadow-[0_-6px_24px_rgba(0,0,0,0.04)]">
             {navItems.map((item) => {
                 const isActive = pathname === item.href;
 
@@ -30,7 +30,7 @@ export default function BottomNav() {
                             onClick={() => triggerNativeHaptic('light')}
                             className="app-bottom-nav-center relative -top-6 group w-20 flex justify-center"
                         >
-                            <div className="w-14 h-14 rounded-full bg-primary text-white shadow-xl shadow-primary/30 flex items-center justify-center transform transition-all group-hover:scale-105 active:scale-95 border-[4px] border-background-light dark:border-background-dark">
+                            <div className="w-14 h-14 rounded-full bg-primary text-white shadow-lg shadow-primary/20 flex items-center justify-center transform transition-transform group-hover:scale-105 active:scale-95 border-[4px] border-background-light dark:border-background-dark">
                                 <span className="material-symbols-outlined text-white text-[32px]">
                                     {isActive ? 'chat_bubble' : 'add'}
                                 </span>

@@ -613,7 +613,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
                   unawaited(_handleWebViewPermissionRequest(request)),
             )
             ..setJavaScriptMode(JavaScriptMode.unrestricted)
-            ..setBackgroundColor(const Color(0x00000000));
+            ..setBackgroundColor(const Color(0xFFF9F8F6));
 
       // 기본 UA를 유지하면서 gijilai_app 식별자 추가 (navigator.language 등 보존)
       final defaultUA = await controller.getUserAgent() ?? '';
@@ -1144,9 +1144,16 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   void _handleLoadProgress(int progress) {
     if (!mounted) return;
 
+    final nextProgress = progress.clamp(0, 100).toInt();
+    final nextIsLoading = nextProgress < 100;
+    if (_isWebPageLoading == nextIsLoading &&
+        _webPageLoadProgress == nextProgress) {
+      return;
+    }
+
     setState(() {
-      _isWebPageLoading = progress < 100;
-      _webPageLoadProgress = progress.clamp(0, 100);
+      _isWebPageLoading = nextIsLoading;
+      _webPageLoadProgress = nextProgress;
     });
   }
 

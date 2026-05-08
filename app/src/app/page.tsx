@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useState, useRef, useMemo } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+  useRef,
+  useMemo,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -11,7 +18,8 @@ import { HomeHeader } from "@/components/home/HomeHeader";
 import { HomeLoadingScreen } from "@/components/home/HomeLoadingScreen";
 import { HomeWelcomeState } from "@/components/home/HomeWelcomeState";
 import LandingPage from "@/components/landing/LandingPage";
-import { db, ChildProfile } from "@/lib/db";
+import { ScrollReveal } from "@/components/ui/ScrollReveal";
+import { db, ChildProfile, PracticeItemData } from "@/lib/db";
 import { TemperamentScorer } from "@/lib/TemperamentScorer";
 import { TemperamentClassifier } from "@/lib/TemperamentClassifier";
 import { CHILD_QUESTIONS, PARENT_QUESTIONS } from "@/data/questions";
@@ -24,6 +32,7 @@ import {
   parseAnswerMap,
   type TemperamentScores,
 } from "@/lib/home";
+import { getLocalDateString } from "@/lib/date";
 import {
   buildPracticeReminderPlan,
   formatPracticeReminderTime,
@@ -39,6 +48,25 @@ const DEFAULT_REMINDER_PREFERENCES: PracticeReminderPreferences = {
   practiceReminderEnabled: true,
   practiceReminderTime: "20:00",
 };
+
+type QuickPracticeMessage = {
+  tone: "success" | "error" | "info";
+  text: string;
+};
+
+function HomeModuleReveal({
+  children,
+  order = 0,
+}: {
+  children: ReactNode;
+  order?: number;
+}) {
+  return (
+    <ScrollReveal delayMs={Math.min(order * 70, 360)} durationMs={700}>
+      {children}
+    </ScrollReveal>
+  );
+}
 
 export default function HomePage() {
   const router = useRouter();
@@ -58,6 +86,17 @@ export default function HomePage() {
   const [magicWordIndex, setMagicWordIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showChildDropdown, setShowChildDropdown] = useState(false);
+  const [quickPracticeSavingId, setQuickPracticeSavingId] = useState<
+    string | null
+  >(null);
+  const [quickPracticeCompletedIds, setQuickPracticeCompletedIds] = useState<
+    Set<string>
+  >(() => new Set());
+  const [quickPracticeSnoozedIds, setQuickPracticeSnoozedIds] = useState<
+    Set<string>
+  >(() => new Set());
+  const [quickPracticeMessage, setQuickPracticeMessage] =
+    useState<QuickPracticeMessage | null>(null);
   const {
     profile,
     children,
@@ -219,16 +258,31 @@ export default function HomePage() {
     !parentSurvey &&
     !hasCompleteLocalParentResponses &&
     !!temperamentInfo?.child;
+  const uncheckedPracticeItems = useMemo(
+    () =>
+      practices.uncheckedItems.filter(
+        (item) =>
+          !quickPracticeCompletedIds.has(item.id) &&
+          !quickPracticeSnoozedIds.has(item.id),
+      ),
+    [
+      practices.uncheckedItems,
+      quickPracticeCompletedIds,
+      quickPracticeSnoozedIds,
+    ],
+  );
   const hasPracticePriority =
-    practices.attentionCount > 0 || practices.uncheckedCount > 0;
+    practices.attentionCount > 0 || uncheckedPracticeItems.length > 0;
   const practicePriorityItems =
     practices.attentionCount > 0
       ? practices.attentionItems
-      : practices.uncheckedItems;
+      : uncheckedPracticeItems;
   const practicePriorityCount =
     practices.attentionCount > 0
       ? practices.attentionCount
-      : practices.uncheckedCount;
+      : uncheckedPracticeItems.length;
+  const primaryQuickPractice =
+    practices.attentionCount === 0 ? practicePriorityItems[0] : null;
   const hasConsultPriority = showConsultCTA && !!temperamentInfo?.child;
   const hasTrialPriority = shouldShowTrialEndingCard;
 
@@ -258,6 +312,84 @@ export default function HomePage() {
     router.push("/pricing?source=home&entry_cta=trial_ending");
   };
 
+  const handleQuickPracticeSave = useCallback(
+    async (practice: PracticeItemData, done: boolean) => {
+      if (!user || !practice || quickPracticeSavingId) return;
+
+      setQuickPracticeSavingId(practice.id);
+      setQuickPracticeMessage(null);
+      trackEvent("home_next_action_clicked", {
+        source: "home",
+        entry_cta: "practice_inline",
+        next_action_type: "practice",
+        action_type: done ? "done" : "not_done",
+      });
+
+      try {
+        const today = getLocalDateString();
+        const existingLogs = await db.getPracticeLogs(practice.id).catch(() => null);
+
+        await db.createPracticeLog({
+          practice_id: practice.id,
+          user_id: user.id,
+          date: today,
+          done,
+          memo: null,
+        });
+
+        setQuickPracticeCompletedIds((previous) => {
+          const next = new Set(previous);
+          next.add(practice.id);
+          return next;
+        });
+        setQuickPracticeMessage({
+          tone: "success",
+          text: done
+            ? t("home.quickPracticeDoneSaved")
+            : t("home.quickPracticeSkippedSaved"),
+        });
+
+        trackEvent("practice_log_saved", {
+          source: "home",
+          entry_cta: "practice_inline",
+          done,
+          first_log: existingLogs ? existingLogs.length === 0 : undefined,
+          with_reaction_feedback: false,
+        });
+      } catch (error) {
+        console.error("Failed to save home practice log:", error);
+        setQuickPracticeMessage({
+          tone: "error",
+          text: t("home.quickPracticeSaveFailed"),
+        });
+      } finally {
+        setQuickPracticeSavingId(null);
+      }
+    },
+    [quickPracticeSavingId, t, user],
+  );
+
+  const handleQuickPracticeSnooze = useCallback(
+    (practiceId: string) => {
+      setQuickPracticeSnoozedIds((previous) => {
+        const next = new Set(previous);
+        next.add(practiceId);
+        return next;
+      });
+      setQuickPracticeMessage({
+        tone: "info",
+        text: t("home.quickPracticeSnoozed"),
+      });
+      trackEvent("home_next_action_clicked", {
+        source: "home",
+        entry_cta: "practice_inline",
+        next_action_type: "practice",
+        action_type: "later",
+      });
+    },
+    [t],
+  );
+
   useEffect(() => {
     // Only show onboarding if no child is registered in DB AND no intake info in local store
     if (!loading && user && children.length === 0 && !intake.childName) {
@@ -271,7 +403,7 @@ export default function HomePage() {
     const preferences = readPracticeReminderPreferences(
       DEFAULT_REMINDER_PREFERENCES,
     );
-    const reminderItem = practices.uncheckedItems[0];
+    const reminderItem = uncheckedPracticeItems[0];
     const reminderTime = formatPracticeReminderTime(
       preferences.practiceReminderTime,
       locale,
@@ -289,9 +421,9 @@ export default function HomePage() {
         title,
         body,
         focusPracticeId: reminderItem?.id,
-        activePracticeIds: practices.uncheckedItems.map((item) => item.id),
+        activePracticeIds: uncheckedPracticeItems.map((item) => item.id),
         activePracticeCount: practices.reminderActiveCount,
-        pendingPracticeCount: practices.uncheckedCount,
+        pendingPracticeCount: uncheckedPracticeItems.length,
         userInitiated: false,
       }),
     );
@@ -299,9 +431,8 @@ export default function HomePage() {
     loading,
     locale,
     practices.reminderActiveCount,
-    practices.uncheckedCount,
-    practices.uncheckedItems,
     t,
+    uncheckedPracticeItems,
     user,
   ]);
 
@@ -363,7 +494,7 @@ export default function HomePage() {
 
   return (
     <div className="bg-background-light dark:bg-background-dark text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center justify-center font-body pb-0">
-      <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl overflow-hidden relative">
+      <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col sm:shadow-2xl overflow-hidden relative">
         <HomeHeader
           userCreatedAt={user?.created_at}
           subscription={subscription}
@@ -371,12 +502,13 @@ export default function HomePage() {
           onPricingClick={() => router.push("/pricing?source=home&entry_cta=header_badge")}
         />
 
-        <main className="app-bottom-nav-scroll flex-1 overflow-y-auto no-scrollbar">
+        <main className="app-bottom-nav-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain no-scrollbar">
           {mainChild ? (
             /* [기존 사용자] 아이가 등록된 상태 */
             <div className="animate-in fade-in duration-700">
               {/* 상단 프로필 섹션 */}
-              <div className="relative w-full flex flex-col items-center p-2 pt-8">
+              <HomeModuleReveal>
+                <div className="relative w-full flex flex-col items-center p-2 pt-8">
                 <div className="flex flex-col items-center justify-center w-full mb-4">
                   <div
                     className="relative w-32 h-32 cursor-pointer group"
@@ -502,7 +634,7 @@ export default function HomePage() {
                         }
                         router.push("/report?tab=parent");
                       }}
-                      className={`mt-2 bg-white/60 dark:bg-surface-dark/60 backdrop-blur-sm text-text-main dark:text-gray-200 px-3.5 py-1.5 rounded-full text-[12px] font-medium shadow-[0_2px_10px_-2px_rgba(0,0,0,0.05)] inline-flex items-center gap-1.5 ring-1 ring-black/5 dark:ring-white/10 ${parentTemperament?.hasData ? "cursor-pointer active:scale-95 transition-transform" : ""}`}
+                      className={`mt-2 bg-white/90 dark:bg-surface-dark/90 text-text-main dark:text-gray-200 px-3.5 py-1.5 rounded-full text-[12px] font-medium shadow-[0_2px_10px_-2px_rgba(0,0,0,0.05)] inline-flex items-center gap-1.5 ring-1 ring-black/5 dark:ring-white/10 ${parentTemperament?.hasData ? "cursor-pointer active:scale-95 transition-transform" : ""}`}
                     >
                       <span className="material-symbols-outlined text-[16px] text-caregiver">
                         volunteer_activism
@@ -519,16 +651,33 @@ export default function HomePage() {
                     </div>
                   </div>
               </div>
-                <p className="text-text-sub dark:text-gray-400 text-sm font-light mt-2 break-keep text-center px-8">
-                  {t("home.dailyMessage")}
-                </p>
-              </div>
+                  <p className="text-text-sub dark:text-gray-400 text-sm font-light mt-2 break-keep text-center px-8">
+                    {t("home.dailyMessage")}
+                  </p>
+                </div>
+              </HomeModuleReveal>
 
               {/* 기능 카드 리스트 */}
               <div className="px-6 flex flex-col gap-5 mt-8">
+                {quickPracticeMessage && (
+                  <HomeModuleReveal>
+                    <div
+                      className={`rounded-2xl px-4 py-3 text-[13px] font-bold shadow-soft ${
+                        quickPracticeMessage.tone === "error"
+                          ? "border border-red-100 bg-red-50 text-red-700"
+                          : quickPracticeMessage.tone === "info"
+                            ? "border border-primary/10 bg-primary/5 text-primary"
+                            : "border border-emerald-100 bg-emerald-50 text-emerald-700"
+                      }`}
+                    >
+                      {quickPracticeMessage.text}
+                    </div>
+                  </HomeModuleReveal>
+                )}
                 {primaryAction && (
-                  <div className="bg-[#243A2F] dark:bg-[#1B2B23] rounded-[28px] p-6 shadow-card text-white relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-3xl -mr-12 -mt-12 pointer-events-none" />
+                  <HomeModuleReveal order={1}>
+                    <div className="bg-[#243A2F] dark:bg-[#1B2B23] rounded-[28px] p-6 shadow-card text-white relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-40 h-40 bg-white/[0.08] rounded-full -mr-12 -mt-12 pointer-events-none" />
                     <div className="relative z-10">
                       <span className="text-white/70 text-[11px] font-bold bg-white/10 px-2.5 py-1 rounded-full inline-flex items-center">
                         {t("home.nextRecommendedAction")}
@@ -578,37 +727,106 @@ export default function HomePage() {
                       )}
 
                       {primaryAction === "practice" && (
-                        <Link href="/practices" className="block mt-4">
-                          <div>
-                            <h3 className="text-[22px] font-black leading-snug tracking-tight">
-                              {practices.attentionCount > 0
-                                ? t("home.practiceAttentionTitle")
-                                : t("home.todaysPractice")}
-                            </h3>
-                            <p className="mt-2 text-sm text-white/85 leading-relaxed break-keep">
-                              {practices.attentionCount > 0
-                                ? t("home.practiceAttentionDescription", {
-                                    count: practicePriorityCount,
-                                  })
-                                : t("home.practiceItemsRemaining", {
-                                    count: practicePriorityCount,
-                                  })}
-                            </p>
-                            <div className="mt-4 space-y-2">
-                              {practicePriorityItems.slice(0, 2).map((item) => (
-                                <div
-                                  key={item.id}
-                                  className="flex items-center gap-2.5 rounded-xl bg-white/10 px-3 py-3"
-                                >
-                                  <div className="w-4 h-4 rounded border-2 border-white/50 flex-shrink-0" />
-                                  <span className="text-[13px] text-white truncate flex-1">
-                                    {item.title}
+                        <div className="mt-4">
+                          <h3 className="text-[22px] font-black leading-snug tracking-tight">
+                            {practices.attentionCount > 0
+                              ? t("home.practiceAttentionTitle")
+                              : t("home.todaysPractice")}
+                          </h3>
+                          <p className="mt-2 text-sm text-white/85 leading-relaxed break-keep">
+                            {practices.attentionCount > 0
+                              ? t("home.practiceAttentionDescription", {
+                                  count: practicePriorityCount,
+                                })
+                              : t("home.quickPracticePrompt", {
+                                  count: practicePriorityCount,
+                                })}
+                          </p>
+
+                          {primaryQuickPractice ? (
+                            <div className="mt-4 rounded-[22px] bg-white/10 p-4">
+                              <div className="flex items-start gap-3">
+                                <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/15">
+                                  <span className="material-symbols-outlined text-[16px]">
+                                    checklist
                                   </span>
                                 </div>
-                              ))}
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-[15px] font-bold leading-snug text-white break-keep">
+                                    {primaryQuickPractice.title}
+                                  </p>
+                                  {practicePriorityCount > 1 && (
+                                    <p className="mt-1 text-[11px] font-medium text-white/60">
+                                      {t("home.quickPracticeRemaining", {
+                                        count: practicePriorityCount - 1,
+                                      })}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="mt-4 grid grid-cols-2 gap-2">
+                                <button
+                                  type="button"
+                                  disabled={quickPracticeSavingId === primaryQuickPractice.id}
+                                  onClick={() =>
+                                    handleQuickPracticeSave(primaryQuickPractice, true)
+                                  }
+                                  className="min-h-12 rounded-2xl bg-white px-3 py-3 text-[13px] font-black text-[#243A2F] shadow-lg transition-all active:scale-[0.98] disabled:opacity-60"
+                                >
+                                  {quickPracticeSavingId === primaryQuickPractice.id
+                                    ? t("home.quickPracticeSaving")
+                                    : t("home.quickPracticeDone")}
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={quickPracticeSavingId === primaryQuickPractice.id}
+                                  onClick={() =>
+                                    handleQuickPracticeSave(primaryQuickPractice, false)
+                                  }
+                                  className="min-h-12 rounded-2xl bg-white/15 px-3 py-3 text-[13px] font-bold text-white ring-1 ring-white/20 transition-all active:scale-[0.98] disabled:opacity-60"
+                                >
+                                  {t("home.quickPracticeNotDone")}
+                                </button>
+                              </div>
+
+                              <div className="mt-3 flex items-center justify-between gap-3">
+                                <button
+                                  type="button"
+                                  disabled={quickPracticeSavingId === primaryQuickPractice.id}
+                                  onClick={() =>
+                                    handleQuickPracticeSnooze(primaryQuickPractice.id)
+                                  }
+                                  className="rounded-full px-2 py-1 text-[12px] font-bold text-white/70 transition-colors hover:text-white disabled:opacity-60"
+                                >
+                                  {t("home.quickPracticeLater")}
+                                </button>
+                                <Link
+                                  href={`/practices?focusPracticeId=${primaryQuickPractice.id}`}
+                                  className="rounded-full px-2 py-1 text-[12px] font-bold text-white/80 underline-offset-4 hover:underline"
+                                >
+                                  {t("home.quickPracticeDetail")}
+                                </Link>
+                              </div>
                             </div>
-                          </div>
-                        </Link>
+                          ) : (
+                            <Link href="/practices" className="block">
+                              <div className="mt-4 space-y-2">
+                                {practicePriorityItems.slice(0, 2).map((item) => (
+                                  <div
+                                    key={item.id}
+                                    className="flex items-center gap-2.5 rounded-xl bg-white/10 px-3 py-3"
+                                  >
+                                    <div className="w-4 h-4 rounded border-2 border-white/50 flex-shrink-0" />
+                                    <span className="text-[13px] text-white truncate flex-1">
+                                      {item.title}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </Link>
+                          )}
+                        </div>
                       )}
 
                       {primaryAction === "consult" && (
@@ -658,11 +876,13 @@ export default function HomePage() {
                         </div>
                       )}
                     </div>
-                  </div>
+                    </div>
+                  </HomeModuleReveal>
                 )}
 
                 {shouldShowTrialEndingCard && primaryAction !== "trial" && (
-                  <div className="bg-white dark:bg-surface-dark rounded-2xl p-5 shadow-soft border border-primary/15">
+                  <HomeModuleReveal order={2}>
+                    <div className="bg-white dark:bg-surface-dark rounded-2xl p-5 shadow-soft border border-primary/15">
                     <div className="flex items-start gap-3">
                       <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                         <span className="material-symbols-outlined text-[20px] text-primary">
@@ -689,13 +909,15 @@ export default function HomePage() {
                         arrow_forward
                       </span>
                     </button>
-                  </div>
+                    </div>
+                  </HomeModuleReveal>
                 )}
 
                 {/* 아이 기질 검사 유도 카드 */}
                 {!temperamentInfo && primaryAction !== "child_test" && (
-                  <div className="bg-primary dark:bg-surface-dark rounded-2xl p-6 shadow-card relative overflow-hidden mb-2">
-                    <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+                  <HomeModuleReveal order={2}>
+                    <div className="bg-primary dark:bg-surface-dark rounded-2xl p-6 shadow-card relative overflow-hidden mb-2">
+                    <div className="absolute top-0 right-0 w-40 h-40 bg-white/[0.08] rounded-full -mr-10 -mt-10 pointer-events-none"></div>
                     <div className="relative z-10">
                       <div className="flex flex-col gap-1 mb-4">
                         <span className="text-white/80 text-xs font-medium bg-black/10 px-2 py-1 rounded inline-block w-fit">
@@ -718,7 +940,8 @@ export default function HomePage() {
                         </button>
                       </Link>
                     </div>
-                  </div>
+                    </div>
+                  </HomeModuleReveal>
                 )}
 
                 {/* 양육자 검사 유도 카드 */}
@@ -726,8 +949,9 @@ export default function HomePage() {
                   Object.keys(atqResponses).length < PARENT_QUESTIONS.length &&
                   temperamentInfo?.child &&
                   primaryAction !== "parent_test" && (
-                    <div className="bg-secondary dark:bg-surface-dark rounded-2xl p-6 shadow-card relative overflow-hidden mb-2">
-                      <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+                    <HomeModuleReveal order={3}>
+                      <div className="bg-secondary dark:bg-surface-dark rounded-2xl p-6 shadow-card relative overflow-hidden mb-2">
+                      <div className="absolute top-0 right-0 w-40 h-40 bg-white/[0.08] rounded-full -mr-10 -mt-10 pointer-events-none"></div>
                       <div className="relative z-10">
                         <div className="flex justify-between items-start mb-4">
                           <div className="flex flex-col gap-1">
@@ -755,13 +979,15 @@ export default function HomePage() {
                           </button>
                         </Link>
                       </div>
-                    </div>
+                      </div>
+                    </HomeModuleReveal>
                   )}
 
                 {/* 마법의 한마디 캐러셀 */}
                 {magicWords.length > 0 && (
-                  <div className="bg-[#519E8A] rounded-2xl p-5 text-white relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10" />
+                  <HomeModuleReveal order={4}>
+                    <div className="bg-[#519E8A] rounded-2xl p-5 text-white relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-white/[0.08] rounded-full -mr-10 -mt-10" />
                     <div className="relative z-10">
                       <div className="flex items-center gap-1.5 mb-3">
                         <span className="material-symbols-outlined text-[18px]">
@@ -784,13 +1010,15 @@ export default function HomePage() {
                           ` · ${magicWords[magicWordIndex].childName}`}
                       </p>
                     </div>
-                  </div>
+                    </div>
+                  </HomeModuleReveal>
                 )}
 
                 {/* 오늘의 실천 카드 */}
                 {hasPracticePriority && primaryAction !== "practice" && (
-                  <Link href="/practices" className="block">
-                    <div className="bg-white dark:bg-surface-dark/50 rounded-2xl p-5 shadow-soft border border-primary/20 active:scale-[0.99] transition-all">
+                  <HomeModuleReveal order={5}>
+                    <Link href="/practices" className="block">
+                      <div className="bg-white dark:bg-surface-dark/50 rounded-2xl p-5 shadow-soft border border-primary/20 active:scale-[0.99] transition-all">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                           <span className="material-symbols-outlined text-[20px] text-primary">
@@ -839,15 +1067,17 @@ export default function HomePage() {
                           )}
                         </div>
                       )}
-                    </div>
-                  </Link>
+                      </div>
+                    </Link>
+                  </HomeModuleReveal>
                 )}
 
                 {/* 상담 유도 카드 — 상담 이력이 없거나 진행 중 실천이 없을 때 */}
                 {showConsultCTA && temperamentInfo?.child && primaryAction !== "consult" && (
-                  <Link href="/consult" className="block">
-                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-surface-dark dark:to-surface-dark rounded-2xl p-5 shadow-soft border border-amber-200/60 dark:border-amber-500/30 active:scale-[0.99] transition-all relative overflow-hidden">
-                      <div className="absolute top-0 right-0 w-28 h-28 bg-amber-200/30 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
+                  <HomeModuleReveal order={6}>
+                    <Link href="/consult" className="block">
+                      <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-surface-dark dark:to-surface-dark rounded-2xl p-5 shadow-soft border border-amber-200/60 dark:border-amber-500/30 active:scale-[0.99] transition-all relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-28 h-28 bg-amber-200/20 rounded-full -mr-10 -mt-10 pointer-events-none" />
                       <div className="relative z-10">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center">
@@ -870,14 +1100,16 @@ export default function HomePage() {
                           </span>
                         </div>
                       </div>
-                    </div>
-                  </Link>
+                      </div>
+                    </Link>
+                  </HomeModuleReveal>
                 )}
 
                 {/* 기질 분석 리포트 */}
                 {temperamentInfo?.child && (
-                  <Link href="/report" className="block">
-                    <div className="bg-white dark:bg-surface-dark/50 rounded-2xl p-5 shadow-soft border border-primary/10 dark:border-primary/50 flex justify-between items-center gap-4 active:scale-[0.99] transition-all">
+                  <HomeModuleReveal order={7}>
+                    <Link href="/report" className="block">
+                      <div className="bg-white dark:bg-surface-dark/50 rounded-2xl p-5 shadow-soft border border-primary/10 dark:border-primary/50 flex justify-between items-center gap-4 active:scale-[0.99] transition-all">
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
                           <span className="material-symbols-outlined text-[20px]">
@@ -896,8 +1128,9 @@ export default function HomePage() {
                       <span className="material-symbols-outlined text-[18px] text-primary/50 shrink-0">
                         arrow_forward
                       </span>
-                    </div>
-                  </Link>
+                      </div>
+                    </Link>
+                  </HomeModuleReveal>
                 )}
               </div>
             </div>

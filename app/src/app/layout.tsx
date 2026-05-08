@@ -51,6 +51,8 @@ export default function RootLayout({
   return (
     <html lang="ko" suppressHydrationWarning>
       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet" />
         {/* Material Symbols */}
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
@@ -101,6 +103,33 @@ export default function RootLayout({
                 if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                   document.documentElement.classList.add('dark');
                 }
+              })();
+            `,
+          }}
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                const root = document.documentElement;
+                const markReady = () => root.classList.add('material-icons-ready');
+
+                if (!document.fonts) {
+                  markReady();
+                  return;
+                }
+
+                window.addEventListener('load', function() {
+                  Promise.all([
+                    document.fonts.load('24px "Material Symbols Outlined"', 'child_care'),
+                    document.fonts.load('24px "Material Icons Round"', 'face')
+                  ]).then(function(results) {
+                    const loaded = results.every(function(fonts) {
+                      return Array.isArray(fonts) && fonts.length > 0;
+                    });
+                    if (loaded) markReady();
+                  }).catch(function() {});
+                }, { once: true });
               })();
             `,
           }}

@@ -22,6 +22,7 @@ import { Icon } from '@/components/ui/Icon';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { MedicalDisclaimer } from '@/components/ui/MedicalDisclaimer';
+import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { TemperamentLoadingState } from '@/components/ui/TemperamentLoadingState';
 import { trackEvent } from '@/lib/analytics';
 import { db, type ChildProfile, type ReportData, type SurveyData } from '@/lib/db';
@@ -231,15 +232,13 @@ function ReportSectionReveal({
   order: number;
 }) {
   return (
-    <div
-      className="animate-fade-in"
-      style={{
-        animationDelay: `${Math.min(order * 90, 420)}ms`,
-        animationFillMode: 'both',
-      }}
+    <ScrollReveal
+      delayMs={Math.min(order * 80, 360)}
+      durationMs={680}
+      y={20}
     >
       {children}
-    </div>
+    </ScrollReveal>
   );
 }
 
