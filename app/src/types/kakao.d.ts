@@ -12,6 +12,8 @@ interface Window {
                     link: {
                         mobileWebUrl: string;
                         webUrl: string;
+                        androidExecutionParams?: string;
+                        iosExecutionParams?: string;
                     };
                 };
                 buttons: Array<{
@@ -19,6 +21,8 @@ interface Window {
                     link: {
                         mobileWebUrl: string;
                         webUrl: string;
+                        androidExecutionParams?: string;
+                        iosExecutionParams?: string;
                     };
                 }>;
             }) => void;

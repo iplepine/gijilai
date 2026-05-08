@@ -4,6 +4,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useAppStore } from '@/store/useAppStore';
 import { db } from '@/lib/db';
+import { CHILD_QUESTIONS, PARENT_QUESTIONS, PARENTING_STYLE_QUESTIONS } from '@/data/questions';
 
 /**
  * 설문 응답을 Supabase에 자동 동기화하는 훅.
@@ -29,20 +30,20 @@ export function useSurveySync() {
         if (Object.keys(cbqResponses).length > 0) {
             saves.push(
                 db.saveSurveyResponses(user.id, 'CHILD', cbqResponses,
-                    Object.keys(cbqResponses).length >= 20 ? 'COMPLETED' : 'IN_PROGRESS',
+                    Object.keys(cbqResponses).length >= CHILD_QUESTIONS.length ? 'COMPLETED' : 'IN_PROGRESS',
                     selectedChildId)
             );
         }
         if (Object.keys(atqResponses).length > 0) {
             saves.push(
                 db.saveSurveyResponses(user.id, 'PARENT', atqResponses,
-                    Object.keys(atqResponses).length >= 20 ? 'COMPLETED' : 'IN_PROGRESS')
+                    Object.keys(atqResponses).length >= PARENT_QUESTIONS.length ? 'COMPLETED' : 'IN_PROGRESS')
             );
         }
         if (Object.keys(parentingResponses).length > 0) {
             saves.push(
                 db.saveSurveyResponses(user.id, 'PARENTING_STYLE', parentingResponses,
-                    Object.keys(parentingResponses).length >= 10 ? 'COMPLETED' : 'IN_PROGRESS')
+                    Object.keys(parentingResponses).length >= PARENTING_STYLE_QUESTIONS.length ? 'COMPLETED' : 'IN_PROGRESS')
             );
         }
 

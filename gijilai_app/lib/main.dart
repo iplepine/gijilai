@@ -1288,6 +1288,11 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     return uri.scheme == 'gijilai' && uri.host == 'open';
   }
 
+  bool _isKakaoLinkOpenUri(Uri uri) {
+    return uri.scheme == 'kakao8d63a45bb147379940cda43c72e841d6' &&
+        uri.host == 'kakaolink';
+  }
+
   Future<void> _handleIncomingAppUri(Uri uri) async {
     if (_isAuthCallbackUri(uri)) {
       _pendingAuthCallbackUri = uri;
@@ -1295,7 +1300,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       return;
     }
 
-    if (_isAppOpenUri(uri)) {
+    if (_isAppOpenUri(uri) || _isKakaoLinkOpenUri(uri)) {
       _pendingAppOpenUri = uri;
       await _consumePendingAppOpenUri();
     }

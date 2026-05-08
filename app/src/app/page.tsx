@@ -162,12 +162,7 @@ export default function HomePage() {
     const parentReport = reports.find((r) => r.type === "PARENT");
     const parentReportScores = extractReportScores(parentReport?.analysis_json);
 
-    if (hasCompleteLocalParentResponses) {
-      parentScores = TemperamentScorer.calculate(
-        PARENT_QUESTIONS,
-        atqResponses,
-      );
-    } else if (parentSurvey?.answers) {
+    if (parentSurvey?.answers) {
       const parentSurveyAnswers = parseAnswerMap(parentSurvey.answers);
       if (parentSurveyAnswers) {
         parentScores = TemperamentScorer.calculate(
@@ -175,6 +170,11 @@ export default function HomePage() {
           parentSurveyAnswers,
         );
       }
+    } else if (hasCompleteLocalParentResponses) {
+      parentScores = TemperamentScorer.calculate(
+        PARENT_QUESTIONS,
+        atqResponses,
+      );
     } else if (parentReportScores) {
       parentScores = parentReportScores;
     }

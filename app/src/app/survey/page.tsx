@@ -69,7 +69,8 @@ function SurveyContent() {
     setCbqResponse,
     setAtqResponse,
     setParentingResponse,
-    restoreSurveyFromDB
+    restoreSurveyFromDB,
+    selectedChildId,
   } = useAppStore();
 
   // 설문 응답을 Supabase에 자동 동기화
@@ -218,6 +219,28 @@ function SurveyContent() {
   const currentAnswer = responses[String(currentQuestion?.id)];
   const responseCount = Object.keys(responses).length;
 
+  const persistCompletedModule = useCallback(async (
+    module: SurveyModule,
+    completedResponses: Record<string, number>,
+  ) => {
+    if (!user) return;
+
+    const surveyType =
+      module === 'child'
+        ? 'CHILD'
+        : module === 'parent'
+          ? 'PARENT'
+          : 'PARENTING_STYLE';
+
+    await db.saveSurveyResponses(
+      user.id,
+      surveyType,
+      completedResponses,
+      'COMPLETED',
+      module === 'parent' ? null : selectedChildId,
+    );
+  }, [selectedChildId, user]);
+
   // 진행률 계산
   const answeredCount =
     Object.keys(cbqResponses).length +
@@ -288,11 +311,22 @@ function SurveyContent() {
     if (isCalculating || isAdvancing) return; // 분석 중이거나 다음 문항으로 넘어가는 중이면 클릭 방지
 
     const score = idx + 1;
-    setResponse(String(currentQuestion.id), score);
+    const questionId = String(currentQuestion.id);
+    const nextResponses = { ...responses, [questionId]: score };
+    const isLastQuestion = currentIndex >= questions.length - 1;
+
+    setResponse(questionId, score);
     setIsAdvancing(true);
 
     // Auto advance with delay
-    setTimeout(() => {
+    setTimeout(async () => {
+      if (isLastQuestion) {
+        try {
+          await persistCompletedModule(currentModule, nextResponses);
+        } catch (error) {
+          console.warn('Final survey sync failed before navigation:', error);
+        }
+      }
       goToNext();
       setIsAdvancing(false);
     }, 220);

@@ -140,6 +140,7 @@ export const db = {
       .from("surveys")
       .select("*")
       .eq("user_id", userId)
+      .order("updated_at", { ascending: false })
       .order("created_at", { ascending: false });
     if (error) throw error;
     return data as SurveyData[];
@@ -179,6 +180,7 @@ export const db = {
       status,
       step: Object.keys(answers).length,
       child_id: type === "PARENT" ? null : childId ?? null,
+      updated_at: new Date().toISOString(),
     };
 
     if (existing) {
@@ -228,6 +230,7 @@ export const db = {
       .select("*")
       .eq("user_id", userId)
       .in("type", ["CHILD", "PARENT", "PARENTING_STYLE"])
+      .order("updated_at", { ascending: false })
       .order("created_at", { ascending: false });
     if (error) throw error;
 
