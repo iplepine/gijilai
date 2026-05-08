@@ -2,11 +2,20 @@
 
 ## 최근 배포
 
+- 2026-05-08: Android Google Play internal/production `1.0.7+33` 배포 완료. 카카오톡 공유를 Flutter 네이티브 Kakao Share SDK 브리지로 전환했다.
 - 2026-05-07: Web production `df173e6` Vercel 배포 완료. Deployment `dpl_2KBWLmpyEx6e4SmwyLQPmYFYDzoH` (`gijilai-oqjn5ixzr-gijilai.vercel.app`) READY 확인.
 - 2026-05-07: iOS TestFlight `1.0.6+32` 업로드 완료. `1.0.5+32`는 App Store Connect에서 `1.0.5` pre-release train이 닫혀 거절되어 marketing version을 `1.0.6`으로 올려 재업로드했다.
 - 2026-05-06: Android Google Play internal/production `1.0.5+31` 배포 완료. AAB: `gijilai_app/build/app/outputs/bundle/release/app-release.aab`. 카카오톡 앱 로그인 복귀와 Google 릴리스 로그인 동작을 확인했다.
 - 2026-05-06: Android Google Play internal/production `1.0.3+29` 배포 완료. AAB: `gijilai_app/build/app/outputs/bundle/release/app-release.aab`.
 - 2026-05-06: Android production Fastlane lane은 다음 배포부터 marketing patch version과 build number를 함께 올린 뒤 업로드하도록 변경했다.
+
+## 앱 강제 업데이트 운영
+
+- 앱 버전 정책은 Next.js `/api/app-version`에서 내려준다.
+- Android 기본 최소 지원 build는 `33`이다. 운영 환경에서는 `GIJILAI_MIN_ANDROID_BUILD`, `GIJILAI_LATEST_ANDROID_BUILD`, `GIJILAI_ANDROID_STORE_URL`, `GIJILAI_ANDROID_UPDATE_TITLE`, `GIJILAI_ANDROID_UPDATE_MESSAGE`로 조정한다.
+- iOS 기본 최소 지원 build는 `0`이다. iOS 강제 업데이트가 필요하면 `GIJILAI_MIN_IOS_BUILD`, `GIJILAI_LATEST_IOS_BUILD`, `GIJILAI_IOS_STORE_URL`, `GIJILAI_IOS_UPDATE_TITLE`, `GIJILAI_IOS_UPDATE_MESSAGE`를 설정한다.
+- Flutter 앱은 WebView 로드 전에 정책을 확인해 지원 종료 버전이면 업데이트 화면만 표시한다.
+- 기존 앱은 WebView가 주입한 `window.__nativeAppInfo.buildNumber`를 웹 전역 `ForceUpdateGate`가 확인해 업데이트 오버레이를 표시한다.
 
 ## 제품
 

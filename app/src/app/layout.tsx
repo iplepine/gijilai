@@ -3,6 +3,7 @@ import { Jua, Lexend, Noto_Sans_KR } from "next/font/google";
 import Script from "next/script";
 import { FirebaseAnalytics } from "@/components/analytics/FirebaseAnalytics";
 import { AuthProvider } from "@/components/auth/AuthProvider";
+import { ForceUpdateGate } from "@/components/layout/ForceUpdateGate";
 import { ReferralHandler } from "@/components/layout/ReferralHandler";
 import { SurveyRestoreProvider } from "@/components/layout/SurveyRestoreProvider";
 import { LocaleProvider } from "@/i18n/LocaleProvider";
@@ -111,6 +112,7 @@ export default function RootLayout({
               <ReferralHandler />
               <SurveyRestoreProvider />
               {children}
+              <ForceUpdateGate />
             </div>
           </LocaleProvider>
         </AuthProvider>

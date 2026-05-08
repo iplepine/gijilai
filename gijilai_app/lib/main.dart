@@ -46,6 +46,24 @@ class _AndroidIntentUri {
   final String? packageName;
 }
 
+class _RequiredAppUpdate {
+  const _RequiredAppUpdate({
+    required this.platform,
+    required this.currentBuildNumber,
+    required this.minSupportedBuild,
+    required this.storeUrl,
+    required this.title,
+    required this.message,
+  });
+
+  final String platform;
+  final int currentBuildNumber;
+  final int minSupportedBuild;
+  final String storeUrl;
+  final String title;
+  final String message;
+}
+
 class NativeCapabilityRegistry {
   const NativeCapabilityRegistry();
 
@@ -255,6 +273,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       FlutterLocalNotificationsPlugin();
   Uri? _pendingAuthCallbackUri;
   Uri? _pendingAppOpenUri;
+  _RequiredAppUpdate? _requiredAppUpdate;
   final List<PurchaseDetails> _pendingIapDeliveries = <PurchaseDetails>[];
   String? _pendingLoginRedirectPath;
   DateTime? _lastBackPressedAt;
@@ -272,6 +291,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   bool _iapDeliveryInProgress = false;
   bool _iapDeliveryWaitingForAuth = false;
   bool _nativeVoiceInputInProgress = false;
+  bool _isInitializingWebView = false;
+  bool _isCheckingRequiredUpdate = false;
   Timer? _nativeAuthWatchdogTimer;
   AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
   bool _pendingAuthLoadingResetOnResume = false;
@@ -307,6 +328,10 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
     if (_externalAuthInProgress) {
       unawaited(_resetAuthLoadingAfterCancelledHandoff());
+    }
+
+    if (_requiredAppUpdate != null) {
+      unawaited(_refreshRequiredUpdateStatus());
     }
   }
 
@@ -403,80 +428,269 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     await _consumePendingAppOpenUri();
   }
 
-  Future<void> _initWebView() async {
-    final controller =
-        WebViewController(
-            onPermissionRequest: (request) =>
-                unawaited(_handleWebViewPermissionRequest(request)),
-          )
-          ..setJavaScriptMode(JavaScriptMode.unrestricted)
-          ..setBackgroundColor(const Color(0x00000000));
-
-    // 기본 UA를 유지하면서 gijilai_app 식별자 추가 (navigator.language 등 보존)
-    final defaultUA = await controller.getUserAgent() ?? '';
-    await controller.setUserAgent('$defaultUA gijilai_app');
-    await controller.setOnJavaScriptAlertDialog(_showJavaScriptAlertDialog);
-    await controller.setOnJavaScriptConfirmDialog(_showJavaScriptConfirmDialog);
-    await controller.setOnJavaScriptTextInputDialog(
-      _showJavaScriptTextInputDialog,
+  Uri _appVersionPolicyUri({required String platform, required int build}) {
+    final targetUri = Uri.parse(MainWebView.targetUrl);
+    return targetUri.replace(
+      path: '/api/app-version',
+      queryParameters: {'platform': platform, 'build': build.toString()},
+      fragment: null,
     );
+  }
 
-    controller
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onNavigationRequest: _handleNavigationRequest,
-          onPageStarted: _handlePageStarted,
-          onProgress: _handleLoadProgress,
-          onPageFinished: _handlePageFinished,
-          onWebResourceError: (WebResourceError error) {
-            debugPrint('WebView error: ${error.description}');
-            if (mounted) {
-              setState(() {
-                _isWebPageLoading = false;
-                _webPageLoadProgress = 0;
-              });
-            }
-            unawaited(
-              FirebaseCrashlytics.instance.recordError(
-                Exception('WebView error: ${error.description}'),
-                StackTrace.current,
-                reason:
-                    'WebView failed to load ${error.url ?? MainWebView.targetUrl}',
-              ),
-            );
-          },
+  int? _jsonInt(Object? value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  String? _jsonString(Object? value) {
+    if (value == null) return null;
+    final text = value.toString().trim();
+    return text.isEmpty ? null : text;
+  }
+
+  String _platformKey() {
+    if (Platform.isAndroid) return 'android';
+    if (Platform.isIOS) return 'ios';
+    return 'other';
+  }
+
+  Future<_RequiredAppUpdate?> _fetchRequiredAppUpdate() async {
+    final platform = _platformKey();
+    if (platform != 'android' && platform != 'ios') return null;
+
+    final packageInfo = _packageInfo ??= await PackageInfo.fromPlatform();
+    final currentBuildNumber = int.tryParse(packageInfo.buildNumber);
+    if (currentBuildNumber == null) {
+      debugPrint('App update check skipped: invalid build number');
+      return null;
+    }
+
+    final uri = _appVersionPolicyUri(
+      platform: platform,
+      build: currentBuildNumber,
+    );
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 4);
+
+    try {
+      final request = await client
+          .getUrl(uri)
+          .timeout(const Duration(seconds: 4));
+      request.headers.set(HttpHeaders.acceptHeader, 'application/json');
+
+      final response = await request.close().timeout(
+        const Duration(seconds: 6),
+      );
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        debugPrint('App update check skipped: HTTP ${response.statusCode}');
+        return null;
+      }
+
+      final body = await response
+          .transform(utf8.decoder)
+          .join()
+          .timeout(const Duration(seconds: 4));
+      final decoded = jsonDecode(body);
+      if (decoded is! Map<String, dynamic>) return null;
+
+      final policy = decoded[platform];
+      if (policy is! Map<String, dynamic>) return null;
+
+      final minSupportedBuild = _jsonInt(policy['minSupportedBuild']) ?? 0;
+      if (currentBuildNumber >= minSupportedBuild) return null;
+
+      final fallbackStoreUrl = Platform.isAndroid
+          ? 'https://play.google.com/store/apps/details?id=${packageInfo.packageName}'
+          : 'https://apps.apple.com/app/id6761619239';
+
+      return _RequiredAppUpdate(
+        platform: platform,
+        currentBuildNumber: currentBuildNumber,
+        minSupportedBuild: minSupportedBuild,
+        storeUrl: _jsonString(policy['storeUrl']) ?? fallbackStoreUrl,
+        title: _jsonString(policy['title']) ?? '앱 업데이트가 필요해요',
+        message:
+            _jsonString(policy['message']) ?? '안정적인 이용을 위해 최신 버전으로 업데이트해주세요.',
+      );
+    } catch (e, stack) {
+      debugPrint('App update check failed: $e');
+      unawaited(
+        FirebaseCrashlytics.instance.recordError(
+          e,
+          stack,
+          reason: 'App update check failed',
         ),
-      )
-      ..addJavaScriptChannel(
-        'PaymentBridge',
-        onMessageReceived: _onPaymentMessage,
-      )
-      ..addJavaScriptChannel(
-        'ReminderBridge',
-        onMessageReceived: _onReminderMessage,
-      )
-      ..addJavaScriptChannel(
-        'HapticBridge',
-        onMessageReceived: _onHapticMessage,
-      )
-      ..addJavaScriptChannel(
-        'VoiceInputBridge',
-        onMessageReceived: _onVoiceInputMessage,
-      )
-      ..addJavaScriptChannel('RouteBridge', onMessageReceived: _onRouteMessage)
-      ..addJavaScriptChannel('AuthBridge', onMessageReceived: _onAuthMessage)
-      ..addJavaScriptChannel(
-        'KakaoShareBridge',
-        onMessageReceived: _onKakaoShareMessage,
-      )
-      ..addJavaScriptChannel('ShareBridge', onMessageReceived: _onShareMessage)
-      ..loadRequest(Uri.parse(MainWebView.targetUrl));
+      );
+      return null;
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  Future<void> _refreshRequiredUpdateStatus() async {
+    if (_isCheckingRequiredUpdate) return;
+
+    if (mounted) {
+      setState(() {
+        _isCheckingRequiredUpdate = true;
+      });
+    }
+
+    final requiredUpdate = await _fetchRequiredAppUpdate();
+    if (!mounted) return;
 
     setState(() {
-      _controller = controller;
+      _requiredAppUpdate = requiredUpdate;
+      _isCheckingRequiredUpdate = false;
     });
-    await _consumePendingAuthCallback();
-    await _consumePendingAppOpenUri();
+
+    if (requiredUpdate == null && _controller == null) {
+      unawaited(_initWebView());
+    }
+  }
+
+  Future<void> _openRequiredUpdateStore() async {
+    final requiredUpdate = _requiredAppUpdate;
+    if (requiredUpdate == null) return;
+
+    try {
+      if (Platform.isAndroid) {
+        final packageInfo = _packageInfo ??= await PackageInfo.fromPlatform();
+        final marketUri = Uri.parse(
+          'market://details?id=${packageInfo.packageName}',
+        );
+        if (await _tryLaunchExternalUri(marketUri)) return;
+      }
+
+      final storeUri = Uri.tryParse(requiredUpdate.storeUrl);
+      if (storeUri == null) {
+        throw Exception('Invalid store URL: ${requiredUpdate.storeUrl}');
+      }
+
+      final launched = await launchUrl(
+        storeUri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched) {
+        throw Exception('Unable to launch store URL: $storeUri');
+      }
+    } catch (e, stack) {
+      debugPrint('App store launch failed: $e');
+      _showSnackBar('스토어를 열 수 없습니다', isError: true);
+      unawaited(
+        FirebaseCrashlytics.instance.recordError(
+          e,
+          stack,
+          reason: 'App store launch failed',
+        ),
+      );
+    }
+  }
+
+  Future<void> _initWebView() async {
+    if (_isInitializingWebView || _controller != null) return;
+    _isInitializingWebView = true;
+
+    try {
+      final requiredUpdate = await _fetchRequiredAppUpdate();
+      if (!mounted) return;
+
+      if (requiredUpdate != null) {
+        setState(() {
+          _requiredAppUpdate = requiredUpdate;
+        });
+        return;
+      }
+
+      setState(() {
+        _requiredAppUpdate = null;
+      });
+
+      final controller =
+          WebViewController(
+              onPermissionRequest: (request) =>
+                  unawaited(_handleWebViewPermissionRequest(request)),
+            )
+            ..setJavaScriptMode(JavaScriptMode.unrestricted)
+            ..setBackgroundColor(const Color(0x00000000));
+
+      // 기본 UA를 유지하면서 gijilai_app 식별자 추가 (navigator.language 등 보존)
+      final defaultUA = await controller.getUserAgent() ?? '';
+      await controller.setUserAgent('$defaultUA gijilai_app');
+      await controller.setOnJavaScriptAlertDialog(_showJavaScriptAlertDialog);
+      await controller.setOnJavaScriptConfirmDialog(
+        _showJavaScriptConfirmDialog,
+      );
+      await controller.setOnJavaScriptTextInputDialog(
+        _showJavaScriptTextInputDialog,
+      );
+
+      controller
+        ..setNavigationDelegate(
+          NavigationDelegate(
+            onNavigationRequest: _handleNavigationRequest,
+            onPageStarted: _handlePageStarted,
+            onProgress: _handleLoadProgress,
+            onPageFinished: _handlePageFinished,
+            onWebResourceError: (WebResourceError error) {
+              debugPrint('WebView error: ${error.description}');
+              if (mounted) {
+                setState(() {
+                  _isWebPageLoading = false;
+                  _webPageLoadProgress = 0;
+                });
+              }
+              unawaited(
+                FirebaseCrashlytics.instance.recordError(
+                  Exception('WebView error: ${error.description}'),
+                  StackTrace.current,
+                  reason:
+                      'WebView failed to load ${error.url ?? MainWebView.targetUrl}',
+                ),
+              );
+            },
+          ),
+        )
+        ..addJavaScriptChannel(
+          'PaymentBridge',
+          onMessageReceived: _onPaymentMessage,
+        )
+        ..addJavaScriptChannel(
+          'ReminderBridge',
+          onMessageReceived: _onReminderMessage,
+        )
+        ..addJavaScriptChannel(
+          'HapticBridge',
+          onMessageReceived: _onHapticMessage,
+        )
+        ..addJavaScriptChannel(
+          'VoiceInputBridge',
+          onMessageReceived: _onVoiceInputMessage,
+        )
+        ..addJavaScriptChannel(
+          'RouteBridge',
+          onMessageReceived: _onRouteMessage,
+        )
+        ..addJavaScriptChannel('AuthBridge', onMessageReceived: _onAuthMessage)
+        ..addJavaScriptChannel(
+          'KakaoShareBridge',
+          onMessageReceived: _onKakaoShareMessage,
+        )
+        ..addJavaScriptChannel(
+          'ShareBridge',
+          onMessageReceived: _onShareMessage,
+        )
+        ..loadRequest(Uri.parse(MainWebView.targetUrl));
+
+      setState(() {
+        _controller = controller;
+      });
+      await _consumePendingAuthCallback();
+      await _consumePendingAppOpenUri();
+    } finally {
+      _isInitializingWebView = false;
+    }
   }
 
   Future<void> _handleWebViewPermissionRequest(
@@ -3467,9 +3681,22 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final controller = _controller;
+    final requiredUpdate = _requiredAppUpdate;
     final topInset = Platform.isAndroid
         ? 0.0
         : MediaQuery.viewPaddingOf(context).top;
+    if (requiredUpdate != null) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF9F8F6),
+        body: _RequiredUpdateScreen(
+          update: requiredUpdate,
+          isChecking: _isCheckingRequiredUpdate,
+          onUpdatePressed: () => unawaited(_openRequiredUpdateStore()),
+          onRetryPressed: () => unawaited(_refreshRequiredUpdateStatus()),
+        ),
+      );
+    }
+
     if (controller == null) {
       return const Scaffold(
         backgroundColor: Color(0xFFF9F8F6),
@@ -3544,6 +3771,153 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RequiredUpdateScreen extends StatelessWidget {
+  const _RequiredUpdateScreen({
+    required this.update,
+    required this.isChecking,
+    required this.onUpdatePressed,
+    required this.onRetryPressed,
+  });
+
+  final _RequiredAppUpdate update;
+  final bool isChecking;
+  final VoidCallback onUpdatePressed;
+  final VoidCallback onRetryPressed;
+
+  static const _primary = Color(0xFF2F4F3E);
+  static const _textMain = Color(0xFF26382F);
+  static const _textSub = Color(0xFF68756F);
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(color: Color(0xFFF9F8F6)),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 28),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Spacer(flex: 3),
+              Align(
+                child: Container(
+                  width: 96,
+                  height: 96,
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _primary.withValues(alpha: 0.16),
+                        blurRadius: 34,
+                        offset: const Offset(0, 18),
+                      ),
+                    ],
+                  ),
+                  child: Image.asset(
+                    'assets/gijilai_icon.png',
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 30),
+              Text(
+                update.title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: _primary,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  height: 1.25,
+                  letterSpacing: 0,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                update.message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: _textSub,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  height: 1.55,
+                  letterSpacing: 0,
+                ),
+              ),
+              const SizedBox(height: 34),
+              SizedBox(
+                height: 52,
+                child: FilledButton(
+                  onPressed: onUpdatePressed,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                  child: const Text('업데이트하기'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 46,
+                child: OutlinedButton(
+                  onPressed: isChecking ? null : onRetryPressed,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _primary,
+                    disabledForegroundColor: _textSub.withValues(alpha: 0.6),
+                    side: BorderSide(
+                      color: const Color(
+                        0xFFD8D3C7,
+                      ).withValues(alpha: isChecking ? 0.5 : 1),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                  child: isChecking
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(_textSub),
+                          ),
+                        )
+                      : const Text('다시 확인'),
+                ),
+              ),
+              const Spacer(flex: 4),
+              Text(
+                '현재 버전은 지원이 종료되었습니다.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: _textMain.withValues(alpha: 0.42),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0,
+                ),
+              ),
+              const SizedBox(height: 18),
+            ],
+          ),
         ),
       ),
     );
