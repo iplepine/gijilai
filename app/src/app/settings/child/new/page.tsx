@@ -149,7 +149,7 @@ export default function RegisterChildPage() {
             <div className="w-full max-w-md bg-background-light dark:bg-background-dark min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
                 <Navbar title={t('settings.registerChild')} />
 
-                <main className="app-fixed-cta-scroll flex-1 px-6">
+                <main className="app-page-scroll flex-1 px-6">
                     {/* Avatar Upload Section */}
                     <div className="flex flex-col items-center mt-6 mb-8">
                         <label className={`relative group ${childLimitBlocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
@@ -248,21 +248,19 @@ export default function RegisterChildPage() {
                                 {t('settings.childInfoNote')}
                             </p>
                         </div>
+
+                        {/* Submit Button */}
+                        <div className="pt-2">
+                            <button
+                                onClick={handleSubmit}
+                                disabled={!formData.name || !formData.birthdate || !formData.gender || formDisabled}
+                                className="w-full bg-primary text-white font-bold text-lg h-16 rounded-2xl shadow-card active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {loading ? t('settings.registering') : t('settings.registerComplete')}
+                            </button>
+                        </div>
                     </div>
                 </main>
-
-                {/* Submit Button */}
-                <div className="app-fixed-cta fixed bottom-0 left-0 right-0 p-6 flex justify-center z-40 bg-gradient-to-t from-[#F9F8F6] via-[#F9F8F6]/90 to-transparent dark:from-[#161311] dark:via-[#161311]/90 pointer-events-none">
-                    <div className="max-w-md w-full pointer-events-auto">
-                        <button
-                            onClick={handleSubmit}
-                            disabled={!formData.name || !formData.birthdate || !formData.gender || formDisabled}
-                            className="w-full bg-primary text-white font-bold text-lg h-16 rounded-2xl shadow-card active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {loading ? t('settings.registering') : t('settings.registerComplete')}
-                        </button>
-                    </div>
-                </div>
             </div>
         </div>
     );
