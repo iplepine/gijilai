@@ -14,6 +14,7 @@ import { trackEvent } from '@/lib/analytics';
 import type { Json } from '@/types/supabase';
 import { supabase } from '@/lib/supabase';
 import {
+  buildCompactShareText,
   buildSharedReportSummary,
   parseSharedAnalysis,
   type SharedReportSummary,
@@ -112,21 +113,22 @@ async function ensureKakaoReady() {
 function SharePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { intake, cbqResponses } = useAppStore();
   const { t, locale } = useLocale();
+  const reportId = searchParams.get('id');
+  const entrySource = searchParams.get('source') ?? 'direct';
+  const entryCta = searchParams.get('entry_cta') ?? undefined;
+  const reportKindParam = searchParams.get('report_kind') ?? undefined;
   const [copied, setCopied] = useState(false);
   const [isKakaoSharing, setIsKakaoSharing] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
+  const [isResolvingReportId, setIsResolvingReportId] = useState(!reportId);
   const [isReportLoading, setIsReportLoading] = useState(false);
 
   // DB-loaded data
   const [report, setReport] = useState<SharedReport | null>(null);
 
-  const reportId = searchParams.get('id');
-  const entrySource = searchParams.get('source') ?? 'direct';
-  const entryCta = searchParams.get('entry_cta') ?? undefined;
-  const reportKindParam = searchParams.get('report_kind') ?? undefined;
   const [resolvedReportId, setResolvedReportId] = useState<string | null>(reportId);
 
   const getNativeShareBridge = () => {
@@ -146,14 +148,22 @@ function SharePageContent() {
     async function resolveReportId() {
       if (reportId) {
         setResolvedReportId(reportId);
+        setIsResolvingReportId(false);
+        return;
+      }
+
+      if (authLoading) {
+        setIsResolvingReportId(true);
         return;
       }
 
       if (!user?.id) {
         setResolvedReportId(null);
+        setIsResolvingReportId(false);
         return;
       }
 
+      setIsResolvingReportId(true);
       const { data, error } = await supabase
         .from('reports')
         .select('id')
@@ -166,10 +176,12 @@ function SharePageContent() {
       if (!isActive) return;
       if (error || !data?.id) {
         setResolvedReportId(null);
+        setIsResolvingReportId(false);
         return;
       }
 
       setResolvedReportId(data.id);
+      setIsResolvingReportId(false);
     }
 
     resolveReportId();
@@ -177,7 +189,7 @@ function SharePageContent() {
     return () => {
       isActive = false;
     };
-  }, [reportId, user?.id]);
+  }, [authLoading, reportId, user?.id]);
 
   // Load the exact shared report row when reportId is resolved.
   useEffect(() => {
@@ -276,6 +288,8 @@ function SharePageContent() {
     ...extra,
   });
 
+  const isShareActionDisabled = isResolvingReportId || isReportLoading;
+
   const copyShareUrl = async () => {
     await navigator.clipboard.writeText(getShareUrl());
     setCopied(true);
@@ -344,7 +358,11 @@ function SharePageContent() {
     const shareUrl = getShareUrl();
     const sharePayload = {
       title: shareInfo?.title || `${childName}${t('share.resultTitle')}`,
-      text: shareInfo?.textParts.join('\n\n') || t('share.kakaoDesc'),
+      text: buildCompactShareText({
+        textParts: shareInfo?.textParts,
+        fallback: t('share.kakaoDesc'),
+        linkPrompt: t('share.openLinkForMore'),
+      }),
       url: shareUrl,
     };
 
@@ -420,11 +438,11 @@ function SharePageContent() {
           <div className="space-y-3">
             <button
               onClick={handleKakaoShare}
-              disabled={isKakaoSharing}
+              disabled={isKakaoSharing || isShareActionDisabled}
               className="w-full h-14 rounded-2xl flex items-center justify-center gap-2 text-[15px] font-bold bg-[#FEE500] hover:bg-[#FADA0A] text-[#191919] active:scale-[0.98] transition-all"
             >
               <svg width="20" height="20" viewBox="0 0 256 256"><path d="M128 36C70.6 36 24 72.4 24 116.8c0 28.9 19.2 54.2 48.1 68.6l-9.8 36.2c-.8 2.9 2.6 5.2 5.1 3.5l42.5-28.4c5.9.8 12 1.3 18.1 1.3 57.4 0 104-36.4 104-80.8S185.4 36 128 36z" fill="#191919"/></svg>
-              {isKakaoSharing ? t('share.shareKakaoLoading') : t('share.shareKakao')}
+              {isShareActionDisabled ? t('share.preparingShare') : isKakaoSharing ? t('share.shareKakaoLoading') : t('share.shareKakao')}
             </button>
             {shareError && (
               <p className="text-xs font-medium leading-relaxed text-red-500 dark:text-red-300 px-1">
@@ -435,6 +453,7 @@ function SharePageContent() {
             <div className="flex gap-3">
               <button
                 onClick={handleCopyCode}
+                disabled={isShareActionDisabled}
                 className={`flex-1 h-14 rounded-2xl flex items-center justify-center gap-2 text-[15px] font-bold active:scale-[0.98] transition-all border ${copied ? 'bg-primary/10 border-primary text-primary' : 'bg-white dark:bg-surface-dark border-gray-200 dark:border-gray-700 text-text-sub'}`}
               >
                 <span className="material-symbols-outlined text-[20px]">{copied ? 'check' : 'link'}</span>
@@ -443,6 +462,7 @@ function SharePageContent() {
               {canShareToOtherApps && (
                 <button
                   onClick={handleNativeShare}
+                  disabled={isShareActionDisabled}
                   className="flex-1 h-14 rounded-2xl flex items-center justify-center gap-2 text-[15px] font-bold bg-white dark:bg-surface-dark border border-gray-200 dark:border-gray-700 text-text-sub active:scale-[0.98] transition-all"
                 >
                   <span className="material-symbols-outlined text-[20px]">share</span>

@@ -127,6 +127,37 @@ function compactTextParts(parts: Array<string | number | null | undefined>) {
     .filter((part): part is string => !!part && part.trim().length > 0);
 }
 
+function normalizeShareTextLine(value: string | null | undefined) {
+  return value?.replace(/\s+/g, ' ').trim() ?? '';
+}
+
+function truncateShareTextLine(value: string, maxLength: number) {
+  if (value.length <= maxLength) return value;
+  return `${value.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
+}
+
+export function buildCompactShareText(params: {
+  textParts?: string[] | null;
+  fallback: string;
+  linkPrompt: string;
+  maxDescriptionLength?: number;
+}) {
+  const maxDescriptionLength = params.maxDescriptionLength ?? 120;
+  const headline = normalizeShareTextLine(params.textParts?.[0]);
+  const description = truncateShareTextLine(
+    normalizeShareTextLine(params.textParts?.[1]),
+    maxDescriptionLength,
+  );
+  const fallback = normalizeShareTextLine(params.fallback);
+  const linkPrompt = normalizeShareTextLine(params.linkPrompt);
+
+  return [
+    headline || fallback,
+    description,
+    linkPrompt,
+  ].filter((part) => part.length > 0).join('\n\n');
+}
+
 export function buildSharedReportSummary(params: {
   type: unknown;
   analysis: SharedReportAnalysis | null;

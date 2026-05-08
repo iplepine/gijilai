@@ -1,4 +1,4 @@
-import { buildSharedReportSummary } from './shareReport';
+import { buildCompactShareText, buildSharedReportSummary } from './shareReport';
 
 const messages: Record<string, string> = {
   'share.childReportEyebrow': '아이 기질 리포트',
@@ -88,5 +88,43 @@ describe('buildSharedReportSummary', () => {
     expect(summary.headline).toBe('재윤 가족은');
     expect(summary.label).toBe('느린 호흡 맞춤');
     expect(summary.textParts).toContain('궁합 점수 82%');
+  });
+});
+
+describe('buildCompactShareText', () => {
+  it('keeps other-app share text short and points to the link', () => {
+    const text = buildCompactShareText({
+      textParts: [
+        '재윤이는 "낯선 곳도 궁금한 탐험가"',
+        '새로운 자극을 좋아하고 먼저 움직이지만, 긴 설명이 이어지면 금방 흥미가 흐려질 수 있어요.',
+        '아주 긴 인트로 본문입니다.',
+        '아주 긴 강점 본문입니다.',
+      ],
+      fallback: '기질아이 리포트입니다.',
+      linkPrompt: '자세한 리포트는 아래 링크에서 확인해보세요.',
+    });
+
+    expect(text).toBe([
+      '재윤이는 "낯선 곳도 궁금한 탐험가"',
+      '새로운 자극을 좋아하고 먼저 움직이지만, 긴 설명이 이어지면 금방 흥미가 흐려질 수 있어요.',
+      '자세한 리포트는 아래 링크에서 확인해보세요.',
+    ].join('\n\n'));
+    expect(text).not.toContain('아주 긴 인트로');
+    expect(text).not.toContain('아주 긴 강점');
+  });
+
+  it('truncates long other-app descriptions', () => {
+    const text = buildCompactShareText({
+      textParts: ['결과 제목', '1234567890 1234567890 1234567890'],
+      fallback: '기질아이 리포트입니다.',
+      linkPrompt: '아래 링크에서 확인해보세요.',
+      maxDescriptionLength: 14,
+    });
+
+    expect(text).toBe([
+      '결과 제목',
+      '1234567890...',
+      '아래 링크에서 확인해보세요.',
+    ].join('\n\n'));
   });
 });
