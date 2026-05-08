@@ -8,6 +8,7 @@ import BottomNav from '@/components/layout/BottomNav';
 import { db, ObservationData, ChildProfile } from '@/lib/db';
 import { Button } from '@/components/ui/Button';
 import { Navbar } from '@/components/layout/Navbar';
+import { TabLoadingIndicator } from '@/components/ui/TabLoadingIndicator';
 import { useLocale } from '@/i18n/LocaleProvider';
 import { trackEvent } from '@/lib/analytics';
 import type { Database } from '@/types/supabase';
@@ -267,10 +268,7 @@ export default function RecordPage() {
                     )}
 
                     {isLoading ? (
-                        <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-50">
-                            <span className="w-10 h-10 border-4 border-primary/10 border-t-primary rounded-full animate-spin"></span>
-                            <p className="text-sm font-medium text-text-sub">{t('observations.loadingRecords')}</p>
-                        </div>
+                        <TabLoadingIndicator label={t('observations.loadingRecords')} className="py-20" />
                     ) : children.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-12 px-6 text-center animate-in fade-in slide-in-from-bottom-4 duration-1000">
                             <div className="w-24 h-24 bg-primary/5 dark:bg-primary/10 rounded-full flex items-center justify-center text-5xl mb-6 relative">

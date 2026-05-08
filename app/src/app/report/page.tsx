@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { MedicalDisclaimer } from '@/components/ui/MedicalDisclaimer';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
+import { TabLoadingIndicator } from '@/components/ui/TabLoadingIndicator';
 import { TemperamentLoadingState } from '@/components/ui/TemperamentLoadingState';
 import { trackEvent } from '@/lib/analytics';
 import { db, type ChildProfile, type ReportData, type SurveyData } from '@/lib/db';
@@ -553,20 +554,10 @@ function ReportContent() {
   };
 
   const ExistingReportLoadingProgress = ({ className = '' }: { className?: string }) => (
-    <div
-      role="status"
-      aria-live="polite"
-      className={`flex w-full items-center justify-center px-6 py-14 ${className}`}
-    >
-      <span className="sr-only">{t('common.loading')}</span>
-      <div
-        role="progressbar"
-        aria-label={t('common.loading')}
-        className="h-1.5 w-44 overflow-hidden rounded-full bg-primary/10 dark:bg-white/10"
-      >
-        <div className="h-full rounded-full bg-gradient-to-r from-primary to-secondary animate-progress" />
-      </div>
-    </div>
+    <TabLoadingIndicator
+      ariaLabel={t('common.loading')}
+      className={`w-full px-6 ${className}`}
+    />
   );
 
   const SectionLoadingCard = ({
@@ -1856,10 +1847,7 @@ function ReportContent() {
           {isSavedReportContextLoading ? (
             <ExistingReportLoadingProgress className="min-h-screen py-0" />
           ) : (
-            <>
-              <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-              <p className="text-sm font-bold text-text-sub dark:text-slate-400">{t('common.loading')}</p>
-            </>
+            <TabLoadingIndicator label={t('common.loading')} />
           )}
         </div>
       </div>
@@ -2963,15 +2951,21 @@ function ReportContent() {
   );
 }
 
+function ReportPageFallback() {
+  const { t } = useLocale();
+
+  return (
+    <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center justify-center font-body pb-0">
+      <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl items-center justify-center">
+        <TabLoadingIndicator ariaLabel={t('common.loading')} />
+      </div>
+    </div>
+  );
+}
+
 export default function ReportPage() {
   return (
-    <Suspense fallback={
-      <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center justify-center font-body pb-0">
-        <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl items-center justify-center">
-          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-        </div>
-      </div>
-    }>
+    <Suspense fallback={<ReportPageFallback />}>
       <ReportContent />
     </Suspense>
   );

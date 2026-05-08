@@ -7,6 +7,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { db, SessionData, ChildProfile } from '@/lib/db';
 import BottomNav from '@/components/layout/BottomNav';
 import { Navbar } from '@/components/layout/Navbar';
+import { TabLoadingIndicator } from '@/components/ui/TabLoadingIndicator';
 import { useLocale } from '@/i18n/LocaleProvider';
 import type { Database } from '@/types/supabase';
 
@@ -114,10 +115,7 @@ export default function RecordsPage() {
 
                 <main className="app-bottom-nav-scroll w-full max-w-md p-6 flex-1">
                     {isLoading ? (
-                        <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-50">
-                            <span className="w-10 h-10 border-4 border-primary/10 border-t-primary rounded-full animate-spin" />
-                            <p className="text-sm font-medium text-text-sub">{t('consult.loadingRecords')}</p>
-                        </div>
+                        <TabLoadingIndicator label={t('consult.loadingRecords')} className="py-20" />
                     ) : sessions.length === 0 ? (
                         <div className="py-24 flex flex-col items-center text-center space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                             <div className="w-24 h-24 bg-secondary/5 dark:bg-secondary/10 rounded-full flex items-center justify-center mb-2">

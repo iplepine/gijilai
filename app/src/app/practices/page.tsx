@@ -21,6 +21,7 @@ import {
 } from "@/lib/db";
 import { Button } from "@/components/ui/Button";
 import { Navbar } from "@/components/layout/Navbar";
+import { TabLoadingIndicator } from "@/components/ui/TabLoadingIndicator";
 import {
   PracticeCheckModal,
   type ParentImpressionType,
@@ -152,11 +153,13 @@ function buildPracticeChangeUrl(sessionId: string, practiceId: string) {
 }
 
 function PracticesPageFallback() {
+  const { t } = useLocale();
+
   return (
     <div className="bg-background-light dark:bg-background-dark h-[100dvh] min-h-[100dvh] overflow-hidden flex flex-col items-center font-body">
       <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-0 flex flex-col shadow-2xl overflow-hidden relative">
         <main className="flex min-h-0 flex-1 items-center justify-center">
-          <span className="h-10 w-10 animate-spin rounded-full border-4 border-primary/10 border-t-primary" />
+          <TabLoadingIndicator ariaLabel={t("common.loading")} />
         </main>
       </div>
     </div>
@@ -977,12 +980,10 @@ function PracticesPageContent() {
           )}
 
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-50">
-              <span className="w-10 h-10 border-4 border-primary/10 border-t-primary rounded-full animate-spin" />
-              <p className="text-sm font-medium text-text-sub">
-                {t("practices.loadingRecords")}
-              </p>
-            </div>
+            <TabLoadingIndicator
+              label={t("practices.loadingRecords")}
+              className="py-20"
+            />
           ) : grouped.length === 0 ? (
             <div className="py-24 flex flex-col items-center text-center space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
               <div className="w-24 h-24 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-full flex items-center justify-center mb-2">

@@ -1,8 +1,9 @@
 'use client';
 
 import Image from 'next/image';
+import { LoadingSpinner } from '@/components/ui/TabLoadingIndicator';
 
-type ProgressStyle = 'bar' | 'dots' | 'none';
+type ProgressStyle = 'bar' | 'dots' | 'spinner' | 'none';
 type LoadingSize = 'regular' | 'compact';
 
 interface TemperamentLoadingStateProps {
@@ -117,6 +118,8 @@ export function TemperamentLoadingState({
           </div>
         </div>
       )}
+
+      {progressStyle === 'spinner' && <LoadingSpinner />}
 
       {progressStyle === 'dots' && (
         <div className="flex items-center justify-center gap-1.5" aria-hidden="true">

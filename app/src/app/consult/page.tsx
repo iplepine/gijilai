@@ -7,6 +7,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { useAppStore } from '@/store/useAppStore';
 import { Button } from '@/components/ui/Button';
 import { MedicalDisclaimer } from '@/components/ui/MedicalDisclaimer';
+import { TabLoadingIndicator } from '@/components/ui/TabLoadingIndicator';
 import { TemperamentLoadingState } from '@/components/ui/TemperamentLoadingState';
 import { VoiceInputButton } from '@/components/ui/VoiceInputButton';
 import { Navbar } from '@/components/layout/Navbar';
@@ -833,9 +834,7 @@ function ConsultContent() {
 
                 <main className="app-fixed-cta-scroll w-full max-w-md flex flex-col flex-1 min-h-0 overflow-y-auto no-scrollbar p-6">
                     {step === 'INPUT' && childLoading && (
-                        <div className="flex flex-col items-center justify-center flex-1">
-                            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                        </div>
+                        <TabLoadingIndicator ariaLabel={t('common.loading')} className="flex-1" />
                     )}
 
                     {step === 'INPUT' && !childLoading && !validChildId && (
@@ -1495,6 +1494,7 @@ function ConsultContent() {
                                 imageSrc={childProfile?.image}
                                 imageAlt={childProfile?.label || t('common.defaultTemperamentImageAlt')}
                                 typeLabel={childProfile?.label}
+                                progressStyle="spinner"
                             />
 
                             {problemDesc && (

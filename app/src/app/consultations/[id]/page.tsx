@@ -7,6 +7,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { db, SessionData, ChildProfile } from '@/lib/db';
 import BottomNav from '@/components/layout/BottomNav';
 import { Navbar } from '@/components/layout/Navbar';
+import { TabLoadingIndicator } from '@/components/ui/TabLoadingIndicator';
 import { useLocale } from '@/i18n/LocaleProvider';
 import type { Database } from '@/types/supabase';
 
@@ -150,10 +151,7 @@ export default function ConsultationDetailPage() {
 
                 <main className="app-bottom-nav-scroll w-full max-w-md p-6 flex-1">
                     {isLoading ? (
-                        <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-50">
-                            <span className="w-10 h-10 border-4 border-primary/10 border-t-primary rounded-full animate-spin" />
-                            <p className="text-sm font-medium text-text-sub">{t('consult.loadingRecords')}</p>
-                        </div>
+                        <TabLoadingIndicator label={t('consult.loadingRecords')} className="py-20" />
                     ) : !session ? (
                         <div className="py-24 flex flex-col items-center text-center space-y-6">
                             <p className="font-bold text-slate-800 dark:text-white">{t('consult.notFound')}</p>
