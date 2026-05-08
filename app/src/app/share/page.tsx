@@ -110,6 +110,11 @@ async function ensureKakaoReady() {
   return kakao;
 }
 
+function logShareDebug(event: string, details: Record<string, unknown>) {
+  if (typeof window === 'undefined') return;
+  console.info(`[share-debug] ${event}`, details);
+}
+
 function SharePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -311,6 +316,16 @@ function SharePageContent() {
   const handleKakaoShare = async () => {
     const shareUrl = getReportShareUrl();
     if (!shareUrl) {
+      logShareDebug('kakao_missing_report_url', {
+        reportId,
+        resolvedReportId,
+        isResolvingReportId,
+        isReportLoading,
+        hasReport: !!report,
+        origin: window.location.origin,
+        href: window.location.href,
+        userAgent: navigator.userAgent,
+      });
       setShareError(t('share.reportUnavailable'));
       trackEvent('share_action_failed', getShareAnalyticsParams('kakao', {
         reason: 'missing_report_id',
@@ -320,32 +335,49 @@ function SharePageContent() {
 
     const tryTestUrl = getTryTestUrl();
     const shareDescription = shareInfo?.textParts.slice(1).join('\n\n').slice(0, 200) || t('share.kakaoDesc');
+    const kakaoPayload = {
+      objectType: 'feed' as const,
+      content: {
+        title: `${shareInfo?.headline || childName} "${shareInfo?.label || t('share.childFallbackLabel')}"`,
+        description: shareDescription,
+        imageUrl: `https://gijilai.com${shareInfo?.image || '/child_type/type_lhl.jpg'}`,
+        link: {
+          mobileWebUrl: shareUrl,
+          webUrl: shareUrl,
+        },
+      },
+      buttons: [
+        {
+          title: t('share.tryTest'),
+          link: {
+            mobileWebUrl: tryTestUrl,
+            webUrl: tryTestUrl,
+          },
+        },
+      ],
+    };
+
+    logShareDebug('kakao_payload', {
+      reportId,
+      resolvedReportId,
+      shareUrl,
+      tryTestUrl,
+      contentLink: kakaoPayload.content.link,
+      buttonLink: kakaoPayload.buttons[0]?.link,
+      isResolvingReportId,
+      isReportLoading,
+      hasReport: !!report,
+      shareInfoType: shareInfo?.type,
+      origin: window.location.origin,
+      href: window.location.href,
+      userAgent: navigator.userAgent,
+    });
 
     setIsKakaoSharing(true);
     setShareError(null);
     try {
       const kakao = await ensureKakaoReady();
-      kakao.Share.sendDefault({
-        objectType: 'feed',
-        content: {
-          title: `${shareInfo?.headline || childName} "${shareInfo?.label || t('share.childFallbackLabel')}"`,
-          description: shareDescription,
-          imageUrl: `https://gijilai.com${shareInfo?.image || '/child_type/type_lhl.jpg'}`,
-          link: {
-            mobileWebUrl: shareUrl,
-            webUrl: shareUrl,
-          },
-        },
-        buttons: [
-          {
-            title: t('share.tryTest'),
-            link: {
-              mobileWebUrl: tryTestUrl,
-              webUrl: tryTestUrl,
-            },
-          },
-        ],
-      });
+      kakao.Share.sendDefault(kakaoPayload);
       trackEvent('share_action_completed', getShareAnalyticsParams('kakao'));
     } catch (error) {
       console.error('Kakao share failed:', error);
