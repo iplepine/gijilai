@@ -115,10 +115,6 @@ function logShareDebug(event: string, details: Record<string, unknown>) {
   console.info(`[share-debug] ${event}`, details);
 }
 
-function buildKakaoExecutionParams(path: string) {
-  return new URLSearchParams({ path }).toString();
-}
-
 type NavigatorWithUserAgentData = Navigator & {
   userAgentData?: {
     mobile?: boolean;
@@ -354,19 +350,6 @@ function SharePageContent() {
     return `${window.location.origin}/shared/${resolvedReportId}`;
   };
 
-  const getReportSharePath = () => {
-    if (!resolvedReportId) return null;
-    return `/shared/${resolvedReportId}`;
-  };
-
-  const getTryTestPath = () => {
-    return '/survey/intro?source=share&entry_cta=kakao_try_test';
-  };
-
-  const getTryTestUrl = () => {
-    return `${window.location.origin}${getTryTestPath()}`;
-  };
-
   const getShareAnalyticsParams = (channel: string, extra: Record<string, string | number | boolean | undefined> = {}) => ({
     channel,
     source: entrySource,
@@ -414,19 +397,6 @@ function SharePageContent() {
       return;
     }
 
-    const sharePath = getReportSharePath();
-    if (!sharePath) {
-      setShareError(t('share.reportUnavailable'));
-      trackEvent('share_action_failed', getShareAnalyticsParams('kakao', {
-        reason: 'missing_report_path',
-      }));
-      return;
-    }
-
-    const tryTestUrl = getTryTestUrl();
-    const tryTestPath = getTryTestPath();
-    const reportExecutionParams = buildKakaoExecutionParams(sharePath);
-    const tryTestExecutionParams = buildKakaoExecutionParams(tryTestPath);
     const shareDescription = shareInfo?.textParts.slice(1).join('\n\n').slice(0, 200) || t('share.kakaoDesc');
     const kakaoPayload = {
       objectType: 'feed' as const,
@@ -437,18 +407,14 @@ function SharePageContent() {
         link: {
           mobileWebUrl: shareUrl,
           webUrl: shareUrl,
-          androidExecutionParams: reportExecutionParams,
-          iosExecutionParams: reportExecutionParams,
         },
       },
       buttons: [
         {
-          title: t('share.tryTest'),
+          title: t('share.viewFullReport'),
           link: {
-            mobileWebUrl: tryTestUrl,
-            webUrl: tryTestUrl,
-            androidExecutionParams: tryTestExecutionParams,
-            iosExecutionParams: tryTestExecutionParams,
+            mobileWebUrl: shareUrl,
+            webUrl: shareUrl,
           },
         },
       ],
@@ -458,13 +424,8 @@ function SharePageContent() {
       reportId,
       resolvedReportId,
       shareUrl,
-      sharePath,
-      tryTestUrl,
-      tryTestPath,
       contentLink: kakaoPayload.content.link,
       buttonLink: kakaoPayload.buttons[0]?.link,
-      reportExecutionParams,
-      tryTestExecutionParams,
       isResolvingReportId,
       isReportLoading,
       hasReport: !!report,
@@ -488,10 +449,8 @@ function SharePageContent() {
         description: kakaoPayload.content.description,
         imageUrl: kakaoPayload.content.imageUrl,
         shareUrl,
-        sharePath,
-        buttonTitle: t('share.tryTest'),
-        buttonUrl: tryTestUrl,
-        buttonPath: tryTestPath,
+        buttonTitle: t('share.viewFullReport'),
+        buttonUrl: shareUrl,
       }));
       trackEvent('share_action_completed', getShareAnalyticsParams('kakao_native_bridge'));
       return;

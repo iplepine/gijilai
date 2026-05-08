@@ -31,6 +31,7 @@
 - 각 탭의 공유 버튼은 현재 탭에 대응하는 최신 리포트 ID를 `/share?id={reportId}`로 전달한다.
 - 아이 기질 탭은 `CHILD`, 양육자 분석 탭은 `PARENT`, 기질 맞춤 양육 탭은 `HARMONY` 리포트를 공유한다.
 - `/share`의 카카오톡/링크/다른 앱 공유 문구와 `/shared/[id]` 공개 화면은 리포트 타입별 제목, 이미지, 요약 문구를 사용한다.
+- 카카오톡 공유 카드의 본문 링크와 버튼 링크는 모두 공유 리포트 URL(`/shared/{id}`)로 보낸다. 버튼 문구는 검사 유도형이 아니라 `자세히 보기`로 둔다.
 - PC 웹에서는 Kakao JS SDK의 PC 웹 공유 흐름을 사용한다. PC Chrome DevTools 모바일 에뮬레이션처럼 데스크톱 런타임에서 모바일 User-Agent를 쓰는 환경은 Android/iOS 앱 intent가 실패하므로 링크 복사 fallback을 사용한다.
 
 ### 접근 권한

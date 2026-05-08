@@ -2743,12 +2743,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           data['imageUrl']?.toString() ??
           'https://gijilai.com/gijilai_icon_kakao.png';
       final shareUrl = data['shareUrl']?.toString() ?? '';
-      final sharePath = data['sharePath']?.toString() ?? '/';
-      final buttonTitle = data['buttonTitle']?.toString() ?? '나도 검사해보기';
-      final buttonUrl =
-          data['buttonUrl']?.toString() ??
-          '${Uri.parse(MainWebView.targetUrl).origin}/survey/intro';
-      final buttonPath = data['buttonPath']?.toString() ?? '/survey/intro';
+      final buttonTitle = data['buttonTitle']?.toString() ?? '자세히 보기';
+      final buttonUrl = data['buttonUrl']?.toString() ?? shareUrl;
 
       if (shareUrl.isEmpty) {
         throw Exception('Missing Kakao share URL');
@@ -2762,8 +2758,6 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           link: kakao_share.Link(
             webUrl: Uri.parse(shareUrl),
             mobileWebUrl: Uri.parse(shareUrl),
-            androidExecutionParams: {'path': sharePath},
-            iosExecutionParams: {'path': sharePath},
           ),
         ),
         buttons: [
@@ -2772,8 +2766,6 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
             link: kakao_share.Link(
               webUrl: Uri.parse(buttonUrl),
               mobileWebUrl: Uri.parse(buttonUrl),
-              androidExecutionParams: {'path': buttonPath},
-              iosExecutionParams: {'path': buttonPath},
             ),
           ),
         ],

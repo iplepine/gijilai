@@ -67,7 +67,7 @@
 - 모든 헤더는 absolute positioning으로 타이틀 중앙 정렬
 - 노치/상태표시줄 대응을 위한 상단 여백 통일 (pt-12, pb-4)
 - Flutter 앱 WebView의 루트(`/`) 진입 시 로그인 세션이 없으면 웹 랜딩 화면을 먼저 보여준다. 로그인 세션이 있으면 홈을 그대로 렌더링한다.
-- 공유 메시지의 `나도 검사해보기` CTA가 도달하는 `/survey/intro`는 공개 진입점으로 둔다. 실제 검사 시작 라우트(`/survey?flow=...`)부터 로그인이 필요하면 `/login?redirect=...`로 보내며, 이때 query string을 보존한다.
+- 공유 메시지의 기본 도착지는 공유 리포트 공개 화면(`/shared/{id}`)이다. `/survey/intro`는 공유 리포트 화면 내부의 검사 시작 CTA 같은 공개 진입점으로 둔다. 실제 검사 시작 라우트(`/survey?flow=...`)부터 로그인이 필요하면 `/login?redirect=...`로 보내며, 이때 query string을 보존한다.
 - 앱 로그인은 랜딩 CTA 이후 `/login`에서 네이티브 로그인 화면 오버레이로 시작한다.
 - 앱 설치 유도 화면(`/install-app`)과 앱 설치/다운로드 CTA는 웹 브라우저 전용이다. 네이티브 앱 WebView에서는 렌더링하지 않고, `/install-app`이 앱 안에서 열리면 `from` 값에 따라 `/pricing`, `/payment`, 또는 홈으로 되돌린다.
 - PC 웹의 `/install-app`은 OS를 직접 선택하게 하는 화면이 아니라 QR 코드와 설치 링크 복사로 휴대폰에서 이어가게 한다. 모바일 웹의 `/install-app`은 `gijilai://open?path=...` 딥링크를 먼저 시도하고, 앱이 열리지 않으면 iOS는 App Store, Android는 Google Play로 이동한다.
