@@ -111,6 +111,7 @@ type ReportLoadingSection<Key extends string = string> = {
 type ReanalysisTarget = 'child' | 'parent' | 'harmony';
 type SurveyReanalysisTarget = Exclude<ReanalysisTarget, 'harmony'>;
 type HarmonyRefreshSource = 'child' | 'parent' | null;
+type ExistingReportLoadingType = 'CHILD' | 'PARENT' | 'HARMONY' | null;
 const PARENT_REPORT_MODULE_REVEAL_DELAY_MS = 280;
 
 function getHarmonyRefreshSource(refreshParam: string | null): HarmonyRefreshSource {
@@ -309,6 +310,7 @@ function ReportContent() {
   const [parentAiReport, setParentAiReport] = useState<ParentAiReport | null>(null);
   const [harmonyAiReport, setHarmonyAiReport] = useState<HarmonyAiReport | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [existingReportLoadingType, setExistingReportLoadingType] = useState<ExistingReportLoadingType>(null);
   const [isRestartDialogOpen, setIsRestartDialogOpen] = useState(false);
   const [restartTarget, setRestartTarget] = useState<ReanalysisTarget>('child');
   const [isStartingFreshSurvey, setIsStartingFreshSurvey] = useState(false);
@@ -332,10 +334,11 @@ function ReportContent() {
   const [isDashboardContextLoaded, setIsDashboardContextLoaded] = useState(false);
   const [isSavedReportLoaded, setIsSavedReportLoaded] = useState(false);
   const reportId = searchParams.get('id');
+  const isSavedReportContextLoading = !!user && !!reportId && !isSavedReportLoaded;
   const isReportContextLoading =
     authLoading
     || (!!user && !reportId && !isDashboardContextLoaded)
-    || (!!user && !!reportId && !isSavedReportLoaded);
+    || isSavedReportContextLoading;
   const canUseReportContext = !isReportContextLoading;
 
   useEffect(() => {
@@ -490,7 +493,7 @@ function ReportContent() {
   }, [locale]);
 
   useEffect(() => {
-    if (!isGenerating) {
+    if (!isGenerating || existingReportLoadingType) {
       setReportLoadingStep(0);
       return;
     }
@@ -500,7 +503,7 @@ function ReportContent() {
     }, 3000);
 
     return () => window.clearInterval(interval);
-  }, [isGenerating]);
+  }, [existingReportLoadingType, isGenerating]);
 
   const childLoadingSteps = useMemo(() => [
     t('report.childLoadingStep1'),
@@ -548,6 +551,23 @@ function ReportContent() {
       </div>
     );
   };
+
+  const ExistingReportLoadingProgress = ({ className = '' }: { className?: string }) => (
+    <div
+      role="status"
+      aria-live="polite"
+      className={`flex w-full items-center justify-center px-6 py-14 ${className}`}
+    >
+      <span className="sr-only">{t('common.loading')}</span>
+      <div
+        role="progressbar"
+        aria-label={t('common.loading')}
+        className="h-1.5 w-44 overflow-hidden rounded-full bg-primary/10 dark:bg-white/10"
+      >
+        <div className="h-full rounded-full bg-gradient-to-r from-primary to-secondary animate-progress" />
+      </div>
+    </div>
+  );
 
   const SectionLoadingCard = ({
     icon,
@@ -656,7 +676,7 @@ function ReportContent() {
 
   const loadSavedReport = useCallback(async (id: string) => {
     setIsSavedReportLoaded(false);
-    setIsGenerating(true);
+    setExistingReportLoadingType(null);
     try {
       const { data, error } = await supabase
         .from('reports')
@@ -714,8 +734,8 @@ function ReportContent() {
       console.error('Failed to load report:', e);
       alert(t('report.loadingError'));
     } finally {
-      setIsGenerating(false);
       setIsSavedReportLoaded(true);
+      setExistingReportLoadingType(null);
     }
   }, [normalizeReportTextForName, t]);
 
@@ -1291,8 +1311,10 @@ function ReportContent() {
     const previousChildReport = childAiReport;
     const previousChildReportDate = reportDates.child;
     const previousChildReportId = childReportId;
+    const isLoadingExistingReport = !refresh && !!currentChildReport?.id;
     generatingRef.current.add('CHILD');
     setIsGenerating(true);
+    if (isLoadingExistingReport) setExistingReportLoadingType('CHILD');
     try {
       const answers = Object.entries(childAnswerMap).map(([id, score]) => ({ questionId: id, score: score as number }));
       setReportDates(prev => {
@@ -1339,15 +1361,20 @@ function ReportContent() {
     } finally {
       generatingRef.current.delete('CHILD');
       setIsGenerating(generatingRef.current.size > 0);
+      if (isLoadingExistingReport) {
+        setExistingReportLoadingType(current => current === 'CHILD' ? null : current);
+      }
     }
-  }, [childAiReport, childAnswerMap, childName, childReportId, childScores, childType.desc, childType.keywords, childType.label, fetchChildReportStream, normalizeReportTextForName, reportDates.child, t]);
+  }, [childAiReport, childAnswerMap, childName, childReportId, childScores, childType.desc, childType.keywords, childType.label, currentChildReport?.id, fetchChildReportStream, normalizeReportTextForName, reportDates.child, t]);
 
   const generateParentAIReport = useCallback(async (refresh = false) => {
     if (generatingRef.current.has('PARENT')) return;
     const previousParentReport = parentAiReport;
     const previousParentReportDate = reportDates.parent;
+    const isLoadingExistingReport = !refresh && !!currentParentReport?.id;
     generatingRef.current.add('PARENT');
     setIsGenerating(true);
+    if (isLoadingExistingReport) setExistingReportLoadingType('PARENT');
     try {
       const answers = Object.entries(parentAnswerMap).map(([id, score]) => ({ questionId: id, score: score as number }));
       setReportDates(prev => {
@@ -1390,13 +1417,18 @@ function ReportContent() {
     } finally {
       generatingRef.current.delete('PARENT');
       setIsGenerating(generatingRef.current.size > 0);
+      if (isLoadingExistingReport) {
+        setExistingReportLoadingType(current => current === 'PARENT' ? null : current);
+      }
     }
-  }, [fetchParentReportStream, parentAiReport, parentAnswerMap, parentScores, parentType.keywords, parentType.label, reportDates.parent, t]);
+  }, [currentParentReport?.id, fetchParentReportStream, parentAiReport, parentAnswerMap, parentScores, parentType.keywords, parentType.label, reportDates.parent, t]);
 
   const generateHarmonyAIReport = useCallback(async (refresh = false) => {
     if (generatingRef.current.has('HARMONY')) return;
+    const isLoadingExistingReport = !refresh && !!currentHarmonyReport?.id;
     generatingRef.current.add('HARMONY');
     setIsGenerating(true);
+    if (isLoadingExistingReport) setExistingReportLoadingType('HARMONY');
     try {
       const answers = [
         ...Object.entries(childAnswerMap),
@@ -1423,9 +1455,12 @@ function ReportContent() {
     } finally {
       generatingRef.current.delete('HARMONY');
       setIsGenerating(generatingRef.current.size > 0);
+      if (isLoadingExistingReport) {
+        setExistingReportLoadingType(current => current === 'HARMONY' ? null : current);
+      }
     }
     return false;
-  }, [childAnswerMap, childName, childScores, childType.keywords, childType.label, fetchReport, normalizeReportTextForName, parentAnswerMap, parentScores, parentType.keywords, parentType.label, parentingResponses, styleScores, t]);
+  }, [childAnswerMap, childName, childScores, childType.keywords, childType.label, currentHarmonyReport?.id, fetchReport, normalizeReportTextForName, parentAnswerMap, parentScores, parentType.keywords, parentType.label, parentingResponses, styleScores, t]);
 
   const handleHarmonyRefresh = useCallback(async () => {
     if (!isStyleSurveyComplete) {
@@ -1810,13 +1845,32 @@ function ReportContent() {
       easing: 'easeInOutQuad' as const,
     }
   };
+  const activeReportLoadingType =
+    activeTab === 'child' ? 'CHILD' : activeTab === 'parent' ? 'PARENT' : 'HARMONY';
+  const isExistingReportLoadingForActiveTab = existingReportLoadingType === activeReportLoadingType;
 
   if (isReportContextLoading) {
     return (
       <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center justify-center font-body">
         <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl items-center justify-center gap-4">
-          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm font-bold text-text-sub dark:text-slate-400">{t('common.loading')}</p>
+          {isSavedReportContextLoading ? (
+            <ExistingReportLoadingProgress className="min-h-screen py-0" />
+          ) : (
+            <>
+              <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+              <p className="text-sm font-bold text-text-sub dark:text-slate-400">{t('common.loading')}</p>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (isExistingReportLoadingForActiveTab) {
+    return (
+      <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center justify-center font-body">
+        <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl items-center justify-center">
+          <ExistingReportLoadingProgress className="min-h-screen py-0" />
         </div>
       </div>
     );
