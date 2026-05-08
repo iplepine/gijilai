@@ -120,10 +120,12 @@ export default function SharedReportPage() {
   if (error || !report || !summary || !analysis) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background-light dark:bg-background-dark px-6">
-        <div className="text-center space-y-4">
-          <p className="text-5xl">{'\uD83D\uDE22'}</p>
-          <p className="text-text-main dark:text-white font-bold text-lg">{error || t('shared.reportNotFound')}</p>
-          <Button variant="primary" onClick={() => router.push('/')}>{t('common.goHome')}</Button>
+        <div className="w-full max-w-md min-h-screen flex items-center justify-center">
+          <div className="w-full text-center space-y-4">
+            <p className="text-5xl">{'\uD83D\uDE22'}</p>
+            <p className="text-text-main dark:text-white font-bold text-lg">{error || t('shared.reportNotFound')}</p>
+            <Button variant="primary" onClick={() => router.push('/')}>{t('common.goHome')}</Button>
+          </div>
         </div>
       </div>
     );
