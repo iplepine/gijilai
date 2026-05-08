@@ -149,9 +149,15 @@ function SharePageContent() {
         return;
       }
 
+      if (!user?.id) {
+        setResolvedReportId(null);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('reports')
         .select('id')
+        .eq('user_id', user.id)
         .in('type', ['CHILD', 'PARENT', 'HARMONY'])
         .order('created_at', { ascending: false })
         .limit(1)
@@ -171,7 +177,7 @@ function SharePageContent() {
     return () => {
       isActive = false;
     };
-  }, [reportId]);
+  }, [reportId, user?.id]);
 
   // Load the exact shared report row when reportId is resolved.
   useEffect(() => {
