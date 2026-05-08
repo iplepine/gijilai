@@ -119,6 +119,54 @@ function buildKakaoExecutionParams(path: string) {
   return new URLSearchParams({ path }).toString();
 }
 
+type NavigatorWithUserAgentData = Navigator & {
+  userAgentData?: {
+    mobile?: boolean;
+    platform?: string;
+  };
+};
+
+function getNavigatorPlatformValues() {
+  if (typeof navigator === 'undefined') return [];
+
+  const nav = navigator as NavigatorWithUserAgentData;
+  return [nav.userAgentData?.platform, navigator.platform]
+    .filter((value): value is string => !!value)
+    .map((value) => value.toLowerCase());
+}
+
+function isIpadOsRuntime() {
+  if (typeof navigator === 'undefined') return false;
+
+  const maxTouchPoints = navigator.maxTouchPoints ?? 0;
+  const userAgent = navigator.userAgent;
+  const hasMacPlatform = getNavigatorPlatformValues().some((platform) =>
+    platform.includes('mac'),
+  );
+
+  return hasMacPlatform && maxTouchPoints > 1 && /Macintosh|Mac OS/i.test(userAgent);
+}
+
+function isLikelyDesktopRuntime() {
+  if (typeof navigator === 'undefined') return false;
+  if (isIpadOsRuntime()) return false;
+
+  const hasDesktopPlatform = getNavigatorPlatformValues().some((platform) =>
+    platform.includes('win') ||
+    platform.includes('mac') ||
+    platform.includes('linux x86') ||
+    platform.includes('x86_64') ||
+    platform.includes('x64'),
+  );
+
+  if (hasDesktopPlatform) return true;
+  if (typeof window === 'undefined') return false;
+
+  return window.outerWidth > 0 &&
+    window.innerWidth > 0 &&
+    window.outerWidth - window.innerWidth > 320;
+}
+
 function SharePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -152,7 +200,9 @@ function SharePageContent() {
 
   const isMobileOrApp = () => {
     if (typeof navigator === 'undefined') return false;
-    return /gijilai_app|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (/gijilai_app/i.test(navigator.userAgent)) return true;
+    if (isLikelyDesktopRuntime()) return false;
+    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || isIpadOsRuntime();
   };
 
   // Resolve report id so that sharing from /share (without id) still links to a public report.
@@ -411,6 +461,11 @@ function SharePageContent() {
       origin: window.location.origin,
       href: window.location.href,
       userAgent: navigator.userAgent,
+      userAgentDataPlatform: (navigator as NavigatorWithUserAgentData).userAgentData?.platform,
+      browserPlatform: navigator.platform,
+      maxTouchPoints: navigator.maxTouchPoints,
+      isLikelyDesktopRuntime: isLikelyDesktopRuntime(),
+      isMobileOrApp: isMobileOrApp(),
     });
 
     const kakaoBridge = getNativeKakaoShareBridge();
