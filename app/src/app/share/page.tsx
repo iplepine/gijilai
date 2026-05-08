@@ -233,8 +233,6 @@ function SharePageContent() {
 
   const childName = report?.child?.name || intake.childName || t('share.defaultChildName');
 
-  const referralCode = 'GIJILAI-' + (user?.id?.substring(0, 8) || 'FRIEND');
-
   // Preload Kakao so the first tap does not race the async SDK script.
   useEffect(() => {
     ensureKakaoReady().catch((error) => {
@@ -274,9 +272,13 @@ function SharePageContent() {
     });
   })();
 
-  const getShareUrl = () => {
-    if (resolvedReportId) return `${window.location.origin}/shared/${resolvedReportId}`;
-    return `${window.location.origin}?ref=${referralCode}`;
+  const getReportShareUrl = () => {
+    if (!resolvedReportId) return null;
+    return `${window.location.origin}/shared/${resolvedReportId}`;
+  };
+
+  const getTryTestUrl = () => {
+    return `${window.location.origin}/survey/intro?source=share&entry_cta=kakao_try_test`;
   };
 
   const getShareAnalyticsParams = (channel: string, extra: Record<string, string | number | boolean | undefined> = {}) => ({
@@ -288,10 +290,14 @@ function SharePageContent() {
     ...extra,
   });
 
-  const isShareActionDisabled = isResolvingReportId || isReportLoading;
+  const isShareUnavailable = !isResolvingReportId && !isReportLoading && !resolvedReportId;
+  const isShareActionDisabled = isResolvingReportId || isReportLoading || isShareUnavailable;
 
   const copyShareUrl = async () => {
-    await navigator.clipboard.writeText(getShareUrl());
+    const shareUrl = getReportShareUrl();
+    if (!shareUrl) throw new Error('Report share URL is unavailable');
+
+    await navigator.clipboard.writeText(shareUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -303,7 +309,16 @@ function SharePageContent() {
   };
 
   const handleKakaoShare = async () => {
-    const shareUrl = getShareUrl();
+    const shareUrl = getReportShareUrl();
+    if (!shareUrl) {
+      setShareError(t('share.reportUnavailable'));
+      trackEvent('share_action_failed', getShareAnalyticsParams('kakao', {
+        reason: 'missing_report_id',
+      }));
+      return;
+    }
+
+    const tryTestUrl = getTryTestUrl();
     const shareDescription = shareInfo?.textParts.slice(1).join('\n\n').slice(0, 200) || t('share.kakaoDesc');
 
     setIsKakaoSharing(true);
@@ -325,8 +340,8 @@ function SharePageContent() {
           {
             title: t('share.tryTest'),
             link: {
-              mobileWebUrl: shareUrl,
-              webUrl: shareUrl,
+              mobileWebUrl: tryTestUrl,
+              webUrl: tryTestUrl,
             },
           },
         ],
@@ -355,7 +370,15 @@ function SharePageContent() {
   };
 
   const handleNativeShare = async () => {
-    const shareUrl = getShareUrl();
+    const shareUrl = getReportShareUrl();
+    if (!shareUrl) {
+      setShareError(t('share.reportUnavailable'));
+      trackEvent('share_action_failed', getShareAnalyticsParams('web_share', {
+        reason: 'missing_report_id',
+      }));
+      return;
+    }
+
     const sharePayload = {
       title: shareInfo?.title || `${childName}${t('share.resultTitle')}`,
       text: buildCompactShareText({
@@ -442,7 +465,7 @@ function SharePageContent() {
               className="w-full h-14 rounded-2xl flex items-center justify-center gap-2 text-[15px] font-bold bg-[#FEE500] hover:bg-[#FADA0A] text-[#191919] active:scale-[0.98] transition-all"
             >
               <svg width="20" height="20" viewBox="0 0 256 256"><path d="M128 36C70.6 36 24 72.4 24 116.8c0 28.9 19.2 54.2 48.1 68.6l-9.8 36.2c-.8 2.9 2.6 5.2 5.1 3.5l42.5-28.4c5.9.8 12 1.3 18.1 1.3 57.4 0 104-36.4 104-80.8S185.4 36 128 36z" fill="#191919"/></svg>
-              {isShareActionDisabled ? t('share.preparingShare') : isKakaoSharing ? t('share.shareKakaoLoading') : t('share.shareKakao')}
+              {isShareUnavailable ? t('share.reportUnavailableShort') : isShareActionDisabled ? t('share.preparingShare') : isKakaoSharing ? t('share.shareKakaoLoading') : t('share.shareKakao')}
             </button>
             {shareError && (
               <p className="text-xs font-medium leading-relaxed text-red-500 dark:text-red-300 px-1">

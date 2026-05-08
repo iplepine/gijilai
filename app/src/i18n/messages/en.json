@@ -910,6 +910,8 @@
     "shareKakao": "Share via KakaoTalk",
     "shareKakaoLoading": "Opening KakaoTalk...",
     "preparingShare": "Preparing share...",
+    "reportUnavailable": "We could not find a report to share. Please try again from the report screen.",
+    "reportUnavailableShort": "No report",
     "copied": "Copied!",
     "copyLink": "Copy link",
     "otherApps": "Other apps",
