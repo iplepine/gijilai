@@ -96,18 +96,18 @@
 - Next.js 클라이언트 라우팅으로 `/login`에 도달하는 경우도 `RouteBridge`가 `history.pushState/replaceState/popstate`를 감지해 네이티브 로그인 오버레이 상태를 동기화한다.
 - 네이티브 로그인 화면과 이메일 로그인 화면은 로그인 전에도 `기질아이 알아보기`, `개인정보처리방침`, `이용약관` 링크를 제공한다. 링크를 누르면 WebView의 `/legal/about`, `/legal/privacy`, `/legal/terms` 공개 페이지를 앱 안에서 열고, 뒤로 가면 로그인 흐름으로 돌아온다.
 - 네이티브 로그인 화면은 iOS에서 카카오톡, Apple, Google, 이메일 진입점을 제공하고 Android에서 카카오톡, Google, 이메일 진입점을 제공한다. 사용자가 보는 로그인/회원가입 화면은 Flutter 네이티브 화면이어야 하며, 웹 `/login` 폼을 직접 노출하지 않는다.
-- 카카오 버튼은 iOS에서 Kakao Flutter SDK 앱투앱 로그인을 먼저 시도하고, 카카오톡이 설치되어 있지 않거나 앱투앱 로그인을 완료할 수 없으면 Kakao SDK의 카카오계정 로그인으로 전환한다. Kakao ID 토큰을 받으면 `/auth/native-session`으로 전달해 Supabase 세션 쿠키를 WebView에 설정한다. Android는 Play 서명/키 해시 불일치나 Kakao SDK Activity 설정 예외가 앱 크래시로 이어지지 않도록 Supabase Kakao OAuth URL을 Android Custom Tab으로 열고 `gijilai://auth/callback` 딥링크로 복귀한다.
+- 카카오 버튼은 iOS에서 Kakao Flutter SDK 앱투앱 로그인을 먼저 시도하고, 카카오톡이 설치되어 있지 않거나 앱투앱 로그인을 완료할 수 없으면 Kakao SDK의 카카오계정 로그인으로 전환한다. Android는 카카오톡 설치가 확인될 때만 버튼을 노출하고 KakaoTalk 앱투앱 로그인만 사용한다. Kakao ID 토큰을 받으면 `/auth/native-session`으로 전달해 Supabase 세션 쿠키를 WebView에 설정한다.
 - Apple은 iOS에서 `sign_in_with_apple` 네이티브 SDK를 우선 사용해 ID 토큰(+ nonce)을 받고 `/auth/native-session`으로 세션을 교환한다. Android는 Apple 네이티브 SDK가 없으므로 Supabase Apple OAuth URL을 Android Custom Tab으로 열고 `gijilai://auth/callback` 딥링크로 앱에 복귀한다.
-- Google은 iOS에서 `google_sign_in` 네이티브 SDK를 우선 사용해 ID 토큰을 받고 `/auth/native-session`으로 세션을 교환한다. Android는 Play Services SignIn Activity 설정/서명 예외가 앱 크래시로 이어지지 않도록 Supabase Google OAuth URL을 Android Custom Tab으로 열고 `gijilai://auth/callback` 딥링크로 앱에 복귀한다.
+- Google은 iOS와 Android에서 `google_sign_in` 네이티브 SDK를 우선 사용해 ID 토큰을 받고 `/auth/native-session`으로 세션을 교환한다. Android Google 로그인은 Google Cloud/Firebase에 등록된 앱 서명 SHA와 설치본 서명이 일치해야 하며, 실패 시 브라우저 OAuth로 대체하지 않고 앱 안에서 실패를 안내한다.
 - 이메일 로그인/회원가입은 Flutter 네이티브 폼에서 입력을 받고 WebView 내부의 `/auth/native-email` API를 호출해 Supabase 세션 쿠키만 설정한다.
-- `GOOGLE_WEB_CLIENT_ID` dart define은 Google 네이티브 로그인에서 ID token audience를 Supabase Google provider와 맞추는 값이다. 현재 앱은 이 값이 있을 때 Google 로그인 진입점을 노출하고, iOS에서만 이 값을 `serverClientId`로 주입해 네이티브 토큰 교환 capability를 광고한다.
-- Android와 iOS에서는 Supabase OAuth authorize URL, Google/Apple/Kakao OAuth 도메인, WebView `AuthBridge` OAuth URL을 기본적으로 외부 브라우저나 인앱 브라우저로 열지 않는다. WebView에서 소셜 OAuth URL이 발생하면 지원 가능한 네이티브 SDK 로그인으로 다시 라우팅하고, 네이티브 경로가 없으면 앱 안에서 실패를 안내한다. 단, Android의 Kakao/Apple/Google 로그인은 SDK/서명 설정 예외가 앱 크래시로 이어지는 것을 피하기 위해 Android Custom Tab handoff를 허용한다.
+- `GOOGLE_WEB_CLIENT_ID` dart define은 Google 네이티브 로그인에서 ID token audience를 Supabase Google provider와 맞추는 값이다. 현재 앱은 이 값이 있을 때 Google 로그인 진입점을 노출하고, iOS와 Android에서 이 값을 `serverClientId`로 주입해 네이티브 토큰 교환 capability를 광고한다.
+- Android와 iOS에서는 Supabase OAuth authorize URL, Google/Apple/Kakao OAuth 도메인, WebView `AuthBridge` OAuth URL을 기본적으로 외부 브라우저나 인앱 브라우저로 열지 않는다. WebView에서 소셜 OAuth URL이 발생하면 지원 가능한 네이티브 SDK 로그인으로 다시 라우팅하고, 네이티브 경로가 없으면 앱 안에서 실패를 안내한다. 단, Android Apple 로그인은 네이티브 SDK가 없으므로 Android Custom Tab handoff를 허용한다.
 - 앱 WebView의 웹 `/login` 화면은 네이티브 로그인 오버레이 뒤에서만 존재한다. 웹 소셜 로그인 버튼은 숨기고, 이메일 폼도 사용자가 보는 주 로그인 화면으로 쓰지 않는다.
 - iOS에서 OAuth 후 앱이 콜드 스타트되는 경우를 위해 `AppDelegate`는 `launchOptions`의 초기 URL을 `app_links`로 직접 브리지한다.
 - iOS `Info.plist`의 `FlutterDeepLinkingEnabled`는 `false`로 유지해 Flutter 기본 딥링크 처리와 `app_links`가 같은 커스텀 스킴을 중복 처리하지 않게 한다.
 - 기존 웹 `/login`의 `AuthBridge` 경로는 브라우저 fallback이 아니라 네이티브 로그인 재라우팅 안전장치로 유지한다.
 - 외부 OAuth 앱에서 사용자가 로그인하지 않고 앱으로 돌아와 딥링크 콜백이 없는 경우, 앱은 로그인 취소로 간주하고 네이티브 로그인 로딩 상태를 해제해 재시도할 수 있게 한다.
-- Apple/Google/Kakao OAuth 도메인으로 WebView가 직접 이동하려는 경우 앱/브라우저로 강제 전환하지 않고 네이티브 로그인 경로로 재라우팅하거나 차단한다. Android Kakao/Apple/Google OAuth는 예외적으로 Custom Tab handoff를 허용한다.
+- Apple/Google/Kakao OAuth 도메인으로 WebView가 직접 이동하려는 경우 앱/브라우저로 강제 전환하지 않고 네이티브 로그인 경로로 재라우팅하거나 차단한다. Android Apple OAuth만 예외적으로 Custom Tab handoff를 허용한다.
 - Supabase Auth Redirect URL allow list에는 `gijilai://auth/callback`을 반드시 포함한다.
 - Apple OAuth는 `name email` scope를 요청해 최초 가입 시 이름/이메일을 수신할 수 있게 한다.
 - OAuth 콜백 서버 라우트는 localhost 계열 host 헤더를 신뢰하지 않고 `NEXT_PUBLIC_APP_URL` 또는 `https://gijilai.com`으로 복귀시켜 앱 로그인 후 localhost로 이동하지 않게 한다.

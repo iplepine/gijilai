@@ -71,16 +71,12 @@ class NativeCapabilityRegistry {
   static const bool supportsHaptics = true;
   static bool get supportsVoiceInput => Platform.isAndroid;
   static bool get supportsKakaoLogin => Platform.isAndroid || Platform.isIOS;
-  static bool get supportsKakaoNativeAuth => Platform.isIOS;
+  static bool get supportsKakaoNativeAuth =>
+      Platform.isAndroid || Platform.isIOS;
   static bool get supportsAppleNativeAuth => Platform.isIOS;
   static bool get supportsGoogleLogin =>
       (Platform.isAndroid || Platform.isIOS) && _googleWebClientId.isNotEmpty;
-  static bool get supportsGoogleNativeAuth {
-    if (Platform.isIOS) {
-      return _googleWebClientId.isNotEmpty;
-    }
-    return false;
-  }
+  static bool get supportsGoogleNativeAuth => supportsGoogleLogin;
 
   static const Map<String, bool> supportedScreens = {
     'login': true,
@@ -279,7 +275,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   DateTime? _lastBackPressedAt;
   bool _showNativeLogin = false;
   bool _isWebEmailLoginVisible = false;
-  bool _canUseKakaoLogin = NativeCapabilityRegistry.supportsKakaoLogin;
+  bool _canUseKakaoLogin =
+      !Platform.isAndroid && NativeCapabilityRegistry.supportsKakaoLogin;
   bool _isNativeDialogVisible = false;
   bool _authInProgress = false;
   bool _externalAuthInProgress = false;
@@ -1501,8 +1498,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   }
 
   bool _usesAndroidOAuthBrowserAuth(String provider) {
-    return Platform.isAndroid &&
-        (provider == 'apple' || provider == 'kakao' || provider == 'google');
+    return Platform.isAndroid && provider == 'apple';
   }
 
   bool _isAuthCallbackUri(Uri uri) {
@@ -1581,15 +1577,22 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           : null,
       fragment: null,
     );
+    final isNativeLoginRoute = _isNativeLoginRoute(webUri);
 
-    await controller.loadRequest(webUri);
+    if (isNativeLoginRoute) {
+      _rememberLoginRedirect(webUri);
+      unawaited(_refreshNativeLoginAvailability());
+    }
     if (mounted) {
       setState(() {
-        _showNativeLogin = false;
+        _showNativeLogin = isNativeLoginRoute;
         _isWebEmailLoginVisible = false;
+        _isCompletingNativeAuth = false;
         _isWebPageLoading = true;
+        _webPageLoadProgress = 0;
       });
     }
+    await controller.loadRequest(webUri);
   }
 
   String? _safeInternalPath(String? rawPath) {
@@ -1933,11 +1936,6 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   }
 
   Future<void> _startKakaoLogin() async {
-    if (_usesAndroidOAuthBrowserAuth('kakao')) {
-      await _startNativeOAuth('kakao');
-      return;
-    }
-
     await _startKakaoNativeLogin();
   }
 
@@ -1960,12 +1958,30 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           token = await UserApi.instance.loginWithKakaoTalk(nonce: hashedNonce);
         } catch (e) {
           if (_isUserCancelledAuthError(e)) rethrow;
+          if (Platform.isAndroid) {
+            debugPrint(
+              'KakaoTalk login failed on Android; web fallback is disabled: $e',
+            );
+            await _finishNativeAuthFailure(
+              '카카오톡 로그인을 완료할 수 없습니다. 카카오톡에서 다시 시도해주세요',
+            );
+            return;
+          }
           debugPrint('KakaoTalk login failed; using Kakao account login: $e');
           token = await UserApi.instance.loginWithKakaoAccount(
             nonce: hashedNonce,
           );
         }
       } else {
+        if (Platform.isAndroid) {
+          debugPrint(
+            'KakaoTalk is not installed; Android fallback is disabled.',
+          );
+          await _finishNativeAuthFailure(
+            '카카오톡 앱에서 로그인할 수 있어요. 카카오톡 설치 후 다시 시도해주세요',
+          );
+          return;
+        }
         debugPrint('KakaoTalk is not installed; using Kakao account login.');
         token = await UserApi.instance.loginWithKakaoAccount(
           nonce: hashedNonce,
@@ -2196,11 +2212,6 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   }
 
   Future<void> _startGoogleLogin() async {
-    if (_usesAndroidOAuthBrowserAuth('google')) {
-      await _startNativeOAuth('google');
-      return;
-    }
-
     await _startGoogleNativeLogin();
   }
 
@@ -2491,7 +2502,15 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   }
 
   Future<void> _refreshNativeLoginAvailability() async {
-    final isAvailable = NativeCapabilityRegistry.supportsKakaoLogin;
+    var isAvailable = NativeCapabilityRegistry.supportsKakaoLogin;
+    if (Platform.isAndroid && isAvailable) {
+      try {
+        isAvailable = await isKakaoTalkInstalled();
+      } catch (e) {
+        debugPrint('Unable to check KakaoTalk availability: $e');
+        isAvailable = false;
+      }
+    }
     if (!mounted || _canUseKakaoLogin == isAvailable) return;
     setState(() {
       _canUseKakaoLogin = isAvailable;
