@@ -31,9 +31,16 @@ export default function BottomNav() {
                             className="app-bottom-nav-center relative -top-6 group w-20 flex justify-center"
                         >
                             <div className="w-14 h-14 rounded-full bg-primary text-white shadow-lg shadow-primary/20 flex items-center justify-center transform transition-transform group-hover:scale-105 active:scale-95 border-[4px] border-background-light dark:border-background-dark">
-                                <span className="material-symbols-outlined text-white text-[32px]">
-                                    {isActive ? 'chat_bubble' : 'add'}
-                                </span>
+                                {isActive ? (
+                                    <span className="material-symbols-outlined text-white text-[32px]">
+                                        chat_bubble
+                                    </span>
+                                ) : (
+                                    <span className="relative block size-7 text-white" aria-hidden="true">
+                                        <span className="absolute left-1/2 top-1/2 h-[3px] w-7 -translate-x-1/2 -translate-y-1/2 rounded-full bg-current" />
+                                        <span className="absolute left-1/2 top-1/2 h-7 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-current" />
+                                    </span>
+                                )}
                             </div>
                             <span className="app-bottom-nav-center-label absolute -bottom-[26px] text-[10px] font-bold text-primary">{item.label}</span>
                         </Link>
