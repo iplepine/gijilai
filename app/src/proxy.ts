@@ -14,8 +14,15 @@ const protectedRoutes = [
     '/payment',
 ];
 
+const publicRoutes = [
+    '/survey/intro',
+];
+
 export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
+
+    const isPublic = publicRoutes.some(route => pathname === route || pathname.startsWith(`${route}/`));
+    if (isPublic) return NextResponse.next();
 
     const isProtected = protectedRoutes.some(route => pathname.startsWith(route));
     if (!isProtected) return NextResponse.next();
@@ -46,7 +53,7 @@ export async function proxy(request: NextRequest) {
 
     if (!user) {
         const loginUrl = new URL('/login', request.url);
-        loginUrl.searchParams.set('redirect', pathname);
+        loginUrl.searchParams.set('redirect', `${pathname}${request.nextUrl.search}`);
         return NextResponse.redirect(loginUrl);
     }
 
