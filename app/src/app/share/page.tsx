@@ -167,6 +167,17 @@ function isLikelyDesktopRuntime() {
     window.outerWidth - window.innerWidth > 320;
 }
 
+function hasMobileKakaoUserAgent() {
+  if (typeof navigator === 'undefined') return false;
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || isIpadOsRuntime();
+}
+
+function isDesktopMobileEmulation() {
+  if (typeof navigator === 'undefined') return false;
+  if (/gijilai_app/i.test(navigator.userAgent)) return false;
+  return isLikelyDesktopRuntime() && hasMobileKakaoUserAgent();
+}
+
 function SharePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -202,7 +213,7 @@ function SharePageContent() {
     if (typeof navigator === 'undefined') return false;
     if (/gijilai_app/i.test(navigator.userAgent)) return true;
     if (isLikelyDesktopRuntime()) return false;
-    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || isIpadOsRuntime();
+    return hasMobileKakaoUserAgent();
   };
 
   // Resolve report id so that sharing from /share (without id) still links to a public report.
@@ -299,7 +310,7 @@ function SharePageContent() {
 
   // Preload Kakao so the first tap does not race the async SDK script.
   useEffect(() => {
-    if (!isMobileOrApp() && !getNativeKakaoShareBridge()) return;
+    if (isDesktopMobileEmulation() && !getNativeKakaoShareBridge()) return;
 
     ensureKakaoReady().catch((error) => {
       console.warn('Kakao SDK is not ready:', error);
@@ -465,6 +476,7 @@ function SharePageContent() {
       browserPlatform: navigator.platform,
       maxTouchPoints: navigator.maxTouchPoints,
       isLikelyDesktopRuntime: isLikelyDesktopRuntime(),
+      isDesktopMobileEmulation: isDesktopMobileEmulation(),
       isMobileOrApp: isMobileOrApp(),
     });
 
@@ -485,20 +497,20 @@ function SharePageContent() {
       return;
     }
 
-    if (!isMobileOrApp()) {
+    if (isDesktopMobileEmulation()) {
       try {
         await copyShareUrl();
         trackEvent('share_action_failed', getShareAnalyticsParams('kakao', {
-          reason: 'desktop_web_unsupported',
+          reason: 'desktop_mobile_emulation_unsupported',
           fallback_used: true,
         }));
         trackEvent('share_action_completed', getShareAnalyticsParams('link_copy', {
-          fallback_from: 'kakao_desktop',
+          fallback_from: 'kakao_desktop_mobile_emulation',
         }));
         setShareError(t('share.kakaoDesktopFallback'));
       } catch {
         trackEvent('share_action_failed', getShareAnalyticsParams('kakao', {
-          reason: 'desktop_web_unsupported',
+          reason: 'desktop_mobile_emulation_unsupported',
           fallback_used: false,
         }));
         setShareError(t('share.kakaoFailed'));
