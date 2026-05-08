@@ -284,7 +284,7 @@ function SharePageContent() {
 
   const handleKakaoShare = async () => {
     const shareUrl = getShareUrl();
-    const shareDescription = `${shareInfo?.textParts.slice(1).join('\n\n').slice(0, 200) || t('share.kakaoDesc')}\n\n${shareUrl}`;
+    const shareDescription = shareInfo?.textParts.slice(1).join('\n\n').slice(0, 200) || t('share.kakaoDesc');
 
     setIsKakaoSharing(true);
     setShareError(null);
@@ -338,7 +338,7 @@ function SharePageContent() {
     const shareUrl = getShareUrl();
     const sharePayload = {
       title: shareInfo?.title || `${childName}${t('share.resultTitle')}`,
-      text: `${shareInfo?.textParts.join('\n\n') || t('share.kakaoDesc')}\n\n${shareUrl}`,
+      text: shareInfo?.textParts.join('\n\n') || t('share.kakaoDesc'),
       url: shareUrl,
     };
 
