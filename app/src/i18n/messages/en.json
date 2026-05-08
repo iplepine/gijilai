@@ -944,6 +944,7 @@
     "defaultDesc": "Has a curious and energetic explorer temperament.",
     "kakaoDesc": "Discover your child's innate light with scientific temperament analysis.",
     "kakaoFallback": "Could not open KakaoTalk, so the link was copied.",
+    "kakaoDesktopFallback": "KakaoTalk app sharing is not available on desktop, so the link was copied.",
     "kakaoFailed": "Could not open KakaoTalk. Please use Copy link.",
     "afterTest": "Results revealed after the test"
   },

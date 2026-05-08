@@ -249,6 +249,8 @@ function SharePageContent() {
 
   // Preload Kakao so the first tap does not race the async SDK script.
   useEffect(() => {
+    if (!isMobileOrApp() && !getNativeKakaoShareBridge()) return;
+
     ensureKakaoReady().catch((error) => {
       console.warn('Kakao SDK is not ready:', error);
     });
@@ -425,6 +427,27 @@ function SharePageContent() {
         buttonPath: tryTestPath,
       }));
       trackEvent('share_action_completed', getShareAnalyticsParams('kakao_native_bridge'));
+      return;
+    }
+
+    if (!isMobileOrApp()) {
+      try {
+        await copyShareUrl();
+        trackEvent('share_action_failed', getShareAnalyticsParams('kakao', {
+          reason: 'desktop_web_unsupported',
+          fallback_used: true,
+        }));
+        trackEvent('share_action_completed', getShareAnalyticsParams('link_copy', {
+          fallback_from: 'kakao_desktop',
+        }));
+        setShareError(t('share.kakaoDesktopFallback'));
+      } catch {
+        trackEvent('share_action_failed', getShareAnalyticsParams('kakao', {
+          reason: 'desktop_web_unsupported',
+          fallback_used: false,
+        }));
+        setShareError(t('share.kakaoFailed'));
+      }
       return;
     }
 
