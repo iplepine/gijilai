@@ -493,8 +493,8 @@ export default function HomePage() {
     : t("home.noBirthInfo");
 
   return (
-    <div className="bg-background-light dark:bg-background-dark text-text-main dark:text-gray-100 min-h-screen flex flex-col items-center justify-center font-body pb-0">
-      <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col sm:shadow-2xl overflow-hidden relative">
+    <div className="bg-background-light dark:bg-background-dark text-text-main dark:text-gray-100 h-[100dvh] min-h-[100dvh] overflow-hidden flex flex-col items-center justify-center font-body pb-0">
+      <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-0 flex flex-col sm:shadow-2xl overflow-hidden relative">
         <HomeHeader
           userCreatedAt={user?.created_at}
           subscription={subscription}

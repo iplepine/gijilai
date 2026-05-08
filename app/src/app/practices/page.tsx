@@ -153,9 +153,9 @@ function buildPracticeChangeUrl(sessionId: string, practiceId: string) {
 
 function PracticesPageFallback() {
   return (
-    <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center font-body">
-      <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
-        <main className="flex flex-1 items-center justify-center">
+    <div className="bg-background-light dark:bg-background-dark h-[100dvh] min-h-[100dvh] overflow-hidden flex flex-col items-center font-body">
+      <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-0 flex flex-col shadow-2xl overflow-hidden relative">
+        <main className="flex min-h-0 flex-1 items-center justify-center">
           <span className="h-10 w-10 animate-spin rounded-full border-4 border-primary/10 border-t-primary" />
         </main>
       </div>
@@ -921,11 +921,11 @@ function PracticesPageContent() {
   };
 
   return (
-    <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center font-body">
-      <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
+    <div className="bg-background-light dark:bg-background-dark h-[100dvh] min-h-[100dvh] overflow-hidden flex flex-col items-center font-body">
+      <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-0 flex flex-col shadow-2xl overflow-hidden relative">
         <Navbar title={t("nav.practices")} />
 
-        <main className="app-bottom-nav-scroll flex-1 overflow-y-auto px-6 py-6 space-y-6">
+        <main className="app-bottom-nav-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-6 space-y-6">
           {/* 아이별 필터 */}
           {children.length > 1 && (
             <div className="flex gap-2 overflow-x-auto no-scrollbar">
