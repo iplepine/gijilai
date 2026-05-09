@@ -5,6 +5,12 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLocale } from '@/i18n/LocaleProvider';
 
+const navIconStyle = {
+    width: '1.15em',
+    minWidth: '1.15em',
+    overflow: 'visible',
+} as const;
+
 export default function BottomNav() {
     const pathname = usePathname();
     const { t } = useLocale();
@@ -57,6 +63,7 @@ export default function BottomNav() {
                         <div className={`p-1.5 rounded-full transition-colors ${isActive ? 'text-primary' : 'text-gray-400'}`}>
                             <span
                                 className={`material-symbols-outlined text-[24px] ${isActive ? 'fill-1' : ''}`}
+                                style={navIconStyle}
                             >
                                 {item.icon}
                             </span>
