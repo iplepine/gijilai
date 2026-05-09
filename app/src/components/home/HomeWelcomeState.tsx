@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { UserProfile } from '@/lib/db';
 import { useLocale } from '@/i18n/LocaleProvider';
-import { ScrollReveal } from '@/components/ui/ScrollReveal';
 
 type HomeWelcomeStateProps = {
     profile: UserProfile | null;
@@ -14,8 +13,7 @@ export function HomeWelcomeState({ profile }: HomeWelcomeStateProps) {
 
     return (
         <div className="px-6 pb-12">
-            <ScrollReveal delayMs={120} durationMs={760}>
-                <div className="bg-gradient-to-br from-white to-primary/5 dark:from-surface-dark/80 dark:to-primary/20 rounded-[2.5rem] p-8 mt-12 mb-10 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.08)] border border-primary/10 dark:border-primary/30 relative overflow-hidden group">
+            <div className="bg-gradient-to-br from-white to-primary/5 dark:from-surface-dark/80 dark:to-primary/20 rounded-[2.5rem] p-8 mt-12 mb-10 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.08)] border border-primary/10 dark:border-primary/30 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-[80px] -mr-32 -mt-32 pointer-events-none group-hover:bg-primary/20 transition-all duration-700"></div>
                 <div className="absolute bottom-0 left-0 w-48 h-48 bg-secondary/10 rounded-full blur-[60px] -ml-24 -mb-24 pointer-events-none"></div>
 
@@ -39,8 +37,7 @@ export function HomeWelcomeState({ profile }: HomeWelcomeStateProps) {
                         </button>
                     </Link>
                 </div>
-                </div>
-            </ScrollReveal>
+            </div>
         </div>
     );
 }

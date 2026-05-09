@@ -18,7 +18,6 @@ import { HomeHeader } from "@/components/home/HomeHeader";
 import { HomeLoadingScreen } from "@/components/home/HomeLoadingScreen";
 import { HomeWelcomeState } from "@/components/home/HomeWelcomeState";
 import LandingPage from "@/components/landing/LandingPage";
-import { ScrollReveal } from "@/components/ui/ScrollReveal";
 import { db, ChildProfile, PracticeItemData } from "@/lib/db";
 import { TemperamentScorer } from "@/lib/TemperamentScorer";
 import { TemperamentClassifier } from "@/lib/TemperamentClassifier";
@@ -56,16 +55,11 @@ type QuickPracticeMessage = {
 
 function HomeModuleReveal({
   children,
-  order = 0,
 }: {
   children: ReactNode;
   order?: number;
 }) {
-  return (
-    <ScrollReveal delayMs={Math.min(order * 70, 360)} durationMs={700}>
-      {children}
-    </ScrollReveal>
-  );
+  return <>{children}</>;
 }
 
 export default function HomePage() {
@@ -505,7 +499,7 @@ export default function HomePage() {
         <main className="app-bottom-nav-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain no-scrollbar">
           {mainChild ? (
             /* [기존 사용자] 아이가 등록된 상태 */
-            <div className="animate-in fade-in duration-700">
+            <div>
               {/* 상단 프로필 섹션 */}
               <HomeModuleReveal>
                 <div className="relative w-full flex flex-col items-center p-2 pt-8">
