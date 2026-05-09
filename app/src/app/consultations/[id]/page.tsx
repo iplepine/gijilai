@@ -145,11 +145,11 @@ export default function ConsultationDetailPage() {
     };
 
     return (
-        <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center font-body">
-            <div className="w-full max-w-md bg-background-light dark:bg-background-dark min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
+        <div className="bg-background-light dark:bg-background-dark h-[100dvh] min-h-[100dvh] overflow-hidden flex flex-col items-center font-body">
+            <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-0 flex flex-col shadow-2xl overflow-hidden relative">
                 <Navbar title={t('consult.consultHistory')} />
 
-                <main className="app-bottom-nav-scroll w-full max-w-md p-6 flex-1">
+                <main className="app-bottom-nav-scroll w-full max-w-md min-h-0 flex-1 overflow-y-auto overscroll-contain no-scrollbar p-6">
                     {isLoading ? (
                         <TabLoadingIndicator label={t('consult.loadingRecords')} className="py-20" />
                     ) : !session ? (

@@ -143,9 +143,24 @@ function truncateText(value: string, maxLength = 64) {
 
 export default function ConsultPage() {
     return (
-        <Suspense>
+        <Suspense fallback={<ConsultPageFallback />}>
             <ConsultContent />
         </Suspense>
+    );
+}
+
+function ConsultPageFallback() {
+    const { t } = useLocale();
+
+    return (
+        <div className="bg-background-light dark:bg-background-dark h-[100dvh] min-h-[100dvh] overflow-hidden flex flex-col items-center justify-center font-body pb-0">
+            <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-0 flex flex-col shadow-2xl overflow-hidden relative">
+                <Navbar title={t('consult.heartInterpreterStation')} />
+                <main className="app-fixed-cta-scroll w-full max-w-md flex min-h-0 flex-1 flex-col overflow-y-auto p-6">
+                    <TabLoadingIndicator ariaLabel={t('common.loading')} className="flex-1" />
+                </main>
+            </div>
+        </div>
     );
 }
 
@@ -244,6 +259,9 @@ function ConsultContent() {
     const [problemInputError, setProblemInputError] = useState<string | null>(null);
     const [isProblemInputFocused, setIsProblemInputFocused] = useState(false);
     const problemInputRef = useRef<HTMLDivElement>(null);
+    const problemScrollTimeoutRef = useRef<number | null>(null);
+    const freeTextTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+    const lastFocusedFreeTextOptionRef = useRef<string | null>(null);
     const [currentTextAnswer, setCurrentTextAnswer] = useState('');
     const [freeTextOptionId, setFreeTextOptionId] = useState<string | null>(null);
 
@@ -290,16 +308,23 @@ function ConsultContent() {
         const input = problemInputRef.current;
         if (!input) return;
 
-        const scroll = () => {
+        if (problemScrollTimeoutRef.current !== null) {
+            window.clearTimeout(problemScrollTimeoutRef.current);
+        }
+
+        problemScrollTimeoutRef.current = window.setTimeout(() => {
+            problemScrollTimeoutRef.current = null;
             input.scrollIntoView({
                 behavior: 'smooth',
                 block: 'center',
             });
-        };
+        }, 120);
+    }, []);
 
-        window.requestAnimationFrame(scroll);
-        window.setTimeout(scroll, 180);
-        window.setTimeout(scroll, 360);
+    useEffect(() => () => {
+        if (problemScrollTimeoutRef.current !== null) {
+            window.clearTimeout(problemScrollTimeoutRef.current);
+        }
     }, []);
 
     const getProblemInputErrorMessage = useCallback((code: ConsultInputValidationCode) => {
@@ -824,6 +849,25 @@ function ConsultContent() {
         setCurrentTextAnswer('');
     }, [currentQuestionIndex]);
 
+    useEffect(() => {
+        if (!freeTextOptionId) {
+            lastFocusedFreeTextOptionRef.current = null;
+            return;
+        }
+
+        if (lastFocusedFreeTextOptionRef.current === freeTextOptionId) return;
+        lastFocusedFreeTextOptionRef.current = freeTextOptionId;
+
+        const timeoutId = window.setTimeout(() => {
+            const textarea = freeTextTextareaRef.current;
+            if (!textarea) return;
+            textarea.focus();
+            textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [freeTextOptionId]);
+
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center justify-center font-body pb-0">
             <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl overflow-x-hidden relative">
@@ -1189,12 +1233,7 @@ function ConsultContent() {
                                                     <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
                                                         <div className="relative">
                                                             <textarea
-                                                                ref={(el) => {
-                                                                    if (el) {
-                                                                        el.focus();
-                                                                        setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
-                                                                    }
-                                                                }}
+                                                                ref={freeTextTextareaRef}
                                                                 className="w-full h-32 p-5 pr-16 text-[15px] rounded-3xl border border-secondary/30 focus:outline-none focus:ring-4 focus:ring-secondary/10 resize-none bg-white dark:bg-surface-dark dark:text-white transition-all"
                                                                 placeholder={t('consult.freeTextPlaceholder')}
                                                                 value={currentTextAnswer}
