@@ -141,6 +141,62 @@ function truncateText(value: string, maxLength = 64) {
     return value.length > maxLength ? `${value.slice(0, maxLength)}...` : value;
 }
 
+function ConsultGreeting({
+    childName,
+    highlightChildName,
+    isFollowUp,
+    locale,
+    t,
+}: {
+    childName: string | null;
+    highlightChildName: boolean;
+    isFollowUp: boolean;
+    locale: 'ko' | 'en';
+    t: (key: string, params?: Record<string, string | number>) => string;
+}) {
+    const question = isFollowUp ? t('consult.questionContinue') : t('consult.questionFirst');
+
+    if (!childName) {
+        return (
+            <>
+                {t('consult.greetingDefault')}
+                <br />
+                {question}
+            </>
+        );
+    }
+
+    if (!highlightChildName) {
+        return (
+            <>
+                {t('consult.greetingWithName', { name: childName })}
+                <br />
+                {question}
+            </>
+        );
+    }
+
+    const highlightedName = (
+        <span className="text-child dark:text-secondary">{childName}</span>
+    );
+
+    return (
+        <>
+            {locale === 'ko' ? (
+                <>
+                    {highlightedName} 양육자님,
+                </>
+            ) : (
+                <>
+                    Dear {highlightedName}&apos;s parent,
+                </>
+            )}
+            <br />
+            {question}
+        </>
+    );
+}
+
 export default function ConsultPage() {
     return (
         <Suspense fallback={<ConsultPageFallback />}>
@@ -178,6 +234,7 @@ function ConsultContent() {
     const [childName, setChildName] = useState<string | null>(intake.childName || null);
     const [childBirthDate, setChildBirthDate] = useState<string | undefined>(intake.birthDate || undefined);
     const [childGender, setChildGender] = useState<string | undefined>(intake.gender || undefined);
+    const [hasMultipleChildren, setHasMultipleChildren] = useState(false);
 
     // 세션 상태
     const [sessionContext, setSessionContext] = useState<SessionContextData | null>(null);
@@ -189,11 +246,12 @@ function ConsultContent() {
     const sessionChildId = sessionContext?.session.child_id ?? null;
 
     useEffect(() => {
-        if (!user) { setChildLoading(false); return; }
+        if (!user) { setHasMultipleChildren(false); setChildLoading(false); return; }
         if (sessionContextLoading) return;
         setChildLoading(true);
         supabase.from('children').select('id, name, birth_date, gender').eq('parent_id', user.id).then(async ({ data }) => {
             const children = (data || []) as ChildSummary[];
+            setHasMultipleChildren(children.length > 1);
             if (children.length === 0) {
                 setChildName(intake.childName || null);
                 setChildBirthDate(intake.birthDate || undefined);
@@ -984,7 +1042,13 @@ function ConsultContent() {
 
                             <div className="space-y-2">
                                 <h2 className="text-2xl font-bold text-text-main dark:text-white leading-tight">
-                                    {childName ? t('consult.greetingWithName', { name: childName }) : t('consult.greetingDefault')}<br />{sessionContext ? t('consult.questionContinue') : t('consult.questionFirst')}
+                                    <ConsultGreeting
+                                        childName={childName}
+                                        highlightChildName={hasMultipleChildren}
+                                        isFollowUp={!!sessionContext}
+                                        locale={locale}
+                                        t={t}
+                                    />
                                 </h2>
                                 <p className="text-sm text-text-sub dark:text-gray-400">{sessionContext ? t('consult.subtitleContinue') : t('consult.subtitleFirst')}</p>
                             </div>

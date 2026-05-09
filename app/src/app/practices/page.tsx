@@ -55,7 +55,7 @@ interface PracticeWithSession extends PracticeItemData {
 
 interface GroupedPractices {
   session: SessionData;
-  practices: PracticeItemData[];
+  practices: PracticeWithSession[];
 }
 
 interface PracticeInsight {
@@ -140,6 +140,19 @@ function PracticeDescription({
         </p>
       )}
     </div>
+  );
+}
+
+function PracticeChildTag({ name }: { name: string | null }) {
+  if (!name) return null;
+
+  return (
+    <span className="inline-flex max-w-full items-center gap-1 rounded-full bg-secondary/10 px-2.5 py-1 text-[10px] font-bold text-secondary">
+      <span className="material-symbols-outlined text-[13px] leading-none">
+        child_care
+      </span>
+      <span className="truncate">{name}</span>
+    </span>
   );
 }
 
@@ -295,6 +308,18 @@ function PracticesPageContent() {
   }, []);
 
   const today = getLocalDateString();
+  const childNameById = useMemo(
+    () => new Map(children.map((child) => [child.id, child.name])),
+    [children],
+  );
+  const shouldShowChildTags = children.length > 1;
+  const getPracticeChildName = useCallback(
+    (practice: PracticeWithSession) => {
+      const childId = practice.consultation_sessions?.child_id;
+      return childId ? childNameById.get(childId) ?? null : null;
+    },
+    [childNameById],
+  );
 
   const filteredPractices = useMemo(
     () =>
@@ -1025,6 +1050,13 @@ function PracticesPageContent() {
                       <h2 className="mt-1 text-[17px] font-bold text-text-main dark:text-white">
                         {recommendedPractice.title}
                       </h2>
+                      {shouldShowChildTags && (
+                        <div className="mt-2">
+                          <PracticeChildTag
+                            name={getPracticeChildName(recommendedPractice)}
+                          />
+                        </div>
+                      )}
                       <p className="mt-1 text-[12px] leading-relaxed text-text-sub">
                         {recommendedLifecycle.status !== "ACTIVE"
                           ? t("practices.recommendedAttentionDescription")
@@ -1201,10 +1233,20 @@ function PracticesPageContent() {
                                     <p className="text-[14px] font-bold text-text-main dark:text-white">
                                       {practice.title}
                                     </p>
-                                    {lifecycle.status !== "ACTIVE" && (
-                                      <span className="mt-2 inline-flex rounded-full bg-secondary/10 px-2.5 py-1 text-[10px] font-bold text-secondary">
-                                        {getStatusBadge(lifecycle.status)}
-                                      </span>
+                                    {(shouldShowChildTags ||
+                                      lifecycle.status !== "ACTIVE") && (
+                                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                                        {shouldShowChildTags && (
+                                          <PracticeChildTag
+                                            name={getPracticeChildName(practice)}
+                                          />
+                                        )}
+                                        {lifecycle.status !== "ACTIVE" && (
+                                          <span className="inline-flex rounded-full bg-secondary/10 px-2.5 py-1 text-[10px] font-bold text-secondary">
+                                            {getStatusBadge(lifecycle.status)}
+                                          </span>
+                                        )}
+                                      </div>
                                     )}
                                     <div className="mt-2">
                                       <PracticeDescription
