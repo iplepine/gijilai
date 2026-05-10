@@ -6,7 +6,7 @@ ID: `R-001-consult-report-conversion`
 
 연결 Goal: `G-001-paid-conversion-trust`
 
-마지막 갱신일: 2026-05-05
+마지막 갱신일: 2026-05-10
 
 ## 목적
 
@@ -16,13 +16,13 @@ ID: `R-001-consult-report-conversion`
 
 시작: 2026-05-03
 
-목표 종료: 2026-05-10
+목표 종료: 2026-05-17
 
 ## 진행률
 
-진행률: 85%
+진행률: 90%
 
-근거: 상담 입력 검증, 상담/리포트 문구 충돌 정리, 전환 이벤트 기준과 가격 진입 source 정리는 완료했다. 배포 환경 Firebase DebugView 확인과 첫 주 기준선 수집은 운영 후속으로 남아 있다.
+근거: 상담 입력 검증, 상담/리포트 문구 충돌 정리, 전환 이벤트 기준과 가격 진입 source 정리는 완료했다. 남은 범위는 배포 환경 Firebase DebugView 확인과 첫 주 기준선 수집이다.
 
 ## Milestones
 
@@ -38,12 +38,13 @@ ID: `R-001-consult-report-conversion`
 
 ## Backlog Tasks
 
-- 없음
+- 첫 주 리포트 전환 기준선 기록 자동화 여부 검토
 
 ## 운영 후속
 
 - 배포 환경 Firebase DebugView 확인
 - 첫 주 리포트 전환 기준선 기록
+- 리포트/가격/결제 이벤트에 개인식별 가능 정보가 포함되지 않는지 샘플 점검
 
 ## 제외
 

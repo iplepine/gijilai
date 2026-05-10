@@ -26,6 +26,7 @@
 - `operations/RELEASE_READINESS.md`: 출시 전 확인 항목
 - `decisions/DECISIONS.md`: 결정 사항과 열린 질문
 - `work/README.md`: 현재 목표, 로드맵, 작업 티켓
+- `work/TODO.md`: 현재 TODO, 운영 후속, 최근 완료 항목
 
 ## 기존 문서 정리 위치
 

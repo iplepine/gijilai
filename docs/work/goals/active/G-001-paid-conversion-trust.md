@@ -4,7 +4,7 @@ ID: `G-001-paid-conversion-trust`
 
 상태: `Active`
 
-마지막 갱신일: 2026-05-04
+마지막 갱신일: 2026-05-10
 
 ## 목표
 
@@ -22,6 +22,7 @@ ID: `G-001-paid-conversion-trust`
 | `pricing_viewed -> payment_started` | 측정 가능 | 미확정 | `Assumption` |
 | 상담 입력 검증 실패가 자연스럽게 안내됨 | 100% | 완료 | `Signal` |
 | 리포트/가격/결제 이벤트 기준 | 문서와 코드 일치 | 완료 | `Signal` |
+| 실천 루프 입력 부담 | 낮아지는 방향 | 홈 즉시 체크, 선택 회고, `+N개 더` 반영 | `Signal` |
 
 ## 범위
 
@@ -29,6 +30,7 @@ ID: `G-001-paid-conversion-trust`
 
 - 상담 입력 검증
 - 리포트/상담 CTA와 신뢰 문구 정리
+- 홈/실천/회고 루프의 다음 행동 명료화
 - 정책/문서 정합성 갱신
 
 제외:
@@ -46,6 +48,7 @@ ID: `G-001-paid-conversion-trust`
 ## 연결 Roadmap
 
 - `R-001-consult-report-conversion`
+- `R-002-practice-loop-retention`
 
 ## 리스크
 
@@ -54,6 +57,9 @@ ID: `G-001-paid-conversion-trust`
 
 ## 다음 판단
 
-판단할 것: 배포 환경에서 리포트 CTA, 가격 페이지 진입, 결제 시작 이벤트가 실제 수집되는가?
+판단할 것:
 
-판단일: 2026-05-10
+- 배포 환경에서 리포트 CTA, 가격 페이지 진입, 결제 시작 이벤트가 실제 수집되는가?
+- 실천 마무리와 후속 상담 진입이 반복 사용 신호로 이어지는가?
+
+판단일: 2026-05-17

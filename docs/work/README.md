@@ -1,28 +1,39 @@
 # 작업 관리
 
-마지막 갱신일: 2026-05-05
+마지막 갱신일: 2026-05-10
 
 ## 현재 집중
 
 현재 active goal: `G-001-paid-conversion-trust`
 
-현재 active roadmap: `R-001-consult-report-conversion`
+현재 active roadmaps:
 
-현재 active task: `GJ-005-report-trust-baseline-qa`
+- `R-001-consult-report-conversion` — 리포트/가격/결제 전환 검증 운영 후속
+- `R-002-practice-loop-retention` — 홈/실천/회고 루프 입력 부담 낮추기
 
-다음 후보 task: 없음
+현재 active tasks:
 
-운영 후속 확인: 배포 환경 이벤트 수집 확인
+- `GJ-005-report-trust-baseline-qa`
+- `GJ-006-practice-loop-usability-qa`
+
+현재 TODO: [TODO.md](TODO.md)
+
+운영 후속 확인:
+
+- 배포 환경 Firebase DebugView 이벤트 수집 확인
+- 첫 주 리포트 전환 기준선 기록
+- 홈/실천 루프 모바일 WebView 회귀 QA
 
 ## 읽는 순서
 
 1. `goals/active/`에서 지금 왜 이 일을 하는지 확인한다.
 2. `roadmaps/active/`에서 이번 사이클의 순서를 확인한다.
 3. `tasks/active/`에서 지금 실제로 끝낼 작업을 확인한다.
-4. 상담 결과 품질을 튜닝할 때는 `prompt-tuning/consultation-result-tuning.md`를 확인한다.
-5. 상담 프롬프트 튜닝 히스토리를 볼 때는 `prompt-tuning/HISTORY.md`를 확인한다.
-6. 상담/문진해설 프롬프트 변경 전후를 비교할 때는 `prompt-tuning/consultation-before-after.md`를 확인한다.
-7. 완료된 작업은 `tasks/done/`으로 옮기고 roadmap 진행률을 갱신한다.
+4. 전체 TODO와 운영 후속은 `TODO.md`에서 확인한다.
+5. 상담 결과 품질을 튜닝할 때는 `prompt-tuning/consultation-result-tuning.md`를 확인한다.
+6. 상담 프롬프트 튜닝 히스토리를 볼 때는 `prompt-tuning/HISTORY.md`를 확인한다.
+7. 상담/문진해설 프롬프트 변경 전후를 비교할 때는 `prompt-tuning/consultation-before-after.md`를 확인한다.
+8. 완료된 작업은 `tasks/done/`으로 옮기고 roadmap 진행률을 갱신한다.
 
 ## 운영 규칙
 

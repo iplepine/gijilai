@@ -49,10 +49,6 @@ export function PracticeReviewModal({
                 : t('practices.reviewQuestion');
 
     const handleSave = async () => {
-        if (!content.trim()) {
-            alert(t('practices.reviewRequired'));
-            return;
-        }
         setSaving(true);
         try {
             await onSave(content.trim());
@@ -203,7 +199,13 @@ export function PracticeReviewModal({
                 <div className="p-6">
                     <label className="block text-[13px] font-bold text-text-main dark:text-white mb-3">
                         {question}
+                        <span className="ml-1 text-[12px] font-medium text-text-sub">
+                            {t('practices.reviewOptionalBadge')}
+                        </span>
                     </label>
+                    <p className="-mt-1 mb-3 text-[12px] leading-relaxed text-text-sub">
+                        {t('practices.reviewOptionalHelper')}
+                    </p>
                     <div className="relative">
                         <textarea
                             value={content}

@@ -251,7 +251,8 @@ function formatPrescriptionSessionContextForPrompt(
             }
             const feedback = getPracticeFeedbackSummary(recentLog?.ai_feedback);
             if (feedback) context += ` | 이전 피드백: ${feedback}`;
-            if (review) context += ` | 회고: ${review.content}`;
+            const reviewContent = review?.content.trim();
+            if (reviewContent) context += ` | 회고: ${reviewContent}`;
             context += `\n`;
         }
     }
