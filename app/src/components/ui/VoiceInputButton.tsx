@@ -1,6 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import {
+    useEffect,
+    useRef,
+    useState,
+    type MouseEvent,
+    type PointerEvent,
+} from 'react';
 import { useLocale } from '@/i18n/LocaleProvider';
 import { getNativeCapabilities } from '@/lib/nativeCapabilities';
 import {
@@ -89,22 +95,6 @@ function isCoarsePointer() {
     return window.matchMedia('(pointer: coarse)').matches;
 }
 
-function normalizeMediaError(error: unknown): VoiceInputErrorCode {
-    if (error instanceof DOMException) {
-        if (error.name === 'NotAllowedError' || error.name === 'SecurityError') return 'not-allowed';
-        if (
-            error.name === 'NotFoundError'
-            || error.name === 'DevicesNotFoundError'
-            || error.name === 'NotReadableError'
-            || error.name === 'TrackStartError'
-            || error.name === 'OverconstrainedError'
-        ) return 'audio-capture';
-        if (error.name === 'AbortError') return 'aborted';
-    }
-
-    return 'unknown';
-}
-
 function normalizeSpeechRecognitionError(error: string): VoiceInputErrorCode {
     if (
         error === 'not-allowed'
@@ -130,22 +120,6 @@ function getVoiceErrorMessage(t: (key: string) => string, code: VoiceInputErrorC
     if (code === 'no-speech') return t('voice.errorNoSpeech');
     if (code === 'aborted') return t('voice.errorAborted');
     return t('voice.errorUnknown');
-}
-
-async function requestMicrophoneAccess(): Promise<{ ok: true } | { ok: false; code: VoiceInputErrorCode }> {
-    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
-        return { ok: true };
-    }
-
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        stream.getTracks().forEach((track) => track.stop());
-        return { ok: true };
-    } catch (error) {
-        const code = normalizeMediaError(error);
-        console.warn('Voice input getUserMedia failed:', code, error);
-        return { ok: false, code };
-    }
 }
 
 function requestNativeVoiceInput(languageTag: string): Promise<NativeVoiceInputResult> {
@@ -195,10 +169,17 @@ export function VoiceInputButton({ value, onChange, maxLength, className = '' }:
     const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
     const baseValueRef = useRef(value);
     const transcriptSegmentsRef = useRef<SpeechRecognitionTranscriptSegment[]>([]);
+    const isStartingRef = useRef(false);
+    const lastPointerPressAtRef = useRef(0);
     const [isSupported, setIsSupported] = useState(false);
     const [isMobileInput, setIsMobileInput] = useState(false);
     const [isStarting, setIsStarting] = useState(false);
     const [isListening, setIsListening] = useState(false);
+
+    const setStarting = (next: boolean) => {
+        isStartingRef.current = next;
+        setIsStarting(next);
+    };
 
     useEffect(() => {
         const updateSupport = () => {
@@ -227,11 +208,11 @@ export function VoiceInputButton({ value, onChange, maxLength, className = '' }:
     };
 
     const startListening = async () => {
-        if (isStarting) return;
+        if (isStartingRef.current) return;
 
         const languageTag = locale === 'ko' ? 'ko-KR' : 'en-US';
         if (supportsNativeVoiceInput()) {
-            setIsStarting(true);
+            setStarting(true);
             try {
                 const result = await requestNativeVoiceInput(languageTag);
                 if (result.status === 'ok') {
@@ -242,7 +223,7 @@ export function VoiceInputButton({ value, onChange, maxLength, className = '' }:
                     alert(getVoiceErrorMessage(t, result.code ?? 'unknown'));
                 }
             } finally {
-                setIsStarting(false);
+                setStarting(false);
             }
             return;
         }
@@ -253,14 +234,7 @@ export function VoiceInputButton({ value, onChange, maxLength, className = '' }:
             return;
         }
 
-        setIsStarting(true);
-        const microphoneAccess = await requestMicrophoneAccess();
-        if (!microphoneAccess.ok) {
-            setIsStarting(false);
-            alert(getVoiceErrorMessage(t, microphoneAccess.code));
-            return;
-        }
-
+        setStarting(true);
         const recognition = new SpeechRecognition();
         recognition.continuous = true;
         recognition.interimResults = true;
@@ -299,8 +273,31 @@ export function VoiceInputButton({ value, onChange, maxLength, className = '' }:
             console.warn('SpeechRecognition start failed');
             alert(t('voice.errorUnknown'));
         } finally {
-            setIsStarting(false);
+            setStarting(false);
         }
+    };
+
+    const handlePress = () => {
+        if (isStartingRef.current) return;
+        if (isListening) {
+            stopListening();
+            return;
+        }
+        void startListening();
+    };
+
+    const handlePointerDown = (event: PointerEvent<HTMLButtonElement>) => {
+        event.preventDefault();
+        event.stopPropagation();
+        lastPointerPressAtRef.current = Date.now();
+        handlePress();
+    };
+
+    const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (Date.now() - lastPointerPressAtRef.current < 1500) return;
+        handlePress();
     };
 
     if (!isMobileInput) return null;
@@ -308,11 +305,12 @@ export function VoiceInputButton({ value, onChange, maxLength, className = '' }:
     return (
         <button
             type="button"
-            onClick={isListening ? stopListening : () => void startListening()}
+            onPointerDown={handlePointerDown}
+            onClick={handleClick}
             disabled={isStarting}
             aria-label={isListening ? t('voice.stop') : t('voice.start')}
             title={isSupported ? (isListening ? t('voice.stop') : t('voice.start')) : t('voice.unsupported')}
-            className={`inline-flex h-10 w-10 items-center justify-center rounded-full border text-[18px] transition-all active:scale-95 ${
+            className={`relative z-10 inline-flex h-10 w-10 touch-manipulation select-none items-center justify-center rounded-full border text-[18px] transition-all active:scale-95 ${
                 isListening
                     ? 'border-red-200 bg-red-50 text-red-500 shadow-lg shadow-red-100'
                     : 'border-primary/15 bg-white/95 text-primary shadow-sm hover:bg-primary/5 dark:bg-surface-dark'

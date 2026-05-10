@@ -33,6 +33,7 @@
 
 - 상담 고민 입력, 주관식 문진 답변, 일반 실천 한줄메모, 추천 실천의 과정/아이 반응 메모, 실천 완료 회고처럼 자유 텍스트 입력이 필요한 곳에는 공통 `VoiceInputButton`을 붙인다.
 - `VoiceInputButton`은 모바일/터치 입력 환경(`pointer: coarse`)에서만 렌더링한다.
+- 음성 버튼은 첫 탭에서 textarea 포커스나 키보드 표시를 먼저 만들지 않고 바로 음성 입력을 시작해야 한다.
 - 음성 입력은 기본적으로 브라우저 Web Speech API(`SpeechRecognition`/`webkitSpeechRecognition`)를 사용한다.
 - Android 앱 WebView에서는 Web Speech API 지원 여부와 별개로 `window.__nativeCapabilities.voiceInput`과 `VoiceInputBridge`가 확인되면 네이티브 speech-to-text bridge를 우선 사용한다.
 - 데스크톱에서는 버튼을 숨기고, 모바일 미지원 브라우저에서는 음성 버튼을 탭했을 때 안내 문구를 제공하며, 키보드 입력 흐름은 변경하지 않는다.
