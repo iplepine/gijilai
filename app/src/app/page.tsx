@@ -47,6 +47,7 @@ const DEFAULT_REMINDER_PREFERENCES: PracticeReminderPreferences = {
   practiceReminderEnabled: true,
   practiceReminderTime: "20:00",
 };
+const PRIMARY_PRACTICE_PREVIEW_LIMIT = 2;
 
 type QuickPracticeMessage = {
   tone: "success" | "error" | "info";
@@ -275,6 +276,14 @@ export default function HomePage() {
     practices.attentionCount > 0
       ? practices.attentionCount
       : uncheckedPracticeItems.length;
+  const primaryPracticePreviewItems = practicePriorityItems.slice(
+    0,
+    PRIMARY_PRACTICE_PREVIEW_LIMIT,
+  );
+  const primaryPracticeHiddenCount = Math.max(
+    0,
+    practicePriorityCount - primaryPracticePreviewItems.length,
+  );
   const primaryQuickPractice =
     practices.attentionCount === 0 ? practicePriorityItems[0] : null;
   const hasConsultPriority = showConsultCTA && !!temperamentInfo?.child;
@@ -806,7 +815,7 @@ export default function HomePage() {
                           ) : (
                             <Link href="/practices" className="block">
                               <div className="mt-4 space-y-2">
-                                {practicePriorityItems.slice(0, 2).map((item) => (
+                                {primaryPracticePreviewItems.map((item) => (
                                   <div
                                     key={item.id}
                                     className="flex items-center gap-2.5 rounded-xl bg-white/10 px-3 py-3"
@@ -817,6 +826,16 @@ export default function HomePage() {
                                     </span>
                                   </div>
                                 ))}
+                                {primaryPracticeHiddenCount > 0 && (
+                                  <div className="flex items-center gap-2.5 rounded-xl bg-white/[0.08] px-3 py-2.5">
+                                    <div className="w-4 h-4 flex-shrink-0" />
+                                    <span className="text-[12px] font-bold text-white/70">
+                                      {t("home.moreItems", {
+                                        count: primaryPracticeHiddenCount,
+                                      })}
+                                    </span>
+                                  </div>
+                                )}
                               </div>
                             </Link>
                           )}
