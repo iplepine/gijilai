@@ -1,21 +1,21 @@
-🧒 Do you truly understand your child?
+🧒 Tantrums, sensitivity, separation anxiety, or sibling conflict?
 
-Gijilai uses scientific temperament analysis to help parents understand
-their child's innate traits and provides personalized parenting guidance.
+Gijilai helps parents understand a child's behavior through a quick
+temperament report and practical parenting guidance.
 
 ✨ Key Features
 
-📊 Scientific Temperament Analysis
+📊 Child Temperament Report
 Analyze your child's activity level, regularity, approach, adaptability,
 intensity, mood, attention, persistence, and sensitivity.
 
-📋 Premium Reports
-Get detailed analysis reports tailored to your child's temperament type,
-including strengths, areas of attention, and parenting tips.
+📋 Personalized Parenting Guide
+See strengths, areas of attention, discipline tips, and communication phrases
+tailored to your child's temperament.
 
 💬 AI Heart Interpreter
-An AI that understands your child's temperament provides personalized
-consultations for everyday parenting concerns.
+Ask about everyday parenting concerns such as tantrums, sensitivity,
+separation anxiety, school refusal, and sibling conflict.
 
 📝 Practice Tracking
 Record and track your progress on advice from consultations.
@@ -25,5 +25,7 @@ Record and track your progress on advice from consultations.
 • Unlimited AI consultations
 • Full practice history
 • Past practice context carried into the next consultation
+
+Gijilai provides parenting reference content, not diagnosis or treatment.
 
 Contact: devhohouse@gmail.com

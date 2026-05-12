@@ -4,7 +4,8 @@
 
 | 단계 | 대표 이벤트 | 질문 |
 |------|-------------|------|
-| 유입 | `landing_cta_clicked` | 타깃 메시지가 시작 행동을 만드는가 |
+| 유입 | `landing_cta_clicked` | 타깃 메시지가 설치 또는 시작 행동을 만드는가 |
+| 설치 | `app_install_landing_viewed`, `app_install_store_clicked` | 웹 방문자가 스토어 이동까지 이어지는가 |
 | 인증 | `login_attempt`, `login_success` | 로그인 장벽이 과도하지 않은가 |
 | 활성화 | `intake_completed`, `survey_flow_completed` | 첫 리포트까지 도달하는가 |
 | 신뢰 | `report_viewed`, `report_primary_cta_clicked` | 리포트가 다음 행동을 만드는가 |
@@ -20,6 +21,15 @@
 5. `payment_completed`
 
 `pricing_viewed`, `payment_started`, `payment_completed`는 `source`, `entry_cta`, `report_tab`, `report_kind`를 유지해 리포트 하단 CTA와 가격/결제 단계를 연결한다.
+
+## 다운로드 유입 퍼널
+
+1. `landing_cta_clicked(target=install_app)`
+2. `app_install_landing_viewed(source=landing)`
+3. `app_install_store_clicked(source=landing)`
+4. 앱 스토어 콘솔의 설치 수와 첫 실행 수를 함께 비교
+
+웹에서 바로 시작하는 사용자는 `landing_cta_clicked(target=web_start)`로 분리해 설치 CTA와 검사 시작 CTA의 품질을 따로 본다.
 
 ## 빠른 아이 리포트 확장 퍼널
 

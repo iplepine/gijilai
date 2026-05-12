@@ -181,8 +181,8 @@ export function PracticeReviewModal({
 
     return (
         <div className="app-modal-overlay fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in">
-            <div className="app-modal-panel w-full max-w-sm bg-white dark:bg-surface-dark rounded-3xl shadow-2xl overflow-hidden animate-slide-up">
-                <div className="p-6 border-b border-beige-main/10 dark:border-white/5 bg-secondary/5">
+            <div className="app-modal-panel relative flex w-full max-w-sm flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-surface-dark animate-slide-up">
+                <div className="shrink-0 p-6 border-b border-beige-main/10 dark:border-white/5 bg-secondary/5">
                     <h4 className="font-bold text-lg text-text-main dark:text-white">{title}</h4>
                     <p className="text-[13px] text-text-sub mt-1">{practiceTitle}</p>
                     <div className="flex items-center gap-2 mt-3">
@@ -196,7 +196,7 @@ export function PracticeReviewModal({
                     </div>
                 </div>
 
-                <div className="p-6">
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6">
                     <label className="block text-[13px] font-bold text-text-main dark:text-white mb-3">
                         {question}
                         <span className="ml-1 text-[12px] font-medium text-text-sub">
@@ -224,7 +224,7 @@ export function PracticeReviewModal({
                     </div>
                 </div>
 
-                <div className="p-4 bg-beige-main/5 dark:bg-white/5 flex gap-3">
+                <div className="shrink-0 p-4 bg-beige-main/5 dark:bg-white/5 flex gap-3 border-t border-beige-main/10 dark:border-white/5">
                     <Button variant="secondary" fullWidth onClick={onClose}>{t('practices.laterShort')}</Button>
                     <Button variant="primary" fullWidth onClick={handleSave} disabled={saving}>
                         {saving ? t('common.saving') : t('practices.reviewSave')}

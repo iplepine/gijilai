@@ -22,6 +22,8 @@
   --native-safe-area-bottom: 0px;
   --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-bottom: max(env(safe-area-inset-bottom, 0px), var(--native-safe-area-bottom));
+  --visual-viewport-height: 100dvh;
+  --visual-viewport-offset-top: 0px;
   --keyboard-inset-bottom: 0px;
   --bottom-nav-safe-area-bottom: var(--safe-area-bottom);
   --bottom-nav-content-offset: calc(var(--bottom-nav-safe-area-bottom) + 7.75rem);
@@ -392,16 +394,20 @@ html[data-native-platform='android'] .consult-problem-voice-button {
 }
 
 .app-modal-overlay {
+  top: var(--visual-viewport-offset-top);
+  bottom: auto;
+  height: var(--visual-viewport-height);
   padding: 1rem;
+  padding-top: calc(var(--safe-area-top) + 1rem);
   padding-bottom: calc(var(--safe-area-bottom) + 1rem);
 }
 
 .app-modal-panel {
-  max-height: calc(100dvh - var(--safe-area-top) - var(--safe-area-bottom) - 2rem);
+  max-height: calc(var(--visual-viewport-height) - var(--safe-area-top) - var(--safe-area-bottom) - 2rem);
 }
 
 .app-modal-panel-scroll {
-  max-height: calc(100dvh - var(--safe-area-top) - var(--safe-area-bottom) - 2rem);
+  max-height: calc(var(--visual-viewport-height) - var(--safe-area-top) - var(--safe-area-bottom) - 2rem);
   overflow-y: auto;
 }
 

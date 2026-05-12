@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { HomeLogoButton } from '@/components/layout/HomeLogoButton';
 import { useLocale } from '@/i18n/LocaleProvider';
+import { buildInstallPageUrl } from '@/lib/install';
 
 const CHILD_TYPES = [
     { src: '/child_type/type_hll.jpg', label: '열정 탐험가' },
@@ -34,6 +35,8 @@ const PARENT_TYPES = [
 
 export default function LandingPage() {
     const { t } = useLocale();
+    const heroInstallHref = buildInstallPageUrl({ source: 'landing', entry_cta: 'hero' });
+    const finalInstallHref = buildInstallPageUrl({ source: 'landing', entry_cta: 'final_cta' });
 
     const STEPS = [
         {
@@ -90,13 +93,32 @@ export default function LandingPage() {
                         {t('landing.heroDesc')}
                     </p>
 
-                    <div className="w-full max-w-sm animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-400">
+                    <div className="w-full max-w-md flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-400">
+                        <Link
+                            href={heroInstallHref}
+                            onClick={() => trackEvent('landing_cta_clicked', { placement: 'hero', target: 'install_app' })}
+                        >
+                            <Button
+                                size="lg"
+                                fullWidth
+                                icon={<Icon name="download" size="lg" className="text-white" />}
+                                className="h-16 rounded-2xl text-lg font-black shadow-glow hover:scale-[1.02] transition-transform bg-primary text-white"
+                            >
+                                {t('landing.startFree')}
+                            </Button>
+                        </Link>
                         <Link
                             href="/login"
-                            onClick={() => trackEvent('landing_cta_clicked', { placement: 'hero' })}
+                            onClick={() => trackEvent('landing_cta_clicked', { placement: 'hero', target: 'web_start' })}
                         >
-                            <Button size="lg" fullWidth className="h-16 rounded-2xl text-lg font-black shadow-glow hover:scale-[1.02] transition-transform bg-primary text-white">
-                                {t('landing.startFree')}
+                            <Button
+                                variant="ghost"
+                                size="md"
+                                fullWidth
+                                icon={<Icon name="play_arrow" className="text-primary" />}
+                                className="rounded-xl text-primary dark:text-primary-light"
+                            >
+                                {t('landing.startWeb')}
                             </Button>
                         </Link>
                     </div>
@@ -263,12 +285,27 @@ export default function LandingPage() {
                             </p>
                             <div className="flex flex-col items-center gap-4">
                                 <Link
+                                    href={finalInstallHref}
+                                    className="w-full max-w-sm"
+                                    onClick={() => trackEvent('landing_cta_clicked', { placement: 'final_cta', target: 'install_app' })}
+                                >
+                                    <Button
+                                        variant="secondary"
+                                        size="lg"
+                                        fullWidth
+                                        icon={<Icon name="download" size="lg" className="text-[#1F3629]" />}
+                                        className="h-16 rounded-2xl !bg-white !text-[#1F3629] text-lg font-black hover:bg-gray-100 transition-all shadow-glow"
+                                    >
+                                        {t('landing.startTest')}
+                                    </Button>
+                                </Link>
+                                <Link
                                     href="/login"
                                     className="w-full max-w-sm"
-                                    onClick={() => trackEvent('landing_cta_clicked', { placement: 'final_cta' })}
+                                    onClick={() => trackEvent('landing_cta_clicked', { placement: 'final_cta', target: 'web_start' })}
                                 >
-                                    <Button variant="secondary" size="lg" fullWidth className="h-16 rounded-2xl !bg-white !text-[#1F3629] text-lg font-black hover:bg-gray-100 transition-all shadow-glow">
-                                        {t('landing.startTest')}
+                                    <Button variant="ghost" size="md" fullWidth className="rounded-xl text-white/85 hover:bg-white/10">
+                                        {t('landing.startWeb')}
                                     </Button>
                                 </Link>
                             </div>

@@ -23,34 +23,33 @@ Fastlane으로 대부분 자동화되어 있다.
 
 ### 앱 이름 (30자)
 ```
-기질아이 - 과학적 기질 분석 맞춤 육아
+기질아이 - 아이 기질검사 육아상담
 ```
 
 ### 간단한 설명 (80자)
 ```
-우리 아이 타고난 기질을 과학적으로 분석하고, AI 맞춤 육아 가이드를 받아보세요.
+아이 떼쓰기와 예민함, 기질 리포트로 이유를 보고 맞춤 대화법을 받아보세요.
 ```
 
 ### 자세한 설명 (4000자)
 ```
-🧒 우리 아이, 정말 잘 알고 계신가요?
+🧒 아이의 떼쓰기, 예민함, 등원 거부가 반복되나요?
 
-기질아이는 과학적 기질 분석을 기반으로 아이의 타고난 성향을 이해하고,
-맞춤형 육아 가이드를 제공하는 서비스입니다.
+기질아이는 3분 아이 기질검사와 부모 기질 분석을 바탕으로
+아이 행동의 이유와 오늘 바로 써볼 맞춤 대화법을 알려주는 육아상담 앱입니다.
 
 ✨ 주요 기능
 
-📊 과학적 기질 분석
-검증된 기질 검사를 통해 아이의 활동성, 규칙성, 접근성, 적응성,
-반응강도, 기분, 주의집중, 지속성, 민감성을 분석합니다.
+📊 3분 아이 기질 리포트
+아이의 활동성, 규칙성, 접근성, 적응성, 반응강도, 기분,
+주의집중, 지속성, 민감성을 바탕으로 아이 기질을 정리합니다.
 
-📋 프리미엄 리포트
-아이의 기질 유형에 맞는 상세 분석 리포트를 제공합니다.
-강점, 주의점, 양육 팁을 한눈에 확인하세요.
+📋 맞춤 육아 가이드
+아이의 기질 유형에 맞는 강점, 주의점, 훈육 팁, 대화법을 확인하세요.
 
 💬 AI 마음통역기
-아이의 기질을 이해한 AI가 일상 육아 고민에 맞춤 상담을 제공합니다.
-"왜 우리 아이는 이럴까?" 궁금할 때 언제든 물어보세요.
+아이의 떼쓰기, 고집, 예민함, 분리불안, 등원 거부, 형제갈등처럼
+일상에서 반복되는 육아 고민을 기질에 맞춰 상담합니다.
 
 📝 실천 기록
 상담에서 받은 조언을 실천하고 기록할 수 있습니다.
@@ -63,10 +62,14 @@ Fastlane으로 대부분 자동화되어 있다.
 • 다음 상담에 지난 실천 맥락 반영
 
 👨‍👩‍👧‍👦 이런 부모님께 추천합니다
-• 아이의 행동이 이해되지 않을 때
+• 아이의 떼쓰기와 감정조절이 고민될 때
+• 예민한 아이를 어떻게 달래야 할지 막막할 때
+• 등원 거부나 분리불안이 반복될 때
 • 형제자매 사이 양육법이 달라야 할 때
-• 과학적 근거 있는 육아 정보가 필요할 때
+• 말 안 듣는 아이에게 어떤 대화법이 맞는지 알고 싶을 때
 • 전문 상담은 부담스럽지만 도움이 필요할 때
+
+기질아이는 진단이나 치료가 아닌 양육 참고 자료를 제공합니다.
 
 문의: devhohouse@gmail.com
 ```
@@ -87,6 +90,80 @@ https://gijilai.com/legal/privacy
 
 ---
 
+## App Store 한국어 등록정보 (복붙용)
+
+기준 로케일: `Korean`
+
+### App Information
+
+### Name (30 chars)
+```text
+기질아이 - 아이 기질검사
+```
+
+### Subtitle (30 chars)
+```text
+떼쓰기 예민함 육아상담
+```
+
+### Promotional Text (170 chars)
+```text
+아이 떼쓰기와 예민함의 이유를 기질 리포트로 보고, 오늘 바로 쓸 맞춤 대화법을 받아보세요.
+```
+
+### Description (4000 chars)
+```text
+아이의 떼쓰기, 예민함, 등원 거부가 반복되나요?
+
+기질아이는 3분 아이 기질검사와 부모 기질 분석을 바탕으로
+아이 행동의 이유와 오늘 바로 써볼 맞춤 대화법을 알려주는 육아상담 앱입니다.
+
+주요 기능
+
+• 3분 아이 기질 리포트
+아이의 활동성, 규칙성, 접근성, 적응성, 반응강도, 기분,
+주의집중, 지속성, 민감성을 바탕으로 아이 기질을 정리합니다.
+
+• 맞춤 육아 가이드
+아이의 기질 유형에 맞는 강점, 주의점, 훈육 팁, 대화법을 확인하세요.
+
+• AI 마음통역기
+아이의 떼쓰기, 고집, 예민함, 분리불안, 등원 거부, 형제갈등처럼
+일상에서 반복되는 육아 고민을 기질에 맞춰 상담합니다.
+
+• 실천 기록
+상담에서 받은 조언을 실천하고 기록할 수 있습니다.
+
+이런 부모님께 추천합니다
+• 아이의 떼쓰기와 감정조절이 고민될 때
+• 예민한 아이를 어떻게 달래야 할지 막막할 때
+• 등원 거부나 분리불안이 반복될 때
+• 형제자매 사이 양육법이 달라야 할 때
+• 말 안 듣는 아이에게 어떤 대화법이 맞는지 알고 싶을 때
+• 전문 상담은 부담스럽지만 도움이 필요할 때
+
+프리미엄 구독
+• 리포트 기반 AI 상담
+• AI 상담 무제한
+• 실천 기록 전체 이력
+• 다음 상담에 지난 실천 맥락 반영
+
+기질아이는 진단이나 치료가 아닌 양육 참고 자료를 제공합니다.
+
+이용약관(EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+서비스 이용약관: https://gijilai.com/legal/terms
+개인정보 처리방침: https://gijilai.com/legal/privacy
+
+문의: devhohouse@gmail.com
+```
+
+### Keywords (100 chars)
+```text
+등원거부,분리불안,형제갈등,훈육,대화법,부모상담,양육,감정조절,리포트
+```
+
+---
+
 ## App Store 영문 등록정보 (복붙용)
 
 기준 로케일: `English (U.S.)`
@@ -95,12 +172,12 @@ https://gijilai.com/legal/privacy
 
 ### Name (30 chars)
 ```text
-Gijilai
+Gijilai - Child Temperament
 ```
 
 ### Subtitle (30 chars)
 ```text
-Parenting Guide by Temperament
+Tantrum and parenting guide
 ```
 
 ### Primary Category
@@ -121,25 +198,25 @@ https://gijilai.com/legal/privacy
 
 ### Promotional Text (170 chars)
 ```text
-Understand your child's temperament and get personalized AI parenting guidance.
+Understand tantrums and sensitivity through a child temperament report, then get practical parenting phrases.
 ```
 
 ### Description (4000 chars)
 ```text
-Do you really understand your child?
+Tantrums, sensitivity, separation anxiety, or sibling conflict?
 
-Gijilai uses scientific temperament analysis to help parents understand their child's innate traits and receive personalized parenting guidance.
+Gijilai helps parents understand a child's behavior through a quick temperament report and practical parenting guidance.
 
 Key Features
 
-• Scientific Temperament Analysis
+• Child Temperament Report
 Analyze your child's activity level, regularity, approach, adaptability, intensity, mood, attention, persistence, and sensitivity.
 
-• Premium Reports
-Get detailed reports tailored to your child's temperament type, including strengths, caution points, and practical parenting tips.
+• Personalized Parenting Guide
+See strengths, areas of attention, discipline tips, and communication phrases tailored to your child's temperament.
 
 • AI Heart Interpreter
-Ask everyday parenting questions and get personalized AI guidance grounded in your child's temperament.
+Ask about everyday parenting concerns such as tantrums, sensitivity, separation anxiety, school refusal, and sibling conflict.
 
 • Practice Tracking
 Save the advice you received and build small parenting changes into daily routines.
@@ -150,6 +227,8 @@ Premium Subscription
 • Full practice history
 • Past practice context carried into the next consultation
 
+Gijilai provides parenting reference content, not diagnosis or treatment.
+
 Terms of Use (EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
 Service Terms: https://gijilai.com/legal/terms
 Privacy Policy: https://gijilai.com/legal/privacy
@@ -159,7 +238,7 @@ Contact: devhohouse@gmail.com
 
 ### Keywords (100 chars)
 ```text
-temperament test,parenting guide,child personality,child behavior,AI parenting,parent tips
+tantrums,sensitive child,separation anxiety,sibling conflict,discipline,parent coaching
 ```
 
 ### Support URL
@@ -228,7 +307,7 @@ bundle install
 - `deploy_internal` / `deploy_production`은 build number를 올린 뒤 `fastlane/metadata/android/<locale>/changelogs/<versionCode>.txt`를 자동 생성한다.
 - 기본 프로덕션 배포(`deploy_production`, `release_production`, `scripts/deploy_android_production.sh`)는 한 번 빌드한 AAB를 내부 테스트 트랙에 올린 뒤, 같은 versionCode를 프로덕션 트랙에도 릴리스로 설정한다. 프로덕션 검토가 늦어도 내부 테스트 트랙에서 즉시 설치 확인할 수 있게 하기 위함이다.
 - 프로덕션 트랙에만 직접 올려야 하는 예외 상황에서는 `deploy_production_only`를 사용한다.
-- Play Console에 올릴 문구를 바꾸려면 원본 파일 두 개만 수정하면 된다.
+- Play Console에 올릴 문구를 바꾸려면 `fastlane/metadata/android/<locale>/`의 `title.txt`, `short_description.txt`, `full_description.txt`와 `Fastfile`의 `metadata` lane을 함께 수정한다.
 
 ---
 

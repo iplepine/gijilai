@@ -310,7 +310,7 @@ export function VoiceInputButton({ value, onChange, maxLength, className = '' }:
             disabled={isStarting}
             aria-label={isListening ? t('voice.stop') : t('voice.start')}
             title={isSupported ? (isListening ? t('voice.stop') : t('voice.start')) : t('voice.unsupported')}
-            className={`relative z-10 inline-flex h-10 w-10 touch-manipulation select-none items-center justify-center rounded-full border text-[18px] transition-all active:scale-95 ${
+            className={`z-10 inline-flex h-10 w-10 touch-manipulation select-none items-center justify-center rounded-full border text-[18px] transition-all active:scale-95 ${
                 isListening
                     ? 'border-red-200 bg-red-50 text-red-500 shadow-lg shadow-red-100'
                     : 'border-primary/15 bg-white/95 text-primary shadow-sm hover:bg-primary/5 dark:bg-surface-dark'

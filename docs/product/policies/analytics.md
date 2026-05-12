@@ -1,11 +1,11 @@
 # 분석 이벤트 정책
 
 운영 관점에서 확인해야 하는 기본 퍼널 및 이벤트 측정 규칙 정의.
-최종 동기화: 2026-05-01
+최종 동기화: 2026-05-11
 
 ## 목적
 
-- 랜딩 → 로그인 → 접수 → 설문 → 리포트 → 결제 → 상담의 핵심 퍼널 전환율을 확인한다.
+- 랜딩 → 설치 또는 로그인 → 접수 → 설문 → 리포트 → 결제 → 상담의 핵심 퍼널 전환율을 확인한다.
 - 기능 출시 전후 변화량을 비교할 수 있도록 화면 조회와 주요 액션을 공통 이벤트로 남긴다.
 - 환경변수가 없는 개발 환경에서는 이벤트 전송을 비활성화하여 로컬 개발을 방해하지 않는다.
 
@@ -20,7 +20,7 @@
 | 이벤트 | 목적 | 주요 파라미터 |
 |--------|------|---------------|
 | `page_view` | 화면별 방문 수, 경로별 이탈 확인 | `page_path`, `page_title` |
-| `landing_cta_clicked` | 랜딩 CTA 위치별 클릭률 비교 | `placement` |
+| `landing_cta_clicked` | 랜딩 CTA 위치별 클릭률과 설치/웹 시작 선택 비교 | `placement`, `target` |
 | `login_attempt` | 로그인 수단별 시도량 확인 | `provider` |
 | `login_success` | 로그인 완료율 확인 | `provider` |
 | `login_failed` | 로그인 실패 지점 확인 | `provider`, `reason` |
@@ -89,7 +89,7 @@
 - 신규 기능 추가 시 가능하면 `page_view`만으로 끝내지 말고, 사용자의 핵심 행동을 별도 이벤트로 분리한다.
 - 이벤트명은 소문자 스네이크 케이스를 사용한다.
 - `login_attempt`, `login_success`의 `provider` 값은 `kakao`, `google`, `apple`, `email`만 사용한다.
-- 가격/설치/결제 진입 `source`는 `home`, `report`, `consult`, `practices`, `subscription_settings`, `pricing_complete`, `payment`, `legacy_payment`, `direct`처럼 화면/흐름 단위의 낮은 카디널리티 값만 사용한다.
+- 가격/설치/결제 진입 `source`는 `landing`, `home`, `report`, `consult`, `practices`, `subscription_settings`, `pricing_complete`, `payment`, `legacy_payment`, `direct`처럼 화면/흐름 단위의 낮은 카디널리티 값만 사용한다.
 - 파라미터는 비교 가능한 값 위주로 유지하고, 자유서술형 텍스트는 전송하지 않는다.
 - `source`, `cta_type`, `placement`, `report_kind` 같은 분류 파라미터는 저카디널리티 값만 허용한다.
 - 개인식별 가능 정보(이름, 고민 원문, 리포트 본문)는 이벤트에 포함하지 않는다.

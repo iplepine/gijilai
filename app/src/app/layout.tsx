@@ -4,6 +4,7 @@ import Script from "next/script";
 import { FirebaseAnalytics } from "@/components/analytics/FirebaseAnalytics";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { ForceUpdateGate } from "@/components/layout/ForceUpdateGate";
+import { KeyboardViewportTracker } from "@/components/layout/KeyboardViewportTracker";
 import { ReferralHandler } from "@/components/layout/ReferralHandler";
 import { SurveyRestoreProvider } from "@/components/layout/SurveyRestoreProvider";
 import { LocaleProvider } from "@/i18n/LocaleProvider";
@@ -27,9 +28,39 @@ const koreanFont = Noto_Sans_KR({
 });
 
 export const metadata: Metadata = {
-  title: "마음 통역소 | 우리 아이 기질 맞춤 양육 가이드",
-  description: "과학적 기질 분석(TCI) 기반. 10분 설문으로 양육자와 아이의 기질적 구조를 분석하고 우리 가족만의 맞춤 양육 가이드를 받아보세요.",
-  keywords: ["기질 분석", "마음 통역소", "육아", "양육 가이드", "CBQ", "ATQ", "아동 발달", "육아 고민"],
+  metadataBase: new URL("https://gijilai.com"),
+  applicationName: "기질아이",
+  title: "기질아이 | 아이 기질검사·떼쓰기 맞춤 육아상담",
+  description: "아이 떼쓰기, 예민함, 등원 거부, 분리불안이 고민될 때 3분 아이 기질검사로 행동의 이유를 보고 맞춤 대화법과 육아상담을 받아보세요.",
+  keywords: [
+    "기질아이",
+    "아이 기질검사",
+    "아이 기질",
+    "떼쓰기",
+    "예민한 아이",
+    "등원 거부",
+    "분리불안",
+    "형제갈등",
+    "훈육",
+    "대화법",
+    "육아상담",
+    "부모상담",
+    "양육코칭",
+    "감정조절",
+  ],
+  openGraph: {
+    type: "website",
+    locale: "ko_KR",
+    url: "https://gijilai.com",
+    siteName: "기질아이",
+    title: "기질아이 | 아이 기질검사·떼쓰기 맞춤 육아상담",
+    description: "3분 아이 기질검사로 떼쓰기와 예민함의 이유를 보고, 오늘 바로 쓸 맞춤 대화법을 받아보세요.",
+  },
+  twitter: {
+    card: "summary",
+    title: "기질아이 | 아이 기질검사·떼쓰기 맞춤 육아상담",
+    description: "아이 떼쓰기와 예민함의 이유를 기질 리포트로 보고 맞춤 대화법을 받아보세요.",
+  },
 };
 
 export const viewport: Viewport = {
@@ -138,6 +169,7 @@ export default function RootLayout({
           <LocaleProvider>
             <div className="min-h-screen bg-background-light dark:bg-background-dark">
               <FirebaseAnalytics />
+              <KeyboardViewportTracker />
               <ReferralHandler />
               <SurveyRestoreProvider />
               {children}
