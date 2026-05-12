@@ -182,6 +182,11 @@ export function PracticeCheckModal({
                 <div className="shrink-0 p-6 border-b border-beige-main/10 dark:border-white/5 bg-beige-main/5 dark:bg-white/5">
                     <h4 className="font-bold text-lg text-text-main dark:text-white">{t('practices.todayRecord')}</h4>
                     <p className="text-[13px] text-text-sub mt-1">{practiceTitle}</p>
+                    {enableChildReactionFeedback && (
+                        <p className="mt-2 text-[12px] font-medium leading-relaxed text-primary">
+                            {t('practices.feedbackRecordHelper')}
+                        </p>
+                    )}
                 </div>
 
                 <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6 space-y-5">

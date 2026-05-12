@@ -22,6 +22,7 @@ import {
     validateConsultProblemInput,
     type ConsultInputValidationCode,
 } from '@/lib/consultInputValidation';
+import { getHomeSosSituationPrefill } from '@/lib/consultSituationPrefill';
 
 type Step = 'INPUT' | 'DIAGNOSTIC' | 'RESULT';
 type QuestionNavDirection = 'next' | 'prev';
@@ -226,6 +227,8 @@ function ConsultContent() {
     const sessionIdParam = searchParams.get('sessionId');
     const replacePracticeIdParam = searchParams.get('replacePracticeId');
     const entrySource = searchParams.get('source') ?? (sessionIdParam ? 'followup' : 'direct');
+    const entryCta = searchParams.get('entry_cta');
+    const situationParam = searchParams.get('situation');
     const reportTab = searchParams.get('report_tab');
     const reportKind = searchParams.get('report_kind');
     const { user } = useAuth();
@@ -337,6 +340,7 @@ function ConsultContent() {
     const [savedConsultId, setSavedConsultId] = useState<string | null>(null);
     const [showInstallPrompt, setShowInstallPrompt] = useState(false);
     const trackedFollowupContextRef = useRef(false);
+    const appliedSituationPrefillRef = useRef(false);
 
     // 기질 프로필 (초기 로드 시 1회 계산)
     const [childProfile, setChildProfile] = useState<TemperamentProfile | null>(null);
@@ -395,6 +399,19 @@ function ConsultContent() {
         setProblemDesc(value.slice(0, 500));
         if (problemInputError) setProblemInputError(null);
     }, [problemInputError]);
+    const situationPrefill = getHomeSosSituationPrefill(situationParam, t);
+
+    useEffect(() => {
+        if (!situationPrefill || appliedSituationPrefillRef.current) return;
+        appliedSituationPrefillRef.current = true;
+        updateProblemDesc(situationPrefill);
+        trackEvent('consult_situation_prefilled', {
+            source: entrySource,
+            entry_cta: entryCta ?? 'today_sos',
+            situation_key: situationParam ?? undefined,
+        });
+    }, [entryCta, entrySource, situationParam, situationPrefill, updateProblemDesc]);
+
     const trimmedProblemDesc = problemDesc.trim();
     const selectedProblemExampleText = examples.find((ex) => trimmedProblemDesc === ex.text.trim())?.text ?? null;
     const hasProblemDesc = problemDesc.length > 0;
@@ -614,6 +631,7 @@ function ConsultContent() {
         const fullProblem = problemDesc;
         trackEvent('consult_started', {
             source: entrySource,
+            entry_cta: entryCta ?? undefined,
             has_child_report: hasChildReport,
             has_subscription: hasSubscription,
             is_trial: isTrialActive,
@@ -817,6 +835,7 @@ function ConsultContent() {
             setStep('RESULT');
             trackEvent('consult_completed', {
                 source: entrySource,
+                entry_cta: entryCta ?? undefined,
                 has_subscription: hasSubscription,
                 is_trial: isTrialActive,
                 is_followup: !!sessionIdParam,
