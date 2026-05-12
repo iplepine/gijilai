@@ -490,18 +490,12 @@ function PracticesPageContent() {
       if (!log.done) recentFailCount++;
       else break;
     }
-    const hasPreviousLogs = allLogs.some(
-      (log) =>
-        log.practice_id === practice.id && (!todayLog || log.id !== todayLog.id),
-    );
-
     setCheckModal({
       practice,
       existingLog: todayLog,
       recentFailCount,
       sessionId: practice.session_id,
-      enableChildReactionFeedback:
-        recommendedPractice?.id === practice.id && hasPreviousLogs,
+      enableChildReactionFeedback: recommendedPractice?.id === practice.id,
     });
   }, [
     allLogs,
@@ -821,10 +815,7 @@ function PracticesPageContent() {
   ) => {
     const todayLog = getTodayLog(practice.id);
     const featured = options?.featured;
-    const hasPreviousLogs = allLogs.some(
-      (log) => log.practice_id === practice.id && (!todayLog || log.id !== todayLog.id),
-    );
-    const enableReactionFeedback = !!featured && hasPreviousLogs;
+    const enableReactionFeedback = !!featured;
     const actionClassName = featured
       ? "w-full py-3 rounded-xl font-bold text-[13px] flex items-center justify-center gap-1.5 transition-all active:scale-[0.98]"
       : "w-full py-3 rounded-xl font-bold text-[13px] flex items-center justify-center gap-1.5 transition-all active:scale-[0.98]";

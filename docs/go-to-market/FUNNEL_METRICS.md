@@ -47,6 +47,20 @@
 5. `followup_context_viewed`
 6. `consult_started(is_followup=true)`
 
+## 리텐션 재진입 퍼널
+
+1. `home_sos_clicked`
+2. `consult_situation_prefilled`
+3. `consult_started(source=home_sos)`
+4. `consult_completed`
+5. `practice_item_saved`
+
+## 실천 피드백 퍼널
+
+1. `practice_log_saved`
+2. `practice_feedback_viewed`
+3. `consult_started(source=home_sos 또는 followup)`
+
 ## 운영 리듬
 
 - 매주 한 가지 이탈 구간만 선택한다.

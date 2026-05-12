@@ -41,6 +41,8 @@ import {
   type PracticeReminderPreferences,
 } from "@/lib/practiceReminder";
 import { trackEvent } from "@/lib/analytics";
+import { getFeatureAccess } from "@/lib/access";
+import type { HomeSosSituationKey } from "@/lib/consultSituationPrefill";
 
 const DEFAULT_REMINDER_PREFERENCES: PracticeReminderPreferences = {
   pushEnabled: true,
@@ -52,7 +54,37 @@ const PRIMARY_PRACTICE_PREVIEW_LIMIT = 2;
 type QuickPracticeMessage = {
   tone: "success" | "error" | "info";
   text: string;
+  detail?: string;
+  actionHref?: string;
+  actionText?: string;
 };
+
+const HOME_SOS_SITUATIONS: Array<{
+  key: HomeSosSituationKey;
+  icon: string;
+  labelKey: string;
+}> = [
+  {
+    key: "morning_transition",
+    icon: "directions_walk",
+    labelKey: "home.sosMorning",
+  },
+  {
+    key: "meltdown",
+    icon: "sentiment_stressed",
+    labelKey: "home.sosMeltdown",
+  },
+  {
+    key: "sleep",
+    icon: "bedtime",
+    labelKey: "home.sosSleep",
+  },
+  {
+    key: "parent_regret",
+    icon: "favorite",
+    labelKey: "home.sosParentRegret",
+  },
+];
 
 function HomeModuleReveal({
   children,
@@ -180,9 +212,12 @@ export default function HomePage() {
   }, [magicWords.length, mainChild?.id]);
 
   const childName = mainChild?.name || t("home.defaultChildName");
-  const trialStatus = user?.created_at
-    ? db.getTrialStatus(user.created_at)
-    : null;
+  const access = getFeatureAccess({
+    userCreatedAt: user?.created_at,
+    hasSubscription: !!subscription,
+  });
+  const trialStatus = access.trial;
+  const hasFullAccess = access.hasFullAccess;
   const shouldShowTrialEndingCard =
     !subscription && !!trialStatus?.isActive && trialStatus.daysRemaining <= 2;
   const hasCompleteLocalChildResponses = Object.keys(cbqResponses).length >= CHILD_QUESTIONS.length;
@@ -315,6 +350,25 @@ export default function HomePage() {
     router.push("/pricing?source=home&entry_cta=trial_ending");
   };
 
+  const openHomeSosConsult = useCallback(
+    (situationKey: HomeSosSituationKey) => {
+      trackEvent("home_sos_clicked", {
+        source: "home",
+        entry_cta: "today_sos",
+        situation_key: situationKey,
+        has_practice_priority: hasPracticePriority,
+        has_consult_priority: hasConsultPriority,
+      });
+      const params = new URLSearchParams({
+        source: "home_sos",
+        entry_cta: "today_sos",
+        situation: situationKey,
+      });
+      router.push(`/consult?${params.toString()}`);
+    },
+    [hasConsultPriority, hasPracticePriority, router],
+  );
+
   const handleQuickPracticeSave = useCallback(
     async (practice: PracticeItemData, done: boolean) => {
       if (!user || !practice || quickPracticeSavingId) return;
@@ -331,13 +385,21 @@ export default function HomePage() {
       try {
         const today = getLocalDateString();
         const existingLogs = await db.getPracticeLogs(practice.id).catch(() => null);
+        const feedbackHref = `/practices?focusPracticeId=${practice.id}`;
 
-        await db.createPracticeLog({
+        const log = await db.createPracticeLog({
           practice_id: practice.id,
           user_id: user.id,
           date: today,
           done,
           memo: null,
+          practice_attempt_type: done ? "as_prescribed" : "barely_tried",
+          child_reaction_type: done ? "no_clear_reaction" : "not_tried",
+          parent_impression_type: "not_sure",
+          ai_feedback: null,
+          ai_feedback_created_at: null,
+          ai_feedback_model: null,
+          ai_feedback_depth: null,
         });
 
         setQuickPracticeCompletedIds((previous) => {
@@ -350,6 +412,9 @@ export default function HomePage() {
           text: done
             ? t("home.quickPracticeDoneSaved")
             : t("home.quickPracticeSkippedSaved"),
+          detail: t("home.quickPracticeFeedbackPending"),
+          actionHref: feedbackHref,
+          actionText: t("home.quickPracticeFeedbackDetailCta"),
         });
 
         trackEvent("practice_log_saved", {
@@ -359,6 +424,50 @@ export default function HomePage() {
           first_log: existingLogs ? existingLogs.length === 0 : undefined,
           with_reaction_feedback: false,
         });
+
+        if (hasFullAccess) {
+          void (async () => {
+            const controller = new AbortController();
+            const timeoutId = window.setTimeout(() => controller.abort(), 15000);
+            try {
+              const response = await fetch("/api/consult/practice-feedback", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                signal: controller.signal,
+                body: JSON.stringify({
+                  logId: log.id,
+                  practiceId: practice.id,
+                }),
+              });
+              if (!response.ok) return;
+              const payload = (await response.json()) as {
+                feedback?: { tomorrowAdjustment?: string };
+              };
+              const adjustment = payload.feedback?.tomorrowAdjustment?.trim();
+              if (!adjustment) return;
+              setQuickPracticeMessage((previous) => {
+                if (previous?.actionHref !== feedbackHref) return previous;
+                return {
+                  ...previous,
+                  text: t("home.quickPracticeFeedbackReady"),
+                  detail: adjustment,
+                };
+              });
+              trackEvent("practice_feedback_viewed", {
+                source: "home",
+                entry_cta: "practice_inline",
+                first_log: existingLogs ? existingLogs.length === 0 : undefined,
+                has_full_access: hasFullAccess,
+                child_reaction_type: done ? "no_clear_reaction" : "not_tried",
+                parent_impression_type: "not_sure",
+              });
+            } catch (error) {
+              console.error("Failed to generate home practice feedback:", error);
+            } finally {
+              window.clearTimeout(timeoutId);
+            }
+          })();
+        }
       } catch (error) {
         console.error("Failed to save home practice log:", error);
         setQuickPracticeMessage({
@@ -369,7 +478,7 @@ export default function HomePage() {
         setQuickPracticeSavingId(null);
       }
     },
-    [quickPracticeSavingId, t, user],
+    [hasFullAccess, quickPracticeSavingId, t, user],
   );
 
   const handleQuickPracticeSnooze = useCallback(
@@ -673,8 +782,67 @@ export default function HomePage() {
                             : "border border-emerald-100 bg-emerald-50 text-emerald-700"
                       }`}
                     >
-                      {quickPracticeMessage.text}
+                      <p>{quickPracticeMessage.text}</p>
+                      {quickPracticeMessage.detail && (
+                        <p className="mt-1 text-[12px] font-medium leading-relaxed opacity-80">
+                          {quickPracticeMessage.detail}
+                        </p>
+                      )}
+                      {quickPracticeMessage.actionHref && quickPracticeMessage.actionText && (
+                        <Link
+                          href={quickPracticeMessage.actionHref}
+                          className="mt-2 inline-flex items-center gap-1 text-[12px] font-black underline underline-offset-2"
+                        >
+                          <span>{quickPracticeMessage.actionText}</span>
+                          <span className="material-symbols-outlined text-[15px]">
+                            arrow_forward
+                          </span>
+                        </Link>
+                      )}
                     </div>
+                  </HomeModuleReveal>
+                )}
+                {temperamentInfo?.child && (
+                  <HomeModuleReveal order={0}>
+                    <section className="rounded-2xl border border-secondary/15 bg-white p-4 shadow-soft dark:bg-surface-dark">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary/10 text-secondary">
+                          <span className="material-symbols-outlined text-[21px]">
+                            chat_bubble
+                          </span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[11px] font-black text-secondary">
+                            {t("home.sosEyebrow")}
+                          </p>
+                          <h2 className="mt-0.5 text-[16px] font-black leading-snug text-text-main dark:text-white">
+                            {t("home.sosTitle")}
+                          </h2>
+                          <p className="mt-1 text-[12px] leading-relaxed text-text-sub break-keep">
+                            {t("home.sosDescription", { name: childName })}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-4 grid grid-cols-2 gap-2">
+                        {HOME_SOS_SITUATIONS.map((situation) => (
+                          <button
+                            key={situation.key}
+                            type="button"
+                            onClick={() => openHomeSosConsult(situation.key)}
+                            className="min-h-11 rounded-2xl border border-secondary/10 bg-secondary/5 px-3 py-2 text-left text-[12px] font-bold text-text-main transition-all active:scale-[0.98] dark:bg-white/5 dark:text-white"
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <span className="material-symbols-outlined text-[17px] text-secondary">
+                                {situation.icon}
+                              </span>
+                              <span className="min-w-0 break-keep">
+                                {t(situation.labelKey)}
+                              </span>
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </section>
                   </HomeModuleReveal>
                 )}
                 {primaryAction && (
