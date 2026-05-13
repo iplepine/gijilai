@@ -260,31 +260,6 @@ function ReportSectionGroup({ children }: { children: React.ReactNode }) {
   );
 }
 
-function getTimedLoadingState<Key extends string>(
-  sections: ReadonlyArray<ReportLoadingSection<Key>>,
-  step: number,
-) {
-  const progressTotal = sections.length + 1;
-
-  if (step >= sections.length) {
-    return {
-      section: null,
-      progressCurrent: progressTotal,
-      progressTotal,
-      isFinalizing: true,
-    };
-  }
-
-  const index = Math.min(step, Math.max(0, sections.length - 1));
-
-  return {
-    section: sections[index] ?? null,
-    progressCurrent: index + 1,
-    progressTotal,
-    isFinalizing: false,
-  };
-}
-
 function ReportContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -513,6 +488,22 @@ function ReportContent() {
     t('report.childLoadingStep3'),
     t('report.childLoadingStep4'),
     t('report.childLoadingStep5'),
+  ], [t]);
+
+  const parentLoadingSteps = useMemo(() => [
+    t('report.parentLoadingStep1'),
+    t('report.parentLoadingStep2'),
+    t('report.parentLoadingStep3'),
+    t('report.parentLoadingStep4'),
+    t('report.parentLoadingStep5'),
+  ], [t]);
+
+  const harmonyLoadingSteps = useMemo(() => [
+    t('report.harmonyLoadingStep1'),
+    t('report.harmonyLoadingStep2'),
+    t('report.harmonyLoadingStep3'),
+    t('report.harmonyLoadingStep4'),
+    t('report.harmonyLoadingStep5'),
   ], [t]);
 
   const ReportGeneratingState = ({
@@ -1726,66 +1717,6 @@ function ReportContent() {
     : parentReportProgressTotal;
   const isParentReportFinalizing = isParentReportStreaming && hasParentReportLetter && !activeParentLoadingSection;
   const isHarmonyReportGenerating = isGenerating && generatingRef.current.has('HARMONY');
-  const harmonyReportLoadingSections = useMemo(() => [
-    {
-      key: 'radar',
-      icon: 'analytics',
-      label: t('report.temperamentComparison'),
-      message: t('report.harmonySectionLoadingRadar'),
-      isReady: false,
-    },
-    {
-      key: 'summary',
-      icon: 'auto_awesome',
-      label: t('report.harmonyReport'),
-      message: t('report.harmonySectionLoadingSummary'),
-      isReady: false,
-    },
-    {
-      key: 'coreGap',
-      icon: 'compare_arrows',
-      label: t('report.coreGap'),
-      message: t('report.harmonySectionLoadingCoreGap'),
-      isReady: false,
-    },
-    {
-      key: 'coreMatch',
-      icon: 'favorite',
-      label: t('report.coreMatch'),
-      message: t('report.harmonySectionLoadingCoreMatch'),
-      isReady: false,
-    },
-    {
-      key: 'principles',
-      icon: 'school',
-      label: t('report.parentingPrinciples'),
-      message: t('report.harmonySectionLoadingPrinciples'),
-      isReady: false,
-    },
-    {
-      key: 'situationalTips',
-      icon: 'lightbulb',
-      label: t('report.situationalTips'),
-      message: t('report.harmonySectionLoadingSituationalTips'),
-      isReady: false,
-    },
-    {
-      key: 'audit',
-      icon: 'tune',
-      label: t('report.parentingStyleDiag'),
-      message: t('report.harmonySectionLoadingAudit'),
-      isReady: false,
-    },
-    {
-      key: 'dailyReminder',
-      icon: 'bookmark',
-      label: t('report.dailyReminder'),
-      message: t('report.harmonySectionLoadingReminder'),
-      isReady: false,
-    },
-  ] satisfies Array<ReportLoadingSection>, [t]);
-  const harmonyLoadingState = getTimedLoadingState(harmonyReportLoadingSections, reportLoadingStep);
-
   const radarData = {
     labels: [
       TCI_TERMINOLOGY.DIMENSIONS.NS.name,
@@ -1842,19 +1773,23 @@ function ReportContent() {
   const isExistingReportLoadingForActiveTab = existingReportLoadingType === activeReportLoadingType;
 
   if (isReportContextLoading) {
+    const tabLoadingConfig: Record<ReportTab, { title: string; steps: string[] }> = {
+      child: { title: t('report.analyzingChild'), steps: childLoadingSteps },
+      parent: { title: t('report.analyzingParent'), steps: parentLoadingSteps },
+      parenting: { title: t('report.analyzingHarmony'), steps: harmonyLoadingSteps },
+    };
+    const { title, steps } = tabLoadingConfig[activeTab];
     return (
       <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center justify-center font-body">
         <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl items-center justify-center gap-4">
-          {activeTab === 'child' && !isSavedReportContextLoading ? (
-            <ReportGeneratingState
-              title={t('report.analyzingChild')}
-              steps={childLoadingSteps}
-              showImage={false}
-            />
-          ) : isSavedReportContextLoading ? (
+          {isSavedReportContextLoading ? (
             <ExistingReportLoadingProgress className="min-h-screen py-0" />
           ) : (
-            <TabLoadingIndicator label={t('common.loading')} />
+            <ReportGeneratingState
+              title={title}
+              steps={steps}
+              showImage={false}
+            />
           )}
         </div>
       </div>
@@ -2633,15 +2568,11 @@ function ReportContent() {
                     )}
                   </ReportSectionGroup>
                 ) : (
-                  <div className="py-6">
-                    <SectionLoadingCard
-                      icon={parentReportLoadingSections[0].icon}
-                      label={parentReportLoadingSections[0].label}
-                      message={parentReportLoadingSections[0].message}
-                      progressCurrent={1}
-                      progressTotal={parentReportProgressTotal}
-                    />
-                  </div>
+                  <ReportGeneratingState
+                    title={t('report.analyzingParent')}
+                    steps={parentLoadingSteps}
+                    showImage={false}
+                  />
                 )}
 
                 {/* Footer Actions */}
@@ -2881,25 +2812,11 @@ function ReportContent() {
                     )}
                   </>
 	                ) : (
-	                  <div className="py-6">
-	                    {harmonyLoadingState.isFinalizing || !harmonyLoadingState.section ? (
-	                      <SectionLoadingCard
-	                        icon="auto_awesome"
-	                        label={t('report.finalizingReport')}
-	                        message={t('report.harmonySectionLoadingFinal')}
-	                        progressCurrent={harmonyLoadingState.progressCurrent}
-	                        progressTotal={harmonyLoadingState.progressTotal}
-	                      />
-	                    ) : (
-	                      <SectionLoadingCard
-	                        icon={harmonyLoadingState.section.icon}
-	                        label={harmonyLoadingState.section.label}
-	                        message={harmonyLoadingState.section.message}
-	                        progressCurrent={harmonyLoadingState.progressCurrent}
-	                        progressTotal={harmonyLoadingState.progressTotal}
-	                      />
-	                    )}
-	                  </div>
+	                  <ReportGeneratingState
+	                    title={t('report.analyzingHarmony')}
+	                    steps={harmonyLoadingSteps}
+	                    showImage={false}
+	                  />
 	                )}
 
                 {/* Footer Actions */}
