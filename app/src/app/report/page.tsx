@@ -494,7 +494,8 @@ function ReportContent() {
   }, [locale]);
 
   useEffect(() => {
-    if (!isGenerating || existingReportLoadingType) {
+    const shouldAnimate = (isGenerating || isReportContextLoading) && !existingReportLoadingType;
+    if (!shouldAnimate) {
       setReportLoadingStep(0);
       return;
     }
@@ -504,7 +505,7 @@ function ReportContent() {
     }, 3000);
 
     return () => window.clearInterval(interval);
-  }, [existingReportLoadingType, isGenerating]);
+  }, [existingReportLoadingType, isGenerating, isReportContextLoading]);
 
   const childLoadingSteps = useMemo(() => [
     t('report.childLoadingStep1'),
@@ -1844,7 +1845,13 @@ function ReportContent() {
     return (
       <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center justify-center font-body">
         <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl items-center justify-center gap-4">
-          {isSavedReportContextLoading ? (
+          {activeTab === 'child' && !isSavedReportContextLoading ? (
+            <ReportGeneratingState
+              title={t('report.analyzingChild')}
+              steps={childLoadingSteps}
+              showImage={false}
+            />
+          ) : isSavedReportContextLoading ? (
             <ExistingReportLoadingProgress className="min-h-screen py-0" />
           ) : (
             <TabLoadingIndicator label={t('common.loading')} />
