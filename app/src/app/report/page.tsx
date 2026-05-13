@@ -292,6 +292,7 @@ function ReportContent() {
   const [isStartingFreshSurvey, setIsStartingFreshSurvey] = useState(false);
   const [reportLoadingStep, setReportLoadingStep] = useState(0);
   const generatingRef = useRef<Set<string>>(new Set());
+  const inflightControllersRef = useRef<Map<'CHILD' | 'PARENT' | 'HARMONY', AbortController>>(new Map());
   const refreshedReportTypesRef = useRef<Set<string>>(new Set());
   const [reportDates, setReportDates] = useState<ReportDates>({});
   const [childReportId, setChildReportId] = useState<string | null>(null);
@@ -747,6 +748,11 @@ function ReportContent() {
   useEffect(() => {
     if (prevChildIdRef.current !== selectedChildId) {
       prevChildIdRef.current = selectedChildId;
+      inflightControllersRef.current.forEach((controller) => controller.abort());
+      inflightControllersRef.current.clear();
+      generatingRef.current.clear();
+      setIsGenerating(false);
+      setExistingReportLoadingType(null);
       setChildAiReport(null);
       setParentAiReport(null);
       setHarmonyAiReport(null);
@@ -755,6 +761,14 @@ function ReportContent() {
       setHarmonyReportId(null);
     }
   }, [selectedChildId]);
+
+  useEffect(() => {
+    const controllers = inflightControllersRef.current;
+    return () => {
+      controllers.forEach((controller) => controller.abort());
+      controllers.clear();
+    };
+  }, []);
 
   const handleTabChange = (tab: 'child' | 'parent' | 'parenting') => {
     setActiveTab(tab);
@@ -963,7 +977,7 @@ function ReportContent() {
     return buildTrackedPath(`/share${shareReportId ? `?id=${shareReportId}` : ''}`);
   }, [buildTrackedPath, getShareReportId]);
 
-  const fetchReport = useCallback(async (payload: ReportApiPayload): Promise<ReportApiResult | null> => {
+  const fetchReport = useCallback(async (payload: ReportApiPayload, signal?: AbortSignal): Promise<ReportApiResult | null> => {
     const resolvedChildId = currentChild?.id ?? selectedChildId;
     const perf = createPerfTracker('fetchReport', {
       type: payload.type,
@@ -974,7 +988,8 @@ function ReportContent() {
     const res = await fetch('/api/llm/report', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...payload, intake, childId: resolvedChildId })
+      body: JSON.stringify({ ...payload, intake, childId: resolvedChildId }),
+      signal,
     });
     perf.mark('network_complete', {
       ok: res.ok,
@@ -1002,7 +1017,7 @@ function ReportContent() {
     // 캐시된 리포트의 포맷이 현재 UI와 맞지 않으면 재생성
     if (data.cached && !isValidReport(data.report, payload.type)) {
       console.warn(`Cached ${payload.type} report format mismatch, regenerating...`);
-      return fetchReport({ ...payload, refresh: true });
+      return fetchReport({ ...payload, refresh: true }, signal);
     }
 
     return { report: data.report, reportId: data.reportId, createdAt: data.createdAt };
@@ -1011,6 +1026,7 @@ function ReportContent() {
   const fetchChildReportStream = useCallback(async (
     payload: ReportApiPayload & { type: 'CHILD' },
     onModule: (item: ChildReportStreamModule) => void,
+    signal?: AbortSignal,
   ): Promise<ReportApiResult | null> => {
     const resolvedChildId = currentChild?.id ?? selectedChildId;
     const perf = createPerfTracker('fetchReportStream', {
@@ -1023,6 +1039,7 @@ function ReportContent() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...payload, intake, childId: resolvedChildId, stream: true }),
+      signal,
     });
     perf.mark('network_headers', {
       ok: res.ok,
@@ -1041,6 +1058,7 @@ function ReportContent() {
     let result: ReportApiResult | null = null;
 
     const handleBlock = (block: string) => {
+      if (signal?.aborted) return;
       const { event, data } = parseSseBlock(block);
       if (!data) return;
 
@@ -1074,6 +1092,7 @@ function ReportContent() {
     };
 
     while (true) {
+      if (signal?.aborted) break;
       const { done, value } = await reader.read();
       if (done) break;
 
@@ -1087,6 +1106,7 @@ function ReportContent() {
       }
     }
 
+    if (signal?.aborted) return null;
     buffer += decoder.decode();
     if (buffer.trim()) handleBlock(buffer);
     perf.mark('response_parsed');
@@ -1097,6 +1117,7 @@ function ReportContent() {
   const fetchParentReportStream = useCallback(async (
     payload: ReportApiPayload & { type: 'PARENT' },
     onModule: (item: ParentReportStreamModule) => void,
+    signal?: AbortSignal,
   ): Promise<ReportApiResult | null> => {
     const resolvedChildId = currentChild?.id ?? selectedChildId;
     const perf = createPerfTracker('fetchReportStream', {
@@ -1109,6 +1130,7 @@ function ReportContent() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...payload, intake, childId: resolvedChildId, stream: true }),
+      signal,
     });
     perf.mark('network_headers', {
       ok: res.ok,
@@ -1140,6 +1162,7 @@ function ReportContent() {
     };
 
     const handleBlock = async (block: string) => {
+      if (signal?.aborted) return;
       const { event, data } = parseSseBlock(block);
       if (!data) return;
 
@@ -1178,6 +1201,7 @@ function ReportContent() {
     };
 
     while (true) {
+      if (signal?.aborted) break;
       const { done, value } = await reader.read();
       if (done) break;
 
@@ -1191,6 +1215,7 @@ function ReportContent() {
       }
     }
 
+    if (signal?.aborted) return null;
     buffer += decoder.decode();
     if (buffer.trim()) await handleBlock(buffer);
     perf.mark('response_parsed');
@@ -1295,6 +1320,8 @@ function ReportContent() {
     const previousChildReportDate = reportDates.child;
     const previousChildReportId = childReportId;
     const isLoadingExistingReport = !refresh && !!currentChildReport?.id;
+    const controller = new AbortController();
+    inflightControllersRef.current.set('CHILD', controller);
     generatingRef.current.add('CHILD');
     setIsGenerating(true);
     if (isLoadingExistingReport) setExistingReportLoadingType('CHILD');
@@ -1312,11 +1339,13 @@ function ReportContent() {
         refresh,
         childType: { label: childType.label, keywords: childType.keywords, desc: childType.desc }
       }, (item) => {
+        if (controller.signal.aborted) return;
         setChildAiReport((current) => normalizeReportTextForName(
           applyChildReportStreamModule(current ?? { analysis: {} }, item),
           childName,
         ));
-      });
+      }, controller.signal);
+      if (controller.signal.aborted) return;
       if (result) {
         setChildAiReport(normalizeReportTextForName(asChildAiReport(result.report), childName));
         if (result.reportId) setChildReportId(result.reportId);
@@ -1324,6 +1353,9 @@ function ReportContent() {
         if (refresh) setHarmonyRefreshSource('child');
       }
     } catch (error) {
+      if (controller.signal.aborted || (error instanceof Error && error.name === 'AbortError')) {
+        return;
+      }
       console.error(error);
       if (previousChildReport) {
         setChildAiReport(previousChildReport);
@@ -1342,10 +1374,13 @@ function ReportContent() {
       setChildReportId(previousChildReportId);
       alert(isChildProfileLimitError(error) ? t('settings.childProfileLimitReached') : t('report.generationError'));
     } finally {
-      generatingRef.current.delete('CHILD');
-      setIsGenerating(generatingRef.current.size > 0);
-      if (isLoadingExistingReport) {
-        setExistingReportLoadingType(current => current === 'CHILD' ? null : current);
+      if (inflightControllersRef.current.get('CHILD') === controller) {
+        inflightControllersRef.current.delete('CHILD');
+        generatingRef.current.delete('CHILD');
+        setIsGenerating(generatingRef.current.size > 0);
+        if (isLoadingExistingReport) {
+          setExistingReportLoadingType(current => current === 'CHILD' ? null : current);
+        }
       }
     }
   }, [childAiReport, childAnswerMap, childName, childReportId, childScores, childType.desc, childType.keywords, childType.label, currentChildReport?.id, fetchChildReportStream, normalizeReportTextForName, reportDates.child, t]);
@@ -1355,6 +1390,8 @@ function ReportContent() {
     const previousParentReport = parentAiReport;
     const previousParentReportDate = reportDates.parent;
     const isLoadingExistingReport = !refresh && !!currentParentReport?.id;
+    const controller = new AbortController();
+    inflightControllersRef.current.set('PARENT', controller);
     generatingRef.current.add('PARENT');
     setIsGenerating(true);
     if (isLoadingExistingReport) setExistingReportLoadingType('PARENT');
@@ -1372,8 +1409,10 @@ function ReportContent() {
         refresh,
         parentType: { label: parentType.label, keywords: parentType.keywords }
       }, (item) => {
+        if (controller.signal.aborted) return;
         setParentAiReport((current) => applyParentReportStreamModule(current ?? {}, item));
-      });
+      }, controller.signal);
+      if (controller.signal.aborted) return;
       if (result) {
         setParentAiReport(asParentAiReport(result.report));
         if (result.reportId) setParentReportId(result.reportId);
@@ -1381,6 +1420,9 @@ function ReportContent() {
         if (refresh) setHarmonyRefreshSource('parent');
       }
     } catch (error) {
+      if (controller.signal.aborted || (error instanceof Error && error.name === 'AbortError')) {
+        return;
+      }
       console.error(error);
       if (previousParentReport) {
         setParentAiReport(previousParentReport);
@@ -1398,10 +1440,13 @@ function ReportContent() {
       });
       alert(isChildProfileLimitError(error) ? t('settings.childProfileLimitReached') : t('report.generationError'));
     } finally {
-      generatingRef.current.delete('PARENT');
-      setIsGenerating(generatingRef.current.size > 0);
-      if (isLoadingExistingReport) {
-        setExistingReportLoadingType(current => current === 'PARENT' ? null : current);
+      if (inflightControllersRef.current.get('PARENT') === controller) {
+        inflightControllersRef.current.delete('PARENT');
+        generatingRef.current.delete('PARENT');
+        setIsGenerating(generatingRef.current.size > 0);
+        if (isLoadingExistingReport) {
+          setExistingReportLoadingType(current => current === 'PARENT' ? null : current);
+        }
       }
     }
   }, [currentParentReport?.id, fetchParentReportStream, parentAiReport, parentAnswerMap, parentScores, parentType.keywords, parentType.label, reportDates.parent, t]);
@@ -1409,6 +1454,8 @@ function ReportContent() {
   const generateHarmonyAIReport = useCallback(async (refresh = false) => {
     if (generatingRef.current.has('HARMONY')) return;
     const isLoadingExistingReport = !refresh && !!currentHarmonyReport?.id;
+    const controller = new AbortController();
+    inflightControllersRef.current.set('HARMONY', controller);
     generatingRef.current.add('HARMONY');
     setIsGenerating(true);
     if (isLoadingExistingReport) setExistingReportLoadingType('HARMONY');
@@ -1424,7 +1471,8 @@ function ReportContent() {
         isPreview: false, refresh, styleScores,
         childType: { label: childType.label, keywords: childType.keywords },
         parentType: { label: parentType.label, keywords: parentType.keywords }
-      });
+      }, controller.signal);
+      if (controller.signal.aborted) return false;
       if (result) {
         setHarmonyAiReport(normalizeReportTextForName(asHarmonyAiReport(result.report), childName));
         if (result.reportId) setHarmonyReportId(result.reportId);
@@ -1432,14 +1480,20 @@ function ReportContent() {
         return true;
       }
     } catch (error) {
+      if (controller.signal.aborted || (error instanceof Error && error.name === 'AbortError')) {
+        return false;
+      }
       console.error(error);
       alert(isChildProfileLimitError(error) ? t('settings.childProfileLimitReached') : t('report.harmonyError'));
       return false;
     } finally {
-      generatingRef.current.delete('HARMONY');
-      setIsGenerating(generatingRef.current.size > 0);
-      if (isLoadingExistingReport) {
-        setExistingReportLoadingType(current => current === 'HARMONY' ? null : current);
+      if (inflightControllersRef.current.get('HARMONY') === controller) {
+        inflightControllersRef.current.delete('HARMONY');
+        generatingRef.current.delete('HARMONY');
+        setIsGenerating(generatingRef.current.size > 0);
+        if (isLoadingExistingReport) {
+          setExistingReportLoadingType(current => current === 'HARMONY' ? null : current);
+        }
       }
     }
     return false;
