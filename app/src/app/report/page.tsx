@@ -260,31 +260,6 @@ function ReportSectionGroup({ children }: { children: React.ReactNode }) {
   );
 }
 
-function getTimedLoadingState<Key extends string>(
-  sections: ReadonlyArray<ReportLoadingSection<Key>>,
-  step: number,
-) {
-  const progressTotal = sections.length + 1;
-
-  if (step >= sections.length) {
-    return {
-      section: null,
-      progressCurrent: progressTotal,
-      progressTotal,
-      isFinalizing: true,
-    };
-  }
-
-  const index = Math.min(step, Math.max(0, sections.length - 1));
-
-  return {
-    section: sections[index] ?? null,
-    progressCurrent: index + 1,
-    progressTotal,
-    isFinalizing: false,
-  };
-}
-
 function ReportContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -317,6 +292,7 @@ function ReportContent() {
   const [isStartingFreshSurvey, setIsStartingFreshSurvey] = useState(false);
   const [reportLoadingStep, setReportLoadingStep] = useState(0);
   const generatingRef = useRef<Set<string>>(new Set());
+  const inflightControllersRef = useRef<Map<'CHILD' | 'PARENT' | 'HARMONY', AbortController>>(new Map());
   const refreshedReportTypesRef = useRef<Set<string>>(new Set());
   const [reportDates, setReportDates] = useState<ReportDates>({});
   const [childReportId, setChildReportId] = useState<string | null>(null);
@@ -494,7 +470,8 @@ function ReportContent() {
   }, [locale]);
 
   useEffect(() => {
-    if (!isGenerating || existingReportLoadingType) {
+    const shouldAnimate = (isGenerating || isReportContextLoading) && !existingReportLoadingType;
+    if (!shouldAnimate) {
       setReportLoadingStep(0);
       return;
     }
@@ -504,7 +481,7 @@ function ReportContent() {
     }, 3000);
 
     return () => window.clearInterval(interval);
-  }, [existingReportLoadingType, isGenerating]);
+  }, [existingReportLoadingType, isGenerating, isReportContextLoading]);
 
   const childLoadingSteps = useMemo(() => [
     t('report.childLoadingStep1'),
@@ -512,6 +489,22 @@ function ReportContent() {
     t('report.childLoadingStep3'),
     t('report.childLoadingStep4'),
     t('report.childLoadingStep5'),
+  ], [t]);
+
+  const parentLoadingSteps = useMemo(() => [
+    t('report.parentLoadingStep1'),
+    t('report.parentLoadingStep2'),
+    t('report.parentLoadingStep3'),
+    t('report.parentLoadingStep4'),
+    t('report.parentLoadingStep5'),
+  ], [t]);
+
+  const harmonyLoadingSteps = useMemo(() => [
+    t('report.harmonyLoadingStep1'),
+    t('report.harmonyLoadingStep2'),
+    t('report.harmonyLoadingStep3'),
+    t('report.harmonyLoadingStep4'),
+    t('report.harmonyLoadingStep5'),
   ], [t]);
 
   const ReportGeneratingState = ({
@@ -755,6 +748,11 @@ function ReportContent() {
   useEffect(() => {
     if (prevChildIdRef.current !== selectedChildId) {
       prevChildIdRef.current = selectedChildId;
+      inflightControllersRef.current.forEach((controller) => controller.abort());
+      inflightControllersRef.current.clear();
+      generatingRef.current.clear();
+      setIsGenerating(false);
+      setExistingReportLoadingType(null);
       setChildAiReport(null);
       setParentAiReport(null);
       setHarmonyAiReport(null);
@@ -763,6 +761,14 @@ function ReportContent() {
       setHarmonyReportId(null);
     }
   }, [selectedChildId]);
+
+  useEffect(() => {
+    const controllers = inflightControllersRef.current;
+    return () => {
+      controllers.forEach((controller) => controller.abort());
+      controllers.clear();
+    };
+  }, []);
 
   const handleTabChange = (tab: 'child' | 'parent' | 'parenting') => {
     setActiveTab(tab);
@@ -971,7 +977,7 @@ function ReportContent() {
     return buildTrackedPath(`/share${shareReportId ? `?id=${shareReportId}` : ''}`);
   }, [buildTrackedPath, getShareReportId]);
 
-  const fetchReport = useCallback(async (payload: ReportApiPayload): Promise<ReportApiResult | null> => {
+  const fetchReport = useCallback(async (payload: ReportApiPayload, signal?: AbortSignal): Promise<ReportApiResult | null> => {
     const resolvedChildId = currentChild?.id ?? selectedChildId;
     const perf = createPerfTracker('fetchReport', {
       type: payload.type,
@@ -982,7 +988,8 @@ function ReportContent() {
     const res = await fetch('/api/llm/report', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...payload, intake, childId: resolvedChildId })
+      body: JSON.stringify({ ...payload, intake, childId: resolvedChildId }),
+      signal,
     });
     perf.mark('network_complete', {
       ok: res.ok,
@@ -1010,7 +1017,7 @@ function ReportContent() {
     // 캐시된 리포트의 포맷이 현재 UI와 맞지 않으면 재생성
     if (data.cached && !isValidReport(data.report, payload.type)) {
       console.warn(`Cached ${payload.type} report format mismatch, regenerating...`);
-      return fetchReport({ ...payload, refresh: true });
+      return fetchReport({ ...payload, refresh: true }, signal);
     }
 
     return { report: data.report, reportId: data.reportId, createdAt: data.createdAt };
@@ -1019,6 +1026,7 @@ function ReportContent() {
   const fetchChildReportStream = useCallback(async (
     payload: ReportApiPayload & { type: 'CHILD' },
     onModule: (item: ChildReportStreamModule) => void,
+    signal?: AbortSignal,
   ): Promise<ReportApiResult | null> => {
     const resolvedChildId = currentChild?.id ?? selectedChildId;
     const perf = createPerfTracker('fetchReportStream', {
@@ -1031,6 +1039,7 @@ function ReportContent() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...payload, intake, childId: resolvedChildId, stream: true }),
+      signal,
     });
     perf.mark('network_headers', {
       ok: res.ok,
@@ -1049,6 +1058,7 @@ function ReportContent() {
     let result: ReportApiResult | null = null;
 
     const handleBlock = (block: string) => {
+      if (signal?.aborted) return;
       const { event, data } = parseSseBlock(block);
       if (!data) return;
 
@@ -1082,6 +1092,7 @@ function ReportContent() {
     };
 
     while (true) {
+      if (signal?.aborted) break;
       const { done, value } = await reader.read();
       if (done) break;
 
@@ -1095,6 +1106,7 @@ function ReportContent() {
       }
     }
 
+    if (signal?.aborted) return null;
     buffer += decoder.decode();
     if (buffer.trim()) handleBlock(buffer);
     perf.mark('response_parsed');
@@ -1105,6 +1117,7 @@ function ReportContent() {
   const fetchParentReportStream = useCallback(async (
     payload: ReportApiPayload & { type: 'PARENT' },
     onModule: (item: ParentReportStreamModule) => void,
+    signal?: AbortSignal,
   ): Promise<ReportApiResult | null> => {
     const resolvedChildId = currentChild?.id ?? selectedChildId;
     const perf = createPerfTracker('fetchReportStream', {
@@ -1117,6 +1130,7 @@ function ReportContent() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...payload, intake, childId: resolvedChildId, stream: true }),
+      signal,
     });
     perf.mark('network_headers', {
       ok: res.ok,
@@ -1148,6 +1162,7 @@ function ReportContent() {
     };
 
     const handleBlock = async (block: string) => {
+      if (signal?.aborted) return;
       const { event, data } = parseSseBlock(block);
       if (!data) return;
 
@@ -1186,6 +1201,7 @@ function ReportContent() {
     };
 
     while (true) {
+      if (signal?.aborted) break;
       const { done, value } = await reader.read();
       if (done) break;
 
@@ -1199,6 +1215,7 @@ function ReportContent() {
       }
     }
 
+    if (signal?.aborted) return null;
     buffer += decoder.decode();
     if (buffer.trim()) await handleBlock(buffer);
     perf.mark('response_parsed');
@@ -1303,6 +1320,8 @@ function ReportContent() {
     const previousChildReportDate = reportDates.child;
     const previousChildReportId = childReportId;
     const isLoadingExistingReport = !refresh && !!currentChildReport?.id;
+    const controller = new AbortController();
+    inflightControllersRef.current.set('CHILD', controller);
     generatingRef.current.add('CHILD');
     setIsGenerating(true);
     if (isLoadingExistingReport) setExistingReportLoadingType('CHILD');
@@ -1320,11 +1339,13 @@ function ReportContent() {
         refresh,
         childType: { label: childType.label, keywords: childType.keywords, desc: childType.desc }
       }, (item) => {
+        if (controller.signal.aborted) return;
         setChildAiReport((current) => normalizeReportTextForName(
           applyChildReportStreamModule(current ?? { analysis: {} }, item),
           childName,
         ));
-      });
+      }, controller.signal);
+      if (controller.signal.aborted) return;
       if (result) {
         setChildAiReport(normalizeReportTextForName(asChildAiReport(result.report), childName));
         if (result.reportId) setChildReportId(result.reportId);
@@ -1332,6 +1353,9 @@ function ReportContent() {
         if (refresh) setHarmonyRefreshSource('child');
       }
     } catch (error) {
+      if (controller.signal.aborted || (error instanceof Error && error.name === 'AbortError')) {
+        return;
+      }
       console.error(error);
       if (previousChildReport) {
         setChildAiReport(previousChildReport);
@@ -1350,10 +1374,13 @@ function ReportContent() {
       setChildReportId(previousChildReportId);
       alert(isChildProfileLimitError(error) ? t('settings.childProfileLimitReached') : t('report.generationError'));
     } finally {
-      generatingRef.current.delete('CHILD');
-      setIsGenerating(generatingRef.current.size > 0);
-      if (isLoadingExistingReport) {
-        setExistingReportLoadingType(current => current === 'CHILD' ? null : current);
+      if (inflightControllersRef.current.get('CHILD') === controller) {
+        inflightControllersRef.current.delete('CHILD');
+        generatingRef.current.delete('CHILD');
+        setIsGenerating(generatingRef.current.size > 0);
+        if (isLoadingExistingReport) {
+          setExistingReportLoadingType(current => current === 'CHILD' ? null : current);
+        }
       }
     }
   }, [childAiReport, childAnswerMap, childName, childReportId, childScores, childType.desc, childType.keywords, childType.label, currentChildReport?.id, fetchChildReportStream, normalizeReportTextForName, reportDates.child, t]);
@@ -1363,6 +1390,8 @@ function ReportContent() {
     const previousParentReport = parentAiReport;
     const previousParentReportDate = reportDates.parent;
     const isLoadingExistingReport = !refresh && !!currentParentReport?.id;
+    const controller = new AbortController();
+    inflightControllersRef.current.set('PARENT', controller);
     generatingRef.current.add('PARENT');
     setIsGenerating(true);
     if (isLoadingExistingReport) setExistingReportLoadingType('PARENT');
@@ -1380,8 +1409,10 @@ function ReportContent() {
         refresh,
         parentType: { label: parentType.label, keywords: parentType.keywords }
       }, (item) => {
+        if (controller.signal.aborted) return;
         setParentAiReport((current) => applyParentReportStreamModule(current ?? {}, item));
-      });
+      }, controller.signal);
+      if (controller.signal.aborted) return;
       if (result) {
         setParentAiReport(asParentAiReport(result.report));
         if (result.reportId) setParentReportId(result.reportId);
@@ -1389,6 +1420,9 @@ function ReportContent() {
         if (refresh) setHarmonyRefreshSource('parent');
       }
     } catch (error) {
+      if (controller.signal.aborted || (error instanceof Error && error.name === 'AbortError')) {
+        return;
+      }
       console.error(error);
       if (previousParentReport) {
         setParentAiReport(previousParentReport);
@@ -1406,10 +1440,13 @@ function ReportContent() {
       });
       alert(isChildProfileLimitError(error) ? t('settings.childProfileLimitReached') : t('report.generationError'));
     } finally {
-      generatingRef.current.delete('PARENT');
-      setIsGenerating(generatingRef.current.size > 0);
-      if (isLoadingExistingReport) {
-        setExistingReportLoadingType(current => current === 'PARENT' ? null : current);
+      if (inflightControllersRef.current.get('PARENT') === controller) {
+        inflightControllersRef.current.delete('PARENT');
+        generatingRef.current.delete('PARENT');
+        setIsGenerating(generatingRef.current.size > 0);
+        if (isLoadingExistingReport) {
+          setExistingReportLoadingType(current => current === 'PARENT' ? null : current);
+        }
       }
     }
   }, [currentParentReport?.id, fetchParentReportStream, parentAiReport, parentAnswerMap, parentScores, parentType.keywords, parentType.label, reportDates.parent, t]);
@@ -1417,6 +1454,8 @@ function ReportContent() {
   const generateHarmonyAIReport = useCallback(async (refresh = false) => {
     if (generatingRef.current.has('HARMONY')) return;
     const isLoadingExistingReport = !refresh && !!currentHarmonyReport?.id;
+    const controller = new AbortController();
+    inflightControllersRef.current.set('HARMONY', controller);
     generatingRef.current.add('HARMONY');
     setIsGenerating(true);
     if (isLoadingExistingReport) setExistingReportLoadingType('HARMONY');
@@ -1432,7 +1471,8 @@ function ReportContent() {
         isPreview: false, refresh, styleScores,
         childType: { label: childType.label, keywords: childType.keywords },
         parentType: { label: parentType.label, keywords: parentType.keywords }
-      });
+      }, controller.signal);
+      if (controller.signal.aborted) return false;
       if (result) {
         setHarmonyAiReport(normalizeReportTextForName(asHarmonyAiReport(result.report), childName));
         if (result.reportId) setHarmonyReportId(result.reportId);
@@ -1440,14 +1480,20 @@ function ReportContent() {
         return true;
       }
     } catch (error) {
+      if (controller.signal.aborted || (error instanceof Error && error.name === 'AbortError')) {
+        return false;
+      }
       console.error(error);
       alert(isChildProfileLimitError(error) ? t('settings.childProfileLimitReached') : t('report.harmonyError'));
       return false;
     } finally {
-      generatingRef.current.delete('HARMONY');
-      setIsGenerating(generatingRef.current.size > 0);
-      if (isLoadingExistingReport) {
-        setExistingReportLoadingType(current => current === 'HARMONY' ? null : current);
+      if (inflightControllersRef.current.get('HARMONY') === controller) {
+        inflightControllersRef.current.delete('HARMONY');
+        generatingRef.current.delete('HARMONY');
+        setIsGenerating(generatingRef.current.size > 0);
+        if (isLoadingExistingReport) {
+          setExistingReportLoadingType(current => current === 'HARMONY' ? null : current);
+        }
       }
     }
     return false;
@@ -1725,66 +1771,6 @@ function ReportContent() {
     : parentReportProgressTotal;
   const isParentReportFinalizing = isParentReportStreaming && hasParentReportLetter && !activeParentLoadingSection;
   const isHarmonyReportGenerating = isGenerating && generatingRef.current.has('HARMONY');
-  const harmonyReportLoadingSections = useMemo(() => [
-    {
-      key: 'radar',
-      icon: 'analytics',
-      label: t('report.temperamentComparison'),
-      message: t('report.harmonySectionLoadingRadar'),
-      isReady: false,
-    },
-    {
-      key: 'summary',
-      icon: 'auto_awesome',
-      label: t('report.harmonyReport'),
-      message: t('report.harmonySectionLoadingSummary'),
-      isReady: false,
-    },
-    {
-      key: 'coreGap',
-      icon: 'compare_arrows',
-      label: t('report.coreGap'),
-      message: t('report.harmonySectionLoadingCoreGap'),
-      isReady: false,
-    },
-    {
-      key: 'coreMatch',
-      icon: 'favorite',
-      label: t('report.coreMatch'),
-      message: t('report.harmonySectionLoadingCoreMatch'),
-      isReady: false,
-    },
-    {
-      key: 'principles',
-      icon: 'school',
-      label: t('report.parentingPrinciples'),
-      message: t('report.harmonySectionLoadingPrinciples'),
-      isReady: false,
-    },
-    {
-      key: 'situationalTips',
-      icon: 'lightbulb',
-      label: t('report.situationalTips'),
-      message: t('report.harmonySectionLoadingSituationalTips'),
-      isReady: false,
-    },
-    {
-      key: 'audit',
-      icon: 'tune',
-      label: t('report.parentingStyleDiag'),
-      message: t('report.harmonySectionLoadingAudit'),
-      isReady: false,
-    },
-    {
-      key: 'dailyReminder',
-      icon: 'bookmark',
-      label: t('report.dailyReminder'),
-      message: t('report.harmonySectionLoadingReminder'),
-      isReady: false,
-    },
-  ] satisfies Array<ReportLoadingSection>, [t]);
-  const harmonyLoadingState = getTimedLoadingState(harmonyReportLoadingSections, reportLoadingStep);
-
   const radarData = {
     labels: [
       TCI_TERMINOLOGY.DIMENSIONS.NS.name,
@@ -1841,13 +1827,23 @@ function ReportContent() {
   const isExistingReportLoadingForActiveTab = existingReportLoadingType === activeReportLoadingType;
 
   if (isReportContextLoading) {
+    const tabLoadingConfig: Record<ReportTab, { title: string; steps: string[] }> = {
+      child: { title: t('report.analyzingChild'), steps: childLoadingSteps },
+      parent: { title: t('report.analyzingParent'), steps: parentLoadingSteps },
+      parenting: { title: t('report.analyzingHarmony'), steps: harmonyLoadingSteps },
+    };
+    const { title, steps } = tabLoadingConfig[activeTab];
     return (
       <div className="bg-background-light dark:bg-background-dark min-h-screen flex flex-col items-center justify-center font-body">
         <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-screen flex flex-col shadow-2xl items-center justify-center gap-4">
           {isSavedReportContextLoading ? (
             <ExistingReportLoadingProgress className="min-h-screen py-0" />
           ) : (
-            <TabLoadingIndicator label={t('common.loading')} />
+            <ReportGeneratingState
+              title={title}
+              steps={steps}
+              showImage={false}
+            />
           )}
         </div>
       </div>
@@ -2626,15 +2622,11 @@ function ReportContent() {
                     )}
                   </ReportSectionGroup>
                 ) : (
-                  <div className="py-6">
-                    <SectionLoadingCard
-                      icon={parentReportLoadingSections[0].icon}
-                      label={parentReportLoadingSections[0].label}
-                      message={parentReportLoadingSections[0].message}
-                      progressCurrent={1}
-                      progressTotal={parentReportProgressTotal}
-                    />
-                  </div>
+                  <ReportGeneratingState
+                    title={t('report.analyzingParent')}
+                    steps={parentLoadingSteps}
+                    showImage={false}
+                  />
                 )}
 
                 {/* Footer Actions */}
@@ -2874,25 +2866,11 @@ function ReportContent() {
                     )}
                   </>
 	                ) : (
-	                  <div className="py-6">
-	                    {harmonyLoadingState.isFinalizing || !harmonyLoadingState.section ? (
-	                      <SectionLoadingCard
-	                        icon="auto_awesome"
-	                        label={t('report.finalizingReport')}
-	                        message={t('report.harmonySectionLoadingFinal')}
-	                        progressCurrent={harmonyLoadingState.progressCurrent}
-	                        progressTotal={harmonyLoadingState.progressTotal}
-	                      />
-	                    ) : (
-	                      <SectionLoadingCard
-	                        icon={harmonyLoadingState.section.icon}
-	                        label={harmonyLoadingState.section.label}
-	                        message={harmonyLoadingState.section.message}
-	                        progressCurrent={harmonyLoadingState.progressCurrent}
-	                        progressTotal={harmonyLoadingState.progressTotal}
-	                      />
-	                    )}
-	                  </div>
+	                  <ReportGeneratingState
+	                    title={t('report.analyzingHarmony')}
+	                    steps={harmonyLoadingSteps}
+	                    showImage={false}
+	                  />
 	                )}
 
                 {/* Footer Actions */}
