@@ -397,16 +397,41 @@ function SharePageContent() {
       return;
     }
 
-    // 카카오톡 공유 시, 등록된 iOS/Android 플랫폼 때문에 FeedTemplate(sendDefault)은
-    // 받는 사람 디바이스에서 우리 앱을 자동 실행하거나(설치 시) 스토어로 보낸다(미설치 시).
-    // 우리는 어떤 환경에서든 그대로 웹 리포트로 떨어지길 원하므로,
-    // 항상 mobileWebUrl을 그대로 여는 sendScrap 방식으로 통일.
-    // 카드 미리보기는 Kakao 서버가 shareUrl의 OG 메타를 스크랩해서 생성한다.
+    // FeedTemplate `link`에는 mobileWebUrl/webUrl만 넣고
+    // androidExecutionParams/iosExecutionParams는 절대 보내지 않는다.
+    // 그래야 카카오톡이 앱 실행을 시도하지 않고 mobileWebUrl을 그대로 연다.
+    // 만약 그래도 앱이 열리면 그건 Kakao Developer Console에 iOS/Android
+    // 플랫폼이 등록되어 있어 카카오톡이 자체 판단으로 앱을 띄우는 경우이므로
+    // 콘솔에서 해당 플랫폼을 정리해야 한다.
+    const shareDescription = shareInfo?.textParts.slice(1).join('\n\n').slice(0, 200) || t('share.kakaoDesc');
+    const kakaoPayload = {
+      objectType: 'feed' as const,
+      content: {
+        title: `${shareInfo?.headline || childName} "${shareInfo?.label || t('share.childFallbackLabel')}"`,
+        description: shareDescription,
+        imageUrl: `https://gijilai.com${shareInfo?.image || '/child_type/type_lhl.jpg'}`,
+        link: {
+          mobileWebUrl: shareUrl,
+          webUrl: shareUrl,
+        },
+      },
+      buttons: [
+        {
+          title: t('share.viewFullReport'),
+          link: {
+            mobileWebUrl: shareUrl,
+            webUrl: shareUrl,
+          },
+        },
+      ],
+    };
+
     logShareDebug('kakao_payload', {
       reportId,
       resolvedReportId,
       shareUrl,
-      mode: 'scrap',
+      contentLink: kakaoPayload.content.link,
+      buttonLink: kakaoPayload.buttons[0]?.link,
       isResolvingReportId,
       isReportLoading,
       hasReport: !!report,
@@ -426,8 +451,12 @@ function SharePageContent() {
     if (kakaoBridge) {
       kakaoBridge.postMessage(JSON.stringify({
         type: 'KAKAO_SHARE_REQUEST',
-        mode: 'scrap',
+        title: kakaoPayload.content.title,
+        description: kakaoPayload.content.description,
+        imageUrl: kakaoPayload.content.imageUrl,
         shareUrl,
+        buttonTitle: t('share.viewFullReport'),
+        buttonUrl: shareUrl,
       }));
       trackEvent('share_action_completed', getShareAnalyticsParams('kakao_native_bridge'));
       return;
@@ -458,7 +487,7 @@ function SharePageContent() {
     setShareError(null);
     try {
       const kakao = await ensureKakaoReady();
-      kakao.Share.sendScrap({ requestUrl: shareUrl });
+      kakao.Share.sendDefault(kakaoPayload);
       trackEvent('share_action_completed', getShareAnalyticsParams('kakao'));
     } catch (error) {
       console.error('Kakao share failed:', error);

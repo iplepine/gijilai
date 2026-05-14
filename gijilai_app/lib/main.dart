@@ -2763,28 +2763,57 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       final data = jsonDecode(message.message) as Map<String, dynamic>;
       if (data['type'] != 'KAKAO_SHARE_REQUEST') return;
 
+      final title = data['title']?.toString() ?? '기질아이';
+      final description = data['description']?.toString() ?? '';
+      final imageUrl =
+          data['imageUrl']?.toString() ??
+          'https://gijilai.com/gijilai_icon_kakao.png';
       final shareUrl = data['shareUrl']?.toString() ?? '';
+      final buttonTitle = data['buttonTitle']?.toString() ?? '자세히 보기';
+      final buttonUrl = data['buttonUrl']?.toString() ?? shareUrl;
+
       if (shareUrl.isEmpty) {
         throw Exception('Missing Kakao share URL');
       }
 
-      // FeedTemplate(shareDefault)을 쓰면 Kakao Developer Console에 등록된
-      // iOS/Android 플랫폼 때문에 받는 사람 디바이스에서 우리 앱이 자동 실행되거나
-      // (설치 시) 스토어로 빠진다(미설치 시). 어떤 환경에서든 그대로 모바일 웹
-      // 리포트로 떨어지길 원하므로, mobileWebUrl만 사용하는 shareScrap으로 통일.
+      // FeedTemplate `link`에는 mobileWebUrl/webUrl만 넣고
+      // androidExecutionParams/iosExecutionParams는 보내지 않는다.
+      // 그래야 받는 사람이 카드를 탭할 때 카카오톡이 앱 실행을 시도하지 않고
+      // 곧바로 mobileWebUrl로 연결한다. 그래도 앱이 뜨면 Kakao Developer
+      // Console의 iOS/Android 플랫폼 등록 때문이므로 콘솔에서 정리한다.
+      final template = kakao_share.FeedTemplate(
+        content: kakao_share.Content(
+          title: title,
+          description: description,
+          imageUrl: Uri.parse(imageUrl),
+          link: kakao_share.Link(
+            webUrl: Uri.parse(shareUrl),
+            mobileWebUrl: Uri.parse(shareUrl),
+          ),
+        ),
+        buttons: [
+          kakao_share.Button(
+            title: buttonTitle,
+            link: kakao_share.Link(
+              webUrl: Uri.parse(buttonUrl),
+              mobileWebUrl: Uri.parse(buttonUrl),
+            ),
+          ),
+        ],
+      );
+
       final canShareWithTalk = await kakao_share.ShareClient.instance
           .isKakaoTalkSharingAvailable();
       if (canShareWithTalk) {
-        final shareUri = await kakao_share.ShareClient.instance.shareScrap(
-          url: shareUrl,
+        final shareUri = await kakao_share.ShareClient.instance.shareDefault(
+          template: template,
         );
         await kakao_share.ShareClient.instance.launchKakaoTalk(shareUri);
         return;
       }
 
-      final sharerUrl = await kakao_share.WebSharerClient.instance.makeScrapUrl(
-        url: shareUrl,
-      );
+      final sharerUrl = await kakao_share.WebSharerClient.instance
+          .makeDefaultUrl(template: template);
       final launched = await _tryLaunchExternalUri(sharerUrl);
       if (!launched) {
         throw Exception('Unable to launch Kakao web sharer: $sharerUrl');
