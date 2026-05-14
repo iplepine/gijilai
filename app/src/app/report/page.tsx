@@ -522,23 +522,27 @@ function ReportContent() {
     typeLabel?: string;
     showImage?: boolean;
   }) => {
-    const currentStep = (reportLoadingStep % steps.length) + 1;
+    // 메시지는 모듈로로 순환시켜 활동감을 유지하되,
+    // 진행률 자체는 한 번 100%에 도달하면 그대로 머무르도록 분리한다.
+    // (기존엔 둘 다 같은 모듈로 값을 써서 마지막 step 도달 후 다음 tick에 20%로 리셋되어 5번 반복되는 문제가 있었다.)
+    const cycledIndex = reportLoadingStep % steps.length;
+    const progressCurrent = Math.min(reportLoadingStep + 1, steps.length);
 
     return (
       <div className="py-14 px-6">
         <TemperamentLoadingState
           title={title}
-          message={steps[currentStep - 1]}
+          message={steps[cycledIndex]}
           note={t('report.loadingStillWorking')}
           imageSrc={imageSrc}
           imageAlt={imageAlt}
           typeLabel={showImage ? typeLabel : undefined}
           imagePriority={showImage}
           showImage={showImage}
-          progressCurrent={currentStep}
+          progressCurrent={progressCurrent}
           progressTotal={steps.length}
           progressLabel={t('report.reportLoadingProgress', {
-            current: currentStep,
+            current: progressCurrent,
             total: steps.length,
           })}
         />
