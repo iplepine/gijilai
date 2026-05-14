@@ -1078,56 +1078,6 @@ function ConsultContent() {
                                 <p className="text-sm text-text-sub dark:text-gray-400">{sessionContext ? t('consult.subtitleContinue') : t('consult.subtitleFirst')}</p>
                             </div>
 
-                            <div className="rounded-3xl border border-primary/10 bg-white dark:bg-surface-dark p-5 space-y-4">
-                                <div>
-                                    <p className="text-[14px] font-bold text-text-main dark:text-white">{t('consult.introTitle')}</p>
-                                    <p className="mt-1 text-[12px] leading-relaxed text-text-sub dark:text-gray-400">
-                                        {sessionContext ? t('consult.introDescContinue') : t('consult.introDescFirst')}
-                                    </p>
-                                </div>
-                                <div className="grid gap-2.5">
-                                    <div className="rounded-2xl bg-primary/5 px-4 py-4">
-                                        <div className="mx-auto flex w-full max-w-[30rem] items-center gap-3">
-                                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/80 text-primary shadow-sm dark:bg-white/10" aria-hidden="true">
-                                                <span className="material-symbols-outlined flex h-5 w-5 translate-x-px translate-y-px items-center justify-center text-[19px] leading-none">
-                                                    psychology
-                                                </span>
-                                            </span>
-                                            <div className="min-w-0 flex-1">
-                                                <p className="text-[12px] font-bold text-primary">{t('consult.introOutcomeLabel')}</p>
-                                                <p className="mt-0.5 break-keep text-[13px] leading-relaxed text-text-main dark:text-white">{t('consult.introOutcomeText')}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="rounded-2xl bg-secondary/5 px-4 py-4">
-                                        <div className="mx-auto flex w-full max-w-[30rem] items-center gap-3">
-                                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/80 text-secondary shadow-sm dark:bg-white/10" aria-hidden="true">
-                                                <span className="material-symbols-outlined flex h-5 w-5 translate-x-px translate-y-px items-center justify-center text-[19px] leading-none">
-                                                    timer
-                                                </span>
-                                            </span>
-                                            <div className="min-w-0 flex-1">
-                                                <p className="text-[12px] font-bold text-secondary">{t('consult.introTimeLabel')}</p>
-                                                <p className="mt-0.5 break-keep text-[13px] leading-relaxed text-text-main dark:text-white">{t('consult.introTimeText')}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="rounded-2xl bg-beige-main/25 px-4 py-4">
-                                        <div className="mx-auto flex w-full max-w-[30rem] items-center gap-3">
-                                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/80 text-text-main shadow-sm dark:bg-white/10 dark:text-white" aria-hidden="true">
-                                                <span className="material-symbols-outlined flex h-5 w-5 translate-x-px translate-y-px items-center justify-center text-[19px] leading-none">
-                                                    health_and_safety
-                                                </span>
-                                            </span>
-                                            <div className="min-w-0 flex-1">
-                                                <p className="text-[12px] font-bold text-text-main dark:text-white">{t('consult.introScopeLabel')}</p>
-                                                <p className="mt-0.5 break-keep text-[13px] leading-relaxed text-text-main dark:text-white">{t('consult.introScopeText')}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
                             <div>
                                 {!sessionContext && (
                                     <>
