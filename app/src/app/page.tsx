@@ -211,6 +211,13 @@ export default function HomePage() {
     setMagicWordIndex(nextIndex);
   }, [magicWords.length, mainChild?.id]);
 
+  // 아이 전환 직후 한 프레임 동안은 magicWords가 새 길이로 바뀌었지만
+  // magicWordIndex는 다음 effect까지 stale이라, 직접 인덱싱하면 undefined 접근으로 크래시.
+  const currentMagicWord =
+    magicWords.length > 0
+      ? magicWords[magicWordIndex] ?? magicWords[0]
+      : null;
+
   const childName = mainChild?.name || t("home.defaultChildName");
   const access = getFeatureAccess({
     userCreatedAt: user?.created_at,
@@ -1165,7 +1172,7 @@ export default function HomePage() {
                   )}
 
                 {/* 마법의 한마디 캐러셀 */}
-                {magicWords.length > 0 && (
+                {currentMagicWord && (
                   <HomeModuleReveal order={4}>
                     <div className="bg-[#519E8A] rounded-2xl p-5 text-white relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-24 h-24 bg-white/[0.08] rounded-full -mr-10 -mt-10" />
@@ -1180,15 +1187,15 @@ export default function HomePage() {
                       </div>
                       <div className="min-h-[84px] mb-3">
                         <p className="text-[16px] font-medium leading-relaxed line-clamp-3 break-keep">
-                          &ldquo;{magicWords[magicWordIndex].word}&rdquo;
+                          &ldquo;{currentMagicWord.word}&rdquo;
                         </p>
                       </div>
                       <p className="text-[11px] text-white/60">
-                        {new Date(
-                          magicWords[magicWordIndex].date,
-                        ).toLocaleDateString("ko-KR")}
-                        {magicWords[magicWordIndex].childName &&
-                          ` · ${magicWords[magicWordIndex].childName}`}
+                        {new Date(currentMagicWord.date).toLocaleDateString(
+                          "ko-KR",
+                        )}
+                        {currentMagicWord.childName &&
+                          ` · ${currentMagicWord.childName}`}
                       </p>
                     </div>
                     </div>
