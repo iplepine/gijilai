@@ -113,6 +113,7 @@ export default function HomePage() {
   const [magicWordIndex, setMagicWordIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showChildDropdown, setShowChildDropdown] = useState(false);
+  const [sosInput, setSosInput] = useState("");
   const [quickPracticeSavingId, setQuickPracticeSavingId] = useState<
     string | null
   >(null);
@@ -375,6 +376,25 @@ export default function HomePage() {
     },
     [hasConsultPriority, hasPracticePriority, router],
   );
+
+  const openHomeSosFreeText = useCallback(() => {
+    const trimmed = sosInput.trim();
+    if (!trimmed) return;
+    trackEvent("home_sos_clicked", {
+      source: "home",
+      entry_cta: "today_sos_text",
+      prefill_mode: "free_text",
+      prefill_length: trimmed.length,
+      has_practice_priority: hasPracticePriority,
+      has_consult_priority: hasConsultPriority,
+    });
+    const params = new URLSearchParams({
+      source: "home_sos",
+      entry_cta: "today_sos_text",
+      prefill: trimmed.slice(0, 500),
+    });
+    router.push(`/consult?${params.toString()}`);
+  }, [hasConsultPriority, hasPracticePriority, router, sosInput]);
 
   const handleQuickPracticeSave = useCallback(
     async (practice: PracticeItemData, done: boolean) => {
@@ -822,7 +842,7 @@ export default function HomePage() {
                           <p className="text-[11px] font-black text-secondary">
                             {t("home.sosEyebrow")}
                           </p>
-                          <h2 className="mt-0.5 text-[16px] font-black leading-snug text-text-main dark:text-white">
+                          <h2 className="mt-0.5 text-[15px] font-black leading-snug text-text-main dark:text-white break-keep">
                             {t("home.sosTitle")}
                           </h2>
                           <p className="mt-1 text-[12px] leading-relaxed text-text-sub break-keep">
@@ -830,21 +850,50 @@ export default function HomePage() {
                           </p>
                         </div>
                       </div>
-                      <div className="mt-4 grid grid-cols-2 gap-2">
+                      <form
+                        className="mt-4 flex items-center gap-2 rounded-2xl border border-secondary/15 bg-secondary/5 pl-3 pr-1 py-1 focus-within:border-secondary/40 dark:bg-white/5"
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          openHomeSosFreeText();
+                        }}
+                      >
+                        <input
+                          type="text"
+                          value={sosInput}
+                          onChange={(e) => setSosInput(e.target.value)}
+                          placeholder={t("home.sosPlaceholder")}
+                          maxLength={500}
+                          enterKeyHint="send"
+                          aria-label={t("home.sosTitle")}
+                          className="flex-1 min-w-0 bg-transparent text-[13px] font-medium text-text-main placeholder:text-text-sub/70 outline-none dark:text-white"
+                        />
+                        <button
+                          type="submit"
+                          disabled={!sosInput.trim()}
+                          aria-label={t("home.sosSendCta")}
+                          className="shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-white shadow-sm transition-opacity active:scale-95 disabled:opacity-30"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">
+                            arrow_upward
+                          </span>
+                        </button>
+                      </form>
+                      <p className="mt-3 text-[10px] font-bold tracking-wide text-text-sub/80 uppercase">
+                        {t("home.sosExampleEyebrow")}
+                      </p>
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
                         {HOME_SOS_SITUATIONS.map((situation) => (
                           <button
                             key={situation.key}
                             type="button"
                             onClick={() => openHomeSosConsult(situation.key)}
-                            className="min-h-11 rounded-2xl border border-secondary/10 bg-secondary/5 px-3 py-2 text-left text-[12px] font-bold text-text-main transition-all active:scale-[0.98] dark:bg-white/5 dark:text-white"
+                            className="inline-flex items-center gap-1 rounded-full border border-secondary/15 bg-white px-3 py-1.5 text-[11px] font-bold text-text-sub transition-all active:scale-[0.97] hover:border-secondary/30 hover:text-text-main dark:bg-white/5 dark:text-gray-300"
                           >
-                            <span className="flex items-center gap-1.5">
-                              <span className="material-symbols-outlined text-[17px] text-secondary">
-                                {situation.icon}
-                              </span>
-                              <span className="min-w-0 break-keep">
-                                {t(situation.labelKey)}
-                              </span>
+                            <span className="material-symbols-outlined text-[14px] text-secondary">
+                              {situation.icon}
+                            </span>
+                            <span className="break-keep">
+                              {t(situation.labelKey)}
                             </span>
                           </button>
                         ))}

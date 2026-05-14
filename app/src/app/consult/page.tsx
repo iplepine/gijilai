@@ -229,6 +229,7 @@ function ConsultContent() {
     const entrySource = searchParams.get('source') ?? (sessionIdParam ? 'followup' : 'direct');
     const entryCta = searchParams.get('entry_cta');
     const situationParam = searchParams.get('situation');
+    const prefillParam = searchParams.get('prefill');
     const reportTab = searchParams.get('report_tab');
     const reportKind = searchParams.get('report_kind');
     const { user } = useAuth();
@@ -400,17 +401,22 @@ function ConsultContent() {
         if (problemInputError) setProblemInputError(null);
     }, [problemInputError]);
     const situationPrefill = getHomeSosSituationPrefill(situationParam, t);
+    // 자유 텍스트 prefill (홈의 한 줄 입력에서 넘어옴) — 비어있지 않으면 situation 기반보다 우선
+    const freeTextPrefill = prefillParam?.trim() ? prefillParam.trim().slice(0, 500) : null;
 
     useEffect(() => {
-        if (!situationPrefill || appliedSituationPrefillRef.current) return;
+        if (appliedSituationPrefillRef.current) return;
+        const prefillText = freeTextPrefill ?? situationPrefill;
+        if (!prefillText) return;
         appliedSituationPrefillRef.current = true;
-        updateProblemDesc(situationPrefill);
+        updateProblemDesc(prefillText);
         trackEvent('consult_situation_prefilled', {
             source: entrySource,
             entry_cta: entryCta ?? 'today_sos',
             situation_key: situationParam ?? undefined,
+            prefill_mode: freeTextPrefill ? 'free_text' : 'situation_key',
         });
-    }, [entryCta, entrySource, situationParam, situationPrefill, updateProblemDesc]);
+    }, [entryCta, entrySource, freeTextPrefill, situationParam, situationPrefill, updateProblemDesc]);
 
     const trimmedProblemDesc = problemDesc.trim();
     const selectedProblemExampleText = examples.find((ex) => trimmedProblemDesc === ex.text.trim())?.text ?? null;
