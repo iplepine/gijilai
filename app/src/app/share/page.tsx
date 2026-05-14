@@ -397,35 +397,16 @@ function SharePageContent() {
       return;
     }
 
-    const shareDescription = shareInfo?.textParts.slice(1).join('\n\n').slice(0, 200) || t('share.kakaoDesc');
-    const kakaoPayload = {
-      objectType: 'feed' as const,
-      content: {
-        title: `${shareInfo?.headline || childName} "${shareInfo?.label || t('share.childFallbackLabel')}"`,
-        description: shareDescription,
-        imageUrl: `https://gijilai.com${shareInfo?.image || '/child_type/type_lhl.jpg'}`,
-        link: {
-          mobileWebUrl: shareUrl,
-          webUrl: shareUrl,
-        },
-      },
-      buttons: [
-        {
-          title: t('share.viewFullReport'),
-          link: {
-            mobileWebUrl: shareUrl,
-            webUrl: shareUrl,
-          },
-        },
-      ],
-    };
-
+    // 카카오톡 공유 시, 등록된 iOS/Android 플랫폼 때문에 FeedTemplate(sendDefault)은
+    // 받는 사람 디바이스에서 우리 앱을 자동 실행하거나(설치 시) 스토어로 보낸다(미설치 시).
+    // 우리는 어떤 환경에서든 그대로 웹 리포트로 떨어지길 원하므로,
+    // 항상 mobileWebUrl을 그대로 여는 sendScrap 방식으로 통일.
+    // 카드 미리보기는 Kakao 서버가 shareUrl의 OG 메타를 스크랩해서 생성한다.
     logShareDebug('kakao_payload', {
       reportId,
       resolvedReportId,
       shareUrl,
-      contentLink: kakaoPayload.content.link,
-      buttonLink: kakaoPayload.buttons[0]?.link,
+      mode: 'scrap',
       isResolvingReportId,
       isReportLoading,
       hasReport: !!report,
@@ -445,12 +426,8 @@ function SharePageContent() {
     if (kakaoBridge) {
       kakaoBridge.postMessage(JSON.stringify({
         type: 'KAKAO_SHARE_REQUEST',
-        title: kakaoPayload.content.title,
-        description: kakaoPayload.content.description,
-        imageUrl: kakaoPayload.content.imageUrl,
+        mode: 'scrap',
         shareUrl,
-        buttonTitle: t('share.viewFullReport'),
-        buttonUrl: shareUrl,
       }));
       trackEvent('share_action_completed', getShareAnalyticsParams('kakao_native_bridge'));
       return;
@@ -481,7 +458,7 @@ function SharePageContent() {
     setShareError(null);
     try {
       const kakao = await ensureKakaoReady();
-      kakao.Share.sendDefault(kakaoPayload);
+      kakao.Share.sendScrap({ requestUrl: shareUrl });
       trackEvent('share_action_completed', getShareAnalyticsParams('kakao'));
     } catch (error) {
       console.error('Kakao share failed:', error);
