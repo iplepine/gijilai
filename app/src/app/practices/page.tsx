@@ -996,10 +996,9 @@ function PracticesPageContent() {
           )}
 
           {isLoading ? (
-            <TabLoadingIndicator
-              label={t("practices.loadingRecords")}
-              className="py-20"
-            />
+            <div className="flex flex-1 items-center justify-center min-h-[60dvh]">
+              <TabLoadingIndicator label={t("practices.loadingRecords")} />
+            </div>
           ) : grouped.length === 0 ? (
             <div className="py-24 flex flex-col items-center text-center space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
               <div className="w-24 h-24 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-full flex items-center justify-center mb-2">

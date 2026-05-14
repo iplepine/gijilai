@@ -268,7 +268,9 @@ export default function RecordPage() {
                     )}
 
                     {isLoading ? (
-                        <TabLoadingIndicator label={t('observations.loadingRecords')} className="py-20" />
+                        <div className="flex items-center justify-center min-h-[60dvh]">
+                            <TabLoadingIndicator label={t('observations.loadingRecords')} />
+                        </div>
                     ) : children.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-12 px-6 text-center animate-in fade-in slide-in-from-bottom-4 duration-1000">
                             <div className="w-24 h-24 bg-primary/5 dark:bg-primary/10 rounded-full flex items-center justify-center text-5xl mb-6 relative">
