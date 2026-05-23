@@ -18,7 +18,7 @@ import type { Currency } from '@/lib/portone';
 
 type SubscribeRequest = {
   billingKey?: string;
-  plan?: 'MONTHLY';
+  plan?: 'MONTHLY' | 'YEARLY';
   locale?: string;
   payMethod?: PayMethod;
 };
@@ -48,8 +48,7 @@ export async function POST(req: Request) {
 
     const { billingKey, plan, locale, payMethod } = await parseJsonBody<SubscribeRequest>(req);
 
-    // [연 구독] 재활성화 시: plan !== 'MONTHLY' → !['MONTHLY', 'YEARLY'].includes(plan)
-    if (!billingKey || !plan || plan !== 'MONTHLY') {
+    if (!billingKey || !plan || (plan !== 'MONTHLY' && plan !== 'YEARLY')) {
       return NextResponse.json({ error: 'INVALID_PLAN' }, { status: 400 });
     }
 
@@ -75,27 +74,34 @@ export async function POST(req: Request) {
     const channelKey = locale === 'ko'
       ? getKoChannelKey(payMethod ?? 'INICIS_CARD')
       : process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY_STRIPE;
-    // [연 구독] 재활성화 시: const productCode = plan === 'MONTHLY' ? 'subscription_monthly' : 'subscription_yearly';
-    const regularAmount = getAmount('subscription_monthly', currency);
+    const productCode = plan === 'YEARLY' ? 'subscription_yearly' : 'subscription_monthly';
+    const regularAmount = getAmount(productCode, currency);
 
-    // 최초 구독 여부 확인 (과거 구독 이력이 없으면 첫 달 할인)
+    // 최초 구독 여부 확인 (과거 구독 이력이 없으면 첫 달 할인 — 월 구독에만 적용)
     const { count: pastSubCount } = await getSupabaseAdmin()
       .from('subscriptions')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', session.user.id);
 
     const isFirstSubscription = (pastSubCount ?? 0) === 0;
-    const firstPayAmount = isFirstSubscription
-      ? getFirstMonthAmount(currency)
-      : regularAmount;
+    // 연 구독은 첫 달 할인 미적용 (이미 yearly 자체 20% 할인 — 다크패턴법·중복할인 분쟁 회피)
+    const firstPayAmount =
+      plan === 'MONTHLY' && isFirstSubscription
+        ? getFirstMonthAmount(currency)
+        : regularAmount;
     const paymentId = `sub_${session.user.id.substring(0, 8)}_${Date.now()}`;
 
     // 빌링키로 첫 결제 실행
+    const orderName =
+      plan === 'YEARLY'
+        ? '기질아이 연 구독'
+        : isFirstSubscription
+          ? '기질아이 월 구독 (첫 달 할인)'
+          : '기질아이 월 구독';
     const payResult = await payWithBillingKey({
       billingKey,
       paymentId,
-      // [연 구독] 재활성화 시: plan === 'YEARLY' ? '기질아이 연 구독' : ...
-      orderName: isFirstSubscription ? '기질아이 월 구독 (첫 달 할인)' : '기질아이 월 구독',
+      orderName,
       amount: firstPayAmount,
       currency,
       customerId: session.user.id,

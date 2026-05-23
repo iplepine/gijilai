@@ -68,21 +68,23 @@ export async function POST(req: Request) {
       const currency = sub.currency as Currency;
       const paymentId = `renewal_${sub.id.substring(0, 8)}_${Date.now()}`;
 
+      const planForCompute: 'MONTHLY' | 'YEARLY' = sub.plan === 'YEARLY' ? 'YEARLY' : 'MONTHLY';
+      const renewalOrderName =
+        planForCompute === 'YEARLY' ? '기질아이 연 구독 갱신' : '기질아이 월 구독 갱신';
+
       try {
         const result = await payWithBillingKey({
           billingKey: sub.billing_key!,
           paymentId,
-          // [연 구독] 재활성화 시: sub.plan === 'YEARLY' ? '기질아이 연 구독 갱신' : '기질아이 월 구독 갱신'
-          orderName: '기질아이 월 구독 갱신',
+          orderName: renewalOrderName,
           amount: sub.amount,
           currency,
           customerId: sub.user_id,
         });
 
         if (result?.payment?.paidAt) {
-          // 갱신 성공
-          // [연 구독] 재활성화 시: computePeriodEnd(sub.plan as 'MONTHLY' | 'YEARLY')
-          const newPeriodEnd = computePeriodEnd('MONTHLY');
+          // 갱신 성공 — plan별 기간 계산 (월: +30일, 연: +1년)
+          const newPeriodEnd = computePeriodEnd(planForCompute);
           await getSupabaseAdmin()
             .from('subscriptions')
             .update({

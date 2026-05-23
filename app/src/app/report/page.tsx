@@ -322,6 +322,19 @@ function ReportContent() {
     setActiveTab(getReportTabFromParam(tabParam));
   }, [tabParam]);
 
+  const harmonyViewedFromUrlRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (activeTab !== 'parent' && activeTab !== 'parenting') return;
+    const key = `${activeTab}|${tabParam ?? ''}`;
+    if (harmonyViewedFromUrlRef.current.has(key)) return;
+    harmonyViewedFromUrlRef.current.add(key);
+    trackEvent('harmony_report_viewed', {
+      from: 'report_initial_load',
+      tab: activeTab,
+      source: entrySource,
+    });
+  }, [activeTab, tabParam, entrySource]);
+
   useEffect(() => {
     let isActive = true;
 
@@ -776,6 +789,16 @@ function ReportContent() {
 
   const handleTabChange = (tab: 'child' | 'parent' | 'parenting') => {
     setActiveTab(tab);
+    if (tab === 'parent' || tab === 'parenting') {
+      trackEvent('harmony_report_viewed', {
+        from: 'report_tab_switch',
+        tab,
+        report_kind: reportKind,
+        child_only: isChildOnly,
+        has_saved_report: !!reportId,
+        source: entrySource,
+      });
+    }
   };
 
   const buildTrackedPath = useCallback((path: string) => {

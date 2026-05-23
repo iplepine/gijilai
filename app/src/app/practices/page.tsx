@@ -31,6 +31,8 @@ import {
   type PracticeCheckSavePayload,
 } from "@/components/practices/PracticeCheckModal";
 import { PracticeReviewModal } from "@/components/practices/PracticeReviewModal";
+import { EffectivenessBadge } from "@/components/practices/EffectivenessBadge";
+import { summarizePracticeEffectiveness } from "@/lib/practiceEffectiveness";
 import { useLocale } from "@/i18n/LocaleProvider";
 import { getFeatureAccess } from "@/lib/access";
 import { getLocalDateString } from "@/lib/date";
@@ -1212,6 +1214,9 @@ function PracticesPageContent() {
                               lifecycle,
                               practice.duration,
                             );
+                            const effectivenessSummary = summarizePracticeEffectiveness(
+                              allLogs.filter((log) => log.practice_id === practice.id),
+                            );
 
                             return (
                               <div
@@ -1263,6 +1268,11 @@ function PracticesPageContent() {
                                     {t("common.days")}
                                   </span>
                                 </div>
+
+                                {/* 자기보고 효과 카운터 (%” 절대 노출 X) */}
+                                {effectivenessSummary.meetsDisplayThreshold && (
+                                  <EffectivenessBadge summary={effectivenessSummary} />
+                                )}
 
                                 {attentionMessage && (
                                   <p className="rounded-xl bg-secondary/5 px-3 py-2 text-[12px] font-medium leading-relaxed text-text-main dark:bg-white/5 dark:text-white">

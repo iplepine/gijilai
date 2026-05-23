@@ -37,6 +37,7 @@ export default function RecordPage() {
 
     // 작성 모달
     const [showModal, setShowModal] = useState(false);
+    const [entryMode, setEntryMode] = useState<'quick' | 'detailed'>('quick');
     const [situation, setSituation] = useState('');
     const [myAction, setMyAction] = useState('');
     const [childReaction, setChildReaction] = useState('');
@@ -101,6 +102,8 @@ export default function RecordPage() {
         setNote('');
         setModalConsultId('');
         setFieldErrors({});
+        // 처방전 연동 기록은 자세히 모드가 기본, 일반 관찰은 빠른 한 줄이 기본
+        setEntryMode('quick');
         if (children.length === 1) {
             setModalChildId(children[0].id);
         } else {
@@ -126,31 +129,39 @@ export default function RecordPage() {
 
     const handleSave = async () => {
         const errors: Record<string, boolean> = {};
+        // 처방전 연동(modalConsultId)이거나 자세히 모드일 때만 4필드 강제
+        const requireDetail = entryMode === 'detailed' || !!modalConsultId;
         if (!situation.trim()) errors.situation = true;
-        if (!myAction.trim()) errors.myAction = true;
-        if (!childReaction.trim()) errors.childReaction = true;
+        if (requireDetail) {
+            if (!myAction.trim()) errors.myAction = true;
+            if (!childReaction.trim()) errors.childReaction = true;
+        }
         if (children.length > 1 && !modalChildId) errors.childId = true;
         setFieldErrors(errors);
         if (Object.keys(errors).length > 0) return;
 
         if (!user) return;
         setIsSubmitting(true);
+        const persistedMode: 'quick' | 'detailed' = requireDetail ? 'detailed' : 'quick';
         try {
             const newObs = await db.createObservation({
                 user_id: user.id,
                 child_id: modalChildId || (children.length === 1 ? children[0].id : null),
                 consultation_id: modalConsultId || null,
                 situation: situation.trim(),
-                my_action: myAction.trim(),
-                child_reaction: childReaction.trim(),
+                my_action: requireDetail ? myAction.trim() : null,
+                child_reaction: requireDetail ? childReaction.trim() : null,
                 note: note.trim() || null,
+                entry_mode: persistedMode,
             });
             setObservations(prev => [newObs, ...prev]);
             setShowModal(false);
-            trackEvent('observation_saved', {
+            trackEvent(persistedMode === 'quick' ? 'observation_quick_saved' : 'observation_saved', {
                 has_note: !!note.trim(),
                 has_consultation: !!modalConsultId,
                 child_count: children.length,
+                entry_mode: persistedMode,
+                situation_length: situation.trim().length,
             });
         } catch (error) {
             console.error('Error saving observation:', error);
@@ -158,12 +169,23 @@ export default function RecordPage() {
                 has_note: !!note.trim(),
                 has_consultation: !!modalConsultId,
                 child_count: children.length,
+                entry_mode: persistedMode,
                 reason: 'db_error',
             });
             alert(t('observations.saveFailed'));
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleEntryModeToggle = (next: 'quick' | 'detailed') => {
+        if (next === entryMode) return;
+        setEntryMode(next);
+        setFieldErrors({});
+        trackEvent('observation_mode_switched', {
+            to: next,
+            has_consultation: !!modalConsultId,
+        });
     };
 
     const handleDelete = async (id: string) => {
@@ -347,20 +369,24 @@ export default function RecordPage() {
                                             </div>
                                             <p className="text-[14px] text-text-main dark:text-white leading-relaxed">{obs.situation}</p>
                                         </div>
-                                        <div>
-                                            <div className="text-[11px] font-bold text-slate-400 mb-1 flex items-center gap-1">
-                                                <span className="material-symbols-outlined text-[13px]">chat</span>
-                                                {t('observations.myAction')}
+                                        {obs.my_action && (
+                                            <div>
+                                                <div className="text-[11px] font-bold text-slate-400 mb-1 flex items-center gap-1">
+                                                    <span className="material-symbols-outlined text-[13px]">chat</span>
+                                                    {t('observations.myAction')}
+                                                </div>
+                                                <p className="text-[14px] text-text-main dark:text-white leading-relaxed">{obs.my_action}</p>
                                             </div>
-                                            <p className="text-[14px] text-text-main dark:text-white leading-relaxed">{obs.my_action}</p>
-                                        </div>
-                                        <div>
-                                            <div className="text-[11px] font-bold text-slate-400 mb-1 flex items-center gap-1">
-                                                <span className="material-symbols-outlined text-[13px]">child_care</span>
-                                                {t('observations.childReaction')}
+                                        )}
+                                        {obs.child_reaction && (
+                                            <div>
+                                                <div className="text-[11px] font-bold text-slate-400 mb-1 flex items-center gap-1">
+                                                    <span className="material-symbols-outlined text-[13px]">child_care</span>
+                                                    {t('observations.childReaction')}
+                                                </div>
+                                                <p className="text-[14px] text-text-main dark:text-white leading-relaxed">{obs.child_reaction}</p>
                                             </div>
-                                            <p className="text-[14px] text-text-main dark:text-white leading-relaxed">{obs.child_reaction}</p>
-                                        </div>
+                                        )}
                                         {obs.note && (
                                             <div className="bg-primary/5 dark:bg-primary/10 rounded-xl p-3 mt-2">
                                                 <p className="text-[13px] text-text-sub dark:text-gray-300 leading-relaxed">{obs.note}</p>
@@ -428,17 +454,50 @@ export default function RecordPage() {
                                     </div>
                                 )}
 
-                                {/* 상황 */}
+                                {/* 모드 토글 (실천 기록은 자세히 고정) */}
+                                {!modalConsultId && (
+                                    <div className="mb-4 flex items-center justify-between gap-3">
+                                        <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 leading-snug break-keep">
+                                            {entryMode === 'quick'
+                                                ? t('observations.quickModeHint')
+                                                : ''}
+                                        </p>
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                handleEntryModeToggle(entryMode === 'quick' ? 'detailed' : 'quick')
+                                            }
+                                            className="text-[12px] font-bold text-primary underline-offset-2 hover:underline whitespace-nowrap"
+                                        >
+                                            {entryMode === 'quick'
+                                                ? t('observations.detailedModeToggle')
+                                                : t('observations.quickModeToggle')}
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* 상황 (한 줄 또는 자세히 모두 공통) */}
                                 <div className="mb-5">
                                     <label className="text-[13px] font-bold text-slate-600 dark:text-slate-300 tracking-wide mb-2 block">
-                                        {modalConsultId ? t('observations.situationPractice') : t('observations.situationLabel')}
+                                        {modalConsultId
+                                            ? t('observations.situationPractice')
+                                            : entryMode === 'quick'
+                                                ? t('observations.situationLabel')
+                                                : t('observations.situationLabel')}
                                     </label>
                                     <textarea
                                         value={situation}
                                         onChange={e => setSituation(e.target.value)}
                                         maxLength={200}
                                         rows={1}
-                                        placeholder={modalConsultId ? t('observations.situationPracticePlaceholder') : t('observations.situationPlaceholder')}
+                                        autoFocus
+                                        placeholder={
+                                            modalConsultId
+                                                ? t('observations.situationPracticePlaceholder')
+                                                : entryMode === 'quick'
+                                                    ? t('observations.quickModePlaceholder')
+                                                    : t('observations.situationPlaceholder')
+                                        }
                                         onInput={e => { const tgt = e.target as HTMLTextAreaElement; tgt.style.height = 'auto'; tgt.style.height = tgt.scrollHeight + 'px'; }}
                                         className={`w-full pb-2 text-[15px] text-text-main dark:text-white bg-transparent border-b-2 focus:outline-none transition-colors placeholder:text-slate-300 dark:placeholder:text-slate-600 resize-none overflow-hidden ${
                                             fieldErrors.situation ? 'border-red-300' : 'border-slate-100 dark:border-slate-800 focus:border-primary'
@@ -446,41 +505,45 @@ export default function RecordPage() {
                                     />
                                 </div>
 
-                                {/* 내 대응 / 실천 내용 */}
-                                <div className="mb-5">
-                                    <label className="text-[13px] font-bold text-slate-600 dark:text-slate-300 tracking-wide mb-2 block">
-                                        {modalConsultId ? t('observations.myActionPractice') : t('observations.myActionLabel')}
-                                    </label>
-                                    <textarea
-                                        value={myAction}
-                                        onChange={e => setMyAction(e.target.value)}
-                                        maxLength={200}
-                                        rows={1}
-                                        placeholder={t('observations.myActionPlaceholder')}
-                                        onInput={e => { const tgt = e.target as HTMLTextAreaElement; tgt.style.height = 'auto'; tgt.style.height = tgt.scrollHeight + 'px'; }}
-                                        className={`w-full pb-2 text-[15px] text-text-main dark:text-white bg-transparent border-b-2 focus:outline-none transition-colors placeholder:text-slate-300 dark:placeholder:text-slate-600 resize-none overflow-hidden ${
-                                            fieldErrors.myAction ? 'border-red-300' : 'border-slate-100 dark:border-slate-800 focus:border-primary'
-                                        }`}
-                                    />
-                                </div>
+                                {/* 내 대응 / 실천 내용 — 자세히 모드 또는 처방전 연동 시 */}
+                                {(entryMode === 'detailed' || modalConsultId) && (
+                                    <div className="mb-5">
+                                        <label className="text-[13px] font-bold text-slate-600 dark:text-slate-300 tracking-wide mb-2 block">
+                                            {modalConsultId ? t('observations.myActionPractice') : t('observations.myActionLabel')}
+                                        </label>
+                                        <textarea
+                                            value={myAction}
+                                            onChange={e => setMyAction(e.target.value)}
+                                            maxLength={200}
+                                            rows={1}
+                                            placeholder={t('observations.myActionPlaceholder')}
+                                            onInput={e => { const tgt = e.target as HTMLTextAreaElement; tgt.style.height = 'auto'; tgt.style.height = tgt.scrollHeight + 'px'; }}
+                                            className={`w-full pb-2 text-[15px] text-text-main dark:text-white bg-transparent border-b-2 focus:outline-none transition-colors placeholder:text-slate-300 dark:placeholder:text-slate-600 resize-none overflow-hidden ${
+                                                fieldErrors.myAction ? 'border-red-300' : 'border-slate-100 dark:border-slate-800 focus:border-primary'
+                                            }`}
+                                        />
+                                    </div>
+                                )}
 
-                                {/* 아이 반응 */}
-                                <div className="mb-5">
-                                    <label className="text-[13px] font-bold text-slate-600 dark:text-slate-300 tracking-wide mb-2 block">
-                                        {modalConsultId ? t('observations.childReactionPractice') : t('observations.childReaction')}
-                                    </label>
-                                    <textarea
-                                        value={childReaction}
-                                        onChange={e => setChildReaction(e.target.value)}
-                                        maxLength={200}
-                                        rows={1}
-                                        placeholder={t('observations.childReactionPlaceholder')}
-                                        onInput={e => { const tgt = e.target as HTMLTextAreaElement; tgt.style.height = 'auto'; tgt.style.height = tgt.scrollHeight + 'px'; }}
-                                        className={`w-full pb-2 text-[15px] text-text-main dark:text-white bg-transparent border-b-2 focus:outline-none transition-colors placeholder:text-slate-300 dark:placeholder:text-slate-600 resize-none overflow-hidden ${
-                                            fieldErrors.childReaction ? 'border-red-300' : 'border-slate-100 dark:border-slate-800 focus:border-primary'
-                                        }`}
-                                    />
-                                </div>
+                                {/* 아이 반응 — 자세히 모드 또는 처방전 연동 시 */}
+                                {(entryMode === 'detailed' || modalConsultId) && (
+                                    <div className="mb-5">
+                                        <label className="text-[13px] font-bold text-slate-600 dark:text-slate-300 tracking-wide mb-2 block">
+                                            {modalConsultId ? t('observations.childReactionPractice') : t('observations.childReaction')}
+                                        </label>
+                                        <textarea
+                                            value={childReaction}
+                                            onChange={e => setChildReaction(e.target.value)}
+                                            maxLength={200}
+                                            rows={1}
+                                            placeholder={t('observations.childReactionPlaceholder')}
+                                            onInput={e => { const tgt = e.target as HTMLTextAreaElement; tgt.style.height = 'auto'; tgt.style.height = tgt.scrollHeight + 'px'; }}
+                                            className={`w-full pb-2 text-[15px] text-text-main dark:text-white bg-transparent border-b-2 focus:outline-none transition-colors placeholder:text-slate-300 dark:placeholder:text-slate-600 resize-none overflow-hidden ${
+                                                fieldErrors.childReaction ? 'border-red-300' : 'border-slate-100 dark:border-slate-800 focus:border-primary'
+                                            }`}
+                                        />
+                                    </div>
+                                )}
 
                                 {/* 메모 + 상담 연결 */}
                                 <div className="mb-7 space-y-3">

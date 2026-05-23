@@ -50,6 +50,16 @@ const DEFAULT_REMINDER_PREFERENCES: PracticeReminderPreferences = {
   practiceReminderTime: "20:00",
 };
 const PRIMARY_PRACTICE_PREVIEW_LIMIT = 2;
+const PARENT_ATQ_DISMISS_STORAGE_KEY = "gijilai.parentAtqDismissedUntil";
+const PARENT_ATQ_DISMISS_DAYS = 7;
+
+function readParentAtqDismissedUntil(): number {
+  if (typeof window === "undefined") return 0;
+  const raw = window.localStorage.getItem(PARENT_ATQ_DISMISS_STORAGE_KEY);
+  if (!raw) return 0;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
 
 type QuickPracticeMessage = {
   tone: "success" | "error" | "info";
@@ -125,6 +135,11 @@ export default function HomePage() {
   >(() => new Set());
   const [quickPracticeMessage, setQuickPracticeMessage] =
     useState<QuickPracticeMessage | null>(null);
+  const [parentAtqDismissedUntil, setParentAtqDismissedUntil] = useState<number>(0);
+  const parentAtqShownRef = useRef(false);
+  useEffect(() => {
+    setParentAtqDismissedUntil(readParentAtqDismissedUntil());
+  }, []);
   const {
     profile,
     children,
@@ -292,10 +307,42 @@ export default function HomePage() {
   }, [mainChild, cbqResponses, hasCompleteLocalChildResponses, latestSurvey, reports]);
 
   const childTestPending = !temperamentInfo;
+  const parentAtqDismissed = parentAtqDismissedUntil > Date.now();
   const parentTestPending =
     !parentSurvey &&
     !hasCompleteLocalParentResponses &&
-    !!temperamentInfo?.child;
+    !!temperamentInfo?.child &&
+    !parentAtqDismissed;
+  const handleParentAtqDismiss = useCallback(() => {
+    const until = Date.now() + PARENT_ATQ_DISMISS_DAYS * 24 * 60 * 60 * 1000;
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(PARENT_ATQ_DISMISS_STORAGE_KEY, String(until));
+    }
+    setParentAtqDismissedUntil(until);
+    trackEvent("parent_atq_card_dismissed", {
+      location: "home_primary",
+      dismiss_days: PARENT_ATQ_DISMISS_DAYS,
+    });
+  }, []);
+  const handleParentAtqStart = useCallback(() => {
+    trackEvent("parent_atq_card_clicked", {
+      location: "home_primary",
+      has_existing_responses: Object.keys(atqResponses).length > 0,
+    });
+  }, [atqResponses]);
+  const handleHarmonyBadgeClick = useCallback(() => {
+    if (!parentTemperament?.hasData) return;
+    if (!temperamentInfo) {
+      alert(t("home.childTestAlert", { name: childName }));
+      router.push("/survey/intro");
+      return;
+    }
+    trackEvent("harmony_report_viewed", {
+      from: "home_parent_badge",
+      has_subscription: !!subscription,
+    });
+    router.push("/report?tab=parent");
+  }, [parentTemperament, temperamentInfo, t, router, subscription, childName]);
   const uncheckedPracticeItems = useMemo(
     () =>
       practices.uncheckedItems.filter(
@@ -343,6 +390,19 @@ export default function HomePage() {
           : hasTrialPriority
             ? "trial"
             : null;
+
+  useEffect(() => {
+    if (primaryAction !== "parent_test") {
+      parentAtqShownRef.current = false;
+      return;
+    }
+    if (parentAtqShownRef.current) return;
+    parentAtqShownRef.current = true;
+    trackEvent("parent_atq_card_shown", {
+      location: "home_primary",
+      has_existing_responses: Object.keys(atqResponses).length > 0,
+    });
+  }, [primaryAction, atqResponses]);
 
   const openTrialConversion = (placement: string) => {
     trackEvent("trial_conversion_cta_clicked", {
@@ -764,15 +824,7 @@ export default function HomePage() {
                       )}
                     </div>
                     <div
-                      onClick={() => {
-                        if (!parentTemperament?.hasData) return;
-                        if (!temperamentInfo) {
-                          alert(t("home.childTestAlert", { name: childName }));
-                          router.push("/survey/intro");
-                          return;
-                        }
-                        router.push("/report?tab=parent");
-                      }}
+                      onClick={handleHarmonyBadgeClick}
                       className={`mt-2 bg-white/90 dark:bg-surface-dark/90 text-text-main dark:text-gray-200 px-3.5 py-1.5 rounded-full text-[12px] font-medium shadow-[0_2px_10px_-2px_rgba(0,0,0,0.05)] inline-flex items-center gap-1.5 ring-1 ring-black/5 dark:ring-white/10 ${parentTemperament?.hasData ? "cursor-pointer active:scale-95 transition-transform" : ""}`}
                     >
                       <span className="material-symbols-outlined text-[16px] text-caregiver">
@@ -938,7 +990,11 @@ export default function HomePage() {
                           <p className="mt-2 text-sm text-white/85 leading-relaxed break-keep">
                             {t("home.parentTestDescription")}
                           </p>
-                          <Link href="/survey?type=PARENT" className="block mt-5">
+                          <Link
+                            href="/survey?type=PARENT"
+                            className="block mt-5"
+                            onClick={handleParentAtqStart}
+                          >
                             <button className="w-full py-4 rounded-xl bg-white text-secondary font-bold text-sm shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2">
                               <span>
                                 {Object.keys(atqResponses).length > 0
@@ -950,6 +1006,13 @@ export default function HomePage() {
                               </span>
                             </button>
                           </Link>
+                          <button
+                            type="button"
+                            onClick={handleParentAtqDismiss}
+                            className="mt-3 w-full text-center text-[12px] font-medium text-white/65 hover:text-white/85 transition-colors"
+                          >
+                            {t("home.parentTestDismissLater")}
+                          </button>
                         </div>
                       )}
 
@@ -1185,7 +1248,8 @@ export default function HomePage() {
                 {!parentSurvey &&
                   Object.keys(atqResponses).length < PARENT_QUESTIONS.length &&
                   temperamentInfo?.child &&
-                  primaryAction !== "parent_test" && (
+                  primaryAction !== "parent_test" &&
+                  !parentAtqDismissed && (
                     <HomeModuleReveal order={3}>
                       <div className="bg-secondary dark:bg-surface-dark rounded-2xl p-6 shadow-card relative overflow-hidden mb-2">
                       <div className="absolute top-0 right-0 w-40 h-40 bg-white/[0.08] rounded-full -mr-10 -mt-10 pointer-events-none"></div>
@@ -1203,7 +1267,15 @@ export default function HomePage() {
                         <p className="text-sm text-white/90 mb-6">
                           {t("home.parentTestDescription")}
                         </p>
-                        <Link href="/survey?type=PARENT">
+                        <Link
+                          href="/survey?type=PARENT"
+                          onClick={() => {
+                            trackEvent("parent_atq_card_clicked", {
+                              location: "home_secondary",
+                              has_existing_responses: Object.keys(atqResponses).length > 0,
+                            });
+                          }}
+                        >
                           <button className="w-full py-4 rounded-xl bg-white text-secondary font-bold text-sm shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2">
                             <span>
                               {Object.keys(atqResponses).length > 0

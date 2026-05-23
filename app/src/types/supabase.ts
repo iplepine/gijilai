@@ -415,9 +415,10 @@ export interface Database {
                     child_id: string | null
                     consultation_id: string | null
                     situation: string
-                    my_action: string
-                    child_reaction: string
+                    my_action: string | null
+                    child_reaction: string | null
                     note: string | null
+                    entry_mode: 'quick' | 'detailed'
                     created_at: string
                 }
                 Insert: {
@@ -426,9 +427,10 @@ export interface Database {
                     child_id?: string | null
                     consultation_id?: string | null
                     situation: string
-                    my_action: string
-                    child_reaction: string
+                    my_action?: string | null
+                    child_reaction?: string | null
                     note?: string | null
+                    entry_mode?: 'quick' | 'detailed'
                     created_at?: string
                 }
                 Update: {
@@ -437,9 +439,10 @@ export interface Database {
                     child_id?: string | null
                     consultation_id?: string | null
                     situation?: string
-                    my_action?: string
-                    child_reaction?: string
+                    my_action?: string | null
+                    child_reaction?: string | null
                     note?: string | null
+                    entry_mode?: 'quick' | 'detailed'
                     created_at?: string
                 }
             }

@@ -143,10 +143,13 @@ export async function POST(req: Request) {
             const billingKey = 'billingKey' in portonePayment
               ? (typeof portonePayment.billingKey === 'string' ? portonePayment.billingKey : null)
               : null;
-            // [연 구독] 재활성화 시: orderName 기반 판별 복원
-            // const orderName = portonePayment.orderName ?? '';
-            // const plan = orderName.includes('연') || orderName.includes('Yearly') ? 'YEARLY' : 'MONTHLY';
-            const plan = 'MONTHLY';
+            // 주문명 기반으로 plan 판별 (subscribe 라우트에서 '기질아이 연 구독' / '기질아이 월 구독' 사용)
+            const orderName = 'orderName' in portonePayment && typeof portonePayment.orderName === 'string'
+              ? portonePayment.orderName
+              : '';
+            const plan: 'MONTHLY' | 'YEARLY' = orderName.includes('연 구독') || orderName.toLowerCase().includes('yearly')
+              ? 'YEARLY'
+              : 'MONTHLY';
 
             // 이미 활성 구독이 있으면 환불
             const { data: activeSub } = await admin

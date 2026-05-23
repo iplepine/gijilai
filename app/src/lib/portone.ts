@@ -9,10 +9,13 @@ function getPortone() {
   return _portone;
 }
 
+// 연간 할인율 (정가 144,000원 대비 20% off → 115,200원).
+// CFO 페르소나 매질 결과: 33% 할인은 카니발리제이션 우려가 커서 20%로 축소.
+export const YEARLY_DISCOUNT = 0.2;
+
 export const PRICE_TABLE = {
   subscription_monthly: { KRW: 12000, USD: 999 },
-  // [연 구독] 신뢰 확보 후 재활성화 예정 — 환불 산식/갱신 알림 구현 필요
-  // subscription_yearly: { KRW: 89000, USD: 8999 },
+  subscription_yearly: { KRW: 115200, USD: 9599 },
 } as const;
 
 /** 월 구독 첫 달 할인율 (30%) */

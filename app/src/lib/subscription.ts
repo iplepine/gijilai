@@ -4,13 +4,17 @@ export async function getActiveSubscription(userId: string): Promise<Subscriptio
   return db.getActiveSubscription(userId);
 }
 
-// [연 구독] 신뢰 확보 후 재활성화 예정 — plan 타입에 'YEARLY' 추가, else 분기 복원
-// export function computePeriodEnd(plan: 'MONTHLY' | 'YEARLY', from: Date = new Date()): Date {
-//   ...
-//   } else { end.setDate(end.getDate() + 365); }
-// }
-export function computePeriodEnd(plan: 'MONTHLY', from: Date = new Date()): Date {
+/**
+ * 다음 결제일 계산.
+ * - MONTHLY: +30일
+ * - YEARLY: +1년 (윤년 안전, setFullYear)
+ */
+export function computePeriodEnd(plan: 'MONTHLY' | 'YEARLY', from: Date = new Date()): Date {
   const end = new Date(from);
+  if (plan === 'YEARLY') {
+    end.setFullYear(end.getFullYear() + 1);
+    return end;
+  }
   end.setDate(end.getDate() + 30);
   return end;
 }

@@ -40,6 +40,8 @@ function PricingCompleteContent() {
       const payMethod = searchParams.get('payMethod') || 'INICIS_CARD';
       const isIapCompletion = searchParams.get('iap') === 'true';
       const requestLocale = searchParams.get('locale') || locale;
+      const planParam = searchParams.get('plan');
+      const plan: 'MONTHLY' | 'YEARLY' = planParam === 'YEARLY' ? 'YEARLY' : 'MONTHLY';
       const entrySource = searchParams.get('source') ?? 'direct';
       const entryCta = searchParams.get('entry_cta') ?? undefined;
       const reportTab = searchParams.get('report_tab') ?? undefined;
@@ -127,7 +129,7 @@ function PricingCompleteContent() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             billingKey,
-            plan: 'MONTHLY',
+            plan,
             locale: requestLocale,
             payMethod,
           }),

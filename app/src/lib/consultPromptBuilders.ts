@@ -15,8 +15,8 @@ export type ConsultPromptTemperamentProfile = {
 export type ConsultPromptObservation = {
     created_at: string;
     situation: string;
-    my_action: string;
-    child_reaction: string;
+    my_action: string | null;
+    child_reaction: string | null;
     note?: string | null;
 };
 
@@ -153,7 +153,13 @@ export function formatConsultObservationsForPrompt(
 ): string {
     return observations.map((obs) => {
         const date = new Date(obs.created_at).toLocaleDateString('ko-KR');
-        let entry = `[${date}] 상황: ${obs.situation} → 양육자 행동: ${obs.my_action} → 아이 반응: ${obs.child_reaction}`;
+        let entry = `[${date}] 상황: ${obs.situation}`;
+        if (obs.my_action) {
+            entry += ` → 양육자 행동: ${obs.my_action}`;
+        }
+        if (obs.child_reaction) {
+            entry += ` → 아이 반응: ${obs.child_reaction}`;
+        }
         if (obs.note) {
             entry += ` (메모: ${obs.note})`;
         }
