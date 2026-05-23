@@ -33,6 +33,7 @@ import {
 import { PracticeReviewModal } from "@/components/practices/PracticeReviewModal";
 import { EffectivenessBadge } from "@/components/practices/EffectivenessBadge";
 import { summarizePracticeEffectiveness } from "@/lib/practiceEffectiveness";
+import { TabLoadingScreen } from "@/components/ui/TabLoadingScreen";
 import { useLocale } from "@/i18n/LocaleProvider";
 import { getFeatureAccess } from "@/lib/access";
 import { getLocalDateString } from "@/lib/date";
@@ -169,16 +170,7 @@ function buildPracticeChangeUrl(sessionId: string, practiceId: string) {
 
 function PracticesPageFallback() {
   const { t } = useLocale();
-
-  return (
-    <div className="bg-background-light dark:bg-background-dark h-[100dvh] min-h-[100dvh] overflow-hidden flex flex-col items-center font-body">
-      <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-0 flex flex-col shadow-2xl overflow-hidden relative">
-        <main className="flex min-h-0 flex-1 items-center justify-center">
-          <TabLoadingIndicator ariaLabel={t("common.loading")} />
-        </main>
-      </div>
-    </div>
-  );
+  return <TabLoadingScreen label={t('practices.loadingRecords')} />;
 }
 
 export default function PracticesPage() {

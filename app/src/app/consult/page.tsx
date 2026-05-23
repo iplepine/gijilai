@@ -8,6 +8,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { Button } from '@/components/ui/Button';
 import { MedicalDisclaimer } from '@/components/ui/MedicalDisclaimer';
 import { TabLoadingIndicator } from '@/components/ui/TabLoadingIndicator';
+import { TabLoadingScreen } from '@/components/ui/TabLoadingScreen';
 import { TemperamentLoadingState } from '@/components/ui/TemperamentLoadingState';
 import { VoiceInputButton } from '@/components/ui/VoiceInputButton';
 import { Navbar } from '@/components/layout/Navbar';
@@ -208,16 +209,11 @@ export default function ConsultPage() {
 
 function ConsultPageFallback() {
     const { t } = useLocale();
-
     return (
-        <div className="bg-background-light dark:bg-background-dark h-[100dvh] min-h-[100dvh] overflow-hidden flex flex-col items-center justify-center font-body pb-0">
-            <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-0 flex flex-col shadow-2xl overflow-hidden relative">
-                <Navbar title={t('consult.heartInterpreterStation')} />
-                <main className="app-fixed-cta-scroll w-full max-w-md flex min-h-0 flex-1 flex-col overflow-y-auto p-6">
-                    <TabLoadingIndicator ariaLabel={t('common.loading')} className="flex-1" />
-                </main>
-            </div>
-        </div>
+        <TabLoadingScreen
+            navbarTitle={t('consult.heartInterpreterStation')}
+            label={t('consult.loadingStation')}
+        />
     );
 }
 

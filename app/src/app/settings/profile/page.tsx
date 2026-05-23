@@ -8,6 +8,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { useSurveyStore } from '@/store/surveyStore';
 import BottomNav from '@/components/layout/BottomNav';
 import { Navbar } from '@/components/layout/Navbar';
+import { TabLoadingScreen } from '@/components/ui/TabLoadingScreen';
 import Link from 'next/link';
 import { useLocale } from '@/i18n/LocaleProvider';
 import { getRuntimeAppInfo, type RuntimeAppInfo } from '@/lib/appInfo';
@@ -93,9 +94,10 @@ export default function ProfilePage() {
 
     if (loading || authLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-background-light dark:bg-background-dark">
-                <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
-            </div>
+            <TabLoadingScreen
+                navbarTitle={t('settings.myInfo')}
+                label={t('settings.loadingProfile')}
+            />
         );
     }
 

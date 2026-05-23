@@ -142,6 +142,7 @@
     "mobileFooterNote": "If the app is not installed, we'll open the store automatically."
   },
   "home": {
+    "loadingLabel": "Getting your home ready…",
     "trialBadge": "Trial",
     "registerPhoto": "Add photo",
     "assessTemperament": "Take assessment",
@@ -334,6 +335,7 @@
     "newConsultation": "Start new consultation",
     "consultHistory": "Consultation history",
     "heartInterpreterStation": "Heart Interpreter",
+    "loadingStation": "Opening the Heart Interpreter…",
     "heartPrescription": "Heart Prescription",
     "registerChildFirst": "Please register your child first",
     "registerChildDesc": "We need your child's information\nfor personalized consultation.",
@@ -454,6 +456,7 @@
     "title": "Settings",
     "profile": "Profile",
     "myInfo": "My Info",
+    "loadingProfile": "Loading your info…",
     "editProfile": "Edit Profile",
     "subscription": "Manage Subscription",
     "notifications": "Notifications",

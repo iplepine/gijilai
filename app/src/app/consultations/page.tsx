@@ -7,7 +7,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { db, SessionData, ChildProfile } from '@/lib/db';
 import BottomNav from '@/components/layout/BottomNav';
 import { Navbar } from '@/components/layout/Navbar';
-import { TabLoadingIndicator } from '@/components/ui/TabLoadingIndicator';
+import { TabLoadingScreen } from '@/components/ui/TabLoadingScreen';
 import { useLocale } from '@/i18n/LocaleProvider';
 import type { Database } from '@/types/supabase';
 
@@ -108,15 +108,23 @@ export default function RecordsPage() {
     const activeSessions = sessions.filter(s => s.status === 'ACTIVE');
     const resolvedSessions = sessions.filter(s => s.status !== 'ACTIVE');
 
+    if (isLoading || authLoading) {
+        return (
+            <TabLoadingScreen
+                navbarTitle={t('consult.consultHistory')}
+                showBack
+                label={t('consult.loadingRecords')}
+            />
+        );
+    }
+
     return (
         <div className="bg-background-light dark:bg-background-dark h-[100dvh] min-h-[100dvh] overflow-hidden flex flex-col items-center font-body">
             <div className="w-full max-w-md bg-background-light dark:bg-background-dark h-full min-h-0 flex flex-col shadow-2xl overflow-hidden relative">
                 <Navbar title={t('consult.consultHistory')} showBack={true} />
 
                 <main className="app-bottom-nav-scroll w-full max-w-md min-h-0 flex-1 overflow-y-auto overscroll-contain no-scrollbar p-6">
-                    {isLoading ? (
-                        <TabLoadingIndicator label={t('consult.loadingRecords')} className="py-20" />
-                    ) : sessions.length === 0 ? (
+                    {sessions.length === 0 ? (
                         <div className="py-24 flex flex-col items-center text-center space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                             <div className="w-24 h-24 bg-secondary/5 dark:bg-secondary/10 rounded-full flex items-center justify-center mb-2">
                                 <span className="material-symbols-outlined text-5xl text-secondary/30">chat_bubble</span>

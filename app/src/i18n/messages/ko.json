@@ -142,6 +142,7 @@
     "mobileFooterNote": "앱이 없으면 자동으로 스토어 설치 화면으로 이동합니다."
   },
   "home": {
+    "loadingLabel": "홈 화면 준비 중...",
     "trialBadge": "체험중",
     "registerPhoto": "사진 등록",
     "assessTemperament": "기질 검사하기",
@@ -334,6 +335,7 @@
     "newConsultation": "새 상담 시작",
     "consultHistory": "상담 기록",
     "heartInterpreterStation": "마음 통역소",
+    "loadingStation": "마음 통역소 여는 중...",
     "heartPrescription": "마음 처방전",
     "registerChildFirst": "아이를 먼저 등록해주세요",
     "registerChildDesc": "아이의 기질에 맞는 맞춤 상담을 위해\n아이 정보가 필요해요.",
@@ -455,6 +457,7 @@
     "title": "설정",
     "profile": "프로필",
     "myInfo": "내 정보",
+    "loadingProfile": "내 정보 불러오는 중...",
     "editProfile": "프로필 편집",
     "subscription": "구독 관리",
     "notifications": "알림 설정",
