@@ -404,6 +404,11 @@ function SharePageContent() {
     // 플랫폼이 등록되어 있어 카카오톡이 자체 판단으로 앱을 띄우는 경우이므로
     // 콘솔에서 해당 플랫폼을 정리해야 한다.
     const shareDescription = shareInfo?.textParts.slice(1).join('\n\n').slice(0, 200) || t('share.kakaoDesc');
+    // 설치된 사용자는 카톡의 `kakao{APP_KEY}://kakaolink?path=/shared/{id}` 커스텀 스킴으로
+    // 앱이 실행되고, 미설치 사용자는 `mobileWebUrl`로 폴백되어 인앱 웹뷰에서 페이지가 열린다.
+    // 앱 라우팅은 main.dart `_isKakaoLinkOpenUri` → `_consumePendingAppOpenUri`가 처리.
+    const sharePath = `/shared/${resolvedReportId}`;
+    const executionParams = { path: sharePath };
     const kakaoPayload = {
       objectType: 'feed' as const,
       content: {
@@ -413,6 +418,8 @@ function SharePageContent() {
         link: {
           mobileWebUrl: shareUrl,
           webUrl: shareUrl,
+          androidExecutionParams: executionParams,
+          iosExecutionParams: executionParams,
         },
       },
       buttons: [
@@ -421,6 +428,8 @@ function SharePageContent() {
           link: {
             mobileWebUrl: shareUrl,
             webUrl: shareUrl,
+            androidExecutionParams: executionParams,
+            iosExecutionParams: executionParams,
           },
         },
       ],
@@ -455,6 +464,7 @@ function SharePageContent() {
         description: kakaoPayload.content.description,
         imageUrl: kakaoPayload.content.imageUrl,
         shareUrl,
+        sharePath,
         buttonTitle: t('share.viewFullReport'),
         buttonUrl: shareUrl,
       }));

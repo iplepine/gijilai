@@ -2769,6 +2769,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           data['imageUrl']?.toString() ??
           'https://gijilai.com/gijilai_icon_kakao.png';
       final shareUrl = data['shareUrl']?.toString() ?? '';
+      final sharePath = data['sharePath']?.toString() ?? '';
       final buttonTitle = data['buttonTitle']?.toString() ?? '자세히 보기';
       final buttonUrl = data['buttonUrl']?.toString() ?? shareUrl;
 
@@ -2776,11 +2777,10 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         throw Exception('Missing Kakao share URL');
       }
 
-      // FeedTemplate `link`에는 mobileWebUrl/webUrl만 넣고
-      // androidExecutionParams/iosExecutionParams는 보내지 않는다.
-      // 그래야 받는 사람이 카드를 탭할 때 카카오톡이 앱 실행을 시도하지 않고
-      // 곧바로 mobileWebUrl로 연결한다. 그래도 앱이 뜨면 Kakao Developer
-      // Console의 iOS/Android 플랫폼 등록 때문이므로 콘솔에서 정리한다.
+      // 설치자: 카톡이 `kakao{APP_KEY}://kakaolink?path=$sharePath`로 앱 실행 →
+      // `_isKakaoLinkOpenUri` → `_consumePendingAppOpenUri`에서 webview를 그 path로 이동.
+      // 미설치자: 카톡이 mobileWebUrl로 폴백 → 인앱 웹뷰에서 페이지 그대로 표시.
+      final executionParams = sharePath.isNotEmpty ? {'path': sharePath} : null;
       final template = kakao_share.FeedTemplate(
         content: kakao_share.Content(
           title: title,
@@ -2789,6 +2789,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           link: kakao_share.Link(
             webUrl: Uri.parse(shareUrl),
             mobileWebUrl: Uri.parse(shareUrl),
+            androidExecutionParams: executionParams,
+            iosExecutionParams: executionParams,
           ),
         ),
         buttons: [
@@ -2797,6 +2799,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
             link: kakao_share.Link(
               webUrl: Uri.parse(buttonUrl),
               mobileWebUrl: Uri.parse(buttonUrl),
+              androidExecutionParams: executionParams,
+              iosExecutionParams: executionParams,
             ),
           ),
         ],
