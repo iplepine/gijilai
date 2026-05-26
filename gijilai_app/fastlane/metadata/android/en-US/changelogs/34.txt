@@ -1,0 +1,6 @@
+Smoother practice flow and KakaoTalk sharing.
+
+• Effectiveness counter and quick observation log on the practice screen
+• One-line SOS composer on the home screen
+• KakaoTalk share: installed users go straight into the app, others see the web report
+• More consistent report loading and safer child-switching

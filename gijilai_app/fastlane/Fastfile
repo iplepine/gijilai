@@ -20,7 +20,7 @@ ANDROID_RELEASE_NOTE_SOURCES = {
 }.freeze
 
 DEFAULT_APP_STORE_CONNECT_API_KEY_JSON = "/tmp/gijilai_app_store_connect_api_key.json"
-SHARED_APP_STORE_CONNECT_API_KEY_CONFIG = "/Users/basil/Projects/flutter/nodtry/ios/fastlane/api_key.json"
+LOCAL_APP_STORE_CONNECT_API_KEY_CONFIG = File.expand_path("app_store_connect_api_key.json", __dir__)
 
 def read_pubspec_version_info
   pubspec_path = File.join(FLUTTER_DIR, "pubspec.yaml")
@@ -66,15 +66,15 @@ def ensure_app_store_connect_api_key_path
   env_path = ENV["APP_STORE_CONNECT_API_KEY_PATH"]
   return env_path if env_path && File.exist?(env_path)
 
+  return build_local_app_store_connect_api_key_json if File.exist?(LOCAL_APP_STORE_CONNECT_API_KEY_CONFIG)
   return DEFAULT_APP_STORE_CONNECT_API_KEY_JSON if File.exist?(DEFAULT_APP_STORE_CONNECT_API_KEY_JSON)
-  return build_shared_app_store_connect_api_key_json if File.exist?(SHARED_APP_STORE_CONNECT_API_KEY_CONFIG)
 
-  UI.user_error!("Missing App Store Connect API key. Set APP_STORE_CONNECT_API_KEY_PATH or follow docs/deployment/ios/README.md.")
+  UI.user_error!("Missing App Store Connect API key. Add fastlane/app_store_connect_api_key.json (with absolute key_filepath) or set APP_STORE_CONNECT_API_KEY_PATH.")
 end
 
-def build_shared_app_store_connect_api_key_json
-  config_dir = File.dirname(SHARED_APP_STORE_CONNECT_API_KEY_CONFIG)
-  config = JSON.parse(File.read(SHARED_APP_STORE_CONNECT_API_KEY_CONFIG))
+def build_local_app_store_connect_api_key_json
+  config_dir = File.dirname(LOCAL_APP_STORE_CONNECT_API_KEY_CONFIG)
+  config = JSON.parse(File.read(LOCAL_APP_STORE_CONNECT_API_KEY_CONFIG))
   key_path = File.expand_path(config.fetch("key_filepath"), config_dir)
 
   UI.user_error!("Missing App Store Connect private key: #{key_path}") unless File.exist?(key_path)
