@@ -174,8 +174,8 @@ export function OwnerCoParentSection({
 
   const handleShareLink = async (link: string) => {
     const shareData = {
-      title: '기질아이 함께 보기',
-      text: `${childName}의 기질 리포트와 상담·실천 기록을 함께 봐요.`,
+      title: `${childName}의 양육을 함께 봐요`,
+      text: `${childName}의 기질 리포트와 상담·실천 기록을 함께 보고 싶어 초대했어요. 링크를 열어 수락해주세요. (7일 안에)`,
       url: link,
     };
     try {
