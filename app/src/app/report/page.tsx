@@ -24,6 +24,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { MedicalDisclaimer } from '@/components/ui/MedicalDisclaimer';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { TabLoadingIndicator } from '@/components/ui/TabLoadingIndicator';
+import { CoParentInsightCard } from '@/components/coParent/CoParentInsightCard';
 import { TemperamentLoadingState } from '@/components/ui/TemperamentLoadingState';
 import { trackEvent } from '@/lib/analytics';
 import { db, type ChildProfile, type ReportData, type SurveyData } from '@/lib/db';
@@ -2654,6 +2655,11 @@ function ReportContent() {
                     steps={parentLoadingSteps}
                     showImage={false}
                   />
+                )}
+
+                {/* 공동양육자 케미 카드 — 공동양육자가 연결돼 있을 때만 자체적으로 렌더 */}
+                {currentChild?.id && (
+                  <CoParentInsightCard childId={currentChild.id} />
                 )}
 
                 {/* Footer Actions */}
