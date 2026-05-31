@@ -10,6 +10,14 @@ import { Navbar } from '@/components/layout/Navbar';
 import { TabLoadingScreen } from '@/components/ui/TabLoadingScreen';
 import { useLocale } from '@/i18n/LocaleProvider';
 import type { Database } from '@/types/supabase';
+import {
+    findCaregiver,
+    hasLabelCollision,
+    isCoParentLinked,
+    loadCaregiverMap,
+    type CaregiverMap,
+} from '@/lib/coParentMap';
+import { formatCaregiverLabelWithName } from '@/lib/coParent';
 
 interface SessionWithMeta extends SessionData {
     consultCount: number;
@@ -17,6 +25,10 @@ interface SessionWithMeta extends SessionData {
     latestProblem?: string;
     latestMagicWord?: string;
     childName?: string;
+    /** 세션을 시작한 양육자 호칭(공동양육자 연결된 경우에만 값이 있음) */
+    starterLabel?: string;
+    /** 가장 최근 상담의 작성자 호칭(starter와 다르면 표시) */
+    latestAuthorLabel?: string;
 }
 
 type ConsultationRow = Database['public']['Tables']['consultations']['Row'];
@@ -47,19 +59,45 @@ export default function RecordsPage() {
                 const [childData, sessionData, { data: consultData }] = await Promise.all([
                     db.getChildren(user.id),
                     db.getSessions(user.id),
+                    // user_id 필터 제거: co-parent로 연결된 아이의 상담도 노출. RLS가 가시성 처리.
                     supabase
                         .from('consultations')
                         .select('*')
-                        .eq('user_id', user.id)
                         .eq('status', 'COMPLETED')
                         .order('created_at', { ascending: false }),
                 ]);
 
                 const children = childData || [];
                 const consults = (consultData || []) as ConsultationRow[];
+
+                // 보이는 아이별 양육자 맵 로드 (공동양육자 라벨 칩 표시용)
+                const caregiverMaps = new Map<string, CaregiverMap>();
+                await Promise.all(
+                    children.map(async (c: ChildProfile) => {
+                        if (!c.id) return;
+                        try {
+                            const map = await loadCaregiverMap(c.id);
+                            if (isCoParentLinked(map)) caregiverMaps.set(c.id, map);
+                        } catch (err) {
+                            console.warn('[consultations] caregiver map load failed:', err);
+                        }
+                    }),
+                );
+
+                const resolveAuthorLabel = (childId: string | null | undefined, userId: string | null | undefined): string | undefined => {
+                    if (!childId || !userId) return undefined;
+                    const map = caregiverMaps.get(childId);
+                    if (!map) return undefined; // 솔로 아이는 라벨 표시 안 함
+                    const entry = findCaregiver(map, userId);
+                    if (!entry) return undefined;
+                    return formatCaregiverLabelWithName(entry.label, entry.displayName, hasLabelCollision(map));
+                };
+
                 const sessionsWithMeta: SessionWithMeta[] = (sessionData || []).map((s) => {
                     const sessionConsults = consults.filter((c) => c.session_id === s.id);
                     const latest = sessionConsults[0];
+                    const starterLabel = resolveAuthorLabel(s.child_id, s.user_id);
+                    const latestAuthorLabel = latest ? resolveAuthorLabel(s.child_id, latest.user_id) : undefined;
                     return {
                         ...s,
                         consultCount: sessionConsults.length,
@@ -67,14 +105,17 @@ export default function RecordsPage() {
                         latestProblem: latest?.problem_description ?? undefined,
                         latestMagicWord: latest ? getMagicWord(latest.ai_prescription) : undefined,
                         childName: children.find((c: ChildProfile) => c.id === s.child_id)?.name,
+                        starterLabel,
+                        latestAuthorLabel,
                     };
                 });
 
                 const orphanConsults = consults.filter((c) => !c.session_id);
                 for (const c of orphanConsults) {
+                    const authorLabel = resolveAuthorLabel(c.child_id, c.user_id);
                     sessionsWithMeta.push({
                         id: c.id,
-                        user_id: user.id,
+                        user_id: c.user_id,
                         child_id: c.child_id,
                         title: t('consult.pastConsult'),
                         status: 'ARCHIVED',
@@ -85,6 +126,8 @@ export default function RecordsPage() {
                         latestProblem: c.problem_description ?? undefined,
                         latestMagicWord: getMagicWord(c.ai_prescription),
                         childName: children.find((ch: ChildProfile) => ch.id === c.child_id)?.name,
+                        starterLabel: authorLabel,
+                        latestAuthorLabel: authorLabel,
                     });
                 }
 
@@ -196,6 +239,24 @@ function SessionCard({ session, statusLabel, onSelect }: {
                             <span className="text-[10px] font-semibold text-primary/85">{t('consult.consultCount', { count: session.consultCount })}</span>
                         )}
                     </div>
+                    {/* 공동양육자 라벨 칩 — 솔로 사용자에겐 표시되지 않음 */}
+                    {(session.starterLabel || session.latestAuthorLabel) && (
+                        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                            {session.starterLabel && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                                    <span className="material-symbols-outlined text-[12px] leading-none">play_arrow</span>
+                                    {session.starterLabel}이 시작
+                                </span>
+                            )}
+                            {session.latestAuthorLabel &&
+                              session.latestAuthorLabel !== session.starterLabel && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-secondary/10 text-secondary">
+                                    <span className="material-symbols-outlined text-[12px] leading-none">forum</span>
+                                    {session.latestAuthorLabel}이 이어감
+                                </span>
+                            )}
+                        </div>
+                    )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                     <span className={`text-[9px] font-semibold px-2 py-1 rounded-md ${label.color}`}>

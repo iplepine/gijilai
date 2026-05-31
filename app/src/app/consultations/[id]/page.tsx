@@ -10,6 +10,14 @@ import { Navbar } from '@/components/layout/Navbar';
 import { TabLoadingIndicator } from '@/components/ui/TabLoadingIndicator';
 import { useLocale } from '@/i18n/LocaleProvider';
 import type { Database } from '@/types/supabase';
+import {
+    findCaregiver,
+    hasLabelCollision,
+    isCoParentLinked,
+    loadCaregiverMap,
+    type CaregiverMap,
+} from '@/lib/coParentMap';
+import { formatCaregiverLabelWithName } from '@/lib/coParent';
 
 type ConsultationRow = Database['public']['Tables']['consultations']['Row'];
 type PracticeSummary = Pick<Database['public']['Tables']['practice_items']['Row'], 'consultation_id' | 'title' | 'status'>;
@@ -39,6 +47,15 @@ export default function ConsultationDetailPage() {
     const [consults, setConsults] = useState<ConsultationRow[]>([]);
     const [practiceItemsByConsult, setPracticeItemsByConsult] = useState<Record<string, Array<{ title: string; status: string }>>>({});
     const [isLoading, setIsLoading] = useState(true);
+    const [caregiverMap, setCaregiverMap] = useState<CaregiverMap | null>(null);
+
+    const resolveAuthorLabel = (userId: string | null | undefined): string | undefined => {
+        if (!caregiverMap || !userId) return undefined;
+        if (!isCoParentLinked(caregiverMap)) return undefined;
+        const entry = findCaregiver(caregiverMap, userId);
+        if (!entry) return undefined;
+        return formatCaregiverLabelWithName(entry.label, entry.displayName, hasLabelCollision(caregiverMap));
+    };
 
     useEffect(() => {
         if (authLoading) return;
@@ -50,11 +67,11 @@ export default function ConsultationDetailPage() {
         const loadData = async () => {
             try {
                 const [{ data: sessionData }, { data: consultsData }, { data: practicesData }, children] = await Promise.all([
+                    // user_id 필터 제거: co-parent도 같은 세션을 볼 수 있어야 한다. RLS가 가시성 처리.
                     supabase
                         .from('consultation_sessions')
                         .select('*')
                         .eq('id', id)
-                        .eq('user_id', user.id)
                         .single(),
                     supabase
                         .from('consultations')
@@ -71,6 +88,15 @@ export default function ConsultationDetailPage() {
                 if (sessionData) {
                     const childName = children.find((c: ChildProfile) => c.id === sessionData.child_id)?.name;
                     setSession({ ...sessionData, childName } as SessionData & { childName?: string });
+                    // 양육자 라벨 칩용 caregiver map 로드
+                    if (sessionData.child_id) {
+                        try {
+                            const map = await loadCaregiverMap(sessionData.child_id);
+                            setCaregiverMap(map);
+                        } catch (err) {
+                            console.warn('[consultations/detail] caregiver map load failed:', err);
+                        }
+                    }
                 }
                 setConsults((consultsData || []) as ConsultationRow[]);
                 const groupedPractices = ((practicesData || []) as PracticeSummary[]).reduce((acc: Record<string, Array<{ title: string; status: string }>>, practice) => {
@@ -177,15 +203,24 @@ export default function ConsultationDetailPage() {
                                 {consults.map((item, i: number) => {
                                     const rx = parsePrescription(item.ai_prescription);
                                     const selectedPracticeTitles = new Set((practiceItemsByConsult[item.id] || []).map(practice => practice.title));
+                                    const authorLabel = resolveAuthorLabel(item.user_id);
                                     return (
                                         <div key={item.id} className="space-y-3">
-                                            {/* 날짜 뱃지 */}
+                                            {/* 날짜 뱃지 + 작성자 칩 */}
                                             <div className="flex items-center justify-between">
-                                                <span className="text-[12px] font-bold text-[#D08B5B] bg-[#D08B5B]/10 px-3 py-1.5 rounded-lg inline-flex items-center gap-1">
-                                                    <span className="material-symbols-outlined text-[14px]">calendar_today</span>
-                                                    {new Date(item.created_at).toLocaleDateString(locale === 'ko' ? 'ko-KR' : 'en-US')}
-                                                    {i > 0 && <span className="ml-1 text-secondary">({t('consult.followUpConsult')})</span>}
-                                                </span>
+                                                <div className="flex flex-wrap items-center gap-1.5">
+                                                    <span className="text-[12px] font-bold text-[#D08B5B] bg-[#D08B5B]/10 px-3 py-1.5 rounded-lg inline-flex items-center gap-1">
+                                                        <span className="material-symbols-outlined text-[14px]">calendar_today</span>
+                                                        {new Date(item.created_at).toLocaleDateString(locale === 'ko' ? 'ko-KR' : 'en-US')}
+                                                        {i > 0 && <span className="ml-1 text-secondary">({t('consult.followUpConsult')})</span>}
+                                                    </span>
+                                                    {authorLabel && (
+                                                        <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-primary/10 text-primary inline-flex items-center gap-1">
+                                                            <span className="material-symbols-outlined text-[12px] leading-none">edit</span>
+                                                            {authorLabel}
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 {consults.length > 1 && (
                                                     <button
                                                         onClick={() => handleDeleteConsultation(item.id)}
