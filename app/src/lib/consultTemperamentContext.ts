@@ -103,15 +103,18 @@ async function getLatestSurveyScores(
 ): Promise<TemperamentScores | null> {
     if (params.type === 'CHILD' && !params.childId) return null;
 
+    // CHILD 설문은 아이 기준이므로 owner/co-parent 양쪽이 같은 점수를 봐야 한다.
+    // PARENT/STYLE 설문은 본인 양육자 기준이라 user_id 필터 유지.
     let query = supabase
         .from('surveys')
         .select('scores, answers')
-        .eq('user_id', params.userId)
         .eq('type', params.type)
         .eq('status', 'COMPLETED');
 
     if (params.type === 'CHILD') {
         query = query.eq('child_id', params.childId);
+    } else {
+        query = query.eq('user_id', params.userId);
     }
 
     const { data, error } = await query
@@ -146,14 +149,16 @@ async function getLatestReportScores(
 ): Promise<TemperamentScores | null> {
     if (params.type === 'CHILD' && !params.childId) return null;
 
+    // CHILD 리포트는 아이 기준이라 양쪽 공유. PARENT 리포트는 본인 양육자 기준.
     let query = supabase
         .from('reports')
         .select('analysis_json')
-        .eq('user_id', params.userId)
         .eq('type', params.type);
 
     if (params.type === 'CHILD') {
         query = query.eq('child_id', params.childId);
+    } else {
+        query = query.eq('user_id', params.userId);
     }
 
     const { data, error } = await query

@@ -137,11 +137,13 @@ export const db = {
     return data as SurveyData;
   },
 
+  // owner의 설문 + co-parent로 연결된 아이의 CHILD 설문 + 본인 PARENT/STYLE 설문을 모두 반환.
+  // 가시성 경계는 RLS가 처리 (owner는 본인 user_id 매치, co-parent는 child_id 매치).
   getSurveys: async (userId: string) => {
+    void userId;
     const { data, error } = await supabase
       .from("surveys")
       .select("*")
-      .eq("user_id", userId)
       .order("updated_at", { ascending: false })
       .order("created_at", { ascending: false });
     if (error) throw error;
@@ -258,11 +260,13 @@ export const db = {
     return data as ReportData;
   },
 
+  // owner의 리포트 + co-parent로 연결된 아이의 리포트를 모두 반환한다.
+  // 가시성 경계는 RLS가 처리.
   getReports: async (userId: string) => {
+    void userId;
     const { data, error } = await supabase
       .from("reports")
       .select("*")
-      .eq("user_id", userId)
       .order("created_at", { ascending: false });
     if (error) throw error;
     return data as ReportData[];
@@ -514,19 +518,15 @@ export const db = {
     return data as SessionData;
   },
 
-  // childId가 주어지면 user_id 필터를 풀어 owner+co-parent 양쪽의 세션을 모두 노출한다.
-  // 가시성 경계는 Supabase RLS가 처리한다.
+  // owner의 세션 + co-parent로 연결된 아이의 세션을 모두 노출.
+  // 가시성 경계는 RLS가 처리.
   getSessions: async (userId: string, childId?: string, status?: string) => {
+    void userId;
     let query = supabase
       .from("consultation_sessions")
       .select("*")
       .order("updated_at", { ascending: false });
-    if (childId) {
-      query = query.eq("child_id", childId);
-    } else {
-      // 아이 선택이 없으면 본인이 시작한 세션만 보여준다(과도한 노출 방지).
-      query = query.eq("user_id", userId);
-    }
+    if (childId) query = query.eq("child_id", childId);
     if (status) query = query.eq("status", status);
     const { data, error } = await query;
     if (error) throw error;
@@ -632,8 +632,10 @@ export const db = {
     return data as PracticeItemData;
   },
 
-  // childId가 주어지면 user_id 필터를 풀어 양쪽 양육자의 실천 항목을 노출한다.
+  // owner의 실천 + co-parent로 연결된 아이의 실천을 모두 노출.
+  // 가시성 경계는 RLS가 처리.
   getActivePracticeItems: async (userId: string, childId?: string) => {
+    void userId;
     let query = supabase
       .from("practice_items")
       .select(
@@ -642,8 +644,6 @@ export const db = {
       .eq("status", "ACTIVE");
     if (childId) {
       query = query.eq("consultation_sessions.child_id", childId);
-    } else {
-      query = query.eq("consultation_sessions.user_id", userId);
     }
     const { data, error } = await query;
     if (error) throw error;
