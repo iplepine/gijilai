@@ -793,7 +793,8 @@ function ConsultContent() {
                 body: JSON.stringify({
                     problem: fullProblem,
                     firstRoundQuestions: questions.map(q => ({ id: q.id, text: q.text })),
-                    firstRoundAnswers: currentAnswers
+                    firstRoundAnswers: currentAnswers,
+                    childId: validChildId, // 공동양육자 권한 확장용
                 }),
             });
 

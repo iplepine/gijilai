@@ -3,7 +3,7 @@ import { invalidJsonResponse, isInvalidJsonBodyError, isNonEmptyString, parseJso
 import { openai } from '@/lib/openai';
 import { createClient } from '@/lib/supabaseServer';
 import { getConsultModel } from '@/lib/consult-model';
-import { getServerFeatureAccess } from '@/lib/access';
+import { getServerFeatureAccessForChild } from '@/lib/access';
 import { recordSubscriptionUsageEvent } from '@/lib/subscription-usage';
 import { validateConsultProblemInput } from '@/lib/consultInputValidation';
 import {
@@ -90,14 +90,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const access = await getServerFeatureAccess(supabase, {
-      userId: session.user.id,
-      userCreatedAt: session.user.created_at,
-    });
-    if (!access.canUseConsult) {
-      return NextResponse.json({ error: 'Subscription required', code: 'SUBSCRIPTION_REQUIRED' }, { status: 402 });
-    }
-
     const {
       problem,
       childId,
@@ -109,6 +101,16 @@ export async function POST(request: Request) {
       recentObservations,
       sessionContext,
     } = await parseJsonBody<InitialQuestionRequest>(request);
+
+    // 공동양육자 케이스에서 owner의 구독으로 권한이 흘러오도록 childId 컨텍스트 포함
+    const access = await getServerFeatureAccessForChild(supabase, {
+      userId: session.user.id,
+      userCreatedAt: session.user.created_at,
+      childId,
+    });
+    if (!access.canUseConsult) {
+      return NextResponse.json({ error: 'Subscription required', code: 'SUBSCRIPTION_REQUIRED' }, { status: 402 });
+    }
 
     const ownedChild = await getOwnedConsultChild(supabase, session.user.id, childId);
     if (childId && !ownedChild) {

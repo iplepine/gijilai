@@ -83,6 +83,9 @@
 ## 구독 권한 (Phase 1)
 
 - `owner`의 구독·체험 상태로 두 양육자 모두 유료 기능을 사용한다.
+- 구체적으로는 `getServerFeatureAccessForChild(userId, childId)` 헬퍼가 본인 액세스와 해당 아이 owner의 액세스를 OR로 결합한다. 본인 액세스가 풀이면 owner 조회는 생략한다.
+- 적용 라우트: `/api/consult/questions/initial`, `/api/consult/questions/followup`, `/api/consult/prescription`. 이 셋이 메인 상담 흐름이라 권한 확장이 필수다.
+- 미적용 라우트 (Phase 1 결정): `/api/consult/options`, `/api/consult/practice-feedback`. 둘은 childId 없이도 호출되는 보조 경로라 본인 액세스만 본다. owner가 구독 중이고 co-parent의 체험이 끝났을 때 이 두 엔드포인트만 막힌다 — Phase 2에서 닫는다.
 - `co_parent`는 결제 화면·구독 관리 화면에 접근할 수 없다.
 - `owner`가 해지/탈퇴/체험 만료된 경우의 `co_parent` 동작(7일 grace, 본인 구독 전환 안내 등)은 Phase 2에서 결정한다. 검증 단계에는 owner 권한이 사라지면 `co_parent`도 무료 사용자 권한으로 자연 강등된다.
 

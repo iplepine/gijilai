@@ -3,7 +3,7 @@ import { invalidJsonResponse, isInvalidJsonBodyError, isNonEmptyString, parseJso
 import { openai } from '@/lib/openai';
 import { createClient } from '@/lib/supabaseServer';
 import { getConsultModel } from '@/lib/consult-model';
-import { getServerFeatureAccess } from '@/lib/access';
+import { getServerFeatureAccessForChild } from '@/lib/access';
 import { recordSubscriptionUsageEvent } from '@/lib/subscription-usage';
 import { buildFollowUpConsultQuestionsPrompt } from '@/lib/consultPromptBuilders';
 
@@ -159,19 +159,21 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const access = await getServerFeatureAccess(supabase, {
+        const { problem, firstRoundAnswers, firstRoundQuestions, childId } = await parseJsonBody<{
+            problem?: string;
+            firstRoundAnswers?: Record<string, string>;
+            firstRoundQuestions?: unknown;
+            childId?: string | null;
+        }>(request);
+
+        const access = await getServerFeatureAccessForChild(supabase, {
             userId: session.user.id,
             userCreatedAt: session.user.created_at,
+            childId,
         });
         if (!access.canUseConsult) {
             return NextResponse.json({ error: 'Subscription required', code: 'SUBSCRIPTION_REQUIRED' }, { status: 402 });
         }
-
-        const { problem, firstRoundAnswers, firstRoundQuestions } = await parseJsonBody<{
-            problem?: string;
-            firstRoundAnswers?: Record<string, string>;
-            firstRoundQuestions?: unknown;
-        }>(request);
 
         if (!problem || !firstRoundAnswers) {
             return NextResponse.json(
