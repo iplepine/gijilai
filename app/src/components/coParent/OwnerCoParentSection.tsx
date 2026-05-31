@@ -10,6 +10,31 @@ import {
 import { trackEvent } from '@/lib/analytics';
 import { Icon } from '@/components/ui/Icon';
 
+// 인라인용 작은 스피너 — TabLoadingIndicator의 LoadingSpinner와 같은 패턴, 사이즈만 작게.
+function InlineSpinner({ className = '' }: { className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent ${className}`}
+    />
+  );
+}
+
+// 발급 중처럼 시간이 약간 걸리는 동작에 인디터미네이트(indeterminate) 진행 바를 노출한다.
+// globals.css의 `--animate-progress` 키프레임(0→80→100%)을 재사용한다.
+function IndeterminateProgressBar({ className = '' }: { className?: string }) {
+  return (
+    <div
+      role="progressbar"
+      aria-busy="true"
+      aria-label="진행 중"
+      className={`relative h-1 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700 ${className}`}
+    >
+      <div className="h-full animate-progress rounded-full bg-[#4CAF50]" />
+    </div>
+  );
+}
+
 type Collaborator = {
   id: string;
   status: 'PENDING' | 'ACCEPTED' | 'REVOKED' | 'EXPIRED';
@@ -57,12 +82,14 @@ export function OwnerCoParentSection({
 }: Props) {
   const featureOn = useMemo(() => isCoParentInvitesEnabled(), []);
   const [ownerLabel, setOwnerLabel] = useState<CaregiverLabel | null>(initialOwnerLabel);
-  const [savingLabel, setSavingLabel] = useState(false);
+  const [savingLabel, setSavingLabel] = useState<CaregiverLabel | null>(null);
   const [collaborators, setCollaborators] = useState<Collaborator[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  const labelBusy = savingLabel !== null;
 
   const acceptedCollaborator = collaborators?.find((c) => c.status === 'ACCEPTED') ?? null;
   const pendingCollaborator = collaborators?.find((c) => c.status === 'PENDING') ?? null;
@@ -94,8 +121,8 @@ export function OwnerCoParentSection({
   }, [featureOn, refresh]);
 
   const handleLabelSelect = async (label: CaregiverLabel) => {
-    if (savingLabel) return;
-    setSavingLabel(true);
+    if (labelBusy) return;
+    setSavingLabel(label);
     setActionError(null);
     try {
       await onOwnerLabelChange(label);
@@ -105,7 +132,7 @@ export function OwnerCoParentSection({
       const message = err instanceof Error ? err.message : String(err);
       setActionError(`호칭 저장에 실패했어요: ${message}`);
     } finally {
-      setSavingLabel(false);
+      setSavingLabel(null);
     }
   };
 
@@ -203,26 +230,49 @@ export function OwnerCoParentSection({
 
       {/* Owner 본인 호칭 */}
       <div className="rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
-        <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">내 호칭</div>
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          상담과 기록에 표시돼요. 한 번 고른 뒤에도 바꿀 수 있어요.
-        </p>
-        <div className="mt-3 flex gap-2">
-          {CAREGIVER_LABELS.map((label) => (
-            <button
-              key={label}
-              onClick={() => handleLabelSelect(label)}
-              disabled={savingLabel}
-              className={`flex-1 h-11 rounded-xl border text-sm font-medium transition-all ${
-                ownerLabel === label
-                  ? 'border-2 border-[#4CAF50] bg-[#E8F5E9]/50 dark:bg-[#4CAF50]/10 text-[#2E7D32] dark:text-[#4CAF50]'
-                  : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'
-              } disabled:opacity-50`}
-            >
-              {formatCaregiverLabel(label)}
-            </button>
-          ))}
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">내 호칭</div>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              상담과 기록에 표시돼요. 한 번 고른 뒤에도 바꿀 수 있어요.
+            </p>
+          </div>
+          {labelBusy && (
+            <span className="text-[#4CAF50]">
+              <InlineSpinner />
+            </span>
+          )}
         </div>
+        <div className="mt-3 flex gap-2">
+          {CAREGIVER_LABELS.map((label) => {
+            const isSaving = savingLabel === label;
+            const isSelected = ownerLabel === label;
+            return (
+              <button
+                key={label}
+                onClick={() => handleLabelSelect(label)}
+                disabled={labelBusy}
+                aria-busy={isSaving}
+                className={`flex-1 h-11 rounded-xl border text-sm font-medium transition-all inline-flex items-center justify-center gap-2 ${
+                  isSelected
+                    ? 'border-2 border-[#4CAF50] bg-[#E8F5E9]/50 dark:bg-[#4CAF50]/10 text-[#2E7D32] dark:text-[#4CAF50]'
+                    : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                {isSaving && <InlineSpinner className="text-current" />}
+                {formatCaregiverLabel(label)}
+              </button>
+            );
+          })}
+        </div>
+        {labelBusy && (
+          <div className="mt-3">
+            <IndeterminateProgressBar />
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              저장 중이에요...
+            </p>
+          </div>
+        )}
       </div>
 
       {/* 협력자 상태 카드 */}
@@ -287,11 +337,21 @@ export function OwnerCoParentSection({
             <button
               onClick={handleGenerate}
               disabled={generating || !ownerLabel}
-              className="w-full h-11 rounded-xl bg-[#2E7D32] dark:bg-[#4CAF50] text-white font-semibold text-sm disabled:opacity-50"
+              aria-busy={generating}
+              className="w-full h-11 rounded-xl bg-[#2E7D32] dark:bg-[#4CAF50] text-white font-semibold text-sm disabled:opacity-50 inline-flex items-center justify-center gap-2"
             >
+              {generating && <InlineSpinner className="text-white" />}
               {generating ? '발급 중...' : '초대 링크 만들기'}
             </button>
-            {!ownerLabel && (
+            {generating && (
+              <div>
+                <IndeterminateProgressBar />
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  안전한 초대 토큰을 만드는 중이에요...
+                </p>
+              </div>
+            )}
+            {!generating && !ownerLabel && (
               <p className="text-xs text-gray-500 dark:text-gray-400">먼저 내 호칭을 골라주세요.</p>
             )}
           </div>
