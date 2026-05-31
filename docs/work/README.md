@@ -1,6 +1,6 @@
 # 작업 관리
 
-마지막 갱신일: 2026-05-10
+마지막 갱신일: 2026-05-31
 
 ## 현재 집중
 
@@ -10,11 +10,18 @@
 
 - `R-001-consult-report-conversion` — 리포트/가격/결제 전환 검증 운영 후속
 - `R-002-practice-loop-retention` — 홈/실천/회고 루프 입력 부담 낮추기
+- `R-003-episodic-followup-retention` — 리텐션 재설계: 관계형 co-parent(주) + episodic 후속(보조)
 
 현재 active tasks:
 
-- `GJ-005-report-trust-baseline-qa`
-- `GJ-006-practice-loop-usability-qa`
+- `GJ-005-report-trust-baseline-qa` (코드 완료, 배포 환경 DebugView 확인만 남아 운영 후속화)
+- `GJ-006-practice-loop-usability-qa` (코드 완료, 모바일 WebView 회귀 QA만 남아 운영 후속화)
+- `GJ-007-manual-followup-test`
+- `GJ-009-coparent-invite-thin-slice` (R-003 co-parent thin-slice 구현)
+
+active 3개 규칙: GJ-005/006은 코드 작업이 끝나 운영 후속만 남았으므로 신규 빌드 슬롯은 GJ-007(검증)·GJ-009(빌드)가 차지한다.
+
+다음 대기(Ready): `GJ-008-coparent-retention-test` — GJ-009 thin-slice 완료 후 5쌍 모집/연결 vs 솔로 비교 시작.
 
 현재 TODO: [TODO.md](TODO.md)
 

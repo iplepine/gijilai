@@ -15,6 +15,7 @@ import {
   buildInitialConsultQuestionsPrompt,
   type InitialConsultSessionContext,
 } from '@/lib/consultPromptBuilders';
+import { buildConsultCaregiverContext } from '@/lib/coParentServer';
 import type { Database } from '@/types/supabase';
 
 type ObservationRow = Database['public']['Tables']['observations']['Row'];
@@ -150,6 +151,11 @@ export async function POST(request: Request) {
       );
     }
 
+    const caregiverContext = await buildConsultCaregiverContext({
+      actorUserId: session.user.id,
+      childId: ownedChild?.id ?? childId ?? null,
+    });
+
     const { systemPrompt, userMessage } = buildInitialConsultQuestionsPrompt({
       problem,
       childName: effectiveChildName,
@@ -159,6 +165,7 @@ export async function POST(request: Request) {
       parentProfile: effectiveParentProfile,
       recentObservations,
       sessionContext,
+      caregiverContext,
     });
 
     const model = await getConsultModel(session.user.id);

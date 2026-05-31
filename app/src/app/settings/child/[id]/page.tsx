@@ -9,6 +9,8 @@ import { DatePicker } from '@/components/ui/DatePicker';
 import { Navbar } from '@/components/layout/Navbar';
 import { useLocale } from '@/i18n/LocaleProvider';
 import { LAST_FREE_CHILD_DELETE_BLOCKED_CODE } from '@/lib/access';
+import { OwnerCoParentSection } from '@/components/coParent/OwnerCoParentSection';
+import { isCaregiverLabel, type CaregiverLabel } from '@/lib/coParent';
 
 type ChildDeleteResponse = {
     code?: string;
@@ -30,6 +32,8 @@ export default function EditChildPage() {
     });
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [ownerLabel, setOwnerLabel] = useState<CaregiverLabel | null>(null);
+    const [isOwner, setIsOwner] = useState(false);
 
     const getErrorMessage = (error: unknown) => {
         if (error instanceof Error) return error.message;
@@ -39,6 +43,7 @@ export default function EditChildPage() {
     useEffect(() => {
         const fetchChild = async () => {
             try {
+                const { data: { user } } = await supabase.auth.getUser();
                 const { data, error } = await supabase
                     .from('children')
                     .select('*')
@@ -55,6 +60,10 @@ export default function EditChildPage() {
                     if (data.image_url) {
                         setPreviewUrl(data.image_url);
                     }
+                    if (isCaregiverLabel(data.owner_label)) {
+                        setOwnerLabel(data.owner_label);
+                    }
+                    setIsOwner(Boolean(user && data.parent_id === user.id));
                 }
             } catch (error) {
                 console.error('Error fetching child:', error);
@@ -69,6 +78,15 @@ export default function EditChildPage() {
             fetchChild();
         }
     }, [childId, router, t]);
+
+    const handleOwnerLabelChange = async (label: CaregiverLabel) => {
+        const { error } = await supabase
+            .from('children')
+            .update({ owner_label: label })
+            .eq('id', childId);
+        if (error) throw error;
+        setOwnerLabel(label);
+    };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -235,6 +253,16 @@ export default function EditChildPage() {
                             </div>
                         </div>
                     </div>
+
+                    {/* 공동양육자 초대 — owner 전용 */}
+                    {isOwner && formData.name ? (
+                        <OwnerCoParentSection
+                            childId={childId}
+                            initialOwnerLabel={ownerLabel}
+                            childName={formData.name}
+                            onOwnerLabelChange={handleOwnerLabelChange}
+                        />
+                    ) : null}
                 </main>
 
                 {/* Submit Button */}

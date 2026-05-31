@@ -22,9 +22,11 @@ export type ConsultChildBasics = {
     gender: 'male' | 'female';
 };
 
+// owner의 아이 + 본인이 공동양육자로 연결된 아이를 모두 허용한다.
+// 가시성 경계는 Supabase RLS가 처리한다 (수락된 co-parent도 SELECT 허용).
 export async function getOwnedConsultChild(
     supabase: Supabase,
-    userId: string,
+    _userId: string,
     childId?: string | null,
 ): Promise<ConsultChildBasics | null> {
     if (!childId) return null;
@@ -33,7 +35,6 @@ export async function getOwnedConsultChild(
         .from('children')
         .select('id, name, birth_date, gender')
         .eq('id', childId)
-        .eq('parent_id', userId)
         .maybeSingle();
 
     if (error || !data) return null;

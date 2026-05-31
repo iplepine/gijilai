@@ -90,11 +90,13 @@ export const db = {
   },
 
   // --- Children ---
+  // owner의 아이 + co-parent로 연결된 아이를 모두 반환한다.
+  // 가시성 경계는 RLS가 처리하므로 userId 인자는 호환을 위해 받기만 한다.
   getChildren: async (userId: string) => {
+    void userId;
     const { data, error } = await supabase
       .from("children")
       .select("*")
-      .eq("parent_id", userId)
       .order("birth_date", { ascending: false });
     if (error) throw error;
     return data as ChildProfile[];
@@ -512,13 +514,19 @@ export const db = {
     return data as SessionData;
   },
 
+  // childId가 주어지면 user_id 필터를 풀어 owner+co-parent 양쪽의 세션을 모두 노출한다.
+  // 가시성 경계는 Supabase RLS가 처리한다.
   getSessions: async (userId: string, childId?: string, status?: string) => {
     let query = supabase
       .from("consultation_sessions")
       .select("*")
-      .eq("user_id", userId)
       .order("updated_at", { ascending: false });
-    if (childId) query = query.eq("child_id", childId);
+    if (childId) {
+      query = query.eq("child_id", childId);
+    } else {
+      // 아이 선택이 없으면 본인이 시작한 세션만 보여준다(과도한 노출 방지).
+      query = query.eq("user_id", userId);
+    }
     if (status) query = query.eq("status", status);
     const { data, error } = await query;
     if (error) throw error;
@@ -624,15 +632,19 @@ export const db = {
     return data as PracticeItemData;
   },
 
+  // childId가 주어지면 user_id 필터를 풀어 양쪽 양육자의 실천 항목을 노출한다.
   getActivePracticeItems: async (userId: string, childId?: string) => {
     let query = supabase
       .from("practice_items")
       .select(
         "*, consultation_sessions!inner(id, user_id, child_id, title, status)",
       )
-      .eq("consultation_sessions.user_id", userId)
       .eq("status", "ACTIVE");
-    if (childId) query = query.eq("consultation_sessions.child_id", childId);
+    if (childId) {
+      query = query.eq("consultation_sessions.child_id", childId);
+    } else {
+      query = query.eq("consultation_sessions.user_id", userId);
+    }
     const { data, error } = await query;
     if (error) throw error;
     return data as (PracticeItemData & {

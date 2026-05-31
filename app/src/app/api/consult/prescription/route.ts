@@ -16,6 +16,7 @@ import {
     type ConsultPromptQuestion,
     type PrescriptionConsultSessionContext,
 } from '@/lib/consultPromptBuilders';
+import { buildConsultCaregiverContext } from '@/lib/coParentServer';
 import { applyConsultPrescriptionGuardrails } from '@/lib/consultPrescriptionGuardrails';
 
 type PrescriptionResponse = {
@@ -162,6 +163,14 @@ export async function POST(request: Request) {
             );
         }
 
+        const caregiverContext = await buildConsultCaregiverContext({
+            actorUserId: session.user.id,
+            childId: ownedChild?.id ?? childId ?? null,
+            previousAuthorUserIds: (sessionContext?.consultations ?? [])
+                .map((c) => (c as unknown as { user_id?: string }).user_id ?? '')
+                .filter((u): u is string => Boolean(u)),
+        });
+
         const { systemPrompt, isFollowUp } = buildConsultPrescriptionPrompt({
             problem,
             questions,
@@ -173,6 +182,7 @@ export async function POST(request: Request) {
             parentProfile: effectiveParentProfile,
             recentObservations,
             sessionContext,
+            caregiverContext,
         });
 
         const model = await getConsultModel(session.user.id);

@@ -288,6 +288,61 @@ interface AnalysisResult {
 
 ---
 
+## 8-2. 공동양육자(Co-Parent) 모드
+
+### 목적
+한 아이의 기질·상담·실천 맥락을 두 양육자가 함께 보고, "옆에 있는 사람"이 만드는 관계형 리텐션을 만든다. 자세한 정책: `docs/product/policies/co-parent.md`.
+
+### 권한 모델 (비대칭 초대, ADR 2026-05-31)
+
+| 역할 | 식별 | 권한 |
+|------|------|------|
+| `owner` | `children.parent_id` | 아이 정보 수정/삭제, 구독 변경, 모든 읽기/쓰기, 협력자 초대/해제 |
+| `co_parent` | `child_co_parents.co_parent_id` | 아이 맥락 읽기, 상담 시작/이어가기, 실천 기록·회고 작성, 본인 연결 해제 |
+
+- 한 아이당 `co_parent` 최대 1명 (1:1)
+- `co_parent`는 본인 계정으로 가입한다(가족 공유 계정 금지)
+- 솔로 사용자 경험은 옵트인 원칙으로 무손상
+
+### 호칭(Label)
+- 폐쇄형 enum: `MOM | DAD | CARER` (한국어 매핑: 엄마/아빠/보호자)
+- `owner`는 아이 설정에서, `co_parent`는 초대 수락 화면에서 선택
+- 두 양육자가 같은 호칭이면 표시에 첫 이름 1자 추가
+
+### 초대 흐름
+1. Owner: 아이 설정 → "함께 보는 분 초대" → 토큰 발급(만료 7일) → 카카오톡/링크 공유
+2. Co-parent: `/invite/[token]` 진입 → 미리보기 → 비로그인이면 로그인 → 호칭 선택 → 동의 → 수락
+3. 결과: `child_co_parents.status = 'ACCEPTED'`, 아이 셀렉터에 노출, 모든 맥락 공유
+
+토큰은 일회용. 한 아이당 동시 `PENDING` 1개. 새 발급 시 기존 `PENDING`은 `REVOKED`.
+
+### 데이터 가시성
+다운스트림 9개 테이블(`surveys`, `reports`, `consultation_sessions`, `consultations`, `action_items`, `practice_items`, `practice_logs`, `practice_reviews`, `observations`)은 모두 작성자(`user_id`) RLS에 `is_child_co_parent(child_id)` OR-clause를 추가해 co-parent도 읽기/쓰기 가능. `subscriptions`, `payments`, `profiles`, `referrals`, `child_profile_slots`는 노출하지 않음.
+
+### 구독 권한 (Phase 1)
+- owner의 구독·체험 상태로 두 양육자 모두 유료 기능 사용
+- co-parent는 결제/구독 관리 화면 접근 불가
+- owner 해지/탈퇴 시 grace 흐름은 Phase 2에서 결정
+
+### LLM 컨텍스트
+상담 시작·문진·처방 프롬프트에 다음 컨텍스트가 주입된다(공동양육자 연결 시에만):
+- 현재 작성자 호칭
+- 공동양육자 존재 여부와 상대 호칭
+- 이전 상담 작성자 라벨
+- 처방 톤 가이드: 현재 작성자 시점 1인칭, 상대 양육자를 평가/비교 X
+
+### 의도적 비포함 (Phase 1)
+- 자동 푸시 알림 — 1차 검증은 카카오톡 등 외부 채널 수동
+- co-parent의 양육자 기질(ATQ) 응답 강제
+- 응원/똑똑 반응 UI
+- 양육자 분석 리포트 두 명 분리
+- 3인 이상 다자
+
+### Feature Flag
+`NEXT_PUBLIC_ENABLE_CO_PARENT_INVITES=false`로 전체 기능을 숨길 수 있다. 마이그레이션은 유지(RLS OR-clause는 솔로에 무해).
+
+---
+
 ## 9. 상담 세션 & 실천 시스템 (Consultation Sessions & Practices)
 
 ### 목적

@@ -16,6 +16,7 @@
 
 ## 주요 문서
 
+- `product/ONE_PAGER.md`: 컨셉·목표·현재 기능 한 장 요약
 - `product/PRODUCT_BRIEF.md`: 제품 한 장 요약
 - `product/USE_CASES.md`: 표준 유즈케이스 요약
 - `product/FEATURE_MAP.md`: 기능 영역별 현재 역할

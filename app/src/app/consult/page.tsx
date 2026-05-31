@@ -24,6 +24,14 @@ import {
     type ConsultInputValidationCode,
 } from '@/lib/consultInputValidation';
 import { getHomeSosSituationPrefill } from '@/lib/consultSituationPrefill';
+import {
+    findCaregiver,
+    hasLabelCollision,
+    isCoParentLinked,
+    loadCaregiverMap,
+    type CaregiverMap,
+} from '@/lib/coParentMap';
+import { formatCaregiverLabelWithName } from '@/lib/coParent';
 
 type Step = 'INPUT' | 'DIAGNOSTIC' | 'RESULT';
 type QuestionNavDirection = 'next' | 'prev';
@@ -149,14 +157,32 @@ function ConsultGreeting({
     isFollowUp,
     locale,
     t,
+    actorLabelText,
 }: {
     childName: string | null;
     highlightChildName: boolean;
     isFollowUp: boolean;
     locale: 'ko' | 'en';
     t: (key: string, params?: Record<string, string | number>) => string;
+    actorLabelText?: string | null;
 }) {
     const question = isFollowUp ? t('consult.questionContinue') : t('consult.questionFirst');
+
+    // 공동양육자가 연결돼 있고 본인 호칭이 정해져 있으면, 인사에 호칭을 노출한다.
+    // 예: "엄마, ○○이의 어떤 상황으로 오셨어요?"
+    if (actorLabelText && childName && locale === 'ko') {
+        const highlightedName = highlightChildName
+            ? <span className="text-child dark:text-secondary">{childName}</span>
+            : childName;
+        return (
+            <>
+                <span className="text-text-sub dark:text-gray-300">{actorLabelText}, </span>
+                {highlightedName}이의
+                <br />
+                {question}
+            </>
+        );
+    }
 
     if (!childName) {
         return (
@@ -244,12 +270,14 @@ function ConsultContent() {
     const [childLoading, setChildLoading] = useState(true);
     const [hasChildReport, setHasChildReport] = useState(true);
     const sessionChildId = sessionContext?.session.child_id ?? null;
+    const [caregiverMap, setCaregiverMap] = useState<CaregiverMap | null>(null);
 
     useEffect(() => {
         if (!user) { setHasMultipleChildren(false); setChildLoading(false); return; }
         if (sessionContextLoading) return;
         setChildLoading(true);
-        supabase.from('children').select('id, name, birth_date, gender').eq('parent_id', user.id).then(async ({ data }) => {
+        // co-parent로 연결된 아이도 보이도록 parent_id 필터를 제거. RLS가 가시성을 통제한다.
+        supabase.from('children').select('id, name, birth_date, gender').then(async ({ data }) => {
             const children = (data || []) as ChildSummary[];
             setHasMultipleChildren(children.length > 1);
             if (children.length === 0) {
@@ -287,6 +315,33 @@ function ConsultContent() {
             }
         });
     }, [user, selectedChildId, sessionChildId, sessionContextLoading, intake.childName, intake.birthDate, intake.gender]);
+
+    // 선택된 아이의 양육자 정보(owner + co-parent) 매핑 로드
+    useEffect(() => {
+        if (!validChildId) {
+            setCaregiverMap(null);
+            return;
+        }
+        let cancelled = false;
+        loadCaregiverMap(validChildId).then((map) => {
+            if (!cancelled) setCaregiverMap(map);
+        }).catch((err) => {
+            console.warn('[Consult] caregiver map load failed:', err);
+            if (!cancelled) setCaregiverMap(null);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [validChildId]);
+
+    // 인사에 표시할 본인 호칭 텍스트 (공동양육자 연결 시에만 사용)
+    const greetingActorLabel = (() => {
+        if (!caregiverMap || !user?.id) return null;
+        if (!isCoParentLinked(caregiverMap)) return null;
+        const entry = findCaregiver(caregiverMap, user.id);
+        if (!entry?.label) return null;
+        return formatCaregiverLabelWithName(entry.label, entry.displayName, hasLabelCollision(caregiverMap));
+    })();
 
     const [examples, setExamples] = useState<ReturnType<typeof getRandomExamples>>([]);
     useEffect(
@@ -1069,6 +1124,7 @@ function ConsultContent() {
                                         isFollowUp={!!sessionContext}
                                         locale={locale}
                                         t={t}
+                                        actorLabelText={greetingActorLabel}
                                     />
                                 </h2>
                                 <p className="text-sm text-text-sub dark:text-gray-400">{sessionContext ? t('consult.subtitleContinue') : t('consult.subtitleFirst')}</p>

@@ -87,6 +87,45 @@ export type ConsultPromptQuestion = {
     text: string;
 };
 
+// 공동양육자 컨텍스트 — 두 양육자가 같은 아이를 함께 사용하는 경우에만 주입한다.
+// 정책: docs/product/policies/co-parent.md
+export type ConsultCaregiverContext = {
+    actorLabelText: string;            // 예: "엄마", "아빠", "보호자", "엄마(B)"
+    coParentLabelText?: string | null; // 상대 양육자 호칭. 없으면 단독 사용으로 본다.
+    previousAuthors?: Array<{
+        consultationIndex: number;     // 0-based, sessionContext.consultations와 정렬
+        labelText: string;             // 해당 상담을 작성한 양육자 호칭
+    }>;
+};
+
+function formatCaregiverContextBlock(
+    caregiver: ConsultCaregiverContext | null | undefined,
+): string {
+    if (!caregiver) return '';
+    const lines: string[] = ['**[양육자 맥락]**'];
+    lines.push(`- 이 상담을 작성하는 양육자: ${caregiver.actorLabelText}`);
+    if (caregiver.coParentLabelText) {
+        lines.push(`- 같은 아이를 함께 보는 다른 양육자: ${caregiver.coParentLabelText}`);
+        lines.push(
+            '- 답변은 현재 작성자(${actor}) 시점에서 1인칭으로 말하고, 상대 양육자(${other})를 평가하거나 비교하지 않습니다.'
+                .replace('${actor}', caregiver.actorLabelText)
+                .replace('${other}', caregiver.coParentLabelText),
+        );
+        lines.push(
+            '- 두 양육자의 입장이 다를 수 있음을 전제하되, 한쪽을 옳고 다른 쪽을 그르다고 단정하지 마세요.',
+        );
+    } else {
+        lines.push('- 현재 작성자 1인칭 시점으로 답변하세요.');
+    }
+    if (caregiver.previousAuthors && caregiver.previousAuthors.length > 0) {
+        lines.push('- 이전 상담 작성자:');
+        for (const author of caregiver.previousAuthors) {
+            lines.push(`  · 상담 ${author.consultationIndex + 1}: ${author.labelText} 작성`);
+        }
+    }
+    return `${lines.join('\n')}\n\n`;
+}
+
 const PRACTICE_ATTEMPT_LABELS: Record<string, string> = {
     as_prescribed: '처방 그대로 해봄',
     changed_words: '말을 바꿔 해봄',
@@ -288,6 +327,7 @@ export function buildInitialConsultQuestionsPrompt(params: {
     parentProfile?: ConsultPromptTemperamentProfile | null;
     recentObservations?: ConsultPromptObservation[];
     sessionContext?: InitialConsultSessionContext | null;
+    caregiverContext?: ConsultCaregiverContext | null;
 }) {
     const childAge = formatConsultChildAge(params.childBirthDate);
     const gender = formatChildGender(params.childGender);
@@ -299,6 +339,7 @@ export function buildInitialConsultQuestionsPrompt(params: {
 ${formatConsultObservationsForPrompt(params.recentObservations)}
 
 ` : '';
+    const caregiverBlock = formatCaregiverContextBlock(params.caregiverContext);
 
     const systemPrompt = `당신은 아동 심리 및 기질 역동 분석 전문가입니다.
 사용자의 육아 고민 상황을 듣고, 양육자의 마음을 어루만져주는 공감 멘트와 상황 분석을 위해 확인해야 할 '기초 질문' 정확히 4개를 생성하세요.
@@ -306,7 +347,7 @@ ${formatConsultObservationsForPrompt(params.recentObservations)}
 **[기질 프로필]**
 ${formatTemperamentProfileBlock(params.childProfile, params.parentProfile)}
 
-${observationsBlock}${formatInitialSessionContextForPrompt(params.sessionContext)}**[응답 원칙]**
+${caregiverBlock}${observationsBlock}${formatInitialSessionContextForPrompt(params.sessionContext)}**[응답 원칙]**
 1. **공감 우선 (empathy)**: 양육자의 힘든 상황을 충분히 인정하고 공감하세요. 육아의 고단함을 짚어주며 죄책감을 느끼지 않게 격려하세요.
    - 예: "정말 고생 많으셨어요. 아침 시간은 1분 1초가 급한데 아이가 협조해주지 않으면 누구라도 화가 날 수밖에 없어요."
 2. **기질적 인사이트**: 공감 멘트 끝에 아이의 기질 관점에서 왜 이런 행동이 나올 수 있는지 가벼운 힌트를 포함하세요. 단, NS/HA/RD/P 같은 영문 약어는 절대 사용하지 말고 한글 용어(자극추구, 위험회피, 사회적민감성, 인내력)를 사용하세요.
@@ -430,6 +471,7 @@ export function buildConsultPrescriptionPrompt(params: {
     parentProfile?: ConsultPromptTemperamentProfile | null;
     recentObservations?: ConsultPromptObservation[];
     sessionContext?: PrescriptionConsultSessionContext | null;
+    caregiverContext?: ConsultCaregiverContext | null;
 }) {
     const childAge = formatConsultChildAge(params.childBirthDate);
     const gender = formatChildGender(params.childGender);
@@ -453,10 +495,12 @@ ${params.parentProfile ? `- 양육자 기질 유형: ${params.parentProfile.labe
   - 설명: ${params.parentProfile.description}
   - 차원별 점수 (0~100): 자극추구=${params.parentProfile.scores.NS}, 위험회피=${params.parentProfile.scores.HA}, 사회적민감성=${params.parentProfile.scores.RD}, 지속성=${params.parentProfile.scores.P}` : `- 양육자 기질: ${parentProfileFallback}`}`;
 
+    const caregiverBlock = formatCaregiverContextBlock(params.caregiverContext);
+
     const systemPrompt = `당신은 기질(TCI) 기반의 분석 전문가이자 따뜻한 마음 통역사입니다.
 아이의 기질, 양육자의 기질, 그리고 구체적인 상황 문진 결과를 분석하여 이 갈등의 근본적인 원인을 친절하게 설명하고 실천 가능한 솔루션을 제공하세요.
 
-**[분석 재료]**
+${caregiverBlock}**[분석 재료]**
 - 대상: ${nameContext}
 ${temperamentProfileBlock}
 - 고민 상황: ${params.problem}
