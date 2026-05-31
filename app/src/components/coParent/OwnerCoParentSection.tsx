@@ -38,6 +38,8 @@ type InviteResponse = {
     childName: string;
   };
   error?: string;
+  detail?: string;
+  code?: string;
 };
 
 type Props = {
@@ -127,7 +129,8 @@ export function OwnerCoParentSection({
         if (err === 'CO_PARENT_ALREADY_LINKED') {
           setActionError('이미 함께 보는 분이 연결돼 있어요.');
         } else {
-          setActionError('초대 링크 발급에 실패했어요. 잠시 후 다시 시도해주세요.');
+          const detail = payload?.detail ? ` (${payload.detail})` : '';
+          setActionError(`초대 링크 발급에 실패했어요: ${err}${detail}`);
         }
         return;
       }

@@ -58,7 +58,10 @@ export async function POST(request: Request) {
 
     if (childError) {
       console.error('[CoParent API] Child lookup error:', childError);
-      return NextResponse.json({ error: 'CHILD_LOOKUP_FAILED' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'CHILD_LOOKUP_FAILED', detail: childError.message, code: childError.code },
+        { status: 500 }
+      );
     }
     if (!child) {
       return NextResponse.json({ error: 'CHILD_NOT_FOUND_OR_NOT_OWNER' }, { status: 404 });
@@ -74,7 +77,10 @@ export async function POST(request: Request) {
 
     if (acceptedError) {
       console.error('[CoParent API] Accepted lookup error:', acceptedError);
-      return NextResponse.json({ error: 'INVITE_LOOKUP_FAILED' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'INVITE_LOOKUP_FAILED', detail: acceptedError.message, code: acceptedError.code },
+        { status: 500 }
+      );
     }
     if (accepted) {
       return NextResponse.json({ error: 'CO_PARENT_ALREADY_LINKED' }, { status: 409 });
@@ -90,7 +96,10 @@ export async function POST(request: Request) {
 
     if (revokeError) {
       console.error('[CoParent API] Pending revoke error:', revokeError);
-      return NextResponse.json({ error: 'INVITE_REVOKE_FAILED' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'INVITE_REVOKE_FAILED', detail: revokeError.message, code: revokeError.code },
+        { status: 500 }
+      );
     }
 
     // 4. 새 PENDING 발급
@@ -111,7 +120,14 @@ export async function POST(request: Request) {
 
     if (insertError || !invite) {
       console.error('[CoParent API] Invite insert error:', insertError);
-      return NextResponse.json({ error: 'INVITE_CREATE_FAILED' }, { status: 500 });
+      return NextResponse.json(
+        {
+          error: 'INVITE_CREATE_FAILED',
+          detail: insertError?.message ?? 'no row returned',
+          code: insertError?.code,
+        },
+        { status: 500 }
+      );
     }
 
     const link = buildInviteLink(invite.invite_token, originFromRequest(request));
