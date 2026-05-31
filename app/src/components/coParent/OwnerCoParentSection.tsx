@@ -100,7 +100,8 @@ export function OwnerCoParentSection({
       setOwnerLabel(label);
     } catch (err) {
       console.error('[OwnerCoParentSection] label save error:', err);
-      setActionError('호칭 저장에 실패했어요. 잠시 후 다시 시도해주세요.');
+      const message = err instanceof Error ? err.message : String(err);
+      setActionError(`호칭 저장에 실패했어요: ${message}`);
     } finally {
       setSavingLabel(false);
     }

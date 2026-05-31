@@ -80,11 +80,22 @@ export default function EditChildPage() {
     }, [childId, router, t]);
 
     const handleOwnerLabelChange = async (label: CaregiverLabel) => {
-        const { error } = await supabase
-            .from('children')
-            .update({ owner_label: label })
-            .eq('id', childId);
-        if (error) throw error;
+        const res = await fetch(`/api/children/${childId}/owner-label`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ label }),
+        });
+        const payload = await res.json().catch(() => null) as {
+            ok?: boolean;
+            error?: string;
+            detail?: string;
+            code?: string;
+        } | null;
+        if (!res.ok || !payload?.ok) {
+            const code = payload?.error ?? 'OWNER_LABEL_UPDATE_FAILED';
+            const detail = payload?.detail ? ` (${payload.detail})` : '';
+            throw new Error(`${code}${detail}`);
+        }
         setOwnerLabel(label);
     };
 
