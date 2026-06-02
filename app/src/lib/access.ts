@@ -28,10 +28,6 @@ type ChildLookupQuery = {
   select: (...args: unknown[]) => SingleSelectFilter<{ parent_id: string }>;
 };
 
-type ProfileLookupQuery = {
-  select: (...args: unknown[]) => SingleSelectFilter<{ created_at: string | null }>;
-};
-
 type MembershipLookupFilter = {
   eq: (...args: unknown[]) => MembershipLookupFilter;
   maybeSingle: () => Promise<{ data: { id: string } | null }>;
@@ -144,14 +140,16 @@ export async function getServerFeatureAccess(
   });
 }
 
-// 공동양육자 정책: 한 명의 owner 구독으로 양쪽이 사용할 수 있어야 한다.
-// 본인 + (해당 아이의 owner가 다른 사람이라면) owner의 구독/체험을 OR로 결합한다.
+// 공동양육자 정책: 한 명의 owner **유료 구독**으로 양쪽이 사용할 수 있어야 한다.
+// 본인 + (해당 아이의 owner가 다른 사람이라면) owner의 **구독**을 OR로 결합한다.
+// owner의 7일 체험은 흘러가지 않는다 — 체험은 본인 사용자용이지 공유 자원이 아니다.
+// 이렇게 둬야 신규 계정 어뷰징(두 계정이 체험만으로 무기한 무료 이용)이 차단된다.
 // childId가 없거나 본인이 owner인 경우엔 본인 기준만 반환(기존 동작과 동일).
 export async function getServerFeatureAccessForChild(
   supabase: { from: (table: string) => unknown },
   params: { userId: string; userCreatedAt?: string | null; childId?: string | null }
 ) {
-  // 1) 본인 액세스 계산 (기존 로직)
+  // 1) 본인 액세스 계산 (기존 로직 — 본인 체험은 그대로 적용)
   const selfHasSubscription = await hasActiveSubscription(supabase, params.userId);
   const selfAccess = getFeatureAccess({
     userCreatedAt: params.userCreatedAt,
@@ -188,22 +186,12 @@ export async function getServerFeatureAccessForChild(
     return selfAccess;
   }
 
-  // 4) owner의 액세스 계산 (구독 + 체험)
-  const ownerProfileQuery = supabase.from('profiles') as ProfileLookupQuery;
-  const { data: ownerProfile } = await ownerProfileQuery
-    .select('created_at')
-    .eq('id', child.parent_id)
-    .maybeSingle();
-
+  // 4) owner의 활성 구독만 확인 (체험은 흘러가지 않음 — 어뷰징 방어)
   const ownerHasSubscription = await hasActiveSubscription(supabase, child.parent_id);
-  const ownerAccess = getFeatureAccess({
-    userCreatedAt: ownerProfile?.created_at ?? null,
-    hasSubscription: ownerHasSubscription,
-  });
 
-  // 5) OR 결합 — 둘 중 하나라도 풀 액세스면 풀 액세스로 본다.
+  // 5) OR 결합 — 본인 풀 액세스 OR owner의 활성 구독.
   //    구독 표시(hasSubscription)는 본인 기준을 유지(결제 관리 UI는 본인 것만 노출).
-  const combinedHasFullAccess = selfAccess.hasFullAccess || ownerAccess.hasFullAccess;
+  const combinedHasFullAccess = selfAccess.hasFullAccess || ownerHasSubscription;
 
   return {
     trial: selfAccess.trial,
