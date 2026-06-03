@@ -245,7 +245,7 @@ function SelfConsultInner() {
               <h1 className="mt-2 text-[24px] font-black text-text-main dark:text-white leading-snug whitespace-pre-line">
                 {t('selfParent.heroTitle')}
               </h1>
-              <div className="mt-4 rounded-2xl bg-secondary/[0.06] dark:bg-secondary/12 px-4 py-3 border-l-[3px] border-secondary/50">
+              <div className="mt-4 rounded-[20px] bg-secondary/[0.06] dark:bg-secondary/12 px-4 py-3 border-l-[3px] border-secondary/50">
                 <p className="text-[13px] font-medium text-secondary/90 dark:text-secondary leading-relaxed whitespace-pre-line">
                   {t('selfParent.heroReassure')}
                 </p>
