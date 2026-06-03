@@ -176,6 +176,7 @@ export interface Database {
                     selected_reaction_id: string | null
                     ai_prescription: Json | null
                     status: 'DRAFT' | 'AWAITING_REACTION' | 'COMPLETED'
+                    type: 'CHILD' | 'SELF_PARENT'
                     created_at: string
                 }
                 Insert: {
@@ -190,6 +191,7 @@ export interface Database {
                     selected_reaction_id?: string | null
                     ai_prescription?: Json | null
                     status?: 'DRAFT' | 'AWAITING_REACTION' | 'COMPLETED'
+                    type?: 'CHILD' | 'SELF_PARENT'
                     created_at?: string
                 }
                 Update: {
@@ -204,6 +206,7 @@ export interface Database {
                     selected_reaction_id?: string | null
                     ai_prescription?: Json | null
                     status?: 'DRAFT' | 'AWAITING_REACTION' | 'COMPLETED'
+                    type?: 'CHILD' | 'SELF_PARENT'
                     created_at?: string
                 }
             }
@@ -272,6 +275,7 @@ export interface Database {
                     child_id: string | null
                     title: string
                     status: 'ACTIVE' | 'RESOLVED' | 'ARCHIVED'
+                    type: 'CHILD' | 'SELF_PARENT'
                     created_at: string
                     updated_at: string
                 }
@@ -281,6 +285,7 @@ export interface Database {
                     child_id?: string | null
                     title: string
                     status?: 'ACTIVE' | 'RESOLVED' | 'ARCHIVED'
+                    type?: 'CHILD' | 'SELF_PARENT'
                     created_at?: string
                     updated_at?: string
                 }
@@ -290,8 +295,29 @@ export interface Database {
                     child_id?: string | null
                     title?: string
                     status?: 'ACTIVE' | 'RESOLVED' | 'ARCHIVED'
+                    type?: 'CHILD' | 'SELF_PARENT'
                     created_at?: string
                     updated_at?: string
+                }
+            }
+            self_reflection_safety_events: {
+                Row: {
+                    id: string
+                    user_id: string
+                    category: 'SELF_HARM' | 'VIOLENCE' | 'PERSISTENT_DISTRESS'
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    user_id: string
+                    category: 'SELF_HARM' | 'VIOLENCE' | 'PERSISTENT_DISTRESS'
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    user_id?: string
+                    category?: 'SELF_HARM' | 'VIOLENCE' | 'PERSISTENT_DISTRESS'
+                    created_at?: string
                 }
             }
             practice_items: {
@@ -304,6 +330,7 @@ export interface Database {
                     duration: number
                     encouragement: string | null
                     status: 'ACTIVE' | 'COMPLETED' | 'DROPPED'
+                    type: 'CHILD' | 'SELF_PARENT'
                     created_at: string
                 }
                 Insert: {
@@ -315,6 +342,7 @@ export interface Database {
                     duration: number
                     encouragement?: string | null
                     status?: 'ACTIVE' | 'COMPLETED' | 'DROPPED'
+                    type?: 'CHILD' | 'SELF_PARENT'
                     created_at?: string
                 }
                 Update: {
@@ -326,6 +354,7 @@ export interface Database {
                     duration?: number
                     encouragement?: string | null
                     status?: 'ACTIVE' | 'COMPLETED' | 'DROPPED'
+                    type?: 'CHILD' | 'SELF_PARENT'
                     created_at?: string
                 }
             }

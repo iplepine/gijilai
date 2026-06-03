@@ -2665,6 +2665,9 @@ function ReportContent() {
                 {/* Footer Actions */}
                 {parentAiReport && reportDates.parent && (
                   <div className="flex flex-col gap-4 pt-10 pb-10 text-center">
+                    <p className="text-[14px] font-bold text-primary leading-relaxed whitespace-pre-line">
+                      {t('catchphrase.main')}
+                    </p>
                     <MedicalDisclaimer title={t('report.medicalDisclaimerTitle')} body={t('report.medicalDisclaimerBody')} />
                     {showPremiumCta && <PremiumContinuationCard compact />}
                     <Button

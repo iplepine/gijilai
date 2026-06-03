@@ -1601,10 +1601,33 @@ function ConsultContent() {
                                 </button>
                             </div>
 
+                            {/* 양육자 자신을 위한 상담 진입 CTA */}
+                            <button
+                                onClick={() => {
+                                    trackEvent('self_parent_entry_cta_click', { source: 'child_consult_result' });
+                                    router.push('/consult/self?from=child_consult');
+                                }}
+                                className="w-full mt-2 rounded-2xl border border-secondary/25 bg-secondary/5 p-4 text-left active:scale-[0.99] transition-all"
+                            >
+                                <div className="flex items-start gap-3">
+                                    <div className="w-9 h-9 rounded-full bg-secondary/15 flex items-center justify-center shrink-0">
+                                        <span className="material-symbols-outlined text-[20px] text-secondary">self_improvement</span>
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-[14px] font-black text-text-main dark:text-white">{t('selfParent.entryCtaTitle')}</p>
+                                        <p className="mt-0.5 text-[12px] text-text-sub dark:text-gray-400 leading-relaxed">{t('selfParent.entryCtaDesc')}</p>
+                                    </div>
+                                    <span className="material-symbols-outlined text-[18px] text-secondary/50 mt-1">arrow_forward</span>
+                                </div>
+                            </button>
+
                             {/* 6. 엔드 — 따뜻한 격려 */}
                             <div className="text-center py-6 space-y-2">
                                 <p className="text-[14px] text-text-main dark:text-gray-200 font-medium leading-relaxed">
                                     {childName ? t('consult.encouragementWithName', { name: childName }) : t('consult.encouragementDefault')}
+                                </p>
+                                <p className="text-[13px] text-primary font-bold leading-relaxed pt-1">
+                                    {t('catchphrase.short')}
                                 </p>
                                 <p className="text-[12px] text-text-sub dark:text-gray-500">
                                     {t('consult.aiDisclaimer')}

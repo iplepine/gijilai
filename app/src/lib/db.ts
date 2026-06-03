@@ -520,11 +520,13 @@ export const db = {
 
   // owner의 세션 + co-parent로 연결된 아이의 세션을 모두 노출.
   // 가시성 경계는 RLS가 처리.
+  // 기본은 CHILD 타입만 — 양육자 자기 상담(SELF_PARENT)은 별도 화면에서 다룬다.
   getSessions: async (userId: string, childId?: string, status?: string) => {
     void userId;
     let query = supabase
       .from("consultation_sessions")
       .select("*")
+      .eq("type", "CHILD")
       .order("updated_at", { ascending: false });
     if (childId) query = query.eq("child_id", childId);
     if (status) query = query.eq("status", status);
@@ -533,12 +535,14 @@ export const db = {
     return data as SessionData[];
   },
 
+  // 활성 세션 3개 제한은 아이 상담(CHILD)에만 적용. SELF_PARENT는 제외.
   getActiveSessionCount: async (userId: string) => {
     const { count, error } = await supabase
       .from("consultation_sessions")
       .select("*", { count: "exact", head: true })
       .eq("user_id", userId)
-      .eq("status", "ACTIVE");
+      .eq("status", "ACTIVE")
+      .eq("type", "CHILD");
     if (error) throw error;
     return count || 0;
   },
@@ -634,6 +638,7 @@ export const db = {
 
   // owner의 실천 + co-parent로 연결된 아이의 실천을 모두 노출.
   // 가시성 경계는 RLS가 처리.
+  // 기본은 CHILD 타입만 — 양육자 자기 실천(SELF_PARENT)은 별도로 다룬다.
   getActivePracticeItems: async (userId: string, childId?: string) => {
     void userId;
     let query = supabase
@@ -641,7 +646,8 @@ export const db = {
       .select(
         "*, consultation_sessions!inner(id, user_id, child_id, title, status)",
       )
-      .eq("status", "ACTIVE");
+      .eq("status", "ACTIVE")
+      .eq("type", "CHILD");
     if (childId) {
       query = query.eq("consultation_sessions.child_id", childId);
     }
@@ -652,6 +658,7 @@ export const db = {
     })[];
   },
 
+  // 활성 실천 5개 제한도 아이 상담(CHILD)에만 적용. SELF_PARENT는 제외.
   getActivePracticeCount: async (userId: string) => {
     const { count, error } = await supabase
       .from("practice_items")
@@ -660,7 +667,8 @@ export const db = {
         head: true,
       })
       .eq("consultation_sessions.user_id", userId)
-      .eq("status", "ACTIVE");
+      .eq("status", "ACTIVE")
+      .eq("type", "CHILD");
     if (error) throw error;
     return count || 0;
   },

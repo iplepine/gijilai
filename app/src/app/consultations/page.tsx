@@ -60,10 +60,12 @@ export default function RecordsPage() {
                     db.getChildren(user.id),
                     db.getSessions(user.id),
                     // user_id 필터 제거: co-parent로 연결된 아이의 상담도 노출. RLS가 가시성 처리.
+                    // type='CHILD'만 — 양육자 자기 상담(SELF_PARENT)은 이 화면에 섞지 않는다.
                     supabase
                         .from('consultations')
                         .select('*')
                         .eq('status', 'COMPLETED')
+                        .eq('type', 'CHILD')
                         .order('created_at', { ascending: false }),
                 ]);
 
@@ -119,6 +121,7 @@ export default function RecordsPage() {
                         child_id: c.child_id,
                         title: t('consult.pastConsult'),
                         status: 'ARCHIVED',
+                        type: 'CHILD',
                         created_at: c.created_at,
                         updated_at: c.created_at,
                         consultCount: 1,

@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>양육자 자신을 위한 상담 — 전체 계획</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --primary: #2E7D32;
+    --primary-light: #4CAF50;
+    --primary-soft: #E8F5E9;
+    --warm: #D08B5B;
+    --warm-soft: #FFF3E4;
+    --beige: #EACCA4;
+    --bg: #FAFCFA;
+    --surface: #FFFFFF;
+    --text: #1A1F1B;
+    --text-sub: #5F6B62;
+    --border: #E5EDE6;
+    --danger: #C44536;
+    --danger-soft: #FCE8E5;
+  }
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Pretendard", "Noto Sans KR", sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  .container {
+    max-width: 1024px;
+    margin: 0 auto;
+    padding: 64px 32px 96px;
+  }
+  /* Hero */
+  .hero {
+    background: linear-gradient(135deg, #2E7D32 0%, #1B5E20 100%);
+    color: white;
+    padding: 96px 48px;
+    border-radius: 32px;
+    margin-bottom: 64px;
+    box-shadow: 0 20px 40px -10px rgba(46, 125, 50, 0.25);
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -100px; right: -100px;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .hero-eyebrow {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    opacity: 0.7;
+    margin-bottom: 24px;
+  }
+  .hero-catchphrase {
+    font-size: 36px;
+    line-height: 1.4;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 32px;
+    max-width: 720px;
+  }
+  .hero-catchphrase em {
+    font-style: normal;
+    color: #FFE082;
+  }
+  .hero-sub {
+    font-size: 17px;
+    line-height: 1.7;
+    opacity: 0.85;
+    max-width: 640px;
+  }
+  .hero-meta {
+    margin-top: 48px;
+    display: flex;
+    gap: 32px;
+    font-size: 13px;
+    opacity: 0.7;
+  }
+  /* Section */
+  section { margin-bottom: 80px; }
+  .section-eyebrow {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--primary);
+    margin-bottom: 12px;
+  }
+  h2 {
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.3;
+    margin-bottom: 16px;
+  }
+  .section-intro {
+    font-size: 17px;
+    color: var(--text-sub);
+    line-height: 1.7;
+    max-width: 700px;
+    margin-bottom: 32px;
+  }
+  h3 {
+    font-size: 20px;
+    font-weight: 700;
+    margin: 32px 0 16px;
+    letter-spacing: -0.01em;
+  }
+  h4 {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+  p { margin-bottom: 12px; color: var(--text); }
+  p.muted { color: var(--text-sub); }
+  ul { padding-left: 24px; margin-bottom: 12px; }
+  li { margin-bottom: 6px; }
+  strong { font-weight: 700; }
+  code {
+    background: var(--primary-soft);
+    color: var(--primary);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: "SF Mono", "JetBrains Mono", monospace;
+    font-size: 0.88em;
+  }
+  /* Cards */
+  .card-grid {
+    display: grid;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .card-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+  .card-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .card-grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 720px) {
+    .card-grid.cols-2,
+    .card-grid.cols-3,
+    .card-grid.cols-4 { grid-template-columns: 1fr; }
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+  }
+  .card-accent {
+    background: var(--primary-soft);
+    border-color: transparent;
+  }
+  .card-warm {
+    background: var(--warm-soft);
+    border-color: transparent;
+  }
+  .card-danger {
+    background: var(--danger-soft);
+    border: 1px solid #F0C0BA;
+  }
+  .card-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    letter-spacing: -0.01em;
+  }
+  .card-text {
+    font-size: 14px;
+    color: var(--text-sub);
+    line-height: 1.6;
+  }
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 0 var(--border);
+    margin: 16px 0;
+  }
+  th, td {
+    padding: 16px;
+    text-align: left;
+    font-size: 14px;
+    vertical-align: top;
+  }
+  th {
+    background: var(--primary-soft);
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  tr:last-child td { border-bottom: none; }
+  td.col-label {
+    font-weight: 600;
+    width: 22%;
+  }
+  /* Comparison rows */
+  .compare-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .compare-col {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .compare-col.new {
+    background: linear-gradient(180deg, #FFFDF7 0%, #FFFFFF 100%);
+    border-color: var(--beige);
+  }
+  .compare-tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+  }
+  .compare-tag.existing { background: #E0F2E1; color: #2E7D32; }
+  .compare-tag.new { background: var(--beige); color: #6B4423; }
+  /* Phase timeline */
+  .phases {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    position: relative;
+    margin: 32px 0;
+  }
+  @media (max-width: 900px) {
+    .phases { grid-template-columns: 1fr; }
+  }
+  .phase {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 18px;
+    position: relative;
+  }
+  .phase.priority { border-color: var(--primary); border-width: 2px; }
+  .phase-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+  .phase-title {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    letter-spacing: -0.01em;
+  }
+  .phase-period {
+    font-size: 11px;
+    color: var(--text-sub);
+    margin-bottom: 12px;
+    font-weight: 500;
+  }
+  .phase-body { font-size: 12.5px; color: var(--text-sub); line-height: 1.5; }
+  .phase-status {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 4px;
+    margin-top: 12px;
+  }
+  .phase-status.now { background: #FFEDD5; color: #C2410C; }
+  .phase-status.next { background: var(--primary-soft); color: var(--primary); }
+  .phase-status.later { background: #F1F5F2; color: var(--text-sub); }
+  /* 7 tools */
+  .tools-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  @media (max-width: 720px) {
+    .tools-grid { grid-template-columns: 1fr; }
+  }
+  .tool {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    display: flex;
+    gap: 14px;
+  }
+  .tool-num {
+    flex-shrink: 0;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--primary-soft);
+    color: var(--primary);
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .tool-title {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .tool-when {
+    font-size: 12.5px;
+    color: var(--text-sub);
+    line-height: 1.5;
+  }
+  .tool-example {
+    font-size: 12px;
+    color: var(--primary);
+    margin-top: 6px;
+    font-style: italic;
+  }
+  /* Decision matrix */
+  .decision {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 12px;
+  }
+  .decision-q {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: var(--text);
+  }
+  .decision-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .decision-opt {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 12.5px;
+    color: var(--text-sub);
+  }
+  .decision-opt.rec {
+    background: var(--primary-soft);
+    border-color: var(--primary);
+    color: var(--primary);
+    font-weight: 600;
+  }
+  .decision-reason {
+    font-size: 12.5px;
+    color: var(--text-sub);
+    line-height: 1.5;
+  }
+  /* Risk grid */
+  .risk-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  .risk {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    display: grid;
+    grid-template-columns: 60px 1fr 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+  .risk-level {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 4px 8px;
+    border-radius: 4px;
+    text-align: center;
+  }
+  .risk-level.high { background: var(--danger-soft); color: var(--danger); }
+  .risk-level.medium { background: var(--warm-soft); color: var(--warm); }
+  .risk-level.low { background: var(--primary-soft); color: var(--primary); }
+  .risk-text { font-size: 13.5px; line-height: 1.55; }
+  /* Quote */
+  blockquote {
+    background: linear-gradient(135deg, var(--primary-soft) 0%, #F0F8F1 100%);
+    border-left: 4px solid var(--primary);
+    padding: 24px 32px;
+    border-radius: 12px;
+    margin: 24px 0;
+    font-size: 18px;
+    line-height: 1.6;
+    color: var(--text);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+  blockquote em { font-style: normal; color: var(--primary); font-weight: 700; }
+  /* Section divider */
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+    margin: 64px 0;
+  }
+  /* Footer */
+  .footer {
+    margin-top: 96px;
+    padding-top: 48px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+  }
+  .footer-catch {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 16px;
+    letter-spacing: -0.01em;
+  }
+  .footer-meta {
+    font-size: 13px;
+    color: var(--text-sub);
+  }
+  /* Inline tag */
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    padding: 3px 8px;
+    border-radius: 4px;
+    margin-right: 4px;
+    background: var(--primary-soft);
+    color: var(--primary);
+    vertical-align: middle;
+  }
+  .tag.warn { background: var(--warm-soft); color: var(--warm); }
+  .tag.danger { background: var(--danger-soft); color: var(--danger); }
+  /* CTA box */
+  .cta-box {
+    background: linear-gradient(135deg, #FFF9F0 0%, #FFF3E4 100%);
+    border: 1px solid var(--beige);
+    border-radius: 16px;
+    padding: 28px;
+    margin-top: 32px;
+  }
+  .cta-title { font-weight: 700; margin-bottom: 8px; }
+  /* Print */
+  @media print {
+    body { background: white; }
+    .hero { box-shadow: none; }
+    section { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-eyebrow">기질아이 · 양육자 자신을 위한 상담 · 전체 계획</div>
+    <div class="hero-catchphrase">
+      더 좋은 사람이 되기 위해 고민하는 것만으로<br/>
+      <em>당신은 이미 좋은 사람</em>입니다
+    </div>
+    <div class="hero-sub">
+      기질아이가 지금까지 아이의 행동을 다뤄왔다면, 이제 양육자 본인의 마음과 자기 작업도
+      같은 상담 → 실천 루프 안에서 다룰 수 있게 한다. 이 캐치프라이즈는 마케팅 카피가
+      아니라 모든 인터랙션의 톤을 재정의하는 제품 약속이다.
+    </div>
+    <div class="hero-meta">
+      <span>버전 v0.1 · 초안</span>
+      <span>작성일 2026-05-31</span>
+      <span>연결 Goal G-001 · 후속 Roadmap 후보 R-004</span>
+    </div>
+  </div>
+
+  <!-- WHY -->
+  <section>
+    <div class="section-eyebrow">왜 이걸 해야 하나</div>
+    <h2>아이만 분석하는 양육 서비스는 본질적으로 절반짜리</h2>
+    <p class="section-intro">
+      발달심리 합의는 "좋은 부모 → 좋은 아이" 한방향이 아니라 <strong>양방향 시스템</strong>이다.
+      아이 행동 분석만으로는 양육이 안 바뀐다는 게 임상 데이터로 증명된 사실.
+      부모 자기 작업이 빠진 양육 서비스는 본질적으로 절반짜리다.
+    </p>
+    <div class="card-grid cols-3">
+      <div class="card">
+        <h4>부모의 자기 조절</h4>
+        <p class="card-text">아이 정서 발달의 베이스 (Allan Schore, Daniel Siegel). 부모가 안정되어야 아이가 안정된다.</p>
+      </div>
+      <div class="card">
+        <h4>Reflective Functioning</h4>
+        <p class="card-text">부모가 자기 마음 + 아이 마음을 동시에 헤아리는 능력. 안정 애착의 가장 강한 예측 변수 (Peter Fonagy).</p>
+      </div>
+      <div class="card">
+        <h4>자기 돌봄·자기 인식</h4>
+        <p class="card-text">빠지면 양육 가이드는 "지식만 알고 실천 안 됨" 상태로 머문다. 변화의 진짜 베이스.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- VISION -->
+  <section>
+    <div class="section-eyebrow">한 줄로</div>
+    <h2>제품 비전</h2>
+    <blockquote>
+      기질아이는 <em>아이를 분석해주는 도구</em>를 넘어<br/>
+      <em>부모와 아이가 함께 자라는 동행자</em>가 된다.
+    </blockquote>
+    <p class="muted">
+      "수치심 없는 양육 코칭" — 평가·진단·숙제의 톤을 거부하고, 고민·시도 자체를 이미 충분한
+      것으로 인정하는 서비스. 아이 상담의 옆에, 양육자 본인의 마음을 들여다보는 작은 루프를
+      나란히 둔다.
+    </p>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- STRUCTURE -->
+  <section>
+    <div class="section-eyebrow">루프 구조</div>
+    <h2>아이 상담 vs 양육자 자기 상담 — 구조는 평행, 톤은 다름</h2>
+    <p class="section-intro">
+      기존 아이 상담의 5단계 구조를 그대로 이식하되, 내용의 톤과 깊이는 완전히 다르게 설계한다.
+      "양보다 적게, 평가 언어 0, 숙제 X / 초대 O" 원칙.
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>단계</th>
+          <th>아이 상담 (기존)</th>
+          <th>양육자 자기 상담 (신규)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-label">입력</td>
+          <td>아이 행동 묘사</td>
+          <td>"지금 양육에서 마음에 무거운 것"</td>
+        </tr>
+        <tr>
+          <td class="col-label">문진</td>
+          <td>4문항 (상황·반응·시도·목표)</td>
+          <td><strong>2~3문항만</strong> (감정·욕구·이미 잘하고 있는 한 가지)</td>
+        </tr>
+        <tr>
+          <td class="col-label">처방</td>
+          <td>속마음 통역 + 처방 + 실천 3개</td>
+          <td><strong>짧은 acknowledgment + 1 magic word (나에게 해줄 말) + 1 action item (오늘 나를 위해)</strong></td>
+        </tr>
+        <tr>
+          <td class="col-label">실천</td>
+          <td>아이 대상 행동 변화</td>
+          <td>본인 대상 자기 돌봄·자기 인식</td>
+        </tr>
+        <tr>
+          <td class="col-label">후속</td>
+          <td>"이번 주 실천 됐나요?"</td>
+          <td><strong>"이번 주 어떠셨어요?"</strong> (평가 아니라 안부)</td>
+        </tr>
+        <tr>
+          <td class="col-label">회고</td>
+          <td>효과 분석</td>
+          <td>그 자체로 의미 (성취 아님)</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- TONE -->
+  <section>
+    <div class="section-eyebrow">톤 원칙</div>
+    <h2>캐치프라이즈가 실제로 작동하려면</h2>
+    <p class="section-intro">
+      이 한 줄이 마케팅이 아니라 제품 약속이 되려면, 모든 인터랙션의 단어 하나하나가
+      이 톤이어야 한다. 한 군데에서라도 평가 톤이 들어가면 캐치프라이즈가 거짓말이 된다.
+    </p>
+    <div class="compare-row">
+      <div class="compare-col">
+        <span class="compare-tag existing" style="background:var(--danger-soft); color:var(--danger);">하지 않을 것</span>
+        <ul style="margin-top:8px">
+          <li>"이번 주 실천 완료율이 낮네요"</li>
+          <li>"당신을 고치면 아이가 좋아져요"</li>
+          <li>"부모로서 부족한 점"</li>
+          <li>"숙제처럼 매일 해보세요"</li>
+          <li>"잘하셨네요 / 못하셨네요"</li>
+        </ul>
+      </div>
+      <div class="compare-col new">
+        <span class="compare-tag new">대신 할 것</span>
+        <ul style="margin-top:8px">
+          <li>"오늘 와주신 것 자체가 의미"</li>
+          <li>"양육자님이 안정되면 아이도 그 자장에 머물러요"</li>
+          <li>"오늘 본인을 위해 한 번 해볼래요?"</li>
+          <li>"오늘은 안 와도 당신은 여전히 좋은 사람"</li>
+          <li>"같이 그 마음을 들여다볼까요"</li>
+        </ul>
+      </div>
+    </div>
+    <p class="muted" style="margin-top:16px">
+      추가 가드라인: 양육자를 fix해야 할 대상으로 다루지 않는다. 어린 시절 트라우마를
+      깊이 파지 않는다. 부모를 같은 인간으로 만나되, 작은 다음 행동만 제안한다.
+    </p>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- 7 TOOLS -->
+  <section>
+    <div class="section-eyebrow">처방 도구 박스 (양육자 자기 작업용)</div>
+    <h2>7가지 자기 작업 도구</h2>
+    <p class="section-intro">
+      아이 상담의 7도구가 행동 변화 도구라면, 양육자 자기 상담은 다른 도구 박스를 쓴다.
+      action item은 이 7개 중 하나에서 뽑되, 양육자가 부담 없이 30초~5분 안에 해볼 수 있는
+      크기로 작성한다.
+    </p>
+    <div class="tools-grid">
+      <div class="tool">
+        <div class="tool-num">1</div>
+        <div>
+          <div class="tool-title">자기 알아채기 (이름 붙이기)</div>
+          <div class="tool-when">감정이 흐릿할 때. 화·짜증·무기력 같은 표면 감정 뒤의 욕구·신호를 짚는다.</div>
+          <div class="tool-example">"지금 화가 아니라 슬픔이었을 수 있어요"</div>
+        </div>
+      </div>
+      <div class="tool">
+        <div class="tool-num">2</div>
+        <div>
+          <div class="tool-title">자기 연민 멘트</div>
+          <div class="tool-when">자기 비난이 강할 때. 자신에게 친구에게 해줄 말을 직접 해본다.</div>
+          <div class="tool-example">"친구가 같은 상황이면 뭐라고 해줄까요"</div>
+        </div>
+      </div>
+      <div class="tool">
+        <div class="tool-num">3</div>
+        <div>
+          <div class="tool-title">작은 자기 돌봄 (30초~5분)</div>
+          <div class="tool-when">만성 피로·고갈 신호. 의무가 아닌 회복.</div>
+          <div class="tool-example">"오늘 물 한 잔, 햇볕 1분"</div>
+        </div>
+      </div>
+      <div class="tool">
+        <div class="tool-num">4</div>
+        <div>
+          <div class="tool-title">한계 정하기</div>
+          <div class="tool-when">모든 걸 다 하려는 패턴. 오늘의 끝선을 명확히 그어준다.</div>
+          <div class="tool-example">"오늘은 여기까지. 나머지는 내일의 내가"</div>
+        </div>
+      </div>
+      <div class="tool">
+        <div class="tool-num">5</div>
+        <div>
+          <div class="tool-title">도움 요청 연습</div>
+          <div class="tool-when">혼자 다 짊어지는 패턴. 배우자·가족·친구·전문가에게 작게 한 번.</div>
+          <div class="tool-example">"오늘 저녁만 5분 봐줘"라고 말해보기</div>
+        </div>
+      </div>
+      <div class="tool">
+        <div class="tool-num">6</div>
+        <div>
+          <div class="tool-title">휴식 허락</div>
+          <div class="tool-when">죄책감 없이 쉬기. 안 한 것이 잘못이 아님을 명시.</div>
+          <div class="tool-example">"오늘 그 일을 안 한 것은 잘못이 아닙니다"</div>
+        </div>
+      </div>
+      <div class="tool">
+        <div class="tool-num">7</div>
+        <div>
+          <div class="tool-title">현재 인정 (이미 잘하고 있는 한 가지)</div>
+          <div class="tool-when">변화 압박 강할 때. 오늘 이미 한 한 가지를 짚어준다.</div>
+          <div class="tool-example">"오늘 양육자님이 이미 잘하고 있는 한 장면을 떠올려보세요"</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- BOUNDARY -->
+  <section>
+    <div class="section-eyebrow">임상 경계</div>
+    <h2>먼저 박아야 할 신뢰 베이스</h2>
+    <p class="section-intro">
+      양육자 자기 작업은 빠르게 임상 영역으로 갈 수 있다. 기능 출시 전에 가드라인을
+      반드시 명문화하고, 위험 키워드 감지 시 즉시 전문기관 안내가 우선이다.
+    </p>
+    <div class="card-grid cols-3">
+      <div class="card card-accent">
+        <h4 style="color:var(--primary)">기질아이가 한다</h4>
+        <ul style="font-size:13.5px; color:var(--text); padding-left:18px; margin-top:8px">
+          <li>양육 맥락에서의 감정·욕구·자기 패턴 reflect</li>
+          <li>작은 자기 돌봄 실천 제안</li>
+          <li>자기 연민·자기 인정 언어 제공</li>
+          <li>도움 요청 안내</li>
+        </ul>
+      </div>
+      <div class="card" style="background:#FFFBEF; border-color:#F5D58B">
+        <h4 style="color:#7A5A00">절대 안 한다</h4>
+        <ul style="font-size:13.5px; color:var(--text); padding-left:18px; margin-top:8px">
+          <li>어린 시절·트라우마 깊이 파기</li>
+          <li>진단·치료 톤</li>
+          <li>부부 관계 분석 (co-parent dialogue는 별도)</li>
+          <li>우울·자해·폭력 자체 처리</li>
+        </ul>
+      </div>
+      <div class="card card-danger">
+        <h4 style="color:var(--danger)">즉시 전문기관 안내</h4>
+        <p class="card-text" style="margin-top:8px; color:var(--text)">
+          위험 키워드 감지 시 처방 대신 전문기관 카드 우선:<br/>
+          <strong>1577-0199</strong> (정신건강복지)<br/>
+          <strong>1393</strong> (자살예방상담)<br/>
+        </p>
+      </div>
+    </div>
+    <div style="margin-top:24px">
+      <h4>위험 키워드 (예시)</h4>
+      <p style="font-size:14px; color:var(--text-sub); margin-top:8px">
+        <span class="tag danger">자해 신호</span> "끝내고 싶다" · "사라지고 싶다" · "숨고 싶다" /
+        <span class="tag danger">폭력 신호</span> "애한테 손이 올라간다" · "내가 무섭다" /
+        <span class="tag warn">지속 우울</span> "3주 넘게 일어나기 어렵다" · "매일 울고 싶다"
+      </p>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- PHASES -->
+  <section>
+    <div class="section-eyebrow">단계별 출시 계획</div>
+    <h2>한 번에 다 박지 않는다 — Phase 0 → 4</h2>
+    <p class="section-intro">
+      가장 안전한 작은 cut부터 시작해 사용자 반응을 확인하며 확장. 검증 안 끝난 베팅 위에
+      새 베팅 쌓지 않는다는 운영 원칙을 따른다.
+    </p>
+    <div class="phases">
+      <div class="phase priority">
+        <div class="phase-num">0</div>
+        <div class="phase-title">캐치프라이즈 노출</div>
+        <div class="phase-period">~1주 · 새 기능 X</div>
+        <div class="phase-body">
+          pricing, 홈, 처방 footer, 양육자 분석 탭에 캐치프라이즈를 박는다.
+          톤·약속을 먼저 학습시킨다.
+        </div>
+        <div class="phase-status now">지금 시작</div>
+      </div>
+      <div class="phase">
+        <div class="phase-num">1</div>
+        <div class="phase-title">One-shot Reflection</div>
+        <div class="phase-period">2주 · thin slice</div>
+        <div class="phase-body">
+          아이 상담 후 CTA에서 자기 상담 진입. 자유 입력 1줄 → 2질문 → 짧은 acknowledgment + 1 magic word + 1 action item. 기록은 남되 후속 상담은 X.
+        </div>
+        <div class="phase-status next">GJ-008 검증 후</div>
+      </div>
+      <div class="phase">
+        <div class="phase-num">2</div>
+        <div class="phase-title">Self Practice Loop</div>
+        <div class="phase-period">3-4주</div>
+        <div class="phase-body">
+          1 action item을 실천 항목으로 저장. 1주일 후 "이번 주 어떠셨어요?" 후속.
+          홈에 "오늘의 나" 카드 (옵션). 양육자 분석 탭과 통합.
+        </div>
+        <div class="phase-status later">Phase 1 검증 후</div>
+      </div>
+      <div class="phase">
+        <div class="phase-num">3</div>
+        <div class="phase-title">Cross Context</div>
+        <div class="phase-period">1 사이클</div>
+        <div class="phase-body">
+          양육자 자기 상태가 아이 상담 컨텍스트에 자연스럽게 흘러간다.
+          예: "지친 한 주 같았어요. 부담 적은 안으로 골랐어요"
+        </div>
+        <div class="phase-status later">Phase 2 검증 후</div>
+      </div>
+      <div class="phase">
+        <div class="phase-num">4</div>
+        <div class="phase-title">Co-parent 결합</div>
+        <div class="phase-period">R-003 후</div>
+        <div class="phase-body">
+          두 양육자가 각자 자기 상담했을 때, 서로의 patterns가 가볍게 공유. 원문 X, 요약만.
+          부부가 서로 부담을 인지하는 통로.
+        </div>
+        <div class="phase-status later">R-003 채택 시</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- DATA MODEL -->
+  <section>
+    <div class="section-eyebrow">데이터 모델</div>
+    <h2>기존 자산을 최대한 재사용</h2>
+    <p class="section-intro">
+      별도 테이블 신설 대신 기존 <code>consultations</code>, <code>consultation_sessions</code>,
+      <code>practice_items</code>에 <code>type</code> 컬럼 분기로 처리. RLS·co-parent 가시성
+      정책 그대로 재사용 가능.
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>변경 대상</th>
+          <th>변경 내용</th>
+          <th>이유</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-label"><code>consultation_sessions.type</code></td>
+          <td>새 컬럼 <code>'CHILD' | 'SELF_PARENT'</code> 추가, 기본 <code>'CHILD'</code></td>
+          <td>한 사용자가 아이 상담과 자기 상담을 같이 운영. RLS는 user_id로 그대로</td>
+        </tr>
+        <tr>
+          <td class="col-label"><code>consultations.type</code></td>
+          <td>동일 분기</td>
+          <td>처방 JSON 구조가 다르므로 분기 필요</td>
+        </tr>
+        <tr>
+          <td class="col-label"><code>practice_items.type</code></td>
+          <td>동일 분기</td>
+          <td>아이 대상 실천과 본인 대상 실천이 화면에서 구분되어야 함</td>
+        </tr>
+        <tr>
+          <td class="col-label">처방 JSON</td>
+          <td>새 스키마: <code>acknowledgment</code>, <code>magicWordForSelf</code>, <code>singleAction</code></td>
+          <td>기존 <code>interpretation/chemistry/3 actionItems</code> 와 다른 구조</td>
+        </tr>
+        <tr>
+          <td class="col-label">LLM 프롬프트</td>
+          <td><code>buildSelfParentPrescriptionPrompt</code> 신규</td>
+          <td>톤·도구박스·임상경계 가드라인이 완전히 다름</td>
+        </tr>
+        <tr>
+          <td class="col-label">위험 키워드 감지</td>
+          <td>새 모듈 <code>lib/selfReflectionGuardrail.ts</code></td>
+          <td>입력 검증 단계에서 위험 신호 시 전문기관 안내로 분기</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- DECISIONS -->
+  <section>
+    <div class="section-eyebrow">즉시 결정 필요 사항</div>
+    <h2>다음 단계 진행 전 5가지 결정</h2>
+    <p class="section-intro">
+      추천안에는 ✓ 표시. 다르게 가고 싶다면 짚어주세요.
+    </p>
+
+    <div class="decision">
+      <div class="decision-q">1. 타이밍 — Phase 1 코드 작업은 언제 시작할까?</div>
+      <div class="decision-options">
+        <span class="decision-opt">GJ-008 검증 중에 병행</span>
+        <span class="decision-opt rec">✓ GJ-008 끝난 뒤 시작</span>
+      </div>
+      <div class="decision-reason">
+        검증 안 끝난 베팅 위에 새 베팅 쌓지 않기. 단, Phase 0(캐치프라이즈)는 즉시 가능.
+      </div>
+    </div>
+
+    <div class="decision">
+      <div class="decision-q">2. Phase 1 진입점 — 어디서 자기 상담 시작?</div>
+      <div class="decision-options">
+        <span class="decision-opt rec">✓ 아이 상담 후 CTA만</span>
+        <span class="decision-opt">홈에 별도 카드</span>
+        <span class="decision-opt">둘 다</span>
+      </div>
+      <div class="decision-reason">
+        검증 단계엔 자연스러운 진입 한 곳만. 효과 보면 홈 카드 추가.
+      </div>
+    </div>
+
+    <div class="decision">
+      <div class="decision-q">3. 데이터 모델 — 별도 테이블 vs 기존 확장?</div>
+      <div class="decision-options">
+        <span class="decision-opt rec">✓ 기존 consultations에 type 추가</span>
+        <span class="decision-opt">별도 self_reflections 테이블</span>
+      </div>
+      <div class="decision-reason">
+        RLS·co-parent 가시성·이력 화면 그대로 재사용. Phase 4 결합 흐름도 자연스럽다.
+      </div>
+    </div>
+
+    <div class="decision">
+      <div class="decision-q">4. 이름 — 사용자에게 어떻게 부를까?</div>
+      <div class="decision-options">
+        <span class="decision-opt">"양육자 자신을 위한 상담"</span>
+        <span class="decision-opt">"오늘의 나"</span>
+        <span class="decision-opt">"내 마음 일지"</span>
+        <span class="decision-opt rec">✓ 별도 이름 X · 캐치프라이즈가 hero</span>
+      </div>
+      <div class="decision-reason">
+        이름이 추상적일수록 약속이 흐릿해진다. 캐치프라이즈로 진입하고, 메뉴 라벨이 필요할 때만 "내 마음".
+      </div>
+    </div>
+
+    <div class="decision">
+      <div class="decision-q">5. 임상 경계 가이드 — 어디에 박을까?</div>
+      <div class="decision-options">
+        <span class="decision-opt">heart-interpreter.md에 통합</span>
+        <span class="decision-opt rec">✓ 별도 정책 문서 policies/self-parent.md 신설</span>
+      </div>
+      <div class="decision-reason">
+        임상 경계는 자기 상담의 신뢰 베이스. 별도 문서로 두면 가드라인 변경 추적이 쉽고, 향후 외부 자문 등록 시 참조 단위가 명확.
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- RISKS -->
+  <section>
+    <div class="section-eyebrow">리스크 & 완화</div>
+    <h2>가장 큰 5가지 위험</h2>
+    <div class="risk-grid">
+      <div class="risk">
+        <span class="risk-level high">HIGH</span>
+        <div>
+          <h4>임상 경계 침범</h4>
+          <div class="risk-text">AI가 심리치료를 흉내내는 위험. 어린 시절·트라우마·우울 영역으로 미끄러질 가능성.</div>
+        </div>
+        <div class="risk-text">
+          <strong>완화</strong>: 위험 키워드 감지 → 즉시 전문기관 안내. 프롬프트에 *"진단·치료 톤 금지"* 명문 가드라인. 어린 시절 깊이 묻는 질문 금지.
+        </div>
+      </div>
+      <div class="risk">
+        <span class="risk-level high">HIGH</span>
+        <div>
+          <h4>Scope creep / 우선순위 흐림</h4>
+          <div class="risk-text">GJ-008(co-parent) 검증 안 끝났는데 새 베팅 추가 시 어느 게 효과 있는지 측정 불가.</div>
+        </div>
+        <div class="risk-text">
+          <strong>완화</strong>: Phase 0만 즉시. Phase 1 코드는 GJ-008 종료 후. 각 Phase는 다음 Phase 진입 전 명확한 kill 기준.
+        </div>
+      </div>
+      <div class="risk">
+        <span class="risk-level medium">MEDIUM</span>
+        <div>
+          <h4>긍정 톤이 patronizing해질 수 있음</h4>
+          <div class="risk-text">"이미 좋은 사람"이 과하면 위로처럼 느껴지고 진정성 잃음.</div>
+        </div>
+        <div class="risk-text">
+          <strong>완화</strong>: acknowledgment는 짧게 (1~2줄), 다음 액션은 구체적으로. 모든 처방에 캐치프라이즈를 반복하지 않기.
+        </div>
+      </div>
+      <div class="risk">
+        <span class="risk-level medium">MEDIUM</span>
+        <div>
+          <h4>또 다른 숙제로 느껴짐</h4>
+          <div class="risk-text">실천 항목이 부담이 되면 캐치프라이즈와 정반대 경험.</div>
+        </div>
+        <div class="risk-text">
+          <strong>완화</strong>: 1 action item만 (아이 상담은 3개), 30초~5분 크기, "오늘 안 해도 OK" 표시. 후속 톤은 평가 아니라 안부.
+        </div>
+      </div>
+      <div class="risk">
+        <span class="risk-level low">LOW</span>
+        <div>
+          <h4>아이 상담과 사용자 진입 동기 충돌</h4>
+          <div class="risk-text">아이 행동 고민으로 온 사용자가 본인 상담으로 우회되는 느낌.</div>
+        </div>
+        <div class="risk-text">
+          <strong>완화</strong>: 진입점은 아이 상담 처방 끝의 작은 CTA. 메인 흐름 방해 없음. skip 쉬움. 별도 entrypoint는 Phase 2 이후.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- PHASE 0 ACTION -->
+  <section>
+    <div class="section-eyebrow">Phase 0 — 지금 즉시 가능한 행동</div>
+    <h2>캐치프라이즈 노출 위치 5곳</h2>
+    <p class="section-intro">
+      코드 변경 30분~1시간. 새 기능 없이 톤·약속을 먼저 사용자에게 학습시킨다.
+    </p>
+    <div class="card-grid cols-2">
+      <div class="card card-accent">
+        <h4>1. pricing 페이지 hero</h4>
+        <p class="card-text">구독 페이지 hero 카피에 추가. *"기능을 사는 게 아니라 동행을 구독하는 것"* 톤.</p>
+      </div>
+      <div class="card card-accent">
+        <h4>2. 처방전 footer</h4>
+        <p class="card-text">의료 면책 위에 한 줄. 모든 상담 결과 끝에서 캐치프라이즈가 잔잔히 보임.</p>
+      </div>
+      <div class="card card-accent">
+        <h4>3. 양육자 분석 탭 인사말</h4>
+        <p class="card-text">기존 탭이 한 번 만들고 끝났는데, 인사말에 캐치프라이즈 통합.</p>
+      </div>
+      <div class="card card-accent">
+        <h4>4. 상담 시작 빈 상태</h4>
+        <p class="card-text">첫 진입 시 캐치프라이즈가 hero. 사용자가 첫 순간에 톤을 학습.</p>
+      </div>
+      <div class="card card-accent">
+        <h4>5. 체험 만료 / 구독 안내</h4>
+        <p class="card-text">평가 톤 ("체험이 끝났습니다") → 동행 톤 ("계속 함께할 준비가 됐어요").</p>
+      </div>
+    </div>
+    <div class="cta-box">
+      <div class="cta-title">Phase 0 실행 시 즉시 작업</div>
+      <ul style="font-size:14px; margin-top:8px">
+        <li>i18n 메시지 파일에 <code>catchphrase.main</code> 등록</li>
+        <li>5곳 컴포넌트에 노출</li>
+        <li>ADR 등재: "양육자 자신을 위한 톤 약속 확정"</li>
+        <li>lint/build/test 후 커밋·푸시</li>
+      </ul>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- NEXT STEPS -->
+  <section>
+    <div class="section-eyebrow">다음 단계 (요약)</div>
+    <h2>이 문서가 합의되면 진행할 일</h2>
+    <ol style="padding-left:24px; font-size:15px; line-height:1.9">
+      <li><strong>Phase 0 즉시 진행</strong> — 캐치프라이즈 5곳 노출 (30분~1시간 작업)</li>
+      <li><strong>ADR 등록</strong> — 양육자 자기 상담 도입 결정 + 임상 경계 가이드 합의</li>
+      <li><strong>정책 문서 신설</strong> — <code>docs/product/policies/self-parent.md</code> (임상 경계, 위험 키워드, 톤 원칙, 7도구 박스)</li>
+      <li><strong>R-004 로드맵 등재</strong> — Phase 1~4 milestone 정의, GJ-008 종료 의존성 명시</li>
+      <li><strong>GJ-008 (co-parent) 검증 종료 후</strong> — Phase 1 thin slice 개발 시작</li>
+    </ol>
+  </section>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="footer-catch">"더 좋은 사람이 되기 위해 고민하는 것만으로 당신은 이미 좋은 사람"</div>
+    <div class="footer-meta">
+      v0.1 · 2026-05-31 · 양육자 자신을 위한 상담 — 전체 계획 초안<br/>
+      docs/product/SELF_PARENT_CONSULTATION_PLAN.html
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

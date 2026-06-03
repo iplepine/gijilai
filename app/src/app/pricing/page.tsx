@@ -650,6 +650,9 @@ function PricingContent() {
             <p className="text-text-sub text-[13px] leading-relaxed px-2">
               {t('pricing.subtitle')}
             </p>
+            <p className="text-primary text-[13px] font-bold leading-relaxed px-4 pt-2 whitespace-pre-line">
+              {t('catchphrase.main')}
+            </p>
           </section>
 
           {/* Plan Card — [연 구독] 재활성화 시: grid grid-cols-2 gap-3으로 변경, YEARLY 카드 추가 */}

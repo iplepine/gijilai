@@ -343,6 +343,47 @@ interface AnalysisResult {
 
 ---
 
+## 8-3. 양육자 자신을 위한 상담 (Self-Parent Consultation)
+
+### 목적
+아이 행동 상담을 넘어 양육자 본인의 마음·자기 작업을 같은 상담→실천 루프에서 다룬다. 캐치프라이즈 **"더 좋은 사람이 되기 위해 고민하는 것만으로 당신은 이미 좋은 사람"** 을 제품 톤 약속으로 삼는다. 자세한 정책: `docs/product/policies/self-parent.md`. 기획: `docs/product/SELF_PARENT_CONSULTATION_PLAN.html`.
+
+### 흐름 (Phase 1 — one-shot reflection)
+1. 진입: 아이 상담 결과 화면 CTA → `/consult/self?from=child_consult`
+2. 입력: "지금 양육에서 마음에 무거운 것" 자유 텍스트
+3. 위기 감지: 자해/폭력/지속 디스트레스 키워드 시 처방 대신 전문기관 안내 우선
+4. 문진: 양육자 본인을 향한 부드러운 질문 2개 (감정 / 이미 잘하고 있는 것·바라는 작은 변화)
+5. 처방: 짧은 acknowledgment + reflection + 나에게 해줄 한 마디 + 오늘 나를 위한 단 하나의 action
+6. 기록 저장 (후속 상담·실천 루프는 Phase 2)
+
+### 처방 구조
+```typescript
+interface SelfParentPrescription {
+  acknowledgment: string;   // 짧은 인정 (평가 X)
+  reflection: string;       // 마음 비춰주기 (진단 X)
+  magicWordForSelf: string; // 나에게 해줄 한 마디
+  action: {
+    tool: 'SELF_AWARENESS' | 'SELF_COMPASSION' | 'SELF_CARE' | 'SET_LIMIT'
+        | 'ASK_HELP' | 'ALLOW_REST' | 'ACKNOWLEDGE_NOW';
+    title: string;          // 30초~5분 크기, 본인을 위한 행동
+    description: string;
+    duration: number;       // 1~7일
+  };
+  sessionTitle?: string;
+}
+```
+
+### 임상 경계 (필수)
+- AI가 심리치료를 흉내내지 않는다. 어린 시절·트라우마 깊이 파기, 진단명, 부부 관계 분석 금지.
+- 위기 키워드 감지 시 전문기관 안내(자살예방 109/1393, 정신건강 1577-0199, 아동학대 112) 우선.
+- 위기 로그(`self_reflection_safety_events`)는 카테고리·시점만 저장, 자유 텍스트 원문 미저장.
+
+### 데이터 분리
+- `consultation_sessions/consultations/practice_items.type = 'CHILD' | 'SELF_PARENT'` (마이그레이션 019).
+- 아이 상담 기록·실천·활성 카운트(3개·5개 제한)는 `type='CHILD'`만 본다. self-parent는 섞이지 않는다.
+
+---
+
 ## 9. 상담 세션 & 실천 시스템 (Consultation Sessions & Practices)
 
 ### 목적
