@@ -277,7 +277,8 @@ function ConsultContent() {
         if (sessionContextLoading) return;
         setChildLoading(true);
         // co-parent로 연결된 아이도 보이도록 parent_id 필터를 제거. RLS가 가시성을 통제한다.
-        supabase.from('children').select('id, name, birth_date, gender').then(async ({ data }) => {
+        // birth_date 내림차순 정렬로 홈/리포트(db.getChildren)와 children[0] 기준을 맞춘다(미정렬 시 selectedChildId가 없을 때 '현재 아이'가 화면마다 달라짐).
+        supabase.from('children').select('id, name, birth_date, gender').order('birth_date', { ascending: false }).then(async ({ data }) => {
             const children = (data || []) as ChildSummary[];
             setHasMultipleChildren(children.length > 1);
             if (children.length === 0) {
