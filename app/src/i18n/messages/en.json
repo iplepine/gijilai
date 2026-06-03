@@ -510,7 +510,10 @@
     "homeCardTitle": "You today",
     "homeCardActive": "For you now: {title}",
     "homeCardCheckin": "How was this week? Let's look back gently.",
-    "homeCardEmpty": "Shall we check in with your heart today too?"
+    "homeCardEmpty": "Shall we check in with your heart today too?",
+    "homeCardEmptyCta": "Look into your heart",
+    "toggleChild": "Child",
+    "toggleSelf": "Myself"
   },
   "settings": {
     "title": "Settings",

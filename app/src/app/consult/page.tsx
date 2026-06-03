@@ -12,6 +12,7 @@ import { TabLoadingScreen } from '@/components/ui/TabLoadingScreen';
 import { TemperamentLoadingState } from '@/components/ui/TemperamentLoadingState';
 import { VoiceInputButton } from '@/components/ui/VoiceInputButton';
 import { Navbar } from '@/components/layout/Navbar';
+import { ConsultModeToggle } from '@/components/consult/ConsultModeToggle';
 import { db, ObservationData, PracticeItemData, PracticeLogData, ChildProfile } from '@/lib/db';
 import { getFeatureAccess } from '@/lib/access';
 import { getRandomExamples } from '@/data/consultExamples';
@@ -1060,6 +1061,10 @@ function ConsultContent() {
 
                     {step === 'INPUT' && !childLoading && validChildId && hasChildReport && (
                         <div className="flex flex-col gap-8 w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            {/* 아이 마음 / 내 마음 전환 토글 — 새 상담 시작일 때만 */}
+                            {!sessionContext && (
+                                <ConsultModeToggle current="child" />
+                            )}
                             {/* 추가 상담: 이전 상담 요약 + 실천 현황 */}
                             {sessionContext && (
                                 <div className="bg-secondary/5 border border-secondary/15 rounded-2xl p-5 space-y-3">

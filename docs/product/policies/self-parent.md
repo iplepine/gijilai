@@ -106,9 +106,16 @@ self-parent 상담은 양육자 **본인의 사적 내면 작업**이다. 공동
 - 이것은 UI 차원이 아니라 **DB 권한(RLS) 차원의 보장**이다. 향후 child_id로 조회하는 기능이 추가돼도 self-parent는 노출되지 않는다.
 - self-parent를 co-parent와 공유하는 것은 Phase 4에서 별도 동의·요약(원문 X) 설계로만 검토한다. 기본은 항상 비공개.
 
-## 진입점 & 단계
+## 진입점
 
-- **Phase 1**: 아이 상담 결과 화면의 CTA → `/consult/self?from=child_consult`. one-shot reflection(입력→2질문→처방). 기록 저장.
+self-parent 상담을 시작하는 경로(중복 진입):
+- 아이 상담 결과 화면 하단 CTA → `/consult/self?from=child_consult`
+- 홈 "오늘의 나" 카드 — 진행 중 자기 돌봄이 **없을 때**는 부드러운 초대 카드(점선, → `/consult/self?from=home_invite`), **있을 때**는 내 마음 기록(이번 주 후속)으로
+- 상담 입력 화면 상단 **"아이 마음 / 내 마음" 토글** — `/consult` ↔ `/consult/self` 상호 전환(새 상담 시작 시에만 노출, 이어서 상담 중엔 숨김)
+
+## 단계
+
+- **Phase 1**: one-shot reflection(입력→2질문→처방). 기록 저장.
 - **Phase 2 (현재)**: self practice loop.
   - 결과 화면 "마음에 담기" → action을 `practice_items`(type='SELF_PARENT')로 저장.
   - **"내 마음 기록"** 화면(`/consult/self/records`): 진행 중 자기 돌봄 + 지난 마음 기록 목록. Phase 1에서 기록이 보이지 않던 문제를 닫는다.

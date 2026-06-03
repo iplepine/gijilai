@@ -511,7 +511,10 @@
     "homeCardTitle": "오늘의 나",
     "homeCardActive": "지금 나를 위해: {title}",
     "homeCardCheckin": "이번 주 어떠셨어요? 한 번 돌아볼까요.",
-    "homeCardEmpty": "오늘은 양육자님 마음도 한 번 들여다볼까요?"
+    "homeCardEmpty": "오늘은 양육자님 마음도 한 번 들여다볼까요?",
+    "homeCardEmptyCta": "내 마음 들여다보기",
+    "toggleChild": "아이 마음",
+    "toggleSelf": "내 마음"
   },
   "settings": {
     "title": "설정",

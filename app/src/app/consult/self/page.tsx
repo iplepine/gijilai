@@ -6,6 +6,7 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { useAppStore } from '@/store/useAppStore';
 import { supabase } from '@/lib/supabase';
 import { Navbar } from '@/components/layout/Navbar';
+import { ConsultModeToggle } from '@/components/consult/ConsultModeToggle';
 import { VoiceInputButton } from '@/components/ui/VoiceInputButton';
 import { TabLoadingScreen } from '@/components/ui/TabLoadingScreen';
 import { useLocale } from '@/i18n/LocaleProvider';
@@ -236,7 +237,10 @@ function SelfConsultInner() {
 
         <main className="app-fixed-cta-scroll flex-1 px-6 pb-32">
           {step === 'INPUT' && (
-            <div className="pt-8 animate-in fade-in duration-300">
+            <div className="pt-6 animate-in fade-in duration-300">
+              <div className="mb-6">
+                <ConsultModeToggle current="self" />
+              </div>
               <p className="text-[12px] font-bold text-secondary tracking-wide">{t('selfParent.heroEyebrow')}</p>
               <h1 className="mt-2 text-[24px] font-black text-text-main dark:text-white leading-snug whitespace-pre-line">
                 {t('selfParent.heroTitle')}
