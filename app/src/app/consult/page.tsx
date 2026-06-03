@@ -257,7 +257,7 @@ function ConsultContent() {
     const reportKind = searchParams.get('report_kind');
     const { user } = useAuth();
     const { t, locale } = useLocale();
-    const { intake, cbqResponses, atqResponses, selectedChildId } = useAppStore();
+    const { intake, cbqResponses, atqResponses, selectedChildId, setSelectedChildId } = useAppStore();
     const [childName, setChildName] = useState<string | null>(intake.childName || null);
     const [childBirthDate, setChildBirthDate] = useState<string | undefined>(intake.birthDate || undefined);
     const [childGender, setChildGender] = useState<string | undefined>(intake.gender || undefined);
@@ -278,7 +278,8 @@ function ConsultContent() {
         if (sessionContextLoading) return;
         setChildLoading(true);
         // co-parent로 연결된 아이도 보이도록 parent_id 필터를 제거. RLS가 가시성을 통제한다.
-        supabase.from('children').select('id, name, birth_date, gender').then(async ({ data }) => {
+        // birth_date 내림차순 정렬로 홈/리포트(db.getChildren)와 children[0] 기준을 맞춘다(미정렬 시 selectedChildId가 없을 때 '현재 아이'가 화면마다 달라짐).
+        supabase.from('children').select('id, name, birth_date, gender').order('birth_date', { ascending: false }).then(async ({ data }) => {
             const children = (data || []) as ChildSummary[];
             setHasMultipleChildren(children.length > 1);
             if (children.length === 0) {
@@ -305,6 +306,10 @@ function ConsultContent() {
                 setChildBirthDate(child.birth_date);
                 setChildGender(child.gender);
                 setValidChildId(child.id);
+                // 세션 없이 진입해 fallback으로 아이를 정했고 스토어와 다르면, 다른 화면과 어긋나지 않게 현재 아이를 반영한다(self-heal).
+                if (!sessionChildId && child.id !== selectedChildId) {
+                    setSelectedChildId(child.id);
+                }
 
                 const { count } = await supabase
                     .from('reports')
@@ -315,7 +320,7 @@ function ConsultContent() {
                 setChildLoading(false);
             }
         });
-    }, [user, selectedChildId, sessionChildId, sessionContextLoading, intake.childName, intake.birthDate, intake.gender]);
+    }, [user, selectedChildId, setSelectedChildId, sessionChildId, sessionContextLoading, intake.childName, intake.birthDate, intake.gender]);
 
     // 선택된 아이의 양육자 정보(owner + co-parent) 매핑 로드
     useEffect(() => {

@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-06-03 | 상담 진입 대상 아이는 selectedChildId 단일 소스로 통일한다
+
+- **결정**: "현재 보고 있는 아이"는 store의 `selectedChildId`를 단일 진실 소스로 삼는다. 홈은 화면에 실제로 표시되는 `mainChild`(선택값이 없으면 children[0])를 effect로 항상 `selectedChildId`에 반영하고, 상담 페이지는 세션 없이 진입해 fallback으로 아이를 정한 경우 그 아이를 `selectedChildId`에 다시 써넣는다(self-heal). 화면마다 children[0]을 독립적으로 재추론하지 않는다. 더불어 children 조회 정렬을 `db.getChildren`(birth_date 내림차순)으로 통일한다.
+- **이유**: 기존에는 홈/리포트(db.getChildren, birth_date desc 정렬)와 상담(자체 쿼리, 정렬 없음)이 각각 children[0]로 "현재 아이"를 따로 추론했고, `selectedChildId`는 사용자가 아이 스위처를 직접 탭할 때만 설정돼 평소 null이었다. 그 결과 아이가 둘일 때 홈에서 보던(기질검사 완료한) 아이와 상담이 고른 아이가 어긋나, 검사하지 않은 다른 아이의 "기질검사를 먼저 완료하세요" 게이트가 떴다. selectedChildId를 항상 유효하게 유지하면 모든 화면이 같은 아이를 가리키고, 삭제된 아이를 가리키던 stale 선택도 자동 보정된다.
+- **대안**: `/consult` 이동 시 URL로 childId를 명시 전달 — 진입점(홈 CTA·하단 네비·실천 모달 등)을 모두 고쳐야 하고 하단 네비처럼 클릭 시점에 아이 맥락이 없는 경로는 결국 store fallback이 필요해, 이미 selectedChildId를 공유하는 기존 구조와 충돌해 기각. 정렬만 맞추기(1차 수정) — children[0] 기준은 일치시키지만 selectedChildId가 null일 때 "사용자가 보던 아이"를 보장하지 못해 미봉책. 화면마다 children[0]을 재추론하는 구조 유지 — 근본 불일치가 남아 기각.
+
+---
+
 ## 2026-05-31 | 양육자 자신을 위한 상담(self-parent)을 도입한다
 
 - **결정**: 아이 행동 상담 외에, 양육자 본인의 마음·자기 작업을 다루는 별도 상담 흐름을 추가한다. 캐치프라이즈 **"더 좋은 사람이 되기 위해 고민하는 것만으로 당신은 이미 좋은 사람"** 을 제품 톤의 약속으로 삼는다. 데이터는 기존 `consultation_sessions` / `consultations` / `practice_items`에 `type ('CHILD' | 'SELF_PARENT')` 컬럼을 추가해 분리하고 별도 테이블을 만들지 않는다. 처방 구조는 아이 상담(속마음 통역 + 3 실천)과 다르게 **짧은 acknowledgment + reflection + 나에게 해줄 한 마디(magicWordForSelf) + 오늘 나를 위한 단 하나의 action(7개 자기작업 도구 중 1개)** 로 둔다. Phase 1은 아이 상담 결과 후 CTA로 진입하는 one-shot reflection(입력→2질문→처방, 기록만 저장, 후속 상담 X). 단계별 확장은 `docs/product/SELF_PARENT_CONSULTATION_PLAN.html` 참조.
