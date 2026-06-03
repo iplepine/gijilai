@@ -45,6 +45,8 @@
 
 가드: `subscriptions`, `payments`, `profiles`, `referrals`, `child_profile_slots`는 co-parent에게 노출하지 않는다.
 
+**self-parent 상담은 공유 범위 밖**: 위 `consultation_sessions`/`consultations`/`practice_items`/`practice_logs`/`practice_reviews` 공유는 모두 **`type='CHILD'`에 한정**된다. 양육자 자신을 위한 상담(`type='SELF_PARENT'`)은 child_id가 연결돼 있어도 co-parent에게 노출되지 않는다(마이그레이션 020이 RLS로 강제). 정책: [`self-parent.md`](self-parent.md).
+
 ## 초대 흐름
 
 1. **Owner**: 아이 설정 → "함께 보는 분 초대" → 토큰 발급(만료 7일) → 카카오톡/링크 공유

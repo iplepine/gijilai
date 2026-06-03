@@ -96,6 +96,16 @@
 - self-parent 상담은 `child_id`가 없을 수 있다(양육자 본인 중심). 선택적으로 연결해 Phase 3 cross-context에 쓴다.
 - **CHILD 흐름 분리**: 아이 상담 기록 목록(`/consultations`), 실천 목록, 활성 세션/실천 카운트(3개·5개 제한)는 모두 `type='CHILD'`만 본다. self-parent가 섞이지 않는다.
 
+## 프라이버시 — 공동양육자에게 절대 공개되지 않음
+
+self-parent 상담은 양육자 **본인의 사적 내면 작업**이다. 공동양육자(co-parent)에게 공유되는 범위에 **포함되지 않는다.**
+
+- self-parent 상담에 `child_id`가 연결돼 있어도, co-parent는 이를 읽을 수 없다.
+- 강제 수단: 마이그레이션 020이 co-parent RLS SELECT/UPDATE 정책을 모두 `type='CHILD'`로 좁힌다. self-parent(`type='SELF_PARENT'`) 행은 co-parent 정책에 매칭되지 않는다.
+- 작성자 본인은 기존 `user_id` 기반 정책으로 계속 접근한다.
+- 이것은 UI 차원이 아니라 **DB 권한(RLS) 차원의 보장**이다. 향후 child_id로 조회하는 기능이 추가돼도 self-parent는 노출되지 않는다.
+- self-parent를 co-parent와 공유하는 것은 Phase 4에서 별도 동의·요약(원문 X) 설계로만 검토한다. 기본은 항상 비공개.
+
 ## 진입점 & 단계
 
 - **Phase 1 (현재)**: 아이 상담 결과 화면의 CTA → `/consult/self?from=child_consult`. one-shot reflection(입력→2질문→처방). 기록 저장하되 후속 상담·실천 루프는 아직 없음.
