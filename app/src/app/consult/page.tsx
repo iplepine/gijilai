@@ -152,6 +152,16 @@ function truncateText(value: string, maxLength = 64) {
     return value.length > maxLength ? `${value.slice(0, maxLength)}...` : value;
 }
 
+// 이름 뒤에 붙는 호격 '이' + 동반 조사 '와'. 받침 있으면 "재윤" → "재윤이와",
+// 받침 없으면 "서아" → "서아와". 한글이 아니면 '와'로 둔다.
+function childNameWithParticle(name: string): string {
+    const last = name.trim().slice(-1);
+    const code = last.charCodeAt(0);
+    const isHangulSyllable = code >= 0xac00 && code <= 0xd7a3;
+    const hasBatchim = isHangulSyllable && (code - 0xac00) % 28 !== 0;
+    return hasBatchim ? '이와' : '와';
+}
+
 function ConsultGreeting({
     childName,
     highlightChildName,
@@ -170,7 +180,7 @@ function ConsultGreeting({
     const question = isFollowUp ? t('consult.questionContinue') : t('consult.questionFirst');
 
     // 공동양육자가 연결돼 있고 본인 호칭이 정해져 있으면, 인사에 호칭을 노출한다.
-    // 예: "엄마, ○○이의 어떤 상황으로 오셨어요?"
+    // 예: "엄마, ○○이와\n오늘 어떤 일이 가장 힘드셨나요?"
     if (actorLabelText && childName && locale === 'ko') {
         const highlightedName = highlightChildName
             ? <span className="text-child dark:text-secondary">{childName}</span>
@@ -178,7 +188,7 @@ function ConsultGreeting({
         return (
             <>
                 <span className="text-text-sub dark:text-gray-300">{actorLabelText}, </span>
-                {highlightedName}이의
+                {highlightedName}{childNameWithParticle(childName)}
                 <br />
                 {question}
             </>
