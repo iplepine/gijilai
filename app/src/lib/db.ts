@@ -687,6 +687,34 @@ export const db = {
     return data as PracticeItemData;
   },
 
+  // --- Self-Parent (양육자 자신을 위한 상담) ---
+  // 진행 중인 자기 돌봄 실천. 아이 실천(CHILD)과 분리. 데일리 체크 없이 부드러운 단일 항목.
+  getActiveSelfParentPractices: async (userId: string) => {
+    const { data, error } = await supabase
+      .from("practice_items")
+      .select("*, consultation_sessions!inner(id, user_id, title, created_at)")
+      .eq("type", "SELF_PARENT")
+      .eq("status", "ACTIVE")
+      .eq("consultation_sessions.user_id", userId)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return (data || []) as (PracticeItemData & { consultation_sessions: SessionData })[];
+  },
+
+  // 지난 self-parent 상담 기록 (acknowledgment/magicWord 등 ai_prescription 포함)
+  getSelfParentConsultations: async (userId: string, limit = 30) => {
+    const { data, error } = await supabase
+      .from("consultations")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("type", "SELF_PARENT")
+      .eq("status", "COMPLETED")
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return (data || []) as Database["public"]["Tables"]["consultations"]["Row"][];
+  },
+
   // --- Practice Logs ---
   createPracticeLog: async (log: PracticeLogInsert) => {
     const cleanedLog = removeUndefinedFields(log);

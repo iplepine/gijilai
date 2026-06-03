@@ -108,10 +108,17 @@ self-parent 상담은 양육자 **본인의 사적 내면 작업**이다. 공동
 
 ## 진입점 & 단계
 
-- **Phase 1 (현재)**: 아이 상담 결과 화면의 CTA → `/consult/self?from=child_consult`. one-shot reflection(입력→2질문→처방). 기록 저장하되 후속 상담·실천 루프는 아직 없음.
-- Phase 2: 1 action을 실천 항목으로 저장 + "이번 주 어떠셨어요?" 후속 + 홈 "오늘의 나" 카드.
+- **Phase 1**: 아이 상담 결과 화면의 CTA → `/consult/self?from=child_consult`. one-shot reflection(입력→2질문→처방). 기록 저장.
+- **Phase 2 (현재)**: self practice loop.
+  - 결과 화면 "마음에 담기" → action을 `practice_items`(type='SELF_PARENT')로 저장.
+  - **"내 마음 기록"** 화면(`/consult/self/records`): 진행 중 자기 돌봄 + 지난 마음 기록 목록. Phase 1에서 기록이 보이지 않던 문제를 닫는다.
+  - **"이번 주 어떠셨어요?"** 후속: 평가가 아닌 안부. `도움이 됐어요 / 잘 모르겠어요 / 못 했지만 괜찮아요` 3선택 + 선택 메모. 한 번의 부드러운 마무리(데일리 체크·streak 없음 — 숙제화 방지). 마무리 시 실천 COMPLETED + 회고 저장.
+  - 홈 **"오늘의 나"** 카드: 진행 중 자기 돌봄 있으면 노출, 없으면 self-hide(빈 상태 적극 유도 X).
 - Phase 3: 자기 상태가 아이 상담 컨텍스트에 흘러감.
-- Phase 4: co-parent 결합 (두 양육자 patterns 가볍게 공유).
+- Phase 4: co-parent 결합 (두 양육자 patterns 가볍게 공유 — 항상 동의·요약 기반, 원문 X).
+
+### 후속 루프 원칙
+self-parent 실천은 아이 실천과 달리 **매일 체크하지 않는다.** 며칠 뒤 한 번의 안부로 부드럽게 마무리하는 episodic 모델이다. "오늘 못 해도 괜찮다"는 여백을 항상 남긴다.
 
 ## 구독 권한
 

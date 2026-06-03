@@ -17,6 +17,7 @@ import BottomNav from "@/components/layout/BottomNav";
 import { HomeHeader } from "@/components/home/HomeHeader";
 import { HomeLoadingScreen } from "@/components/home/HomeLoadingScreen";
 import { HomeWelcomeState } from "@/components/home/HomeWelcomeState";
+import { SelfCareHomeCard } from "@/components/home/SelfCareHomeCard";
 import LandingPage from "@/components/landing/LandingPage";
 import { db, ChildProfile, PracticeItemData } from "@/lib/db";
 import { TemperamentScorer } from "@/lib/TemperamentScorer";
@@ -1378,6 +1379,13 @@ export default function HomePage() {
                       )}
                       </div>
                     </Link>
+                  </HomeModuleReveal>
+                )}
+
+                {/* 오늘의 나 — 진행 중인 자기 돌봄이 있으면 노출 (없으면 self-hide) */}
+                {user && (
+                  <HomeModuleReveal order={6}>
+                    <SelfCareHomeCard userId={user.id} />
                   </HomeModuleReveal>
                 )}
 

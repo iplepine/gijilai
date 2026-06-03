@@ -1,11 +1,12 @@
 # TODO
 
-마지막 갱신일: 2026-05-31
+마지막 갱신일: 2026-06-03
 
 ## 지금 닫아야 할 것
 
-- [ ] 운영 DB에 마이그레이션 018(co-parent)·019(self-parent) 적용 + 적용 후 실기기 흐름 확인.
-- [ ] `GJ-010-self-parent-reflection-thinslice`: 양육자 자신을 위한 상담 Phase 1(입력→2질문→처방 + 위기 가드레일). 코드 완료, 마이그레이션 019 적용·실기기 확인 남음. 정책: `docs/product/policies/self-parent.md`.
+- [ ] 운영 DB에 마이그레이션 018(co-parent)·019(self-parent type)·020(self-parent 프라이버시 RLS) **순서대로** 적용 + 적용 후 실기기 흐름 확인. (019 → 020 순서 중요: type 컬럼이 있어야 020 동작)
+- [ ] `GJ-011-self-parent-practice-loop`: self-parent Phase 2(action 실천 저장 + 내 마음 기록 + 이번 주 후속 + 홈 카드). 코드 완료, 마이그레이션 적용·실기기 확인 남음.
+- [ ] `GJ-010-self-parent-reflection-thinslice`: 양육자 자신을 위한 상담 Phase 1(입력→2질문→처방 + 위기 가드레일). 코드 완료, 마이그레이션 적용·실기기 확인 남음. 정책: `docs/product/policies/self-parent.md`.
 - [ ] `GJ-009-coparent-invite-thin-slice`: 공동양육자 비대칭 초대(Option C) thin-slice. 코드 완료, 마이그레이션 018 적용·실기기 확인 남음. 정책: `docs/product/policies/co-parent.md`.
 - [ ] `GJ-007-manual-followup-test`: 상담 후 단발 후속 루프(상담→실천→며칠 뒤 1회 후속→성공 저금/재상담)를 유료 사용자 ~10명에게 사람이 직접 발송해 검증한다. 후속 응답률·"해봤다"율·재상담 복귀로 episodic 가설을 판정한다. 기획: `docs/product/EPISODIC_FOLLOWUP_RETENTION.md`.
 - [ ] `GJ-006-practice-loop-usability-qa`: 실천 마무리 선택 입력, 홈 대표 실천 `+N개 더`, 다자녀 실천 태그, 상담 아이 이름 강조, 음성 입력 첫 탭 동작을 모바일 WebView에서 한 번에 회귀 확인한다.

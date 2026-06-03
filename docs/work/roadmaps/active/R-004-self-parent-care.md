@@ -6,7 +6,7 @@ ID: `R-004-self-parent-care`
 
 연결 Goal: `G-001-paid-conversion-trust`
 
-마지막 갱신일: 2026-05-31
+마지막 갱신일: 2026-06-03
 
 ## 목적
 
@@ -22,23 +22,24 @@ ID: `R-004-self-parent-care`
 
 ## 진행률
 
-진행률: 30%
+진행률: 55%
 
-근거: Phase 0(캐치프라이즈 노출 일부)과 Phase 1(one-shot self-parent 상담 thin slice — 마이그레이션 019, 가드레일, 프롬프트, API 2개, /consult/self 화면, 아이 상담 결과 CTA)을 구현했다. 실데이터 검증과 Phase 2~4는 시작 전.
+근거: Phase 0(캐치프라이즈)과 Phase 1(one-shot self-parent 상담), Phase 2(self practice loop — action 실천 저장, "내 마음 기록" 화면, 이번 주 후속 체크인, 홈 "오늘의 나" 카드)를 구현했다. 마이그레이션 019/020 운영 적용·실데이터 검증·Phase 3~4는 시작 전.
 
 ## Milestones
 
 | 순서 | Milestone | 완료 기준 | 상태 |
 |---:|---|---|---|
-| 0 | 캐치프라이즈 톤 약속 | pricing·상담 결과·양육자 탭·self 결과에 노출 | `In Progress` |
-| 1 | one-shot reflection thin slice | 입력→2질문→처방, 위기 가드레일, 기록 저장 (GJ-010) | `In Review` |
-| 2 | self practice loop | 1 action 실천 저장 + "이번 주 어떠셨어요?" 후속 + 홈 카드 | `Todo` |
+| 0 | 캐치프라이즈 톤 약속 | pricing·상담 결과·양육자 탭·self 결과에 노출 | `Done` |
+| 1 | one-shot reflection thin slice | 입력→2질문→처방, 위기 가드레일, 기록 저장 (GJ-010) | `Done` |
+| 2 | self practice loop | 1 action 실천 저장 + "내 마음 기록" + "이번 주 어떠셨어요?" 후속 + 홈 카드 (GJ-011) | `In Review` |
 | 3 | cross context | 자기 상태가 아이 상담 톤에 반영 | `Todo` |
 | 4 | co-parent 결합 | 두 양육자 patterns 가볍게 공유 (R-003 의존) | `Todo` |
 
 ## Active Tasks
 
-- `GJ-010-self-parent-reflection-thinslice` (Phase 1 구현 + 검증)
+- `GJ-010-self-parent-reflection-thinslice` (Phase 1 — 코드 완료, 운영 적용 남음)
+- `GJ-011-self-parent-practice-loop` (Phase 2 — 코드 완료, 운영 적용·검증 남음)
 
 ## Backlog Tasks
 

@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useAppStore } from '@/store/useAppStore';
+import { supabase } from '@/lib/supabase';
 import { Navbar } from '@/components/layout/Navbar';
 import { VoiceInputButton } from '@/components/ui/VoiceInputButton';
 import { TabLoadingScreen } from '@/components/ui/TabLoadingScreen';
@@ -63,6 +64,9 @@ function SelfConsultInner() {
   const [questionIndex, setQuestionIndex] = useState(0);
 
   const [prescription, setPrescription] = useState<SelfParentPrescription | null>(null);
+  const [savedSessionId, setSavedSessionId] = useState<string | null>(null);
+  const [savedConsultId, setSavedConsultId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [safety, setSafety] = useState<SafetyPayload | null>(null);
 
   useEffect(() => {
@@ -157,6 +161,8 @@ function SelfConsultInner() {
         return;
       }
       setPrescription(pp.prescription);
+      setSavedSessionId(pp.sessionId);
+      setSavedConsultId(pp.consultationId);
       setStep('RESULT');
       trackEvent('self_parent_prescription_received', { tool: pp.prescription.action.tool });
     } catch (err) {
@@ -174,6 +180,38 @@ function SelfConsultInner() {
       void submitForPrescription();
     }
   }, [questionIndex, questions.length, submitForPrescription]);
+
+  // "마음에 담기" — action을 SELF_PARENT 실천으로 저장하고 내 마음 기록으로 이동
+  const handleSaveAction = useCallback(async () => {
+    if (!prescription || saving) return;
+    trackEvent('self_parent_consult_done', { tool: prescription.action.tool });
+    // 저장 컨텍스트가 없으면(처방 저장 실패 등) 그냥 기록 화면으로
+    if (!savedSessionId || !savedConsultId) {
+      router.push('/consult/self/records');
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error: insertError } = await supabase.from('practice_items').insert({
+        session_id: savedSessionId,
+        consultation_id: savedConsultId,
+        title: prescription.action.title,
+        description: prescription.action.description,
+        duration: prescription.action.duration,
+        encouragement: prescription.magicWordForSelf || null,
+        type: 'SELF_PARENT',
+        status: 'ACTIVE',
+      });
+      if (insertError) throw insertError;
+      trackEvent('self_parent_practice_saved', { tool: prescription.action.tool });
+    } catch (err) {
+      console.warn('[self consult] save action failed:', err);
+      // 저장 실패해도 기록 화면으로 (상담 기록은 이미 저장됨)
+    } finally {
+      setSaving(false);
+      router.push('/consult/self/records');
+    }
+  }, [prescription, saving, savedSessionId, savedConsultId, router]);
 
   if (authLoading) {
     return <TabLoadingScreen navbarTitle={t('selfParent.navTitle')} showBack label={t('common.loading')} />;
@@ -253,8 +291,10 @@ function SelfConsultInner() {
             <ResultView
               prescription={prescription}
               t={t}
-              onDone={() => {
-                trackEvent('self_parent_consult_done', { tool: prescription.action.tool });
+              saving={saving}
+              onSave={handleSaveAction}
+              onLater={() => {
+                trackEvent('self_parent_consult_done', { tool: prescription.action.tool, saved: false });
                 router.push('/');
               }}
             />
@@ -370,11 +410,15 @@ function QuestionCard({
 function ResultView({
   prescription,
   t,
-  onDone,
+  saving,
+  onSave,
+  onLater,
 }: {
   prescription: SelfParentPrescription;
   t: (key: string, params?: Record<string, string | number>) => string;
-  onDone: () => void;
+  saving: boolean;
+  onSave: () => void;
+  onLater: () => void;
 }) {
   return (
     <div className="pt-6 space-y-4 animate-in fade-in duration-300">
@@ -441,10 +485,18 @@ function ResultView({
       </div>
 
       <button
-        onClick={onDone}
-        className="w-full h-14 rounded-2xl bg-secondary text-white font-bold text-[15px] shadow-lg shadow-secondary/20 active:scale-[0.98] transition-all"
+        onClick={onSave}
+        disabled={saving}
+        className="w-full h-14 rounded-2xl bg-secondary text-white font-bold text-[15px] shadow-lg shadow-secondary/20 active:scale-[0.98] transition-all disabled:opacity-50"
       >
-        {t('selfParent.doneButton')}
+        {saving ? t('selfParent.starting') : t('selfParent.saveActionButton')}
+      </button>
+      <button
+        onClick={onLater}
+        disabled={saving}
+        className="w-full py-3 text-[14px] font-bold text-text-sub transition-all active:scale-[0.98] disabled:opacity-50"
+      >
+        {t('selfParent.doLater')}
       </button>
     </div>
   );

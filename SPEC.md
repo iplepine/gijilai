@@ -354,7 +354,14 @@ interface AnalysisResult {
 3. 위기 감지: 자해/폭력/지속 디스트레스 키워드 시 처방 대신 전문기관 안내 우선
 4. 문진: 양육자 본인을 향한 부드러운 질문 2개 (감정 / 이미 잘하고 있는 것·바라는 작은 변화)
 5. 처방: 짧은 acknowledgment + reflection + 나에게 해줄 한 마디 + 오늘 나를 위한 단 하나의 action
-6. 기록 저장 (후속 상담·실천 루프는 Phase 2)
+6. 기록 저장
+
+### 실천 루프 (Phase 2 — self practice loop)
+1. 결과 "마음에 담기" → action을 `practice_items`(type='SELF_PARENT')로 저장
+2. `/consult/self/records` "내 마음 기록": 진행 중 자기 돌봄 + 지난 마음 기록
+3. "이번 주 어떠셨어요?" 후속: `도움이 됐어요/잘 모르겠어요/못 했지만 괜찮아요` 3선택 + 선택 메모 → 1회 부드러운 마무리(COMPLETED + 회고). **데일리 체크·streak 없음** (숙제화 방지)
+4. 홈 "오늘의 나" 카드: 진행 중 자기 돌봄 있으면 노출, 없으면 self-hide
+5. self-parent 실천은 아이 실천 목록·활성 카운트(5개 제한)에 섞이지 않음 (type 분리)
 
 ### 처방 구조
 ```typescript
