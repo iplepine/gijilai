@@ -256,7 +256,7 @@ function ConsultContent() {
     const reportKind = searchParams.get('report_kind');
     const { user } = useAuth();
     const { t, locale } = useLocale();
-    const { intake, cbqResponses, atqResponses, selectedChildId } = useAppStore();
+    const { intake, cbqResponses, atqResponses, selectedChildId, setSelectedChildId } = useAppStore();
     const [childName, setChildName] = useState<string | null>(intake.childName || null);
     const [childBirthDate, setChildBirthDate] = useState<string | undefined>(intake.birthDate || undefined);
     const [childGender, setChildGender] = useState<string | undefined>(intake.gender || undefined);
@@ -305,6 +305,10 @@ function ConsultContent() {
                 setChildBirthDate(child.birth_date);
                 setChildGender(child.gender);
                 setValidChildId(child.id);
+                // 세션 없이 진입해 fallback으로 아이를 정했고 스토어와 다르면, 다른 화면과 어긋나지 않게 현재 아이를 반영한다(self-heal).
+                if (!sessionChildId && child.id !== selectedChildId) {
+                    setSelectedChildId(child.id);
+                }
 
                 const { count } = await supabase
                     .from('reports')
@@ -315,7 +319,7 @@ function ConsultContent() {
                 setChildLoading(false);
             }
         });
-    }, [user, selectedChildId, sessionChildId, sessionContextLoading, intake.childName, intake.birthDate, intake.gender]);
+    }, [user, selectedChildId, setSelectedChildId, sessionChildId, sessionContextLoading, intake.childName, intake.birthDate, intake.gender]);
 
     // 선택된 아이의 양육자 정보(owner + co-parent) 매핑 로드
     useEffect(() => {

@@ -176,6 +176,13 @@ export default function HomePage() {
     return null;
   }, [children, selectedChildId, intake]);
 
+  // 홈에서 실제로 보여주는 아이를 selectedChildId에 반영해, 상담 등 다른 화면이 같은 아이를 대상으로 하게 한다.
+  // (selectedChildId가 비어 있으면 화면마다 fallback 대상(children[0])이 달라져 엉뚱한 아이로 진입하던 문제 방지)
+  useEffect(() => {
+    if (!mainChild || mainChild.id === "temporary-intake-id") return;
+    if (mainChild.id !== selectedChildId) setSelectedChildId(mainChild.id);
+  }, [mainChild, selectedChildId, setSelectedChildId]);
+
   // Derived per-child surveys
   const latestSurvey = useMemo(() => {
     if (!mainChild) return null;
