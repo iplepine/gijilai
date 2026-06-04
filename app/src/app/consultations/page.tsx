@@ -248,14 +248,14 @@ function SessionCard({ session, statusLabel, onSelect }: {
                             {session.starterLabel && (
                                 <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary">
                                     <span className="material-symbols-outlined text-[12px] leading-none">play_arrow</span>
-                                    {session.starterLabel}이 시작
+                                    {session.starterLabel} 시작
                                 </span>
                             )}
                             {session.latestAuthorLabel &&
                               session.latestAuthorLabel !== session.starterLabel && (
                                 <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-secondary/10 text-secondary">
                                     <span className="material-symbols-outlined text-[12px] leading-none">forum</span>
-                                    {session.latestAuthorLabel}이 이어감
+                                    {session.latestAuthorLabel} 이어감
                                 </span>
                             )}
                         </div>
