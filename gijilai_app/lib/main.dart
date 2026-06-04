@@ -3992,85 +3992,98 @@ class _AppSplashScreen extends StatelessWidget {
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Column(
+          child: Stack(
             children: [
-              const Spacer(flex: 3),
-              Container(
-                width: 112,
-                height: 112,
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(32),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF2F4F3E).withValues(alpha: 0.14),
-                      blurRadius: 34,
-                      offset: const Offset(0, 18),
+              // 로고 + 브랜드를 화면 세로 중앙에 배치한다(iOS LaunchScreen.storyboard와 동일,
+              // 로고 중심이 화면 중앙보다 약간 위). 콜드 스타트 시 OS 네이티브 런치스크린의
+              // 로고 위치와 일치시켜, 네이티브→Flutter 스플래시 전환에서 로고가 점프하지 않게 한다.
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 112,
+                      height: 112,
+                      clipBehavior: Clip.antiAlias,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(32),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(
+                              0xFF2F4F3E,
+                            ).withValues(alpha: 0.14),
+                            blurRadius: 34,
+                            offset: const Offset(0, 18),
+                          ),
+                        ],
+                      ),
+                      child: Image.asset(
+                        'assets/gijilai_icon.png',
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    const SizedBox(height: 26),
+                    const Text(
+                      '기질아이',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Color(0xFF2F4F3E),
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      '아이를 이해하는 따뜻한 시작',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Color(0xFF6E7A75),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0,
+                      ),
                     ),
                   ],
                 ),
-                child: Image.asset(
-                  'assets/gijilai_icon.png',
-                  fit: BoxFit.cover,
-                ),
               ),
-              const SizedBox(height: 26),
-              const Text(
-                '기질아이',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Color(0xFF2F4F3E),
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                '아이를 이해하는 따뜻한 시작',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Color(0xFF6E7A75),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0,
-                ),
-              ),
-              const SizedBox(height: 42),
-              SizedBox(
-                width: 132,
-                height: 4,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2F4F3E).withValues(alpha: 0.10),
-                    ),
-                    child: TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0.18, end: 0.82),
-                      duration: const Duration(milliseconds: 1200),
-                      curve: Curves.easeOutCubic,
-                      builder: (context, value, child) {
-                        return Align(
-                          alignment: Alignment.centerLeft,
-                          child: FractionallySizedBox(
-                            widthFactor: value,
-                            heightFactor: 1,
-                            child: child,
+              // 로딩 진행바 — 중앙 로고 그룹 아래 하단 영역
+              Align(
+                alignment: const Alignment(0, 0.5),
+                child: SizedBox(
+                  width: 132,
+                  height: 4,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2F4F3E).withValues(alpha: 0.10),
+                      ),
+                      child: TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0.18, end: 0.82),
+                        duration: const Duration(milliseconds: 1200),
+                        curve: Curves.easeOutCubic,
+                        builder: (context, value, child) {
+                          return Align(
+                            alignment: Alignment.centerLeft,
+                            child: FractionallySizedBox(
+                              widthFactor: value,
+                              heightFactor: 1,
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE5A150),
+                            borderRadius: BorderRadius.circular(999),
                           ),
-                        );
-                      },
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE5A150),
-                          borderRadius: BorderRadius.circular(999),
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
-              const Spacer(flex: 4),
             ],
           ),
         ),
