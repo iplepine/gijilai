@@ -149,6 +149,11 @@ body {
   background: var(--background-light);
   color: var(--text-main);
   -webkit-tap-highlight-color: transparent;
+  /* 긴 텍스트(공백 없는 한글 이름·이메일·URL 등)가 레이아웃을 넘기지 않고
+     줄바꿈되도록 전역 기본값. 상속되는 속성이라 모든 자식에 적용된다.
+     - truncate(white-space:nowrap)나 가로 스크롤 칩(whitespace-nowrap)에는 영향 없음
+     - 'anywhere'는 min-content 크기까지 줄여 flex 자식이 형제(버튼/화살표)를 밀어내지 않게 함 */
+  overflow-wrap: anywhere;
 }
 
 .dark body {
