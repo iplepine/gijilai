@@ -3,16 +3,17 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { db, UserProfile } from '@/lib/db';
+import { db } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import { Navbar } from '@/components/layout/Navbar';
+import { Avatar } from '@/components/ui/Avatar';
 import { useLocale } from '@/i18n/LocaleProvider';
 
 export default function ProfileEditPage() {
     const { t } = useLocale();
     const router = useRouter();
     const { user, loading: authLoading } = useAuth();
-    const [profile, setProfile] = useState<UserProfile | null>(null);
+    const [ready, setReady] = useState(false);
     const [fullName, setFullName] = useState('');
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -25,11 +26,19 @@ export default function ProfileEditPage() {
         }
 
         if (user) {
-            db.getUserProfile(user.id).then((data) => {
-                setProfile(data);
-                setFullName(data.full_name || user.user_metadata?.full_name || '');
-                setAvatarUrl(user.user_metadata?.avatar_url || null);
-            });
+            // 사진/이름은 auth 메타데이터로 먼저 채워, 프로필 행 조회가 실패해도 수정은 가능하게 한다.
+            setFullName((prev) => prev || user.user_metadata?.full_name || '');
+            setAvatarUrl((prev) => prev ?? (user.user_metadata?.avatar_url || null));
+            db.getUserProfile(user.id)
+                .then((data) => {
+                    setFullName(data.full_name || user.user_metadata?.full_name || '');
+                })
+                .catch((error) => {
+                    console.error('Failed to load profile:', error);
+                })
+                .finally(() => {
+                    setReady(true);
+                });
         }
     }, [user, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -76,7 +85,7 @@ export default function ProfileEditPage() {
         }
     };
 
-    if (authLoading || !profile) {
+    if (authLoading || !ready) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-background-light dark:bg-background-dark">
                 <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
@@ -95,16 +104,11 @@ export default function ProfileEditPage() {
                             onClick={() => fileInputRef.current?.click()}
                             className="size-28 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-primary border-4 border-white dark:border-gray-800 shadow-sm overflow-hidden cursor-pointer relative group"
                         >
-                            {avatarUrl ? (
-                                <div
-                                    role="img"
-                                    aria-label={t('settings.editProfile')}
-                                    className="w-full h-full bg-cover bg-center"
-                                    style={{ backgroundImage: `url("${avatarUrl}")` }}
-                                />
-                            ) : (
-                                <span className="material-symbols-outlined text-[48px]">person</span>
-                            )}
+                            <Avatar
+                                src={avatarUrl}
+                                alt={t('settings.editProfile')}
+                                iconClassName="text-[48px]"
+                            />
                             <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                 <span className="material-symbols-outlined text-white">photo_camera</span>
                             </div>

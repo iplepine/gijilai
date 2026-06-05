@@ -9,6 +9,7 @@ import { useSurveyStore } from '@/store/surveyStore';
 import BottomNav from '@/components/layout/BottomNav';
 import { Navbar } from '@/components/layout/Navbar';
 import { TabLoadingScreen } from '@/components/ui/TabLoadingScreen';
+import { Avatar } from '@/components/ui/Avatar';
 import Link from 'next/link';
 import { useLocale } from '@/i18n/LocaleProvider';
 import { getRuntimeAppInfo, type RuntimeAppInfo } from '@/lib/appInfo';
@@ -128,16 +129,11 @@ export default function ProfilePage() {
                     <section className="bg-white dark:bg-surface-dark rounded-3xl p-6 shadow-soft border border-gray-100 dark:border-gray-800">
                         <div className="flex items-center gap-4">
                             <div className="size-20 shrink-0 rounded-full bg-primary/10 flex items-center justify-center text-primary border-4 border-white dark:border-gray-800 shadow-sm overflow-hidden">
-                                {user?.user_metadata?.avatar_url ? (
-                                    <div
-                                        role="img"
-                                        aria-label={t('settings.myInfo')}
-                                        className="w-full h-full bg-cover bg-center"
-                                        style={{ backgroundImage: `url("${user.user_metadata.avatar_url}")` }}
-                                    />
-                                ) : (
-                                    <span className="material-symbols-outlined text-4xl">person</span>
-                                )}
+                                <Avatar
+                                    src={user?.user_metadata?.avatar_url}
+                                    alt={t('settings.myInfo')}
+                                    iconClassName="text-4xl"
+                                />
                             </div>
                             <div className="flex-1 min-w-0">
                                 <h2 className="text-xl font-bold text-navy dark:text-white truncate">
