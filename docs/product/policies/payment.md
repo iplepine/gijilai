@@ -112,6 +112,18 @@
 - `APPLE_IAP_PRIVATE_KEY`와 `APPLE_APP_STORE_ROOT_CERT_PEM`은 PEM 줄바꿈이 보존되어야 한다. 시크릿 매니저가 한 줄 값만 허용하면 `\n` 이스케이프를 유지해 저장한다.
 - App Review/TestFlight 결제는 샌드박스 거래이므로 운영 서버도 Apple production transaction lookup이 `404`이면 sandbox endpoint로 재시도한다.
 
+### IAP 구매 전달 보장 (2026-06-10)
+
+- 영수증 검증의 **일시 실패**(네트워크 단절, 서버 5xx/429, 응답 타임아웃)는 구매를 버리지 않고 세션 안에서 지수 백오프(10s→…→120s, 최대 5회)로 재시도한다. 한도를 넘으면 스토어 재전달에 맡긴다 — `completePurchase`를 호출하지 않았으므로 거래는 스토어에 남는다.
+- **Android는 콜드 스타트마다 `restorePurchases()`를 자동 호출**한다. 미확인(unacknowledged) 구매는 Google이 3일 뒤 자동 환불하므로, 검증 도중 앱이 종료된 구매를 다음 실행에서 반드시 되살려야 한다. iOS는 미완료 거래가 자동 재전달되며, restore 호출이 App Store 로그인 프롬프트를 띄울 수 있어 자동 호출하지 않는다.
+- **'구매 복원' 버튼**: 구독 관리 화면(설정 → 구독)에서 활성 구독이 없을 때 앱 컨텍스트에만 노출. `PaymentBridge`로 `RESTORE_REQUEST`를 보내 네이티브 `restorePurchases()`를 호출한다. 8초 안에 복원 이벤트가 없으면 "복원할 내역 없음"을 안내한다.
+- 복원(restored) 이벤트의 서버 동기화는 **사용자가 명시적으로 복원을 요청한 경우가 아니면 조용히** 처리한다(스낵바/화면 이동 없음). 로그아웃 상태면 로그인 완료 후 자동 재시도된다.
+
+### 웹 구독 생성 중복 방지 (2026-06-10)
+
+- `subscriptions`에 partial unique index(`user_id` WHERE status IN ('ACTIVE','PAST_DUE'))를 둔다 (마이그레이션 024).
+- `/api/payment/subscribe`에서 결제 후 구독 insert가 unique 위반(23505)이면 — 더블탭 등 동시 요청 — 이번 결제를 자동 환불하고 `ALREADY_SUBSCRIBED`(400)를 반환한다. 먼저 성공한 요청의 구독은 건드리지 않는다.
+
 ### IAP 상태 동기화 원칙
 
 - 최초 구매 성공만으로 구독 운영을 끝내지 않는다. 갱신, 해지 예약, 결제 실패, 환불/회수는 서버 알림으로 반영한다.
@@ -134,3 +146,16 @@
 - 응답 형식: JSON 객체 (`response_format: { type: "json_object" }`)
 - JSON 파싱 실패 시 원본 문자열로 폴백
 - 모든 리포트 API 호출은 Supabase 세션 인증 필요
+- OpenAI 클라이언트는 `timeout 120s, maxRetries 1` (행이 걸린 요청이 비용·워커를 잡지 않게)
+
+### LLM 비용 가드 (2026-06-10)
+
+- 모든 LLM 엔드포인트(리포트/상담 질문/처방/실천 피드백/self-parent)는 호출 **전에** 사용자별 24시간 쿼터를 검사한다 (`llm_usage_events`, 마이그레이션 023).
+- 기본 한도(정상 사용자는 닿지 않는 abuse guard 수준): REPORT 12 · CONSULT_QUESTIONS 60 · CONSULT_PRESCRIPTION 20 · PRACTICE_FEEDBACK 40 · SELF_PARENT_QUESTIONS 30 · SELF_PARENT_PRESCRIPTION 10. 환경변수 `LLM_DAILY_LIMIT_<KIND>`로 운영 중 조정.
+- 초과 시 429 + `LLM_QUOTA_EXCEEDED`. 쿼터 인프라 오류(테이블 미적용 포함) 시에는 차단하지 않는다(fail-open).
+
+### 아이 실명 비식별화 (2026-06-10)
+
+- 아이 **실명은 OpenAI로 전송하지 않는다**. 프롬프트에는 가명 `○○이`를 보내고, 자유 텍스트(고민·답변·관찰·세션 맥락) 속 이름도 가명으로 치환한 뒤, 응답에서 받침 규칙에 맞는 조사와 함께 실명으로 복원한다 (`app/src/lib/childPseudonym.ts`).
+- 생년월일 원본도 전송하지 않는다 — 나이(세/개월) 표기로 변환해 전달한다.
+- 복원이 누락돼도 사용자에게는 관용적 익명 표기(○○이)로 보인다.

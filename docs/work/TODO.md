@@ -1,17 +1,19 @@
 # TODO
 
-마지막 갱신일: 2026-06-03
+마지막 갱신일: 2026-06-10
 
 ## 지금 닫아야 할 것
 
-- [ ] 운영 DB에 마이그레이션 018(co-parent)·019(self-parent type)·020(self-parent 프라이버시 RLS) **순서대로** 적용 + 적용 후 실기기 흐름 확인. (019 → 020 순서 중요: type 컬럼이 있어야 020 동작)
-- [ ] `GJ-011-self-parent-practice-loop`: self-parent Phase 2(action 실천 저장 + 내 마음 기록 + 이번 주 후속 + 홈 카드). 코드 완료, 마이그레이션 적용·실기기 확인 남음.
-- [ ] `GJ-010-self-parent-reflection-thinslice`: 양육자 자신을 위한 상담 Phase 1(입력→2질문→처방 + 위기 가드레일). 코드 완료, 마이그레이션 적용·실기기 확인 남음. 정책: `docs/product/policies/self-parent.md`.
-- [ ] `GJ-009-coparent-invite-thin-slice`: 공동양육자 비대칭 초대(Option C) thin-slice. 코드 완료, 마이그레이션 018 적용·실기기 확인 남음. 정책: `docs/product/policies/co-parent.md`.
-- [ ] `GJ-007-manual-followup-test`: 상담 후 단발 후속 루프(상담→실천→며칠 뒤 1회 후속→성공 저금/재상담)를 유료 사용자 ~10명에게 사람이 직접 발송해 검증한다. 후속 응답률·"해봤다"율·재상담 복귀로 episodic 가설을 판정한다. 기획: `docs/product/EPISODIC_FOLLOWUP_RETENTION.md`.
-- [ ] `GJ-006-practice-loop-usability-qa`: 실천 마무리 선택 입력, 홈 대표 실천 `+N개 더`, 다자녀 실천 태그, 상담 아이 이름 강조, 음성 입력 첫 탭 동작을 모바일 WebView에서 한 번에 회귀 확인한다.
-- [ ] `GJ-005-report-trust-baseline-qa`: 배포 환경에서 `report_viewed`, `pricing_viewed`, `payment_started`, `payment_completed` 이벤트가 문서 기준대로 수집되는지 확인한다.
-- [ ] 첫 주 기준선 기록 위치를 확정하고 리포트 전환/가격 진입/결제 시작 수치를 기록한다.
+- [ ] **운영 DB 마이그레이션 적용** — 실측 결과 문서와 달리 018/019는 이미 적용, 대신 **011~016·021이 미적용**이라 실천 AI 피드백·알림 설정·사용 텔레메트리가 운영에서 깨져 있다. 신규 022(공유 토큰)·023(LLM 쿼터)·024(구독 unique)까지 011→024 순서로 전부 실행(전 파일 재실행 안전). 절차·검증 쿼리: `docs/operations/migrations/APPLY_2026-06-10.md`. **022는 웹 배포 전에 적용해야 공유가 안 깨진다.**
+- [ ] 마이그레이션 적용 후 실기기 확인: 실천 AI 피드백(013/014), 알림 설정(012), GJ-009 co-parent 초대, GJ-010/011 self-parent 흐름, 공유 새 링크(생년월일 미노출), 구매 복원 버튼.
+- [ ] `GJ-011-self-parent-practice-loop`: 코드 완료, 실기기 확인 남음 (DB는 019/020 적용 상태 — 020만 재확인).
+- [ ] `GJ-010-self-parent-reflection-thinslice`: 코드 완료, 실기기 확인 남음. 정책: `docs/product/policies/self-parent.md`.
+- [ ] `GJ-009-coparent-invite-thin-slice`: 코드 완료, 실기기 확인 남음 (018 적용 확인됨). 정책: `docs/product/policies/co-parent.md`.
+- [ ] `GJ-007-manual-followup-test`: 상담 후 단발 후속 루프를 유료 사용자 ~10명에게 사람이 직접 발송해 검증. **전제 미충족 주의 — 기준선 측정 결과 실결제 사용자 0명** (`docs/work/BASELINE_METRICS.md`). 유입 확보가 선행되어야 한다. 기획: `docs/product/EPISODIC_FOLLOWUP_RETENTION.md`.
+- [ ] `GJ-006-practice-loop-usability-qa`: 모바일 WebView 회귀 확인 (실천 AI 피드백이 마이그레이션 미적용으로 깨져 있었으므로, 적용 후 다시).
+- [ ] `GJ-005-report-trust-baseline-qa`: 배포 환경 GA4 이벤트 수집 확인 + `docs/work/BASELINE_METRICS.md`에 GA4 퍼널 수치 기입.
+- [x] 첫 주 기준선 기록 — DB 기반 1차 수집 완료: `docs/work/BASELINE_METRICS.md` (수집 스크립트 `app/scripts/collect-baseline-metrics.cjs`). GA4 수치만 남음(GJ-005와 함께).
+- [ ] 앱 v1.0.10 릴리스: IAP 복구 개편(콜드 스타트 restore, 재시도, 구매 복원 버튼) 포함 빌드를 스토어에 올린다. Crashlytics 심볼 업로드 활성화됨.
 
 ## 다음 작업 후보
 
