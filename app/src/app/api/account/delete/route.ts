@@ -22,8 +22,9 @@ export async function DELETE() {
     const admin = getSupabaseAdmin();
     const userId = user.id;
 
-    // CASCADE가 설정되지 않은 테이블 데이터를 먼저 삭제 (service_role로 RLS 우회)
-    // observations 테이블은 마이그레이션에 ON DELETE CASCADE가 누락되어 수동 삭제 필요
+    // observations는 마이그레이션 008에서 ON DELETE CASCADE가 추가됐지만,
+    // 008 미적용 환경에서도 탈퇴가 완전하도록 방어적으로 먼저 삭제한다 (service_role로 RLS 우회).
+    // 삭제 실패 시 auth 유저 삭제로 진행하지 않고 500으로 중단해 데이터 잔존을 막는다.
     const { error: obsError } = await admin
       .from('observations')
       .delete()

@@ -31,7 +31,7 @@ type SharedReport = {
   type: string;
   analysis: Json | null;
   createdAt: string;
-  child: { name: string; gender: string; birth_date: string } | null;
+  child: { name: string; gender: string; ageText: string | null } | null;
   scores: Json | null;
 };
 
@@ -194,6 +194,8 @@ function SharePageContent() {
   const [report, setReport] = useState<SharedReport | null>(null);
 
   const [resolvedReportId, setResolvedReportId] = useState<string | null>(reportId);
+  // 공유 링크는 리포트 id가 아니라 opt-in 발급된 share_token을 쓴다.
+  const [shareToken, setShareToken] = useState<string | null>(null);
 
   const getNativeShareBridge = () => {
     if (typeof window === 'undefined') return null;
@@ -262,12 +264,13 @@ function SharePageContent() {
     };
   }, [authLoading, reportId, user?.id]);
 
-  // Load the exact shared report row when reportId is resolved.
+  // Mint a share token for the resolved report, then load the public report row with it.
   useEffect(() => {
     let isActive = true;
 
-    async function loadReport() {
+    async function mintTokenAndLoadReport() {
       if (!resolvedReportId) {
+        setShareToken(null);
         setReport(null);
         setIsReportLoading(false);
         return;
@@ -275,7 +278,21 @@ function SharePageContent() {
 
       setIsReportLoading(true);
       try {
-        const res = await fetch(`/api/report/shared/${resolvedReportId}`, { cache: 'no-store' });
+        const mintRes = await fetch('/api/report/share', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reportId: resolvedReportId }),
+        });
+        if (!mintRes.ok) {
+          throw new Error(`Share token mint failed: ${mintRes.status}`);
+        }
+        const { shareToken: token } = await mintRes.json() as { shareToken?: string };
+        if (!token) {
+          throw new Error('Share token missing in mint response');
+        }
+        if (isActive) setShareToken(token);
+
+        const res = await fetch(`/api/report/shared/${token}`, { cache: 'no-store' });
         if (!res.ok) {
           throw new Error(`Shared report load failed: ${res.status}`);
         }
@@ -283,13 +300,16 @@ function SharePageContent() {
         if (isActive) setReport(data as SharedReport);
       } catch (e) {
         console.error('Failed to load report:', e);
-        if (isActive) setReport(null);
+        if (isActive) {
+          setShareToken(null);
+          setReport(null);
+        }
       } finally {
         if (isActive) setIsReportLoading(false);
       }
     }
 
-    loadReport();
+    mintTokenAndLoadReport();
 
     return () => {
       isActive = false;
@@ -346,8 +366,8 @@ function SharePageContent() {
   })();
 
   const getReportShareUrl = () => {
-    if (!resolvedReportId) return null;
-    return `${window.location.origin}/shared/${resolvedReportId}`;
+    if (!shareToken) return null;
+    return `${window.location.origin}/shared/${shareToken}`;
   };
 
   const getShareAnalyticsParams = (channel: string, extra: Record<string, string | number | boolean | undefined> = {}) => ({
@@ -359,7 +379,7 @@ function SharePageContent() {
     ...extra,
   });
 
-  const isShareUnavailable = !isResolvingReportId && !isReportLoading && !resolvedReportId;
+  const isShareUnavailable = !isResolvingReportId && !isReportLoading && (!resolvedReportId || !shareToken);
   const isShareActionDisabled = isResolvingReportId || isReportLoading || isShareUnavailable;
 
   const copyShareUrl = async () => {
@@ -407,7 +427,7 @@ function SharePageContent() {
     // 설치된 사용자는 카톡의 `kakao{APP_KEY}://kakaolink?path=/shared/{id}` 커스텀 스킴으로
     // 앱이 실행되고, 미설치 사용자는 `mobileWebUrl`로 폴백되어 인앱 웹뷰에서 페이지가 열린다.
     // 앱 라우팅은 main.dart `_isKakaoLinkOpenUri` → `_consumePendingAppOpenUri`가 처리.
-    const sharePath = `/shared/${resolvedReportId}`;
+    const sharePath = `/shared/${shareToken}`;
     const executionParams = { path: sharePath };
     const kakaoPayload = {
       objectType: 'feed' as const,

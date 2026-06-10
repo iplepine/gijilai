@@ -173,6 +173,17 @@ export async function POST(req: Request) {
       } catch (cancelError) {
         console.error('Auto-cancel also failed:', cancelError);
       }
+
+      // 동시 요청(더블탭)이 활성 구독 unique 제약(23505)에 걸린 경우:
+      // 먼저 성공한 요청의 구독이 유효하므로 cleanup 없이 이번 결제만 환불하고 종료한다.
+      const isUniqueViolation =
+        typeof dbError === 'object'
+        && dbError !== null
+        && (dbError as { code?: string }).code === '23505';
+      if (isUniqueViolation) {
+        return NextResponse.json({ error: 'ALREADY_SUBSCRIBED' }, { status: 400 });
+      }
+
       const { error: subscriptionCleanupError } = await admin
         .from('subscriptions')
         .update({

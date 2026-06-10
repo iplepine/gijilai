@@ -28,7 +28,7 @@ interface SharedReport {
   type: string;
   analysis: unknown;
   createdAt: string;
-  child: { name: string; gender: string; birth_date: string } | null;
+  child: { name: string; gender: string; ageText: string | null } | null;
   scores: unknown;
 }
 

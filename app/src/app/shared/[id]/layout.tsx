@@ -30,12 +30,13 @@ export async function generateMetadata(
   try {
     const { id } = await params;
     const supabase = createClient(supabaseUrl, serviceKey);
+    // 경로 파라미터는 opt-in 발급된 share_token이다 (리포트 PK 아님).
     const { data } = await supabase
       .from('reports')
       .select(
-        'id, type, analysis_json, children(name, gender, birth_date), surveys(scores)',
+        'id, type, analysis_json, children(name, gender), surveys(scores)',
       )
-      .eq('id', id)
+      .eq('share_token', id)
       .maybeSingle();
 
     if (!data || !isSharedReportType(data.type)) return fallback;
