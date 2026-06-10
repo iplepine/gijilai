@@ -2,6 +2,7 @@ import {
   asChildAiReport,
   buildParentReportStreamModules,
   normalizeTemperamentDimensions,
+  type ParentAiReport,
 } from './report';
 import type { Json } from '@/types/supabase';
 
@@ -38,7 +39,7 @@ describe('report normalization', () => {
       intro: '양육자 설명',
       dimensions: {
         '자극 추구': '새로운 것에 끌리는 정도입니다.',
-      },
+      } as ParentAiReport['dimensions'],
       sections: [
         { id: 'shining', content: '빛나는 순간' },
         { id: 'vulnerability', content: '고갈 신호' },

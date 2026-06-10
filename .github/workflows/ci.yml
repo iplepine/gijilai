@@ -1,0 +1,48 @@
+# PR/push 시 웹·앱 정적 검사 + 테스트.
+# Vercel 빌드 쿼터와 무관한 GitHub Actions에서 돈다 (배포는 기존처럼 Vercel/fastlane).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  web:
+    name: Web (Next.js)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run lint
+      - run: npm test
+
+  flutter:
+    name: Flutter (gijilai_app)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gijilai_app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: |
+          if [ -d test ]; then
+            flutter test
+          else
+            echo "No test directory — skipping flutter test"
+          fi
