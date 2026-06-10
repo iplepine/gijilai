@@ -15,7 +15,6 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
-import 'package:in_app_purchase_android/billing_client_wrappers.dart';
 import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 import 'package:in_app_purchase_storekit/in_app_purchase_storekit.dart';
 import 'package:kakao_flutter_sdk_share/kakao_flutter_sdk_share.dart'
@@ -31,8 +30,10 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import 'firebase_options.dart';
+import 'iap/iap_product_selection.dart';
+import 'iap/iap_retry_policy.dart';
 
-enum _IapDeliveryResult { delivered, failed, authRequired, deferred }
+enum _IapDeliveryResult { delivered, failed, retryable, authRequired, deferred }
 
 class _AndroidIntentUri {
   const _AndroidIntentUri({
@@ -287,6 +288,10 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   bool _iapLaunchInProgress = false;
   bool _iapDeliveryInProgress = false;
   bool _iapDeliveryWaitingForAuth = false;
+  bool _iapUserRestoreInProgress = false;
+  final Map<String, int> _iapDeliveryAttempts = <String, int>{};
+  Timer? _iapDeliveryRetryTimer;
+  Timer? _iapUserRestoreFeedbackTimer;
   bool _nativeVoiceInputInProgress = false;
   bool _isInitializingWebView = false;
   bool _isCheckingRequiredUpdate = false;
@@ -2586,6 +2591,14 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         return;
       }
 
+      // Android: 미확인(unacknowledged) 구매는 스토어가 자동 재전달하지 않고
+      // 3일 뒤 자동 환불된다. 검증 도중 앱이 종료된 구매를 콜드 스타트마다 복구한다.
+      // (iOS는 미완료 거래가 purchaseStream으로 자동 재전달되고, restore 호출이
+      // App Store 로그인 프롬프트를 띄울 수 있어 사용자 액션으로만 호출한다.)
+      if (Platform.isAndroid) {
+        unawaited(_restoreIapPurchases(userInitiated: false));
+      }
+
       // 상품 정보 로드
       final response = await _iap.queryProductDetails({_subscriptionProductId});
       debugPrint(
@@ -2633,6 +2646,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       final data = jsonDecode(message.message);
       if (data['type'] == 'PAYMENT_REQUEST') {
         unawaited(_startPurchase());
+      } else if (data['type'] == 'RESTORE_REQUEST') {
+        unawaited(_restoreIapPurchases(userInitiated: true));
       }
     } catch (e) {
       debugPrint('PaymentBridge parse error: $e');
@@ -3172,7 +3187,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         return;
       }
 
-      final product = _selectSubscriptionProduct(response.productDetails);
+      final product = selectSubscriptionProduct(response.productDetails);
       debugPrint(
         'IAP launching purchase: productId=${product.id}, '
         'title=${product.title}, price=${product.price}',
@@ -3355,6 +3370,30 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           break;
         }
 
+        if (result == _IapDeliveryResult.retryable) {
+          // 일시 실패(네트워크/5xx/타임아웃): 구매를 큐에 남기고 백오프 재시도.
+          // 한도를 넘으면 스토어 재전달(콜드 스타트 restore)에 맡긴다 —
+          // completePurchase를 호출하지 않았으므로 거래는 스토어에 남아 있다.
+          final key = _iapPurchaseKey(purchase);
+          final attempt = (_iapDeliveryAttempts[key] ?? 0) + 1;
+          _iapDeliveryAttempts[key] = attempt;
+          if (IapRetryPolicy.shouldRetry(attempt)) {
+            _scheduleIapDeliveryRetry(IapRetryPolicy.backoff(attempt));
+            break;
+          }
+          unawaited(
+            FirebaseCrashlytics.instance.recordError(
+              Exception('IAP delivery retries exhausted: $key'),
+              StackTrace.current,
+              reason: 'IAP delivery retryable failure',
+            ),
+          );
+          _iapDeliveryAttempts.remove(key);
+          _pendingIapDeliveries.removeAt(0);
+          continue;
+        }
+
+        _iapDeliveryAttempts.remove(_iapPurchaseKey(purchase));
         _pendingIapDeliveries.removeAt(0);
       }
     } finally {
@@ -3362,84 +3401,54 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     }
   }
 
-  ProductDetails _selectSubscriptionProduct(List<ProductDetails> products) {
-    if (!Platform.isAndroid) return products.first;
+  void _scheduleIapDeliveryRetry(Duration delay) {
+    _iapDeliveryRetryTimer?.cancel();
+    _iapDeliveryRetryTimer = Timer(delay, () {
+      _iapDeliveryRetryTimer = null;
+      unawaited(_processPendingIapDeliveries());
+    });
+  }
 
-    final googleProducts = products
-        .whereType<GooglePlayProductDetails>()
-        .toList(growable: false);
-    if (googleProducts.isEmpty) return products.first;
-
-    GooglePlayProductDetails? regularProduct;
-    GooglePlayProductDetails? discountedProduct;
-
-    for (final product in googleProducts) {
-      final offer = _androidSubscriptionOffer(product);
-      if (offer == null) continue;
-
-      debugPrint(
-        'IAP Android offer candidate: '
-        'basePlanId=${offer.basePlanId}, '
-        'offerId=${offer.offerId ?? "none"}, '
-        'tags=${offer.offerTags.join(",")}, '
-        'phases=${_androidPricingPhaseSummary(offer.pricingPhases)}, '
-        'token=${product.offerToken}',
+  Future<void> _restoreIapPurchases({required bool userInitiated}) async {
+    try {
+      if (userInitiated) {
+        _iapUserRestoreInProgress = true;
+        _showSnackBar('구매 내역을 확인하고 있어요');
+        // 복원할 거래가 없으면 purchaseStream 이벤트가 오지 않는다 —
+        // 일정 시간 안에 이벤트가 없으면 사용자에게 결과를 알려준다.
+        _iapUserRestoreFeedbackTimer?.cancel();
+        _iapUserRestoreFeedbackTimer = Timer(const Duration(seconds: 8), () {
+          if (_iapUserRestoreInProgress) {
+            _iapUserRestoreInProgress = false;
+            _showSnackBar('복원할 구매 내역을 찾지 못했어요. 스토어 로그인 계정을 확인해주세요.');
+          }
+        });
+      }
+      await _iap.restorePurchases();
+      // 결과는 purchaseStream의 PurchaseStatus.restored 이벤트로 도착한다.
+    } catch (e) {
+      debugPrint('IAP restore error: $e');
+      unawaited(
+        FirebaseCrashlytics.instance.recordError(
+          e,
+          StackTrace.current,
+          reason: 'IAP restorePurchases error',
+        ),
       );
-
-      if (_isAndroidIntroDiscountOffer(offer)) {
-        discountedProduct ??= product;
-      } else if (offer.offerId == null) {
-        regularProduct ??= product;
+      if (userInitiated) {
+        _iapUserRestoreFeedbackTimer?.cancel();
+        _iapUserRestoreInProgress = false;
+        _showSnackBar('구매 복원에 실패했습니다. 잠시 후 다시 시도해주세요.', isError: true);
       }
     }
-
-    final selected =
-        discountedProduct ?? regularProduct ?? googleProducts.first;
-    final selectedOffer = _androidSubscriptionOffer(selected);
-    debugPrint(
-      'IAP Android selected offer: '
-      'basePlanId=${selectedOffer?.basePlanId ?? "unknown"}, '
-      'offerId=${selectedOffer?.offerId ?? "none"}, '
-      'price=${selected.price}',
-    );
-    return selected;
-  }
-
-  SubscriptionOfferDetailsWrapper? _androidSubscriptionOffer(
-    GooglePlayProductDetails product,
-  ) {
-    final index = product.subscriptionIndex;
-    final offers = product.productDetails.subscriptionOfferDetails;
-    if (index == null || offers == null || index >= offers.length) return null;
-    return offers[index];
-  }
-
-  bool _isAndroidIntroDiscountOffer(SubscriptionOfferDetailsWrapper offer) {
-    if (offer.offerId == null || offer.pricingPhases.length < 2) return false;
-
-    final firstPhase = offer.pricingPhases.first;
-    final recurringPrice = offer.pricingPhases
-        .skip(1)
-        .map((phase) => phase.priceAmountMicros)
-        .reduce(max);
-
-    return firstPhase.billingCycleCount == 1 &&
-        firstPhase.priceAmountMicros > 0 &&
-        firstPhase.priceAmountMicros < recurringPrice;
-  }
-
-  String _androidPricingPhaseSummary(List<PricingPhaseWrapper> phases) {
-    return phases
-        .map(
-          (phase) =>
-              '${phase.formattedPrice}/${phase.billingPeriod}'
-              'x${phase.billingCycleCount}',
-        )
-        .join(' -> ');
   }
 
   Future<_IapDeliveryResult> _verifyAndDeliver(PurchaseDetails purchase) async {
     var shouldCompletePurchase = false;
+    // 복원(restored) 동기화는 사용자가 결제 플로우 중이 아니므로,
+    // 명시적 '구매 복원' 요청이 아닌 한 스낵바/네비게이션 없이 조용히 처리한다.
+    final isRestoredSync =
+        purchase.status == PurchaseStatus.restored && !_iapUserRestoreInProgress;
     try {
       final controller = _controller;
       if (controller == null || !_hasRenderedFirstPage) {
@@ -3453,8 +3462,10 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           : purchase.verificationData.serverVerificationData;
 
       if (receiptToken.isEmpty) {
-        _showSnackBar('결제 거래 정보를 확인할 수 없습니다', isError: true);
-        _finishIapPurchaseFlow();
+        if (!isRestoredSync) {
+          _showSnackBar('결제 거래 정보를 확인할 수 없습니다', isError: true);
+          _finishIapPurchaseFlow();
+        }
         await FirebaseCrashlytics.instance.recordError(
           Exception('IAP receipt token is empty'),
           StackTrace.current,
@@ -3514,9 +3525,11 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       }
 
       if (resultJson == null || resultJson.isEmpty) {
-        _showSnackBar('서버 응답 시간이 초과되었습니다', isError: true);
-        _finishIapPurchaseFlow();
-        return _IapDeliveryResult.failed;
+        if (!isRestoredSync) {
+          _showSnackBar('서버 응답이 지연되고 있어요. 잠시 후 자동으로 다시 시도할게요.');
+          _finishIapPurchaseFlow();
+        }
+        return _IapDeliveryResult.retryable;
       }
 
       // JSON 파싱 — runJavaScriptReturningResult가 문자열을 따옴표로 감싸서 반환
@@ -3528,7 +3541,20 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
       if (data['success'] == true) {
         shouldCompletePurchase = true;
-        _showSnackBar('구독이 시작되었습니다!');
+
+        if (isRestoredSync) {
+          // 콜드 스타트/백그라운드 복구 — 사용자 플로우를 방해하지 않는다.
+          _iapLaunchInProgress = false;
+          return _IapDeliveryResult.delivered;
+        }
+
+        if (_iapUserRestoreInProgress) {
+          _iapUserRestoreFeedbackTimer?.cancel();
+          _iapUserRestoreInProgress = false;
+          _showSnackBar('구독이 복원되었습니다!');
+        } else {
+          _showSnackBar('구독이 시작되었습니다!');
+        }
         final callbackHandled = await _notifyWebIapPaymentCompleted();
         if (!callbackHandled) {
           _notifyWebLoadingDone();
@@ -3541,6 +3567,11 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         return _IapDeliveryResult.delivered;
       } else {
         if (data['httpStatus'] == 401 || data['error'] == 'Unauthorized') {
+          if (isRestoredSync) {
+            // 로그아웃 상태의 콜드 스타트 복구 — 로그인 완료 후 자동 재시도된다.
+            _iapLaunchInProgress = false;
+            return _IapDeliveryResult.authRequired;
+          }
           _showSnackBar('로그인이 만료되었습니다. 로그인 후 구독 연결을 마무리할게요.', isError: true);
           _finishIapPurchaseFlow();
           final redirect = Uri.encodeComponent(
@@ -3552,12 +3583,32 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
           return _IapDeliveryResult.authRequired;
         }
 
+        // 서버 장애(5xx)나 네트워크 오류(httpStatus 없음)는 일시 실패로 보고 재시도한다.
+        final statusValue = data['httpStatus'];
+        final statusCode = statusValue is int
+            ? statusValue
+            : int.tryParse('$statusValue') ?? 0;
+        final isTransientFailure = statusCode >= 500 || statusCode == 429 || statusCode == 0;
+        if (isTransientFailure) {
+          debugPrint(
+            'IAP verification transient failure: status=$statusCode, '
+            'error=${data['error'] ?? 'none'}',
+          );
+          if (!isRestoredSync) {
+            _showSnackBar('일시적인 오류가 발생했어요. 잠시 후 자동으로 다시 시도할게요.');
+            _finishIapPurchaseFlow();
+          }
+          return _IapDeliveryResult.retryable;
+        }
+
         final errorCode = data['error']?.toString();
         final errorMessage = errorCode == 'IAP_SERVER_MISCONFIGURED'
             ? '결제 검증 설정에 문제가 있습니다. 잠시 후 다시 시도해주세요.'
             : errorCode ?? '검증 실패';
-        _showSnackBar(errorMessage, isError: true);
-        _finishIapPurchaseFlow();
+        if (!isRestoredSync) {
+          _showSnackBar(errorMessage, isError: true);
+          _finishIapPurchaseFlow();
+        }
         await FirebaseCrashlytics.instance.recordError(
           Exception('IAP verification failed: ${data['error'] ?? 'unknown'}'),
           StackTrace.current,
@@ -3571,9 +3622,11 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         StackTrace.current,
         reason: 'IAP receipt verification error',
       );
-      _showSnackBar('영수증 검증에 실패했습니다', isError: true);
-      _finishIapPurchaseFlow();
-      return _IapDeliveryResult.failed;
+      if (!isRestoredSync) {
+        _showSnackBar('영수증 검증이 지연되고 있어요. 잠시 후 자동으로 다시 시도할게요.');
+        _finishIapPurchaseFlow();
+      }
+      return _IapDeliveryResult.retryable;
     } finally {
       _iapLaunchInProgress = false;
       if (shouldCompletePurchase && purchase.pendingCompletePurchase) {
@@ -3702,6 +3755,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     _clearNativeAuthWatchdog();
     _purchaseSubscription?.cancel();
     _appLinkSubscription?.cancel();
+    _iapDeliveryRetryTimer?.cancel();
+    _iapUserRestoreFeedbackTimer?.cancel();
     super.dispose();
   }
 

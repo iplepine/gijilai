@@ -10,6 +10,13 @@ import { db, PaymentData, SubscriptionData } from '@/lib/db';
 import { useLocale } from '@/i18n/LocaleProvider';
 import { trackEvent } from '@/lib/analytics';
 import { getApiErrorMessage, readJsonResponse } from '@/lib/api';
+import { isAppWebView } from '@/lib/install';
+
+declare global {
+  interface Window {
+    PaymentBridge?: { postMessage: (msg: string) => void };
+  }
+}
 
 type PaymentMethodMetadata = {
   paymentMethod?: {
@@ -110,6 +117,24 @@ export default function SubscriptionPage() {
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
   const [feedbackDialog, setFeedbackDialog] = useState<FeedbackDialogState | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isApp, setIsApp] = useState(false);
+
+  useEffect(() => {
+    setIsApp(isAppWebView());
+  }, []);
+
+  // 결제는 됐는데 검증이 끊겨 구독이 비활성인 사용자를 위한 스토어 구매 복원.
+  // 네이티브가 restorePurchases()를 호출하고 결과는 purchaseStream으로 처리된다.
+  const requestStoreRestore = () => {
+    if (!window.PaymentBridge) return;
+    trackEvent('subscription_action_clicked', {
+      action: 'restore_purchases',
+      source: 'subscription_settings',
+      subscription_source: subscription?.source ?? 'none',
+      subscription_status: subscription?.status ?? 'none',
+    });
+    window.PaymentBridge.postMessage(JSON.stringify({ type: 'RESTORE_REQUEST' }));
+  };
 
   const getErrorMessage = useCallback(
     (error: unknown) => error instanceof Error ? error.message : t('settings.cancelError'),
@@ -565,6 +590,18 @@ export default function SubscriptionPage() {
               }}>
                 {t('settings.startSubscription')}
               </Button>
+              {isApp && (
+                <div className="pt-2 space-y-2">
+                  <p className="text-[12px] text-text-sub">{t('settings.restorePurchasesHint')}</p>
+                  <button
+                    type="button"
+                    onClick={requestStoreRestore}
+                    className="text-sm font-bold text-primary underline underline-offset-4"
+                  >
+                    {t('settings.restorePurchases')}
+                  </button>
+                </div>
+              )}
             </section>
           )}
 

@@ -644,6 +644,8 @@
     "paymentRequiredNotice": "결제 갱신이 완료되지 않았어요. 결제 정보를 확인하면 프리미엄 이용을 다시 이어갈 수 있습니다.",
     "noSubscription": "활성 구독이 없습니다.",
     "startSubscription": "구독 시작하기",
+    "restorePurchases": "구매 복원",
+    "restorePurchasesHint": "앱스토어/플레이스토어에서 이미 결제하셨는데 구독이 보이지 않나요?",
     "paymentHistory": "결제 이력",
     "paymentReport": "리포트",
     "paymentSubscription": "구독",

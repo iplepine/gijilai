@@ -643,6 +643,8 @@
     "paymentRequiredNotice": "Your renewal payment did not complete. Check your payment details to resume premium access.",
     "noSubscription": "No active subscription.",
     "startSubscription": "Start Subscription",
+    "restorePurchases": "Restore Purchases",
+    "restorePurchasesHint": "Already paid via the App Store or Google Play but don't see your subscription?",
     "paymentHistory": "Payment History",
     "paymentReport": "Report",
     "paymentSubscription": "Subscription",
