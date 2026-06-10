@@ -18,6 +18,13 @@ import {
 } from '@/lib/consultPromptBuilders';
 import { buildConsultCaregiverContext } from '@/lib/coParentServer';
 import { applyConsultPrescriptionGuardrails } from '@/lib/consultPrescriptionGuardrails';
+import { consumeLlmQuota, LLM_QUOTA_EXCEEDED_CODE } from '@/lib/llm-quota';
+import {
+    CHILD_NAME_PSEUDONYM,
+    maskChildNameDeep,
+    maskChildNameText,
+    unmaskChildNameDeep,
+} from '@/lib/childPseudonym';
 
 type PrescriptionResponse = {
     interpretation: string;
@@ -165,6 +172,14 @@ export async function POST(request: Request) {
             );
         }
 
+        const quota = await consumeLlmQuota({ userId: session.user.id, kind: 'CONSULT_PRESCRIPTION' });
+        if (!quota.allowed) {
+            return NextResponse.json(
+                { error: 'AI 상담 한도를 초과했습니다. 내일 다시 시도해주세요.', code: LLM_QUOTA_EXCEEDED_CODE },
+                { status: 429 }
+            );
+        }
+
         const caregiverContext = await buildConsultCaregiverContext({
             actorUserId: session.user.id,
             childId: ownedChild?.id ?? childId ?? null,
@@ -173,17 +188,20 @@ export async function POST(request: Request) {
                 .filter((u): u is string => Boolean(u)),
         });
 
+        // 아이 실명은 외부 LLM에 보내지 않는다 — 가명으로 보내고 응답에서 복원한다.
+        // questions/answers/관찰/세션 맥락의 자유 텍스트에 들어간 이름도 함께 가린다.
+        const realChildName = effectiveChildName?.trim() || null;
         const { systemPrompt, isFollowUp } = buildConsultPrescriptionPrompt({
-            problem,
-            questions,
-            answers,
-            childName: effectiveChildName,
+            problem: maskChildNameText(problem, realChildName),
+            questions: maskChildNameDeep(questions, realChildName),
+            answers: maskChildNameDeep(answers, realChildName),
+            childName: realChildName ? CHILD_NAME_PSEUDONYM : effectiveChildName,
             childBirthDate: effectiveChildBirthDate,
             childGender: effectiveChildGender,
             childProfile: effectiveChildProfile,
             parentProfile: effectiveParentProfile,
-            recentObservations,
-            sessionContext,
+            recentObservations: maskChildNameDeep(recentObservations, realChildName),
+            sessionContext: maskChildNameDeep(sessionContext, realChildName),
             caregiverContext,
         });
 
@@ -203,10 +221,11 @@ export async function POST(request: Request) {
         if (!isPrescriptionResponse(parsed)) {
             throw new Error('INVALID_PRESCRIPTION_RESPONSE');
         }
+        const prescription = unmaskChildNameDeep(parsed, realChildName);
 
         // 하위 호환: actionItem 필드 유지
-        if (parsed.actionItems && parsed.actionItems.length > 0 && !parsed.actionItem) {
-            parsed.actionItem = parsed.actionItems[0].description;
+        if (prescription.actionItems && prescription.actionItems.length > 0 && !prescription.actionItem) {
+            prescription.actionItem = prescription.actionItems[0].description;
         }
 
         await recordSubscriptionUsageEvent({
@@ -216,11 +235,11 @@ export async function POST(request: Request) {
             metadata: {
                 isFollowUp,
                 model,
-                actionItemCount: Array.isArray(parsed.actionItems) ? parsed.actionItems.length : 0,
+                actionItemCount: Array.isArray(prescription.actionItems) ? prescription.actionItems.length : 0,
             },
         });
 
-        return NextResponse.json(parsed);
+        return NextResponse.json(prescription);
     } catch (error) {
         if (isInvalidJsonBodyError(error)) {
             return invalidJsonResponse();

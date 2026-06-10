@@ -16,6 +16,13 @@ import {
   type InitialConsultSessionContext,
 } from '@/lib/consultPromptBuilders';
 import { buildConsultCaregiverContext } from '@/lib/coParentServer';
+import { consumeLlmQuota, LLM_QUOTA_EXCEEDED_CODE } from '@/lib/llm-quota';
+import {
+  CHILD_NAME_PSEUDONYM,
+  maskChildNameDeep,
+  maskChildNameText,
+  unmaskChildNameDeep,
+} from '@/lib/childPseudonym';
 import type { Database } from '@/types/supabase';
 
 type ObservationRow = Database['public']['Tables']['observations']['Row'];
@@ -153,20 +160,30 @@ export async function POST(request: Request) {
       );
     }
 
+    const quota = await consumeLlmQuota({ userId: session.user.id, kind: 'CONSULT_QUESTIONS' });
+    if (!quota.allowed) {
+      return NextResponse.json(
+        { error: 'AI 상담 한도를 초과했습니다. 내일 다시 시도해주세요.', code: LLM_QUOTA_EXCEEDED_CODE },
+        { status: 429 }
+      );
+    }
+
     const caregiverContext = await buildConsultCaregiverContext({
       actorUserId: session.user.id,
       childId: ownedChild?.id ?? childId ?? null,
     });
 
+    // 아이 실명은 외부 LLM에 보내지 않는다 — 가명으로 보내고 응답에서 복원한다.
+    const realChildName = effectiveChildName?.trim() || null;
     const { systemPrompt, userMessage } = buildInitialConsultQuestionsPrompt({
-      problem,
-      childName: effectiveChildName,
+      problem: maskChildNameText(problem, realChildName),
+      childName: realChildName ? CHILD_NAME_PSEUDONYM : effectiveChildName,
       childBirthDate: effectiveChildBirthDate,
       childGender: effectiveChildGender,
       childProfile: effectiveChildProfile,
       parentProfile: effectiveParentProfile,
-      recentObservations,
-      sessionContext,
+      recentObservations: maskChildNameDeep(recentObservations, realChildName),
+      sessionContext: maskChildNameDeep(sessionContext, realChildName),
       caregiverContext,
     });
 
@@ -187,6 +204,7 @@ export async function POST(request: Request) {
     if (!isInitialQuestionsResponse(parsed)) {
       throw new Error('INVALID_INITIAL_QUESTIONS_RESPONSE');
     }
+    const restored = unmaskChildNameDeep(parsed, realChildName);
     await recordSubscriptionUsageEvent({
       userId: session.user.id,
       feature: 'AI_CONSULTATION',
@@ -197,7 +215,7 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json(parsed);
+    return NextResponse.json(restored);
   } catch (error) {
     if (isInvalidJsonBodyError(error)) {
       return invalidJsonResponse();

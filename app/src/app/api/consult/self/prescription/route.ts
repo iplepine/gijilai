@@ -16,6 +16,13 @@ import {
   isSelfParentPrescription,
   normalizeSelfParentPrescription,
 } from '@/lib/selfParentPrescription';
+import { consumeLlmQuota, LLM_QUOTA_EXCEEDED_CODE } from '@/lib/llm-quota';
+import {
+  CHILD_NAME_PSEUDONYM,
+  maskChildNameDeep,
+  maskChildNameText,
+  unmaskChildNameDeep,
+} from '@/lib/childPseudonym';
 
 type RequestBody = {
   reflection?: unknown;
@@ -108,11 +115,25 @@ export async function POST(request: Request) {
       };
     }
 
+    const quota = await consumeLlmQuota({ userId: session.user.id, kind: 'SELF_PARENT_PRESCRIPTION' });
+    if (!quota.allowed) {
+      return NextResponse.json(
+        { error: 'AI 상담 한도를 초과했습니다. 내일 다시 시도해주세요.', code: LLM_QUOTA_EXCEEDED_CODE },
+        { status: 429 }
+      );
+    }
+
+    // 아이 실명은 외부 LLM에 보내지 않는다 — 가명으로 보내고 응답에서 복원한다.
+    const realChildName = caregiverContext?.childName?.trim() || null;
+    const promptCaregiverContext = caregiverContext && realChildName
+      ? { ...caregiverContext, childName: CHILD_NAME_PSEUDONYM }
+      : caregiverContext;
+
     const { systemPrompt } = buildSelfParentPrescriptionPrompt({
-      reflection,
-      questions,
-      answers,
-      caregiverContext,
+      reflection: maskChildNameText(reflection, realChildName),
+      questions: maskChildNameDeep(questions, realChildName),
+      answers: maskChildNameDeep(answers, realChildName),
+      caregiverContext: promptCaregiverContext,
     });
     const model = await getConsultModel(session.user.id);
 
@@ -128,7 +149,7 @@ export async function POST(request: Request) {
     if (!isSelfParentPrescription(parsed)) {
       throw new Error('INVALID_SELF_PRESCRIPTION_RESPONSE');
     }
-    const prescription = normalizeSelfParentPrescription(parsed);
+    const prescription = unmaskChildNameDeep(normalizeSelfParentPrescription(parsed), realChildName);
 
     // 4) 상담 기록 저장 — SELF_PARENT 세션 + consultation (Phase 1: 후속 상담 X, 기록만)
     let savedSessionId: string | null = null;

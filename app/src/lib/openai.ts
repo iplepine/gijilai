@@ -4,6 +4,7 @@ import {
     CHILD_REPORT_PROMPT,
     HARMONY_REPORT_PROMPT,
 } from '@/lib/prompts';
+import { CHILD_NAME_PSEUDONYM, unmaskChildNameDeep, unmaskChildNameText } from '@/lib/childPseudonym';
 import { createPerfTracker } from '@/lib/perf';
 import { CHILD_QUESTIONS, PARENT_QUESTIONS, PARENTING_STYLE_QUESTIONS } from '@/data/questions';
 import { Question } from '@/types/survey';
@@ -16,6 +17,9 @@ if (!apiKey) {
 
 export const openai = new OpenAI({
     apiKey: apiKey || 'missing-openai-api-key',
+    // 스트림 리포트 생성이 가장 길다 — 행이 걸린 요청이 워커와 비용을 무한정 잡지 않게 상한을 둔다.
+    timeout: 120_000,
+    maxRetries: 1,
 });
 
 export type ReportType = 'PARENT' | 'CHILD' | 'HARMONY';
@@ -118,8 +122,9 @@ export const generateReport = async (
         const months = calculateAgeMonths(childInfo.birthDate);
         const age = Math.floor(months / 12);
         
+        // 아이 실명은 외부 LLM에 보내지 않는다 — 가명으로 보내고 응답에서 복원한다.
         payload.childInfo = {
-            name: childInfo.name,
+            name: CHILD_NAME_PSEUDONYM,
             gender: childInfo.gender === 'male' ? '남아' : (childInfo.gender === 'female' ? '여아' : childInfo.gender),
             age: `${age}세 (${months}개월)`
         };
@@ -201,10 +206,10 @@ export const generateReport = async (
         }
 
         perf.mark('response_parsed');
-        return parsed;
+        return unmaskChildNameDeep(parsed, childInfo?.name);
     } catch (e) {
         perf.fail(e, { stage: 'json_parse' });
         console.error("JSON Parsing failed for AI report", e);
-        return content; // Fallback to raw string if parsing fails
+        return unmaskChildNameText(content, childInfo?.name); // Fallback to raw string if parsing fails
     }
 };

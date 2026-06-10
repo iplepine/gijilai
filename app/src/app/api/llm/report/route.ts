@@ -6,6 +6,8 @@ import { CHILD_REPORT_STREAM_PROMPT, PARENT_REPORT_STREAM_PROMPT } from '@/lib/p
 import { createClient } from '@/lib/supabaseServer';
 import { normalizeTemperamentDimensions, type ChildAiReport, type ParentAiReport } from '@/lib/report';
 import { CHILD_PROFILE_LIMIT_REACHED_CODE, getServerChildProfileAccess } from '@/lib/access';
+import { consumeLlmQuota, LLM_QUOTA_EXCEEDED_CODE } from '@/lib/llm-quota';
+import { CHILD_NAME_PSEUDONYM, unmaskChildNameDeep } from '@/lib/childPseudonym';
 import type { Json } from '@/types/supabase';
 
 const REPORT_MODEL = 'gpt-4o-mini';
@@ -234,8 +236,9 @@ function buildChildReportStreamPayload(params: {
 
     if (params.childType) payload.childType = params.childType;
     if (params.childInfo) {
+        // 아이 실명은 외부 LLM에 보내지 않는다 — 가명으로 보내고 모듈 파싱 후 복원한다.
         payload.childInfo = {
-            name: params.childInfo.name,
+            name: CHILD_NAME_PSEUDONYM,
             gender: params.childInfo.gender === 'male' ? '남아' : (params.childInfo.gender === 'female' ? '여아' : params.childInfo.gender),
             age: calculateChildAgeLabel(params.childInfo.birthDate),
         };
@@ -266,6 +269,7 @@ function getKnownReportErrorCode(error: unknown) {
     if (error instanceof Error) {
         if (error.message === CHILD_PROFILE_LIMIT_REACHED_CODE) return CHILD_PROFILE_LIMIT_REACHED_CODE;
         if (error.message === 'CHILD_NOT_FOUND') return 'CHILD_NOT_FOUND';
+        if (error.message === LLM_QUOTA_EXCEEDED_CODE) return LLM_QUOTA_EXCEEDED_CODE;
     }
 
     if (typeof error === 'object' && error !== null) {
@@ -531,6 +535,11 @@ function streamChildReportResponse(params: {
                     }
                 }
 
+                const quota = await consumeLlmQuota({ userId: params.userId, kind: 'REPORT' });
+                if (!quota.allowed) {
+                    throw new Error(LLM_QUOTA_EXCEEDED_CODE);
+                }
+
                 const { childId, childInfo } = await resolveChildForReport({
                     supabase: params.supabase,
                     userId: params.userId,
@@ -598,9 +607,14 @@ function streamChildReportResponse(params: {
                         throw new Error('INVALID_CHILD_REPORT_STREAM_MODULE');
                     }
 
-                    applyChildReportStreamModule(report, parsed);
-                    perf.mark(`module_${parsed.module}`);
-                    send('module', parsed as unknown as Record<string, unknown>);
+                    // 가명(○○이)으로 생성된 모듈을 실제 이름으로 복원한 뒤 적용/전송한다.
+                    const restored = childInfoForReport
+                        ? unmaskChildNameDeep(parsed, childInfoForReport.name)
+                        : parsed;
+
+                    applyChildReportStreamModule(report, restored);
+                    perf.mark(`module_${restored.module}`);
+                    send('module', restored as unknown as Record<string, unknown>);
                 };
 
                 for await (const chunk of completionStream) {
@@ -764,6 +778,11 @@ function streamParentReportResponse(params: {
                         });
                         return;
                     }
+                }
+
+                const quota = await consumeLlmQuota({ userId: params.userId, kind: 'REPORT' });
+                if (!quota.allowed) {
+                    throw new Error(LLM_QUOTA_EXCEEDED_CODE);
                 }
 
                 const { childId, childInfo } = await resolveChildForReport({
@@ -1057,7 +1076,16 @@ export async function POST(request: Request) {
             }
         }
 
-        // 2. Child 프로필 조회/생성
+        // 2. LLM 호출 쿼터 확인 (캐시 미스일 때만 여기 도달)
+        const quota = await consumeLlmQuota({ userId, kind: 'REPORT' });
+        if (!quota.allowed) {
+            return NextResponse.json(
+                { error: 'AI 리포트 생성 한도를 초과했습니다. 내일 다시 시도해주세요.', code: LLM_QUOTA_EXCEEDED_CODE },
+                { status: 429 }
+            );
+        }
+
+        // 3. Child 프로필 조회/생성
         let childId: string | null = null;
         let childInfo: { name: string, gender: string, birthDate: string } | null = null;
 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { invalidJsonResponse, isInvalidJsonBodyError, isNonEmptyString, parseJsonBody } from '@/lib/api';
 import { getServerFeatureAccess } from '@/lib/access';
+import { consumeLlmQuota, LLM_QUOTA_EXCEEDED_CODE } from '@/lib/llm-quota';
 import { openai } from '@/lib/openai';
 import { recordSubscriptionUsageEvent } from '@/lib/subscription-usage';
 import { createClient } from '@/lib/supabaseServer';
@@ -248,6 +249,16 @@ export async function POST(request: Request) {
 
     const shouldUseStaticFeedback = log.child_reaction_type === 'not_tried'
       || log.practice_attempt_type === 'barely_tried';
+
+    if (!shouldUseStaticFeedback) {
+      const quota = await consumeLlmQuota({ userId: session.user.id, kind: 'PRACTICE_FEEDBACK' });
+      if (!quota.allowed) {
+        return NextResponse.json(
+          { error: 'AI 피드백 생성 한도를 초과했습니다. 내일 다시 시도해주세요.', code: LLM_QUOTA_EXCEEDED_CODE },
+          { status: 429 }
+        );
+      }
+    }
     const depth = shouldUseStaticFeedback
       ? 'quick'
       : chooseFeedbackDepth(log, recentNegativeCount, hasDeepFeedbackToday);

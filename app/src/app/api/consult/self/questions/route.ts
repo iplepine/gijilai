@@ -13,6 +13,8 @@ import { recordSubscriptionUsageEvent } from '@/lib/subscription-usage';
 import { validateConsultProblemInput } from '@/lib/consultInputValidation';
 import { buildSelfParentQuestionsPrompt, type SelfParentCaregiverContext } from '@/lib/selfParentPromptBuilders';
 import { checkSelfReflectionSafety } from '@/lib/selfReflectionGuardrail';
+import { consumeLlmQuota, LLM_QUOTA_EXCEEDED_CODE } from '@/lib/llm-quota';
+import { CHILD_NAME_PSEUDONYM, maskChildNameText, unmaskChildNameDeep } from '@/lib/childPseudonym';
 
 type RequestBody = {
   reflection?: unknown;
@@ -109,7 +111,24 @@ export async function POST(request: Request) {
       };
     }
 
-    const { systemPrompt, userMessage } = buildSelfParentQuestionsPrompt({ reflection, caregiverContext });
+    const quota = await consumeLlmQuota({ userId: session.user.id, kind: 'SELF_PARENT_QUESTIONS' });
+    if (!quota.allowed) {
+      return NextResponse.json(
+        { error: 'AI 상담 한도를 초과했습니다. 내일 다시 시도해주세요.', code: LLM_QUOTA_EXCEEDED_CODE },
+        { status: 429 }
+      );
+    }
+
+    // 아이 실명은 외부 LLM에 보내지 않는다 — 가명으로 보내고 응답에서 복원한다.
+    const realChildName = caregiverContext?.childName?.trim() || null;
+    const promptCaregiverContext = caregiverContext && realChildName
+      ? { ...caregiverContext, childName: CHILD_NAME_PSEUDONYM }
+      : caregiverContext;
+
+    const { systemPrompt, userMessage } = buildSelfParentQuestionsPrompt({
+      reflection: maskChildNameText(reflection, realChildName),
+      caregiverContext: promptCaregiverContext,
+    });
     const model = await getConsultModel(session.user.id);
 
     const response = await openai.chat.completions.create({
@@ -135,7 +154,7 @@ export async function POST(request: Request) {
       metadata: { model },
     }).catch((err) => console.warn('[self/questions] usage log failed:', err));
 
-    return NextResponse.json({ safetyTriggered: false, ...parsed });
+    return NextResponse.json({ safetyTriggered: false, ...unmaskChildNameDeep(parsed, realChildName) });
   } catch (error) {
     if (isInvalidJsonBodyError(error)) return invalidJsonResponse();
     console.error('[self/questions] error:', error);
