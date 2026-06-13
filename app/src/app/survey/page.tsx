@@ -13,6 +13,8 @@ import { trackEvent } from '@/lib/analytics';
 import { db } from '@/lib/db';
 import { CHILD_QUESTIONS, PARENT_QUESTIONS, PARENTING_STYLE_QUESTIONS } from '@/data/questions';
 import { useLocale } from '@/i18n/LocaleProvider';
+import { ASSESSMENT_PHASED_ENABLED } from '@/lib/assessmentConfig';
+import { PhasedChildSurvey } from '@/components/survey/PhasedChildSurvey';
 
 type SurveyModule = 'child' | 'parent' | 'parenting';
 type RestartScope = 'child' | 'parent' | null;
@@ -405,6 +407,11 @@ function SurveyContent() {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [answeredCount]);
+
+  // 차수화 플로우(플래그 on + 아동 모듈)로 분기. 기본 off라 라이브 검사는 그대로.
+  if (ASSESSMENT_PHASED_ENABLED && currentModule === 'child') {
+    return <PhasedChildSurvey />;
+  }
 
   // 1. 계산 중(로딩) 화면
   if (isCalculating) {
