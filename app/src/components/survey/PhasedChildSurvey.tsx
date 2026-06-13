@@ -3,6 +3,7 @@
 // 차수화(점진적 심화형) 아동 검사 화면 — DRAFT.
 // ASSESSMENT_PHASED_ENABLED 플래그 뒤에서만 렌더된다(기본 off).
 // 로직은 buildAssessmentFlow(검증됨)에 위임하고, 이 컴포넌트는 표시만 담당.
+// 차수를 마치면 "심화 검사 받기" 체크포인트를 보여준다 — 재검사가 아니라 "더 정밀한 측정".
 // ⚠️ 카피·디자인은 1차 초안이며, 인증 플로우 실측 테스트가 필요하다.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -13,6 +14,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { supabase } from '@/lib/supabase';
 import { getFeatureAccess } from '@/lib/access';
+import { FREE_PHASE_MAX } from '@/lib/assessmentConfig';
 import { db } from '@/lib/db';
 import { CHILD_ASSESSMENT_BANK } from '@/data/childAssessmentBank';
 import { buildAssessmentFlow } from '@/lib/assessmentFlow';
@@ -21,12 +23,50 @@ import { AssessmentTrendCard } from './AssessmentTrendCard';
 
 const ACCENT = '#E5A150';
 
+type ChildResult = ReturnType<typeof TemperamentClassifier.analyzeChild>;
+type Confidence = ReturnType<typeof buildAssessmentFlow>['confidence'];
+
+function ResultSummary({
+  result,
+  confidence,
+  eyebrow,
+}: {
+  result: ChildResult;
+  confidence: Confidence;
+  eyebrow: string;
+}) {
+  return (
+    <>
+      <p className="text-[12px] font-bold tracking-wide" style={{ color: ACCENT }}>{eyebrow}</p>
+      <h1 className="mt-2 text-[24px] font-black text-text-main">
+        {result.emoji} {result.label}
+      </h1>
+      <p className="mt-2 text-[14px] text-text-sub leading-relaxed">{result.desc}</p>
+
+      <div className="mt-5 rounded-[20px] bg-white p-4 shadow-sm">
+        <div className="flex items-center justify-between">
+          <span className="text-[13px] font-bold text-text-main">측정 정확도</span>
+          <span className="text-[13px] font-black" style={{ color: ACCENT }}>
+            {confidence.level} · {confidence.pct}%
+          </span>
+        </div>
+        {confidence.boundaryDims.length > 0 && (
+          <p className="mt-2 text-[12px] text-text-sub leading-relaxed">
+            {confidence.boundaryDims.join(', ')} 차원이 경계에 있어, 추가 문항으로도 단정이 어려울 수 있어요.
+          </p>
+        )}
+      </div>
+    </>
+  );
+}
+
 export function PhasedChildSurvey() {
   const router = useRouter();
   const { user } = useAuth();
   const { intake, cbqResponses, setCbqResponse, selectedChildId } = useAppStore();
   const [hasFullAccess, setHasFullAccess] = useState(false);
-  const savedTerminalRef = useRef(false);
+  const [enteredPhase, setEnteredPhase] = useState(0); // 사용자가 "심화 받기"로 진입한 차수
+  const savedPhaseRef = useRef(-1);
 
   // 클라이언트 구독/접근 상태 — access.ts 의 hasActiveSubscription 와 동일한 쿼리. 실패 시 fail-closed.
   useEffect(() => {
@@ -66,54 +106,43 @@ export function PhasedChildSurvey() {
     [intake.birthDate, cbqResponses, hasFullAccess],
   );
 
-  const currentIndex = useMemo(() => {
-    const i = flow.visibleItems.findIndex((q) => cbqResponses[String(q.id)] === undefined);
-    return i === -1 ? flow.visibleItems.length : i;
-  }, [flow.visibleItems, cbqResponses]);
+  const { numPhases, completedPhase } = flow;
+  const targetPhase = Math.min(completedPhase + 1, numPhases);
+  const phaseFullyDone = completedPhase >= numPhases;
+  const gatedNext = !hasFullAccess && targetPhase > FREE_PHASE_MAX;
 
-  const atTerminal = currentIndex >= flow.visibleItems.length;
-
-  // 터미널 도달 시 완료 상태 저장(전부 끝 → COMPLETED, 무료 1차 마감 → IN_PROGRESS).
+  // 차수 완료 시점마다 정확한 상태로 저장(전부 끝 → COMPLETED, 그 외 → IN_PROGRESS).
   useEffect(() => {
-    if (!atTerminal || !user || savedTerminalRef.current) return;
-    savedTerminalRef.current = true;
-    const status = flow.nextAction === 'ALL_DONE' ? 'COMPLETED' : 'IN_PROGRESS';
+    if (!user || completedPhase < 1 || savedPhaseRef.current === completedPhase) return;
+    savedPhaseRef.current = completedPhase;
+    const status = completedPhase >= numPhases ? 'COMPLETED' : 'IN_PROGRESS';
     db.saveSurveyResponses(user.id, 'CHILD', cbqResponses, status, selectedChildId).catch(() => {});
-  }, [atTerminal, user, flow.nextAction, cbqResponses, selectedChildId]);
+  }, [user, completedPhase, numPhases, cbqResponses, selectedChildId]);
 
   const result = useMemo(() => TemperamentClassifier.analyzeChild(flow.scores), [flow.scores]);
 
-  // ── 터미널: 결과 + (잠금 시) 다음 차수 업셀 ───────────────────────────────
-  if (atTerminal) {
-    const locked = flow.nextAction === 'LOCKED';
-    const { confidence } = flow;
+  const view: 'TERMINAL' | 'CHECKPOINT' | 'QUESTION' = phaseFullyDone
+    ? 'TERMINAL'
+    : completedPhase >= 1 && enteredPhase < targetPhase
+      ? 'CHECKPOINT'
+      : 'QUESTION';
+
+  const proceedToDeeper = () => {
+    if (gatedNext) {
+      router.push('/settings/subscription');
+      return;
+    }
+    setEnteredPhase(targetPhase);
+  };
+
+  // ── 모든 차수 완료 ────────────────────────────────────────────────────────
+  if (view === 'TERMINAL') {
     return (
       <div className="min-h-screen flex flex-col items-center font-body" style={{ backgroundColor: '#FFF8F0' }}>
         <div className="w-full max-w-md flex flex-col min-h-screen">
           <Navbar title="우리 아이 기질" showBack onBackClick={() => router.push('/')} />
           <main className="flex-1 px-6 py-8">
-            <p className="text-[12px] font-bold tracking-wide" style={{ color: ACCENT }}>
-              {flow.completedPhase}차 검사 완료
-            </p>
-            <h1 className="mt-2 text-[24px] font-black text-text-main">
-              {result.emoji} {result.label}
-            </h1>
-            <p className="mt-2 text-[14px] text-text-sub leading-relaxed">{result.desc}</p>
-
-            <div className="mt-5 rounded-[20px] bg-white p-4 shadow-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-[13px] font-bold text-text-main">측정 신뢰도</span>
-                <span className="text-[13px] font-black" style={{ color: ACCENT }}>
-                  {confidence.level} · {confidence.pct}%
-                </span>
-              </div>
-              {confidence.boundaryDims.length > 0 && (
-                <p className="mt-2 text-[12px] text-text-sub leading-relaxed">
-                  {confidence.boundaryDims.join(', ')} 차원이 경계에 있어, 추가 문항으로도 단정이 어려울 수 있어요.
-                </p>
-              )}
-            </div>
-
+            <ResultSummary result={result} confidence={flow.confidence} eyebrow="정밀 검사까지 완료" />
             <Button
               size="lg"
               fullWidth
@@ -122,25 +151,46 @@ export function PhasedChildSurvey() {
             >
               결과 리포트 보기
             </Button>
+            <AssessmentTrendCard childId={selectedChildId} />
+          </main>
+        </div>
+      </div>
+    );
+  }
 
-            {locked && (
-              <div className="mt-4 rounded-[20px] border border-beige-main/40 bg-white p-5">
-                <p className="text-[14px] font-bold text-text-main">
-                  {flow.lockedPhase}차 검사로 더 정확하게
-                </p>
-                <p className="mt-1 text-[13px] text-text-sub leading-relaxed">
-                  문항을 더 풀면 소분류까지 정밀하게 분석하고, 신뢰도가 올라가요. 구독하면 바로 이어서 할 수 있어요.
-                </p>
-                <Button
-                  variant="secondary"
-                  fullWidth
-                  onClick={() => router.push('/settings/subscription')}
-                  className="mt-3 rounded-2xl h-12 text-[14px] font-bold"
-                >
-                  구독하고 {flow.lockedPhase}차 검사 하기
-                </Button>
-              </div>
-            )}
+  // ── 차수 완료 체크포인트: "더 정확하게 — 심화 검사 받기" ───────────────────
+  if (view === 'CHECKPOINT') {
+    return (
+      <div className="min-h-screen flex flex-col items-center font-body" style={{ backgroundColor: '#FFF8F0' }}>
+        <div className="w-full max-w-md flex flex-col min-h-screen">
+          <Navbar title="우리 아이 기질" showBack onBackClick={() => router.push('/')} />
+          <main className="flex-1 px-6 py-8">
+            <ResultSummary result={result} confidence={flow.confidence} eyebrow={`${completedPhase}차 검사 완료`} />
+
+            <div className="mt-6 rounded-[20px] border border-secondary/30 bg-secondary/[0.06] p-5">
+              <p className="text-[15px] font-bold text-text-main">
+                {targetPhase}차 검사로 더 정확하게
+              </p>
+              <p className="mt-1.5 text-[13px] text-text-sub leading-relaxed">
+                같은 걸 다시 묻는 게 아니에요. 아직 보지 못한 모습을 더 들여다보는 단계라, 문항을 풀수록 측정이 정밀해지고 우리 아이를 더 정확히 볼 수 있어요.
+                {gatedNext && ' 구독하면 바로 이어서 할 수 있어요.'}
+              </p>
+              <Button
+                size="lg"
+                fullWidth
+                onClick={proceedToDeeper}
+                className="mt-4 rounded-2xl h-14 text-[15px] font-bold"
+              >
+                {gatedNext ? `구독하고 심화 검사 받기 (${targetPhase}차)` : `심화 검사 받기 (${targetPhase}차)`}
+              </Button>
+            </div>
+
+            <button
+              onClick={() => router.replace('/report?child_only=true')}
+              className="mt-4 w-full text-center text-[13px] font-semibold text-text-sub underline underline-offset-4"
+            >
+              지금 결과 리포트 보기
+            </button>
 
             <AssessmentTrendCard childId={selectedChildId} />
           </main>
@@ -150,7 +200,9 @@ export function PhasedChildSurvey() {
   }
 
   // ── 문항 화면 ────────────────────────────────────────────────────────────
-  const q = flow.visibleItems[currentIndex];
+  const currentIndex = flow.visibleItems.findIndex((q) => cbqResponses[String(q.id)] === undefined);
+  const q = currentIndex >= 0 ? flow.visibleItems[currentIndex] : null;
+  if (!q) return null;
   const currentAnswer = cbqResponses[String(q.id)];
   const phasePct = flow.totalInCurrentPhase
     ? Math.round((flow.answeredInCurrentPhase / flow.totalInCurrentPhase) * 100)
