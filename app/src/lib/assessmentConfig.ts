@@ -4,6 +4,12 @@
 // 주의: SE_CONSTANT / CONFIDENCE_BAND_THRESHOLDS / TYPE_THRESHOLDS 는
 // 출시 전 한국인 데이터로 캘리브레이션이 필요하다(스펙 §5.4 MUST).
 
+/**
+ * 차수화 플로우 활성 플래그. 기본 off — 켜질 때만 라이브 아동 검사가 차수 UI를 쓴다.
+ * (off 동안 기존 20문항 검사 그대로 동작 → 라이브 무손상.)
+ */
+export const ASSESSMENT_PHASED_ENABLED = false;
+
 /** 아동 검사 차수 수 */
 export const ASSESSMENT_PHASES_CHILD = 3;
 
