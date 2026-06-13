@@ -249,6 +249,20 @@ export const db = {
     return latest;
   },
 
+  // 한 아이의 완료된 검사 cycle들을 시간순(오름차순)으로 반환 — 성장 트렌드용. 스펙 §5.7
+  getChildAssessmentCycles: async (userId: string, childId: string) => {
+    const { data, error } = await supabase
+      .from("surveys")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("child_id", childId)
+      .eq("type", "CHILD")
+      .eq("status", "COMPLETED")
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    return (data ?? []) as SurveyData[];
+  },
+
   // --- Reports ---
   saveReport: async (report: Partial<ReportData>) => {
     const { data, error } = await supabase
