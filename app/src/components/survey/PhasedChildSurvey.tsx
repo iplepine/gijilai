@@ -17,6 +17,7 @@ import { db } from '@/lib/db';
 import { CHILD_ASSESSMENT_BANK } from '@/data/childAssessmentBank';
 import { buildAssessmentFlow } from '@/lib/assessmentFlow';
 import { TemperamentClassifier } from '@/lib/TemperamentClassifier';
+import { AssessmentTrendCard } from './AssessmentTrendCard';
 
 const ACCENT = '#E5A150';
 
@@ -140,6 +141,8 @@ export function PhasedChildSurvey() {
                 </Button>
               </div>
             )}
+
+            <AssessmentTrendCard childId={selectedChildId} />
           </main>
         </div>
       </div>
