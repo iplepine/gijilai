@@ -10,6 +10,7 @@ import {
   isCoParentInvitesEnabled,
   type CaregiverLabel,
 } from '@/lib/coParent';
+import { iGa } from '@/lib/koreanUtils';
 import type { TemperamentScoreSet } from '@/lib/parentParentHarmony';
 
 void CAREGIVER_LABELS;
@@ -145,7 +146,7 @@ export function CoParentInsightCard({ childId }: Props) {
         <div className="rounded-xl bg-background-light dark:bg-background-dark p-4 text-[12px] text-text-sub leading-relaxed">
           {caregivers
             .filter((c) => !c.parentProfile)
-            .map((c) => `${c.isCurrentUser ? '내가' : `${formatCaregiverLabel(c.label)}이`} 아직 양육자 기질 검사를 마치지 않았어요.`)
+            .map((c) => `${c.isCurrentUser ? '내가' : iGa(formatCaregiverLabel(c.label))} 아직 양육자 기질 검사를 마치지 않았어요.`)
             .join(' ')}
           {' '}양쪽이 모두 검사를 마쳐야 두 분의 케미를 분석할 수 있어요.
         </div>
@@ -190,7 +191,7 @@ function CaregiverMiniCard({ caregiver }: { caregiver: Caregiver }) {
   const profile = caregiver.parentProfile;
 
   return (
-    <div className="rounded-xl bg-background-light dark:bg-background-dark p-3 space-y-2">
+    <div className="rounded-xl bg-background-light dark:bg-background-dark p-3 flex flex-col gap-2">
       <div className="flex items-center gap-1.5">
         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary">
           {labelText}
@@ -223,8 +224,9 @@ function CaregiverMiniCard({ caregiver }: { caregiver: Caregiver }) {
           </p>
         </>
       ) : (
-        <div className="text-[11px] text-text-sub/80 py-3 text-center leading-snug">
-          양육자 기질 검사 미완료
+        <div className="flex-1 flex flex-col items-center justify-center gap-1.5 py-4 text-center min-h-[112px]">
+          <Icon name="hourglass_empty" size="md" className="text-text-sub/40" />
+          <p className="text-[11px] text-text-sub/80 leading-snug">양육자 기질 검사 미완료</p>
         </div>
       )}
     </div>
