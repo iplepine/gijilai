@@ -167,30 +167,32 @@ export function PhasedChildSurvey() {
           <main className="flex-1 px-6 py-8">
             <ResultSummary result={result} confidence={flow.confidence} eyebrow={`${completedPhase}차 검사 완료`} />
 
-            <div className="mt-6 rounded-[20px] border border-secondary/30 bg-secondary/[0.06] p-5">
-              <p className="text-[15px] font-bold text-text-main">
-                {targetPhase}차 검사로 더 정확하게
-              </p>
+            {/* 이 차수는 완결 — 리포트 보기가 기본 행동(여기서 끝내도 만족) */}
+            <Button
+              size="lg"
+              fullWidth
+              onClick={() => router.replace('/report?child_only=true')}
+              className="mt-6 rounded-2xl h-14 text-[16px] font-bold"
+            >
+              결과 리포트 보기
+            </Button>
+
+            {/* 심화는 강요하지 않는 보조 초대 — 나중에 이어가도 정확도는 쌓인다 */}
+            <div className="mt-5 rounded-[20px] border border-secondary/25 bg-secondary/[0.05] p-5">
+              <p className="text-[14px] font-bold text-text-main">더 정확하게 보고 싶다면</p>
               <p className="mt-1.5 text-[13px] text-text-sub leading-relaxed">
-                같은 걸 다시 묻는 게 아니에요. 아직 보지 못한 모습을 더 들여다보는 단계라, 문항을 풀수록 측정이 정밀해지고 우리 아이를 더 정확히 볼 수 있어요.
-                {gatedNext && ' 구독하면 바로 이어서 할 수 있어요.'}
+                {targetPhase}차 검사는 같은 걸 다시 묻는 게 아니라, 아직 보지 못한 모습을 더 들여다보는 단계예요. 지금 바로 안 하셔도 괜찮아요 — 나중에 다시 와도 정확도는 이어서 쌓여요.
+                {gatedNext && ' (구독하면 바로 이어서 받을 수 있어요.)'}
               </p>
               <Button
-                size="lg"
+                variant="secondary"
                 fullWidth
                 onClick={proceedToDeeper}
-                className="mt-4 rounded-2xl h-14 text-[15px] font-bold"
+                className="mt-4 rounded-2xl h-12 text-[14px] font-bold"
               >
-                {gatedNext ? `구독하고 심화 검사 받기 (${targetPhase}차)` : `심화 검사 받기 (${targetPhase}차)`}
+                {gatedNext ? `구독하고 ${targetPhase}차 이어가기` : `${targetPhase}차 검사 이어가기`}
               </Button>
             </div>
-
-            <button
-              onClick={() => router.replace('/report?child_only=true')}
-              className="mt-4 w-full text-center text-[13px] font-semibold text-text-sub underline underline-offset-4"
-            >
-              지금 결과 리포트 보기
-            </button>
 
             <AssessmentTrendCard childId={selectedChildId} />
           </main>
