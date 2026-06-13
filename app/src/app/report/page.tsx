@@ -26,6 +26,7 @@ import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { TabLoadingIndicator } from '@/components/ui/TabLoadingIndicator';
 import { CoParentInsightCard } from '@/components/coParent/CoParentInsightCard';
 import { TemperamentLoadingState } from '@/components/ui/TemperamentLoadingState';
+import { PhasedAssessmentReportCard } from '@/components/survey/PhasedAssessmentReportCard';
 import { trackEvent } from '@/lib/analytics';
 import { db, type ChildProfile, type ReportData, type SurveyData } from '@/lib/db';
 import { createPerfTracker } from '@/lib/perf';
@@ -2387,6 +2388,8 @@ function ReportContent() {
                           </section>
                         </ReportSectionReveal>
                       )}
+
+                      <PhasedAssessmentReportCard />
                     </div>
                   ) : (
                     <ReportGeneratingState
