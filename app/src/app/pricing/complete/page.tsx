@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
 import { useLocale } from '@/i18n/LocaleProvider';
 import { getApiErrorMessage, readJsonResponse } from '@/lib/api';
-import { trackEvent } from '@/lib/analytics';
+import { trackEvent, trackPurchase } from '@/lib/analytics';
 
 type CompleteStatus = 'loading' | 'success' | 'error';
 type SubscriptionCheckResponse = {
@@ -147,6 +147,15 @@ function PricingCompleteContent() {
           report_tab: reportTab,
           report_kind: reportKind,
         });
+        // GA4 표준 매출 이벤트 (KR 카드 결제 = KRW). IAP 경로는 서버 영수증으로 별도 집계.
+        if (finalAmount) {
+          trackPurchase({
+            value: finalAmount,
+            currency: 'KRW',
+            source: entrySource,
+            pay_method: payMethod,
+          });
+        }
         setStatus('success');
         setTimeout(() => router.replace('/settings/subscription'), 1200);
       } catch (error: unknown) {

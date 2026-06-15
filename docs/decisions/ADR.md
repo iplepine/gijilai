@@ -4,6 +4,20 @@
 
 ---
 
+## 2026-06-16 | GA4 funnel 계측 보정 및 분석 기준 정립 (platform·auth_state 공통 주입, login_success 전환만 집계, purchase 매출)
+
+- **결정**: GA4(gtag) 이벤트 계측을 funnel 분석이 가능하게 보정하고, 향후 분석 기준을 고정한다.
+  1. **공통 컨텍스트 자동 주입** — `analytics.ts`에 `setAnalyticsContext()` + ambient 병합을 추가해 모든 이벤트에 `platform`(web/ios/android, `getRuntimeAppInfo`)·`auth_state`(guest/authed)를 자동으로 붙인다. `FirebaseAnalytics`가 마운트 시 platform을, 인증 변화 시 auth_state를 주입한다. call site 변경 없이 전 이벤트가 세그먼트 가능해진다.
+  2. **`login_success`는 "세션 없음→있음" 전환에서만 집계** — `AuthProvider.onAuthStateChange`가 `SIGNED_IN`마다 무조건 쏘던 것을, 첫 콜백(수화)·토큰갱신·재포커스를 제외하고 진짜 로그인 전환에서만 쏘게 한다.
+  3. **GA4 표준 `purchase` 매출 이벤트** — 커스텀 `payment_completed`와 별개로 `trackPurchase()`로 `value`+`currency`를 가진 `purchase`를 쏜다. 웹 인라인 결제(`pricing/page`, currency-aware, USD는 센트→달러)·KR 카드 리다이렉트(`pricing/complete/page`, KRW)에 적용. IAP 매출은 서버 영수증(`priceAmountMicros`)으로 별도 집계(후속 과제).
+  - **분석 기준(이후 고정)**: 활성화 funnel = `first_visit → intake_completed → survey_module_completed → report_viewed → consult_started → consult_completed → trial_conversion_cta_clicked → purchase`. **모든 funnel은 `platform`·`auth_state`로 세그먼트**한다(웹=게스트 시작 허용, 앱=진입 강제 로그인이라 funnel 형태가 다름). 로그인은 진입 게이트가 아니라 리포트(가치) 게이트(`/api/llm/report` 401), 상담은 구독 게이트(402)로 읽는다. 매출은 `purchase.value` 기준(커스텀 이벤트 금액은 GA 매출 아님).
+
+- **이유**: GA top-이벤트(146 users → login_success 20 → report_viewed 11, consult는 top10 밖) 해석 중, 단일 funnel로는 웹(게스트 시작 가능)과 앱(강제 로그인)을 섞어 "로그인=진입 누수"로 오독함을 발견. 근본 원인은 이벤트에 platform/auth_state가 없어 세그먼트가 불가능했던 것. `login_success`는 `onAuthStateChange`에서 새로고침마다 재발화해 185회/20명(1인 9.25회)으로 부풀려져 신뢰 불가였다. 매출은 GA가 커스텀 이벤트의 금액 파라미터를 집계하지 않아 "총수익 $0" 깜깜이였다 — GA 매출은 표준 `purchase.value`에서만 나온다.
+
+- **데이터 불연속(주의)**: 이 배포 전후로 **`login_success` 정의가 바뀐다** — 이전치는 세션 재발화 포함 과대집계이므로 전/후 직접 비교 금지(추세 단절선). `platform`·`auth_state` 차원과 `purchase` 매출은 **이 배포 이후 데이터부터** 채워진다(이전 구간은 빈 값).
+
+- **대안**: (a) call site마다 platform/auth_state 수동 추가 — 누락·드리프트 위험으로 기각, 공통 컨텍스트 1곳 주입 채택. (b) `login_success`를 로그인 핸들러에 직접 — OAuth는 리다이렉트 후 콜백 페이지에서 SIGNED_IN이 발생해 핸들러가 못 잡음, 리스너+전환감지가 유일하게 정확. (c) 매출을 `payment_completed`에 `value`만 추가 — GA가 커스텀 이벤트를 매출로 안 셈, 표준 `purchase` 필요. (d) 매출 전량 서버 Measurement Protocol — 정확하나 범위가 커, 클라 `purchase`로 웹/카드를 즉시 복구하고 IAP만 서버 후속으로 둔다.
+
 ## 2026-06-13 | 기질검사를 차수화(점진적 심화형)하고 1차 무료·2·3차 구독으로 제공한다
 
 - **결정**: 아동 기질검사 문항뱅크를 ~45문항으로 확장하고 **3차수(15·15·15)** 로 분할한다. 매 차수는 그 자체로 완결된 결과(타입+리포트)를 주고, 차수를 거칠수록 **실측 신뢰도**(`typeConfidence = ∏ normalCdf(|점수−임계값|/SE)`, `SE=SE_CONSTANT/√n`)가 올라간다. **1차는 항상 무료·완결**, **2·3차는 `getFeatureAccess.hasFullAccess`(구독 또는 7일 체험)** 로 게이팅한다. 완료 후 **90일 경과 또는 연령밴드 변경** 시 재평가(새 cycle = 새 `surveys` 행, facet 내 문항 로테이션)하고 점수 시계열 트렌드를 2차 이상 프리미엄으로 노출한다. 데이터 모델은 기존 `surveys`·`TemperamentScorer`(가변 문항 수 정규화)·`TemperamentClassifier`(8타입, 임계값 불변)·`access.ts` 게이팅을 재사용하고, `surveys`에 `phase`·`assessment_version`, `reports`에 `phase` 컬럼만 추가(마이그레이션 025). 스펙: `docs/spec/phased-temperament-assessment.md`.
