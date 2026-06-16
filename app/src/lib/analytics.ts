@@ -26,20 +26,49 @@ export function isAnalyticsEnabled() {
   return !!measurementId;
 }
 
-export function trackEvent(eventName: string, params: AnalyticsParams = {}) {
-  if (!isAnalyticsReady()) return;
+/**
+ * 모든 이벤트에 자동으로 병합되는 공통 컨텍스트 (platform, auth_state 등).
+ * FirebaseAnalytics가 setAnalyticsContext로 주입한다. 이게 있어야 GA 탐색에서
+ * 웹/앱·게스트/회원으로 funnel을 세그먼트할 수 있다 (call site마다 안 붙여도 됨).
+ */
+let ambientContext: AnalyticsParams = {};
 
-  window.gtag!('event', eventName, normalizeParams(params));
+export function setAnalyticsContext(context: AnalyticsParams) {
+  ambientContext = { ...ambientContext, ...context };
+}
+
+function emit(eventName: string, params: AnalyticsParams = {}) {
+  if (!isAnalyticsReady()) return;
+  // 명시 파라미터가 공통 컨텍스트를 덮어쓴다.
+  window.gtag!('event', eventName, normalizeParams({ ...ambientContext, ...params }));
+}
+
+export function trackEvent(eventName: string, params: AnalyticsParams = {}) {
+  emit(eventName, params);
 }
 
 export function trackPageView(path: string) {
-  if (!isAnalyticsReady()) return;
-
-  window.gtag!('event', 'page_view', {
+  emit('page_view', {
     page_path: path,
-    page_location: window.location.href,
-    page_title: document.title,
+    page_location: typeof window !== 'undefined' ? window.location.href : undefined,
+    page_title: typeof document !== 'undefined' ? document.title : undefined,
   });
+}
+
+/**
+ * GA4 표준 매출 이벤트. 커스텀 'payment_completed' funnel 이벤트와 별개로,
+ * GA "총수익"을 채우려면 value/currency를 가진 표준 'purchase' 이벤트가 필요하다
+ * — 커스텀 이벤트의 금액 파라미터(final_amount)는 GA 매출로 집계되지 않는다.
+ * value는 주 통화 단위(예: USD는 달러, 센트 아님)로 넘긴다.
+ */
+export function trackPurchase(params: {
+  value: number;
+  currency?: string;
+  transactionId?: string;
+  [key: string]: AnalyticsValue;
+}) {
+  const { value, currency = 'KRW', transactionId, ...rest } = params;
+  emit('purchase', { ...rest, value, currency, transaction_id: transactionId });
 }
 
 export function setAnalyticsUser(userId: string | null) {

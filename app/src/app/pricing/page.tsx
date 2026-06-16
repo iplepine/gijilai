@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useLocale } from '@/i18n/LocaleProvider';
-import { trackEvent } from '@/lib/analytics';
+import { trackEvent, trackPurchase } from '@/lib/analytics';
 import { getApiErrorMessage, readJsonResponse } from '@/lib/api';
 import { buildInstallPageUrl, isAppWebView } from '@/lib/install';
 
@@ -446,6 +446,13 @@ function PricingContent() {
         final_amount: currentPrice,
         report_tab: reportTab ?? undefined,
         report_kind: reportKind ?? undefined,
+      });
+      // GA4 표준 매출 이벤트 — 총수익 집계용 (USD 단가는 센트라 달러로 환산).
+      trackPurchase({
+        value: currency === 'USD' ? currentPrice / 100 : currentPrice,
+        currency,
+        source: entrySource,
+        pay_method: payMethod,
       });
 
       router.refresh();
