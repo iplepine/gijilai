@@ -5,10 +5,12 @@
 // 출시 전 한국인 데이터로 캘리브레이션이 필요하다(스펙 §5.4 MUST).
 
 /**
- * 차수화 플로우 활성 플래그. 기본 off — 켜질 때만 라이브 아동 검사가 차수 UI를 쓴다.
- * (off 동안 기존 20문항 검사 그대로 동작 → 라이브 무손상.)
+ * 차수화 플로우 활성 플래그. on이면 라이브 아동 검사가 차수 UI를 쓴다.
+ * 선행조건(MUST): 마이그레이션 025(surveys.phase/assessment_version, reports.phase)가
+ * prod에 적용돼 있어야 한다 — 없으면 차수 검사 저장이 실패한다.
+ * (off로 되돌리면 기존 20문항 검사로 즉시 복귀.)
  */
-export const ASSESSMENT_PHASED_ENABLED = false;
+export const ASSESSMENT_PHASED_ENABLED = true;
 
 /** 아동 검사 차수 수 */
 export const ASSESSMENT_PHASES_CHILD = 3;
