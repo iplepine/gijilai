@@ -12,6 +12,14 @@
  */
 export const ASSESSMENT_PHASED_ENABLED = true;
 
+/**
+ * 신뢰도 라벨(등급·%) 노출 게이트. false면 캘리브레이션 전이므로 화면에서 숨긴다.
+ * SE_CONSTANT·밴드가 실측 데이터로 캘리브레이션되기 전엔 신뢰도 숫자를 사용자에게
+ * 노출하지 않는다(스펙 §5.4 "가짜로 올라가는 신뢰도 금지"). 캘리브레이션 완료 후 true.
+ * 절차: docs/operations/assessment-confidence-calibration.md
+ */
+export const CONFIDENCE_CALIBRATED = false;
+
 /** 아동 검사 차수 수 */
 export const ASSESSMENT_PHASES_CHILD = 3;
 

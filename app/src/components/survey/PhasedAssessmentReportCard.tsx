@@ -11,7 +11,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { supabase } from '@/lib/supabase';
 import { getFeatureAccess } from '@/lib/access';
 import { db } from '@/lib/db';
-import { ASSESSMENT_PHASED_ENABLED } from '@/lib/assessmentConfig';
+import { ASSESSMENT_PHASED_ENABLED, CONFIDENCE_CALIBRATED } from '@/lib/assessmentConfig';
 import { CHILD_ASSESSMENT_BANK } from '@/data/childAssessmentBank';
 import { buildAssessmentFlow } from '@/lib/assessmentFlow';
 
@@ -74,12 +74,15 @@ export function PhasedAssessmentReportCard() {
 
   return (
     <div className="mt-6 rounded-[20px] border border-secondary/30 bg-secondary/[0.06] p-5">
-      <div className="flex items-center justify-between">
-        <span className="text-[13px] font-bold text-text-main">측정 정확도</span>
-        <span className="text-[13px] font-black text-secondary">
-          {confidence.level} · {confidence.pct}%
-        </span>
-      </div>
+      {/* 정확도 표기는 캘리브레이션 후에만 노출(§5.4 가짜 신뢰도 금지). */}
+      {CONFIDENCE_CALIBRATED && (
+        <div className="flex items-center justify-between">
+          <span className="text-[13px] font-bold text-text-main">측정 정확도</span>
+          <span className="text-[13px] font-black text-secondary">
+            {confidence.level} · {confidence.pct}%
+          </span>
+        </div>
+      )}
       <p className="mt-3 text-[15px] font-bold text-text-main">심화 검사로 더 정확하게 보기</p>
       <p className="mt-1.5 text-[13px] text-text-sub leading-relaxed">
         같은 걸 다시 묻는 게 아니에요. 아직 보지 못한 모습을 더 들여다보는 단계라, 문항을 풀수록 측정이 정밀해지고 우리 아이를 더 정확히 볼 수 있어요.

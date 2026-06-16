@@ -14,7 +14,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { supabase } from '@/lib/supabase';
 import { getFeatureAccess } from '@/lib/access';
-import { FREE_PHASE_MAX } from '@/lib/assessmentConfig';
+import { CONFIDENCE_CALIBRATED, FREE_PHASE_MAX } from '@/lib/assessmentConfig';
 import { db } from '@/lib/db';
 import { CHILD_ASSESSMENT_BANK } from '@/data/childAssessmentBank';
 import { buildAssessmentFlow } from '@/lib/assessmentFlow';
@@ -43,19 +43,22 @@ function ResultSummary({
       </h1>
       <p className="mt-2 text-[14px] text-text-sub leading-relaxed">{result.desc}</p>
 
-      <div className="mt-5 rounded-[20px] bg-white p-4 shadow-sm">
-        <div className="flex items-center justify-between">
-          <span className="text-[13px] font-bold text-text-main">측정 정확도</span>
-          <span className="text-[13px] font-black" style={{ color: ACCENT }}>
-            {confidence.level} · {confidence.pct}%
-          </span>
+      {/* 신뢰도 정확도 박스는 캘리브레이션 후에만 노출(§5.4 가짜 신뢰도 금지). */}
+      {CONFIDENCE_CALIBRATED && (
+        <div className="mt-5 rounded-[20px] bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-[13px] font-bold text-text-main">측정 정확도</span>
+            <span className="text-[13px] font-black" style={{ color: ACCENT }}>
+              {confidence.level} · {confidence.pct}%
+            </span>
+          </div>
+          {confidence.boundaryDims.length > 0 && (
+            <p className="mt-2 text-[12px] text-text-sub leading-relaxed">
+              {confidence.boundaryDims.join(', ')} 차원이 경계에 있어, 추가 문항으로도 단정이 어려울 수 있어요.
+            </p>
+          )}
         </div>
-        {confidence.boundaryDims.length > 0 && (
-          <p className="mt-2 text-[12px] text-text-sub leading-relaxed">
-            {confidence.boundaryDims.join(', ')} 차원이 경계에 있어, 추가 문항으로도 단정이 어려울 수 있어요.
-          </p>
-        )}
-      </div>
+      )}
     </>
   );
 }

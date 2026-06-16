@@ -4,6 +4,12 @@
 
 ---
 
+## 2026-06-16 | 차수화 신뢰도는 실측 캘리브레이션 전까지 노출하지 않고, 캘리브레이션 인프라를 먼저 갖춘다
+
+- **결정**: 차수화 기질검사의 신뢰도 라벨(등급·%)은 `SE_CONSTANT`·밴드가 **실측 데이터로 캘리브레이션되기 전까지 노출하지 않는다** — `CONFIDENCE_CALIBRATED = false` 게이트(`PhasedChildSurvey`·`PhasedAssessmentReportCard` 두 렌더 지점에서 정확도 표기 숨김). 캘리브레이션 인프라를 갖춘다: 순수 통계 모듈 `assessmentCalibration.ts`(Cronbach α → SEM → `SE_CONSTANT` 역산, `assessmentCalibration.test.ts`로 손계산 검증) + 러너 `scripts/calibrate-assessment-confidence.cjs`(`npm run calibrate:assessment`, read-only) + 절차 문서 `docs/operations/assessment-confidence-calibration.md`. 근본 순서를 **문항 검수(DRAFT 101–125) → 데이터 수집 → 캘리브레이션 → 단조성·경계 검증 → 출시(`CONFIDENCE_CALIBRATED=true`)**로 고정한다. `ASSESSMENT_PHASED_ENABLED`는 수집을 위해 on이되 신뢰도는 게이트로 숨긴 채 둔다.
+- **이유**: `SE_CONSTANT=18.0`은 임의값이라, 이 값으로 산출한 "신뢰도 X%/정밀+"를 노출하면 스펙 §5.4가 금지한 "가짜로 올라가는 신뢰도"(다크패턴)가 된다. ADR(2026-06-13)이 "2차 하면 더 정확"을 다크패턴 아닌 근거로 든 핵심이 바로 이 실측성이다. 캘리브레이션은 코드 수정이 아니라 실제 한국인 응답으로 하는 통계 작업이므로, 값을 임의로 바꾸지 않고 데이터가 쌓일 때까지 노출만 게이트하고 산출 도구를 미리 둔다. 문항 101–125가 DRAFT라 검수 전 수집분은 무효가 되므로 검수를 수집보다 앞에 둔다.
+- **대안**: (a) 프록시 캘리브레이션(기존 20문항 데이터로 산출 후 즉시 출시) — 빠르나 새 45문항 뱅크와 문항이 달라 근사라서 "근본 답안" 요구에 따라 보류(데이터 차면 정식 산출). (b) 임의 보정값으로 출시 — §5.4 정면 위배, 기각. (c) 신뢰도 기능 제거 — 차수화의 핵심 가치(점진적 정밀화)를 버리는 것이라 기각. (d) 상수를 런타임 원격 구성 — 빌드타임 상수로 충분, 원격 구성 인프라는 과함.
+
 ## 2026-06-16 | GA4 funnel 계측 보정 및 분석 기준 정립 (platform·auth_state 공통 주입, login_success 전환만 집계, purchase 매출)
 
 - **결정**: GA4(gtag) 이벤트 계측을 funnel 분석이 가능하게 보정하고, 향후 분석 기준을 고정한다.
