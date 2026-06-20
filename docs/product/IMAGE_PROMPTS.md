@@ -1,3 +1,12 @@
+<!-- COMMIT_STATUS START -->
+> **커밋 상태**
+> - 기준 커밋: `42ed4d5e3c01012a9599c8ac423810d3beb99831` (`claude/enable-phased-assessment`)
+> - 최근 커밋: `42ed4d5e3c01` 차수화 신뢰도 캘리브레이션 인프라 + 미캘리 신뢰도 노출 게이트
+> - 커밋 일시: `2026-06-17T08:17:20+09:00`
+> - 워킹트리: `dirty (72 files)`
+> - 문서 갱신: `2026-06-20 22:33:14 +0900`
+<!-- COMMIT_STATUS END -->
+
 # 기질 유형 이미지 생성 프롬프트 (나노바나나용)
 
 공통 스타일: Soft 3D clay render, pastel color palette, rounded cute character design, warm studio lighting, minimal clean background, children's picture book illustration style, centered composition

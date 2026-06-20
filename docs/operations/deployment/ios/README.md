@@ -1,3 +1,12 @@
+<!-- COMMIT_STATUS START -->
+> **커밋 상태**
+> - 기준 커밋: `42ed4d5e3c01012a9599c8ac423810d3beb99831` (`claude/enable-phased-assessment`)
+> - 최근 커밋: `42ed4d5e3c01` 차수화 신뢰도 캘리브레이션 인프라 + 미캘리 신뢰도 노출 게이트
+> - 커밋 일시: `2026-06-17T08:17:20+09:00`
+> - 워킹트리: `dirty (72 files)`
+> - 문서 갱신: `2026-06-20 22:33:14 +0900`
+<!-- COMMIT_STATUS END -->
+
 # iOS 배포 설정 재사용
 
 기질아이 iOS TestFlight/App Store 업로드는 App Store Connect API Key를 사용한다. API Key는 Apple Developer 계정/조직 단위 키이므로, 같은 팀의 다른 프로젝트에서 쓰는 키를 재사용할 수 있다.
