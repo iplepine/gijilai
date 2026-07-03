@@ -43,7 +43,6 @@ import {
 } from "@/lib/practiceReminder";
 import { trackEvent } from "@/lib/analytics";
 import { getFeatureAccess } from "@/lib/access";
-import type { HomeSosSituationKey } from "@/lib/consultSituationPrefill";
 
 const DEFAULT_REMINDER_PREFERENCES: PracticeReminderPreferences = {
   pushEnabled: true,
@@ -69,33 +68,6 @@ type QuickPracticeMessage = {
   actionHref?: string;
   actionText?: string;
 };
-
-const HOME_SOS_SITUATIONS: Array<{
-  key: HomeSosSituationKey;
-  icon: string;
-  labelKey: string;
-}> = [
-  {
-    key: "morning_transition",
-    icon: "directions_walk",
-    labelKey: "home.sosMorning",
-  },
-  {
-    key: "meltdown",
-    icon: "sentiment_stressed",
-    labelKey: "home.sosMeltdown",
-  },
-  {
-    key: "sleep",
-    icon: "bedtime",
-    labelKey: "home.sosSleep",
-  },
-  {
-    key: "parent_regret",
-    icon: "favorite",
-    labelKey: "home.sosParentRegret",
-  },
-];
 
 function HomeModuleReveal({
   children,
@@ -124,7 +96,7 @@ export default function HomePage() {
   const [magicWordIndex, setMagicWordIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showChildDropdown, setShowChildDropdown] = useState(false);
-  const [sosInput, setSosInput] = useState("");
+  const [translateInput, setTranslateInput] = useState("");
   const [quickPracticeSavingId, setQuickPracticeSavingId] = useState<
     string | null
   >(null);
@@ -426,43 +398,21 @@ export default function HomePage() {
     router.push("/pricing?source=home&entry_cta=trial_ending");
   };
 
-  const openHomeSosConsult = useCallback(
-    (situationKey: HomeSosSituationKey) => {
-      trackEvent("home_sos_clicked", {
-        source: "home",
-        entry_cta: "today_sos",
-        situation_key: situationKey,
-        has_practice_priority: hasPracticePriority,
-        has_consult_priority: hasConsultPriority,
-      });
-      const params = new URLSearchParams({
-        source: "home_sos",
-        entry_cta: "today_sos",
-        situation: situationKey,
-      });
-      router.push(`/consult?${params.toString()}`);
-    },
-    [hasConsultPriority, hasPracticePriority, router],
-  );
-
-  const openHomeSosFreeText = useCallback(() => {
-    const trimmed = sosInput.trim();
-    if (!trimmed) return;
-    trackEvent("home_sos_clicked", {
+  const openHomeTranslate = useCallback(() => {
+    const trimmed = translateInput.trim();
+    trackEvent("home_translate_clicked", {
       source: "home",
-      entry_cta: "today_sos_text",
-      prefill_mode: "free_text",
-      prefill_length: trimmed.length,
-      has_practice_priority: hasPracticePriority,
-      has_consult_priority: hasConsultPriority,
+      entry_cta: "today_translate",
+      has_input: trimmed.length > 0,
+      input_length: trimmed.length,
     });
-    const params = new URLSearchParams({
-      source: "home_sos",
-      entry_cta: "today_sos_text",
-      prefill: trimmed.slice(0, 500),
-    });
-    router.push(`/consult?${params.toString()}`);
-  }, [hasConsultPriority, hasPracticePriority, router, sosInput]);
+    if (trimmed) {
+      const params = new URLSearchParams({ input: trimmed.slice(0, 500) });
+      router.push(`/translate?${params.toString()}`);
+    } else {
+      router.push("/translate");
+    }
+  }, [router, translateInput]);
 
   const handleQuickPracticeSave = useCallback(
     async (practice: PracticeItemData, done: boolean) => {
@@ -895,18 +845,18 @@ export default function HomePage() {
                       <div className="flex items-start gap-3">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary/10 text-secondary">
                           <span className="material-symbols-outlined text-[21px]">
-                            chat_bubble
+                            translate
                           </span>
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-[11px] font-black text-secondary">
-                            {t("home.sosEyebrow")}
+                            {t("home.translateEyebrow")}
                           </p>
                           <h2 className="mt-0.5 text-[15px] font-black leading-snug text-text-main dark:text-white break-keep">
-                            {t("home.sosTitle")}
+                            {t("home.translateTitle")}
                           </h2>
                           <p className="mt-1 text-[12px] leading-relaxed text-text-sub break-keep">
-                            {t("home.sosDescription", { name: childName })}
+                            {t("home.translateDescription", { name: childName })}
                           </p>
                         </div>
                       </div>
@@ -914,50 +864,29 @@ export default function HomePage() {
                         className="mt-4 flex items-center gap-2 rounded-2xl border border-secondary/15 bg-secondary/5 pl-3 pr-1 py-1 focus-within:border-secondary/40 dark:bg-white/5"
                         onSubmit={(e) => {
                           e.preventDefault();
-                          openHomeSosFreeText();
+                          openHomeTranslate();
                         }}
                       >
                         <input
                           type="text"
-                          value={sosInput}
-                          onChange={(e) => setSosInput(e.target.value)}
-                          placeholder={t("home.sosPlaceholder")}
+                          value={translateInput}
+                          onChange={(e) => setTranslateInput(e.target.value)}
+                          placeholder={t("home.translatePlaceholder")}
                           maxLength={500}
                           enterKeyHint="send"
-                          aria-label={t("home.sosTitle")}
+                          aria-label={t("home.translateTitle")}
                           className="flex-1 min-w-0 bg-transparent text-[13px] font-medium text-text-main placeholder:text-text-sub/70 outline-none dark:text-white"
                         />
                         <button
                           type="submit"
-                          disabled={!sosInput.trim()}
-                          aria-label={t("home.sosSendCta")}
-                          className="shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-white shadow-sm transition-opacity active:scale-95 disabled:opacity-30"
+                          aria-label={t("home.translateCta")}
+                          className="shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-white shadow-sm transition-opacity active:scale-95"
                         >
                           <span className="material-symbols-outlined text-[18px]">
-                            arrow_upward
+                            arrow_forward
                           </span>
                         </button>
                       </form>
-                      <p className="mt-3 text-[10px] font-bold tracking-wide text-text-sub/80 uppercase">
-                        {t("home.sosExampleEyebrow")}
-                      </p>
-                      <div className="mt-1.5 flex flex-wrap gap-1.5">
-                        {HOME_SOS_SITUATIONS.map((situation) => (
-                          <button
-                            key={situation.key}
-                            type="button"
-                            onClick={() => openHomeSosConsult(situation.key)}
-                            className="inline-flex items-center gap-1 rounded-full border border-secondary/15 bg-white px-3 py-1.5 text-[11px] font-bold text-text-sub transition-all active:scale-[0.97] hover:border-secondary/30 hover:text-text-main dark:bg-white/5 dark:text-gray-300"
-                          >
-                            <span className="material-symbols-outlined text-[14px] text-secondary">
-                              {situation.icon}
-                            </span>
-                            <span className="break-keep">
-                              {t(situation.labelKey)}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
                     </section>
                   </HomeModuleReveal>
                 )}

@@ -19,6 +19,17 @@
 - 기록 탭: 라벨 "기록", 아이콘 `folder_open` — 세션 기반 상담 기록 열람 페이지
 - 내 정보 탭: 라벨 "내 정보", 아이콘 `person`
 
+## 아이말 번역기 (상담 사전 훅)
+
+- 상담 진입 전의 가벼운 무료 단발 도구. 양육자가 상황 + 아이가 한 말/행동을 한 번에 적으면, 아이의 1인칭 속마음(`childVoice`) · 지금 진짜 원하는 것(`need`) · 그 순간 건넬 한마디(`parentReply`)를 즉시 돌려준다. 다단계 문진 없이 단발로 끝낸다.
+- 진입: 홈 상단 “아이말 번역기” 카드(구 “지금 상황 SOS” 카드 대체) 또는 `/translate` 직접. 홈 한 줄 입력은 `/translate?input=...`로 프리필된다.
+- 권한: **구독 게이트 없음**(상단 퍼널 무료 훅). 인증만 요구하고, 남용은 `llm_usage_events`의 일일 쿼터(`TRANSLATE`, 기본 30건/24h, `consumeLlmQuota`)로만 막는다. 결과는 저장하지 않는 단발성 응답이다.
+- 모델: `gpt-4o-mini` 고정(저비용·저지연, 상담 모델 티어와 분리). 입력 검증은 상담과 동일하게 `validateConsultProblemInput`(최소 20자, 무의미 입력 차단)을 서버에서도 적용한다.
+- 개인화: 선택된 아이(`childId`)가 있으면 서버에서 그 아이의 기질/이름/연령을 확정해 반영한다. 검사 데이터가 없으면 일반 눈높이로 통역한다. 아이 실명은 가명(`○○이`)으로 보내고 응답에서 복원한다(기존 LLM 프라이버시 정책 준수).
+- 표현 가드레일: 상담과 동일 — 영문 약어(NS/HA/RD/P/TCI) 금지, 단정형보다 가능성형, 결핍 프레이밍·부모 비난·성별 고정관념 금지, 진단 표현 금지.
+- 전환 경로: 결과 화면의 “이 고민으로 상담 이어가기”는 `/consult?source=translate&entry_cta=translate_result&prefill={원문}`으로 이동해 유료 상담 루프로 연결한다.
+- API: `POST /api/consult/translate` → `{ result: { childVoice, need, parentReply } }`. 한도 초과 `LLM_QUOTA_EXCEEDED`(429), 입력 검증 코드 `empty|too_short|gibberish`(400), 미인증 401.
+
 ## 상담 시스템
 
 ### 상담 흐름

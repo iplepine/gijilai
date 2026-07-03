@@ -13,6 +13,12 @@
 
 ---
 
+## 2026-07-03 | 아이말 번역기를 상담 진입 전 무료 단발 훅으로 신설하고 홈 “지금 상황 SOS” 카드를 대체한다
+
+- **결정**: 상황 + 아이가 한 말/행동을 한 번에 적으면 아이의 1인칭 속마음(`childVoice`)·지금 진짜 원하는 것(`need`)·그 순간 건넬 한마디(`parentReply`)를 즉시 돌려주는 **단발성 무료 도구** `/translate`를 신설한다. 홈의 “지금 상황 SOS” 카드(고정 상황 키 칩 + 자유 입력 → `/consult`)를 **아이말 번역기 진입 카드로 대체**한다(한 줄 입력 → `/translate?input=...`). 결과 화면의 “이 고민으로 상담 이어가기”가 `/consult?source=translate&prefill={원문}`으로 유료 상담 루프에 연결한다. 게이팅은 **구독 없이 인증만** 요구하고 남용은 일일 LLM 쿼터(`TRANSLATE`, 기본 30/24h)로만 막는다. 모델은 `gpt-4o-mini` 고정, 결과는 **저장하지 않는다(stateless)**. 아이 기질/이름/연령은 서버에서 `childId` 기준으로 확정하고 실명은 가명(`○○이`)으로 보내 복원한다(2026-06-10 프라이버시 정책 준수). 표현 가드레일·입력 검증(`validateConsultProblemInput`)은 상담과 공유한다. 구현: `app/src/lib/aiTranslatePrompt.ts`, `app/src/app/api/consult/translate/route.ts`, `app/src/app/translate/page.tsx`.
+- **이유**: 리포트·상담은 무겁고(문진 다단계) 상담은 구독 게이트라 상단 퍼널에서 제품 가치(“속마음 통역”)를 즉시 체감시키는 저마찰 훅이 약했다. 번역기는 상담 처방전의 `interpretation`(1인칭 통역)을 단발로 떼어내 30초 안에 맛보이고, 자연스러운 다음 행동으로 상담 전환을 만든다. 랜딩 카피(“아이의 신호를 올바르게 통역하는”)와도 정확히 같은 포지셔닝이다. 구 SOS 카드의 고정 상황 키 4종보다 자유 서술이 훨씬 넓은 상황을 커버하고, 무료·비저장·mini 고정으로 비용/프라이버시 리스크를 낮게 유지한다.
+- **대안**: (a) 상담에 통합(별도 훅 없음) — 진입 마찰(로그인·문진·구독)이 커 훅 가치를 잃어 기각. (b) 구독 게이트 적용 — 상단 퍼널 훅의 목적과 정면 충돌해 기각(전환은 “상담 이어가기”가 담당). (c) 결과 저장·세션화 — v1 단순화를 위해 미저장(필요 시 후속). (d) `gpt-4o` 사용 — 짧은 통역엔 mini로 충분하고 무료·고빈도 특성상 비용이 부담이라 기각. (e) 홈 SOS 카드 유지하고 번역기 별도 추가 — 홈 상단이 중복 진입으로 번잡해지고 사용자 요청이 “SOS 제거”라 대체를 선택.
+
 ## 2026-06-16 | 차수화 신뢰도는 실측 캘리브레이션 전까지 노출하지 않고, 캘리브레이션 인프라를 먼저 갖춘다
 
 - **결정**: 차수화 기질검사의 신뢰도 라벨(등급·%)은 `SE_CONSTANT`·밴드가 **실측 데이터로 캘리브레이션되기 전까지 노출하지 않는다** — `CONFIDENCE_CALIBRATED = false` 게이트(`PhasedChildSurvey`·`PhasedAssessmentReportCard` 두 렌더 지점에서 정확도 표기 숨김). 캘리브레이션 인프라를 갖춘다: 순수 통계 모듈 `assessmentCalibration.ts`(Cronbach α → SEM → `SE_CONSTANT` 역산, `assessmentCalibration.test.ts`로 손계산 검증) + 러너 `scripts/calibrate-assessment-confidence.cjs`(`npm run calibrate:assessment`, read-only) + 절차 문서 `docs/operations/assessment-confidence-calibration.md`. 근본 순서를 **문항 검수(DRAFT 101–125) → 데이터 수집 → 캘리브레이션 → 단조성·경계 검증 → 출시(`CONFIDENCE_CALIBRATED=true`)**로 고정한다. `ASSESSMENT_PHASED_ENABLED`는 수집을 위해 on이되 신뢰도는 게이트로 숨긴 채 둔다.
