@@ -13,6 +13,13 @@
 
 ---
 
+## 2026-07-04 | SEO 기술 기반 구축(robots·sitemap·manifest·JSON-LD·OG·favicon)과 색인 경계 확정
+
+- **결정**: 앱에 기술 SEO 기반을 추가한다. (1) `app/robots.ts` — 공개(랜딩·가격·설치·법적고지)만 Allow, 로그인 게이트 뒤 앱 화면(`/settings·/consult·/consultations·/report·/practices·/survey·/translate·/intake·/observations·/payment·/pricing/complete·/test`)과 `/api`는 Disallow, sitemap·host 명시. `/shared·/invite`는 카카오 OG 스크랩(링크 미리보기)을 살리려고 막지 않되 sitemap에서는 제외. (2) `app/sitemap.ts` — 공개 URL 9개(랜딩·가격·설치·로그인·법적고지 5). (3) `app/manifest.ts` — PWA 매니페스트(standalone, 기존 아이콘 재사용). (4) 루트 `metadata` 강화 — favicon·apple-touch-icon(기존 전무), OG/twitter 이미지, `robots`(index·follow, max-image-preview:large), title 템플릿 `%s | 기질아이`, appleWebApp. (5) `components/seo/StructuredData.tsx` — Organization·WebSite·WebApplication(월 12,000원 Offer) JSON-LD.
+- **이유**: robots·sitemap·manifest·favicon·구조화데이터가 전무해 크롤러 안내·리치 결과·소셜/카카오 공유 카드·모바일 설치 신호가 비어 있었다. 앱 화면은 로그인 게이트라 색인 가치가 없고 크롤 예산만 낭비하므로 차단하고, 공유 토큰 페이지는 SNS 미리보기가 목적이라 크롤은 열되 sitemap엔 빼서 프라이버시와 미리보기를 양립시킨다. 허위 신호 금지 원칙에 따라 실측 없는 `aggregateRating`·리뷰 수는 JSON-LD에 넣지 않는다.
+- **알려진 한계(후속 우선순위)**: (1) 랜딩(`/`)이 클라이언트 렌더라 초기 HTML에 본문/`<h1>`이 없다 — 메타태그는 서버 렌더되지만 JS를 완전히 실행하지 않는 **네이버(Yeti)·Bing엔 본문이 안 보인다**. 국내 유입 핵심인 네이버 대응을 위해 랜딩 서버 렌더링(또는 정적 마케팅 페이지 분리)이 다음 최우선 과제. (2) 공개 페이지(`/pricing·/install-app·/legal/*`) per-page title/description(현재 루트 상속). (3) 1200×630 브랜드 OG 배너(현재 256² 아이콘 재사용) — ImageResponse는 한글 폰트 임베드 필요. (4) hreflang은 ko/en이 동일 URL(쿠키 기반)이라 언어별 URL이 없어 미적용. (5) Google Search Console·네이버 서치어드바이저 인증 토큰.
+- **대안**: (a) `public/robots.txt`·`public/sitemap.xml` 정적 파일 — 동적 route handler가 URL 일원화·유지보수에 유리해 채택. (b) `/shared`도 Disallow — 카카오 미리보기가 깨질 수 있어 기각(sitemap 제외로 색인만 억제). (c) 랜딩 SSR까지 이번에 처리 — 로그인 사용자에 랜딩이 잠깐 보이는 UX 리스크가 있는 큰 변경이라 분리.
+
 ## 2026-07-03 | 아이말 번역기를 상담 진입 전 무료 단발 훅으로 신설하고 홈 “지금 상황 SOS” 카드를 대체한다
 
 - **결정**: 상황 + 아이가 한 말/행동을 한 번에 적으면 아이의 1인칭 속마음(`childVoice`)·지금 진짜 원하는 것(`need`)·그 순간 건넬 한마디(`parentReply`)를 즉시 돌려주는 **단발성 무료 도구** `/translate`를 신설한다. 홈의 “지금 상황 SOS” 카드(고정 상황 키 칩 + 자유 입력 → `/consult`)를 **아이말 번역기 진입 카드로 대체**한다(한 줄 입력 → `/translate?input=...`). 결과 화면의 “이 고민으로 상담 이어가기”가 `/consult?source=translate&prefill={원문}`으로 유료 상담 루프에 연결한다. 게이팅은 **구독 없이 인증만** 요구하고 남용은 일일 LLM 쿼터(`TRANSLATE`, 기본 30/24h)로만 막는다. 모델은 `gpt-4o-mini` 고정, 결과는 **저장하지 않는다(stateless)**. 아이 기질/이름/연령은 서버에서 `childId` 기준으로 확정하고 실명은 가명(`○○이`)으로 보내 복원한다(2026-06-10 프라이버시 정책 준수). 표현 가드레일·입력 검증(`validateConsultProblemInput`)은 상담과 공유한다. 구현: `app/src/lib/aiTranslatePrompt.ts`, `app/src/app/api/consult/translate/route.ts`, `app/src/app/translate/page.tsx`.

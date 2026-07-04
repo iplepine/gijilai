@@ -8,6 +8,7 @@ import { KeyboardViewportTracker } from "@/components/layout/KeyboardViewportTra
 import { ReferralHandler } from "@/components/layout/ReferralHandler";
 import { SurveyRestoreProvider } from "@/components/layout/SurveyRestoreProvider";
 import { LocaleProvider } from "@/i18n/LocaleProvider";
+import { StructuredData } from "@/components/seo/StructuredData";
 import "./globals.css";
 
 const displayFont = Jua({
@@ -27,10 +28,21 @@ const koreanFont = Noto_Sans_KR({
   weight: ["300", "400", "500", "700"],
 });
 
+const SEO_TITLE = "기질아이 | 아이 기질검사·떼쓰기 맞춤 육아상담";
+const OG_IMAGE = {
+  url: "/gijilai_icon_kakao.png",
+  width: 256,
+  height: 256,
+  alt: "기질아이",
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://gijilai.com"),
   applicationName: "기질아이",
-  title: "기질아이 | 아이 기질검사·떼쓰기 맞춤 육아상담",
+  title: {
+    default: SEO_TITLE,
+    template: "%s | 기질아이",
+  },
   description: "아이 떼쓰기, 예민함, 등원 거부, 분리불안이 고민될 때 3분 아이 기질검사로 행동의 이유를 보고 맞춤 대화법과 육아상담을 받아보세요.",
   keywords: [
     "기질아이",
@@ -48,18 +60,46 @@ export const metadata: Metadata = {
     "양육코칭",
     "감정조절",
   ],
+  authors: [{ name: "기질아이" }],
+  creator: "기질아이",
+  publisher: "기질아이",
+  category: "parenting",
+  formatDetection: { telephone: false, email: false, address: false },
+  icons: {
+    icon: [{ url: "/gijilai_icon_kakao.png", type: "image/png" }],
+    shortcut: ["/gijilai_icon_kakao.png"],
+    apple: [{ url: "/gijilai_icon_kakao.png" }],
+  },
+  appleWebApp: {
+    capable: true,
+    title: "기질아이",
+    statusBarStyle: "default",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
   openGraph: {
     type: "website",
     locale: "ko_KR",
     url: "https://gijilai.com",
     siteName: "기질아이",
-    title: "기질아이 | 아이 기질검사·떼쓰기 맞춤 육아상담",
+    title: SEO_TITLE,
     description: "3분 아이 기질검사로 떼쓰기와 예민함의 이유를 보고, 오늘 바로 쓸 맞춤 대화법을 받아보세요.",
+    images: [OG_IMAGE],
   },
   twitter: {
     card: "summary",
-    title: "기질아이 | 아이 기질검사·떼쓰기 맞춤 육아상담",
+    title: SEO_TITLE,
     description: "아이 떼쓰기와 예민함의 이유를 기질 리포트로 보고 맞춤 대화법을 받아보세요.",
+    images: [OG_IMAGE.url],
   },
 };
 
@@ -82,6 +122,7 @@ export default function RootLayout({
   return (
     <html lang="ko" suppressHydrationWarning>
       <head>
+        <StructuredData />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet" />
