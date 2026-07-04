@@ -258,6 +258,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   static const _practiceReminderTitleKey = 'practice_reminder_title';
   static const _practiceReminderBodyKey = 'practice_reminder_body';
   static const _practiceReminderPayloadKey = 'practice_reminder_payload';
+  static const _tutorialCompletedKey = 'gijilai_tutorial_completed_v1';
   static const _nativeCapabilities = NativeCapabilityRegistry();
 
   WebViewController? _controller;
@@ -295,6 +296,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   bool _nativeVoiceInputInProgress = false;
   bool _isInitializingWebView = false;
   bool _isCheckingRequiredUpdate = false;
+  bool _tutorialStateLoaded = false;
+  bool _showTutorial = false;
   Timer? _nativeAuthWatchdogTimer;
   AppLifecycleState _appLifecycleState = AppLifecycleState.resumed;
   bool _pendingAuthLoadingResetOnResume = false;
@@ -314,6 +317,53 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     unawaited(_initIAP());
     unawaited(_initLocalNotifications());
     unawaited(_initWebView());
+    unawaited(_restoreTutorialState());
+  }
+
+  Future<void> _restoreTutorialState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final completed = prefs.getBool(_tutorialCompletedKey) ?? false;
+      if (!mounted) return;
+      setState(() {
+        _tutorialStateLoaded = true;
+        _showTutorial = !completed;
+      });
+    } catch (e, stack) {
+      debugPrint('Tutorial state restore error: $e');
+      unawaited(
+        FirebaseCrashlytics.instance.recordError(
+          e,
+          stack,
+          reason: 'Tutorial state restore error',
+        ),
+      );
+      if (!mounted) return;
+      setState(() {
+        _tutorialStateLoaded = true;
+      });
+    }
+  }
+
+  Future<void> _completeTutorial() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_tutorialCompletedKey, true);
+    } catch (e, stack) {
+      debugPrint('Tutorial state save error: $e');
+      unawaited(
+        FirebaseCrashlytics.instance.recordError(
+          e,
+          stack,
+          reason: 'Tutorial state save error',
+        ),
+      );
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _showTutorial = false;
+    });
   }
 
   @override
@@ -3448,7 +3498,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     // 복원(restored) 동기화는 사용자가 결제 플로우 중이 아니므로,
     // 명시적 '구매 복원' 요청이 아닌 한 스낵바/네비게이션 없이 조용히 처리한다.
     final isRestoredSync =
-        purchase.status == PurchaseStatus.restored && !_iapUserRestoreInProgress;
+        purchase.status == PurchaseStatus.restored &&
+        !_iapUserRestoreInProgress;
     try {
       final controller = _controller;
       if (controller == null || !_hasRenderedFirstPage) {
@@ -3588,7 +3639,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         final statusCode = statusValue is int
             ? statusValue
             : int.tryParse('$statusValue') ?? 0;
-        final isTransientFailure = statusCode >= 500 || statusCode == 429 || statusCode == 0;
+        final isTransientFailure =
+            statusCode >= 500 || statusCode == 429 || statusCode == 0;
         if (isTransientFailure) {
           debugPrint(
             'IAP verification transient failure: status=$statusCode, '
@@ -3852,6 +3904,12 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
                 ),
               ),
             ),
+            if (_tutorialStateLoaded && _showTutorial && _hasRenderedFirstPage)
+              Positioned.fill(
+                child: _GijilaiTutorialOverlay(
+                  onDone: () => unawaited(_completeTutorial()),
+                ),
+              ),
           ],
         ),
       ),
@@ -4145,6 +4203,219 @@ class _AppSplashScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+class _GijilaiTutorialOverlay extends StatefulWidget {
+  const _GijilaiTutorialOverlay({required this.onDone});
+
+  final VoidCallback onDone;
+
+  @override
+  State<_GijilaiTutorialOverlay> createState() =>
+      _GijilaiTutorialOverlayState();
+}
+
+class _GijilaiTutorialOverlayState extends State<_GijilaiTutorialOverlay> {
+  static const _primary = Color(0xFF2F4F3E);
+  static const _accent = Color(0xFFE5A150);
+  static const _surface = Color(0xFFFFFCF5);
+  static const _background = Color(0xFFF9F8F6);
+  static const _textMain = Color(0xFF26382F);
+  static const _textSub = Color(0xFF68756F);
+
+  final PageController _pageController = PageController();
+  int _index = 0;
+
+  static const _pages = [
+    _GijilaiTutorialPage(
+      icon: Icons.psychology_alt_outlined,
+      title: '아이를 먼저 이해해요',
+      body: '몇 가지 질문으로 아이의 기질 흐름을 정리하고, 성격을 단정하지 않도록 따뜻한 언어로 풀어드려요.',
+    ),
+    _GijilaiTutorialPage(
+      icon: Icons.tips_and_updates_outlined,
+      title: '결과는 바로 실천으로 이어져요',
+      body: '분석에서 끝나지 않고 오늘 해볼 말, 피해야 할 반응, 일주일 실천 가이드를 함께 확인해요.',
+    ),
+    _GijilaiTutorialPage(
+      icon: Icons.favorite_border_rounded,
+      title: '부모의 부담도 줄여요',
+      body: '알림과 공유 기능을 활용해 중요한 순간을 놓치지 않고, 함께 돌보는 사람과 같은 방향을 맞출 수 있어요.',
+    ),
+  ];
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _goNext() {
+    if (_index == _pages.length - 1) {
+      widget.onDone();
+      return;
+    }
+    _pageController.nextPage(
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isLast = _index == _pages.length - 1;
+
+    return Material(
+      color: _background,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
+          child: Column(
+            children: [
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: widget.onDone,
+                  style: TextButton.styleFrom(
+                    foregroundColor: _textSub,
+                    textStyle: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                  child: const Text('건너뛰기'),
+                ),
+              ),
+              Expanded(
+                child: PageView.builder(
+                  controller: _pageController,
+                  onPageChanged: (value) => setState(() => _index = value),
+                  itemCount: _pages.length,
+                  itemBuilder: (context, pageIndex) {
+                    final page = _pages[pageIndex];
+                    return Column(
+                      children: [
+                        const Spacer(),
+                        Container(
+                          width: 132,
+                          height: 132,
+                          decoration: BoxDecoration(
+                            color: _surface,
+                            borderRadius: BorderRadius.circular(34),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _primary.withValues(alpha: 0.13),
+                                blurRadius: 34,
+                                offset: const Offset(0, 18),
+                              ),
+                            ],
+                          ),
+                          child: Icon(page.icon, color: _primary, size: 62),
+                        ),
+                        const SizedBox(height: 34),
+                        Text(
+                          page.title,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: _textMain,
+                            fontSize: 27,
+                            fontWeight: FontWeight.w900,
+                            height: 1.22,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 320),
+                          child: Text(
+                            page.body,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: _textSub,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              height: 1.58,
+                              letterSpacing: 0,
+                            ),
+                          ),
+                        ),
+                        const Spacer(),
+                      ],
+                    );
+                  },
+                ),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(_pages.length, (dotIndex) {
+                  final selected = dotIndex == _index;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOutCubic,
+                    width: selected ? 22 : 8,
+                    height: 8,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? _primary
+                          : _primary.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  );
+                }),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 54,
+                child: FilledButton(
+                  onPressed: _goNext,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                  child: Text(isLast ? '기질아이 시작하기' : '다음'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '진단은 아이를 평가하기보다 이해하기 위한 출발점이에요.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: _accent.withValues(alpha: 0.92),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  height: 1.35,
+                  letterSpacing: 0,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GijilaiTutorialPage {
+  const _GijilaiTutorialPage({
+    required this.icon,
+    required this.title,
+    required this.body,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
 }
 
 class _AppWebDialog extends StatelessWidget {
