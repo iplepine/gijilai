@@ -543,3 +543,42 @@ interface Prescription {
 - [ ] 나의 기록 탭 아이별 필터링 강화
 - [ ] PDF 생성 + 공유 기능
 - [ ] 추천 시스템 (쿠폰 발급)
+
+---
+
+## 🔔 공동양육자 알림 (Co-Parent Notifications)
+
+> 목적: 한 양육자가 아이 상담을 남기면 상대 양육자에게 알려, "한 명이 잊어도 상대가 끌어오는" 관계형 리텐션(공동양육자 정책 참조)을 강화한다.
+> 관련: `docs/product/policies/co-parent.md` §공동양육자 알림, ADR 2026-07-06, 마이그레이션 `026_co_parent_notifications.sql`
+
+### 불변 규칙 (Privacy Invariant)
+- **`SELF_PARENT`(양육자 자기 상담)는 절대 알림 대상이 아니다.** 트리거가 `type='CHILD'`만 처리한다.
+- 알림은 이미 상담을 공유하는 관계(수락된 공동양육자) 안에서만 발생한다 → 별도 동의 게이트 없이 기존 공유 범위와 일치.
+- 솔로 사용자(공동양육자 없음)에게는 알림이 생성되지 않는다.
+
+### Phase 1 — 인앱 알림 ✅ (구현 완료)
+- [x] `notifications` 테이블 + RLS(수신자 본인만 조회/읽음/삭제) + 발송은 SECURITY DEFINER 트리거만
+- [x] 트리거: 새 `CHILD` 상담 세션 INSERT 시 상대 양육자(들)에게 알림 1건 (소유자↔공동양육자 양방향)
+- [x] `GET /api/notifications` (목록 + 안 읽은 개수), `POST /api/notifications/read` (읽음 처리)
+- [x] `/notifications` 화면 (목록·읽음·세션으로 이동)
+- [x] 홈 상단바 알림 벨 + 안 읽은 뱃지 (co-parent 플래그 OFF면 숨김)
+- 트리거 지점 근거: `consult/page.tsx`는 처방 성공 후에만 세션 row를 만들므로, 세션 INSERT = "새 상담 완료"의 정확한 신호.
+- 알림 문구는 저장하지 않고 구조 참조(actor/child/session)만 저장 → 표시 시 호칭 모델로 조합(i18n·호칭 변경에 강건).
+
+### Phase 2 — 진짜 푸시 (FCM) — 📋 해야 할 작업 (미착수)
+> 인앱 알림은 앱을 열어야 보인다. 실제 푸시로 확장한다. 현재 서버→기기 푸시 인프라는 전무(웹 FCM/서비스워커 없음, Flutter는 로컬 알림만, `firebase_messaging` 미설치).
+
+- [ ] **Flutter: `firebase_messaging` 추가** — 이미 초기화된 Firebase Core에 메시징 패키지 도입(`gijilai_app/pubspec.yaml`)
+- [ ] **iOS APNs 세팅** — Apple Developer에서 APNs 인증키(.p8) 발급 → Firebase 콘솔 등록 (유일하게 번거로운 지점)
+- [ ] **기기 토큰 저장** — `device_tokens` 테이블(`user_id`, `token`, `platform`, `updated_at`) + 앱 로그인/토큰 갱신 시 upsert API(`POST /api/notifications/token`)
+- [ ] **웹뷰↔네이티브 토큰 브릿지** — 기존 `ReminderBridge` 패턴 재사용해 FCM 토큰을 웹으로 전달하거나, 앱에서 직접 Supabase에 저장
+- [ ] **발송 트리거 전환/보강** — DB 트리거가 만든 notifications row를 Supabase Edge Function(또는 서버 라우트)이 감지해 수신자 토큰으로 FCM 발송. (권장: `pg_net`/Edge Function `on insert`, 또는 앱 코드에서 세션 저장 직후 발송 호출)
+- [ ] **푸시 클릭 딥링크** — 알림 탭 시 `/consultations/{sessionId}`로 진입
+- [ ] **권한/설정 연동** — 기존 `settings/notifications`에 공동양육자 푸시 on/off 토글 추가
+- [ ] **조용한 시간(방해금지)·중복 억제** — 야간 발송 지연, 동일 세션 중복 발송 방지
+- [ ] (선택) **웹푸시/이메일/카카오 알림톡** — 앱 미설치 사용자 대비 fallback 채널
+
+### Phase 1.5 — 후보(옵션, 사용자 결정 대기)
+- [ ] 알림 on/off 토글(설정) — 지금은 공유 범위와 일치해 항상 켜짐. 부담되면 옵트아웃 제공
+- [ ] 알림 타입 확대 — 새 처방/실천 완료/리포트 생성 (현재 스키마 `type` enum·`data jsonb`로 확장 가능하게 설계됨)
+- [ ] 실시간 갱신 — 현재는 화면 진입 시 폴링. Supabase Realtime 구독으로 즉시 뱃지 갱신

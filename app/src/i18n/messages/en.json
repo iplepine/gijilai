@@ -58,6 +58,17 @@
     "records": "Records",
     "profile": "Profile"
   },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "No notifications yet",
+    "emptyHint": "When your co-parent leaves a consultation, we'll let you know here.",
+    "coParentConsultation": "{actor} left a consultation about {child}",
+    "coParentConsultationNoChild": "{actor} left a new consultation",
+    "justNow": "Just now",
+    "minutesAgo": "{n}m ago",
+    "hoursAgo": "{n}h ago",
+    "daysAgo": "{n}d ago"
+  },
   "meta": {
     "title": "Gijilai | Child Temperament Test and Parenting Guide",
     "description": "When tantrums, sensitivity, separation anxiety, or sibling conflict feel hard, start with a 3-minute child temperament report and practical parenting phrases.",

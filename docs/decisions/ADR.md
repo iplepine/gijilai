@@ -13,6 +13,15 @@
 
 ---
 
+## 2026-07-06 | 공동양육자 인앱 알림(Phase 1) — DB 트리거 기반, CHILD 전용
+
+- **결정**: 한 양육자가 아이 상담을 남기면 상대 양육자에게 인앱 알림을 남기는 기능을 추가한다(마이그레이션 `026`). (1) **발생 지점 = DB 트리거**: 앱 코드가 아니라 `consultation_sessions` AFTER INSERT 트리거(`notify_co_parents_on_consultation_session`, SECURITY DEFINER)로 알림을 만든다. 근거 — CHILD 상담 세션 row는 `consult/page.tsx`가 처방 성공 직후에만 생성하므로 세션 INSERT가 "새 상담 완료"의 가장 정확·견고한 신호이고, 클라이언트 저장 경로가 바뀌어도 누락이 없다. (2) **CHILD 전용**: 트리거가 `type='CHILD'`만 처리 → `SELF_PARENT`(양육자 사적 반성문)는 마이그레이션 020의 가시성 차단에 이어 알림에서도 구조적으로 배제. (3) **구조 참조만 저장**: `notifications` 행에는 텍스트 문구가 아니라 actor/child/session 참조만 저장하고, 표시 문구는 조회 시 호칭 모델(018)로 조합한다. (4) **발송은 트리거/서버만**: RLS는 수신자 본인 SELECT/UPDATE/DELETE만 허용하고 INSERT 정책을 두지 않아 클라이언트 위조 불가. 조회 API는 service-role로 조합하되 항상 인증 세션의 `user_id`로 스코프. (5) **UI**: `/notifications` 화면 + 홈 상단바 벨/뱃지, 벨은 `isCoParentInvitesEnabled()` 플래그를 따른다(현재 알림원이 공동양육자뿐이므로).
+- **이유**: 공동양육자는 이미 CHILD 상담을 서로 볼 수 있으므로(020) 알림은 새 동의가 아니라 기존 공유 범위 안의 도달성 개선이다. 별도 옵트인 게이트 없이 시작해 관계형 리텐션 가설(GJ-008)을 빠르게 검증한다. 트리거를 앱 코드 대신 DB에 둔 것은 저장 경로가 웹 클라이언트 직접 insert라 서버 훅이 없고, 트리거가 원자적이며 self-parent 배제를 한 곳에서 강제할 수 있기 때문. 문구를 저장하지 않은 것은 호칭 변경·i18n·알림 타입 확장에 강건하기 위함.
+- **대안**: (a) `prescription/route.ts`에서 서버 발송 — 세션 저장 전이라 `session_id`가 없고 저장 실패/중복 처방과 어긋날 수 있어 기각. (b) 알림 문구를 SQL 트리거에서 완성해 저장 — copy가 SQL에 박히고 i18n 불가라 기각. (c) 처음부터 FCM 푸시 — 서버→기기 인프라(APNs 키, 토큰 저장, `firebase_messaging`)가 전무해 리드타임이 큼. 인앱으로 먼저 검증하고 Phase 2로 분리(SPEC §공동양육자 알림).
+- **알려진 한계/후속(Phase 2)**: (1) 앱을 열어야 보임 → FCM 실제 푸시는 미착수(SPEC에 작업 목록). (2) 뱃지는 화면 진입 시 폴링(실시간 아님) → Supabase Realtime 후보. (3) 옵트아웃 토글 없음(항상 켜짐) → 부담 시 Phase 1.5. (4) 알림 타입은 `CO_PARENT_CONSULTATION` 1종(스키마는 enum·`data jsonb`로 확장 대비).
+
+---
+
 ## 2026-07-04 | SEO 기술 기반 구축(robots·sitemap·manifest·JSON-LD·OG·favicon)과 색인 경계 확정
 
 - **결정**: 앱에 기술 SEO 기반을 추가한다. (1) `app/robots.ts` — 공개(랜딩·가격·설치·법적고지)만 Allow, 로그인 게이트 뒤 앱 화면(`/settings·/consult·/consultations·/report·/practices·/survey·/translate·/intake·/observations·/payment·/pricing/complete·/test`)과 `/api`는 Disallow, sitemap·host 명시. `/shared·/invite`는 카카오 OG 스크랩(링크 미리보기)을 살리려고 막지 않되 sitemap에서는 제외. (2) `app/sitemap.ts` — 공개 URL 9개(랜딩·가격·설치·로그인·법적고지 5). (3) `app/manifest.ts` — PWA 매니페스트(standalone, 기존 아이콘 재사용). (4) 루트 `metadata` 강화 — favicon·apple-touch-icon(기존 전무), OG/twitter 이미지, `robots`(index·follow, max-image-preview:large), title 템플릿 `%s | 기질아이`, appleWebApp. (5) `components/seo/StructuredData.tsx` — Organization·WebSite·WebApplication(월 12,000원 Offer) JSON-LD. (6) **랜딩 SSR**: 루트 `/`를 서버 컴포넌트로 바꿔 쿠키 세션(`supabaseServer.getSession()`, 렌더 힌트)으로 랜딩/앱을 가른다 — 세션 없으면 랜딩을 SSR해 본문·`<h1>`이 초기 HTML에 담기고(네이버·Bing 대응), 세션 있으면 기존 클라이언트 대시보드(`HomeClient`, 구 `page.tsx`)로 이어받는다. 앱 WebView→로그인 전환은 `UnauthedHome`이 `useSyncExternalStore`(서버 스냅샷 false)로 처리해 크롤러엔 항상 랜딩, 앱엔 랜딩 플래시 없이 로그인. (7) 공개 페이지(`/pricing·/install-app·/legal/*`) per-page `layout.tsx`로 고유 title/description/canonical 부여(루트 상속으로 인한 중복 title 해소).
