@@ -1,10 +1,10 @@
 <!-- COMMIT_STATUS START -->
 > **커밋 상태**
-> - 기준 커밋: `425ffe550f386bbd28c1035ed096ef4c513e3e51` (`claude/enable-phased-assessment`)
-> - 최근 커밋: `425ffe550f38` docs: refresh project documentation status
-> - 커밋 일시: `2026-06-20T22:38:59+09:00`
+> - 기준 커밋: `f85a0183f40110ce1f5dde4e0df746c67ca1c9d3` (`feat/co-parent-notifications`)
+> - 최근 커밋: `f85a0183f401` feat(notifications): 공동양육자 인앱 알림 (Phase 1)
+> - 커밋 일시: `2026-07-06T14:27:05+09:00`
 > - 워킹트리: `clean`
-> - 문서 갱신: `2026-06-20 22:39:28 +0900`
+> - 문서 갱신: `2026-07-06 14:28:26 +0900`
 <!-- COMMIT_STATUS END -->
 
 # Architecture Decision Records (ADR)
