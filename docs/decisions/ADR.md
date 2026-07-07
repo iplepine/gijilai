@@ -1,15 +1,24 @@
 <!-- COMMIT_STATUS START -->
 > **커밋 상태**
-> - 기준 커밋: `425ffe550f386bbd28c1035ed096ef4c513e3e51` (`claude/enable-phased-assessment`)
-> - 최근 커밋: `425ffe550f38` docs: refresh project documentation status
-> - 커밋 일시: `2026-06-20T22:38:59+09:00`
+> - 기준 커밋: `f85a0183f40110ce1f5dde4e0df746c67ca1c9d3` (`feat/co-parent-notifications`)
+> - 최근 커밋: `f85a0183f401` feat(notifications): 공동양육자 인앱 알림 (Phase 1)
+> - 커밋 일시: `2026-07-06T14:27:05+09:00`
 > - 워킹트리: `clean`
-> - 문서 갱신: `2026-06-20 22:39:28 +0900`
+> - 문서 갱신: `2026-07-06 14:28:26 +0900`
 <!-- COMMIT_STATUS END -->
 
 # Architecture Decision Records (ADR)
 
 프로젝트에서 내린 주요 의사결정을 시간순으로 기록합니다.
+
+---
+
+## 2026-07-06 | 공동양육자 인앱 알림(Phase 1) — DB 트리거 기반, CHILD 전용
+
+- **결정**: 한 양육자가 아이 상담을 남기면 상대 양육자에게 인앱 알림을 남기는 기능을 추가한다(마이그레이션 `026`). (1) **발생 지점 = DB 트리거**: 앱 코드가 아니라 `consultation_sessions` AFTER INSERT 트리거(`notify_co_parents_on_consultation_session`, SECURITY DEFINER)로 알림을 만든다. 근거 — CHILD 상담 세션 row는 `consult/page.tsx`가 처방 성공 직후에만 생성하므로 세션 INSERT가 "새 상담 완료"의 가장 정확·견고한 신호이고, 클라이언트 저장 경로가 바뀌어도 누락이 없다. (2) **CHILD 전용**: 트리거가 `type='CHILD'`만 처리 → `SELF_PARENT`(양육자 사적 반성문)는 마이그레이션 020의 가시성 차단에 이어 알림에서도 구조적으로 배제. (3) **구조 참조만 저장**: `notifications` 행에는 텍스트 문구가 아니라 actor/child/session 참조만 저장하고, 표시 문구는 조회 시 호칭 모델(018)로 조합한다. (4) **발송은 트리거/서버만**: RLS는 수신자 본인 SELECT/UPDATE/DELETE만 허용하고 INSERT 정책을 두지 않아 클라이언트 위조 불가. 조회 API는 service-role로 조합하되 항상 인증 세션의 `user_id`로 스코프. (5) **UI**: `/notifications` 화면 + 홈 상단바 벨/뱃지, 벨은 `isCoParentInvitesEnabled()` 플래그를 따른다(현재 알림원이 공동양육자뿐이므로).
+- **이유**: 공동양육자는 이미 CHILD 상담을 서로 볼 수 있으므로(020) 알림은 새 동의가 아니라 기존 공유 범위 안의 도달성 개선이다. 별도 옵트인 게이트 없이 시작해 관계형 리텐션 가설(GJ-008)을 빠르게 검증한다. 트리거를 앱 코드 대신 DB에 둔 것은 저장 경로가 웹 클라이언트 직접 insert라 서버 훅이 없고, 트리거가 원자적이며 self-parent 배제를 한 곳에서 강제할 수 있기 때문. 문구를 저장하지 않은 것은 호칭 변경·i18n·알림 타입 확장에 강건하기 위함.
+- **대안**: (a) `prescription/route.ts`에서 서버 발송 — 세션 저장 전이라 `session_id`가 없고 저장 실패/중복 처방과 어긋날 수 있어 기각. (b) 알림 문구를 SQL 트리거에서 완성해 저장 — copy가 SQL에 박히고 i18n 불가라 기각. (c) 처음부터 FCM 푸시 — 서버→기기 인프라(APNs 키, 토큰 저장, `firebase_messaging`)가 전무해 리드타임이 큼. 인앱으로 먼저 검증하고 Phase 2로 분리(SPEC §공동양육자 알림).
+- **알려진 한계/후속(Phase 2)**: (1) 앱을 열어야 보임 → FCM 실제 푸시는 미착수(SPEC에 작업 목록). (2) 뱃지는 화면 진입 시 폴링(실시간 아님) → Supabase Realtime 후보. (3) 옵트아웃 토글 없음(항상 켜짐) → 부담 시 Phase 1.5. (4) 알림 타입은 `CO_PARENT_CONSULTATION` 1종(스키마는 enum·`data jsonb`로 확장 대비).
 
 ---
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { HomeLogoButton } from '@/components/layout/HomeLogoButton';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { db, SubscriptionData } from '@/lib/db';
 import { useLocale } from '@/i18n/LocaleProvider';
 
@@ -29,6 +30,8 @@ export function HomeHeader({
                     imageClassName="size-7 rounded-lg object-contain"
                     textClassName="text-xl font-logo tracking-wide text-primary dark:text-white pt-0.5"
                 />
+                <div className="flex items-center gap-1">
+                <NotificationBell />
                 {subscription ? (
                     <button
                         onClick={onSubscriptionClick}
@@ -59,6 +62,7 @@ export function HomeHeader({
                         <span>{t('home.startPremium')}</span>
                     </button>
                 )}
+                </div>
             </div>
         </header>
     );

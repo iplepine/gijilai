@@ -58,6 +58,17 @@
     "records": "기록",
     "profile": "내 정보"
   },
+  "notifications": {
+    "title": "알림",
+    "empty": "아직 도착한 알림이 없어요",
+    "emptyHint": "함께 육아하는 분이 상담을 남기면 여기로 알려드려요.",
+    "coParentConsultation": "{actor}가 {child} 상담을 남겼어요",
+    "coParentConsultationNoChild": "{actor}가 새 상담을 남겼어요",
+    "justNow": "방금 전",
+    "minutesAgo": "{n}분 전",
+    "hoursAgo": "{n}시간 전",
+    "daysAgo": "{n}일 전"
+  },
   "meta": {
     "title": "기질아이 | 아이 기질검사·떼쓰기 맞춤 육아상담",
     "description": "아이 떼쓰기, 예민함, 등원 거부, 분리불안이 고민될 때 3분 아이 기질검사로 행동의 이유를 보고 맞춤 대화법과 육아상담을 받아보세요.",
