@@ -1,3 +1,12 @@
+<!-- COMMIT_STATUS START -->
+> **커밋 상태**
+> - 기준 커밋: `010bf5cbf28e5e0be8589f4cec7a36045b59c02b` (`feat/co-parent-push`)
+> - 최근 커밋: `010bf5cbf28e` feat(notifications): 공동양육자 FCM 기기 푸시 (Phase 2 · 코드)
+> - 커밋 일시: `2026-07-07T16:52:20+09:00`
+> - 워킹트리: `dirty (1 files)`
+> - 문서 갱신: `2026-07-07 16:52:38 +0900`
+<!-- COMMIT_STATUS END -->
+
 # 공동양육자 FCM 푸시 — 외부 설정 가이드 (Phase 2)
 
 > 코드(웹 백엔드·앱 클라이언트)는 구현 완료. **이 문서의 외부 콘솔 설정을 마쳐야 실제 기기 푸시가 나간다.**

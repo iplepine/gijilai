@@ -1,10 +1,10 @@
 <!-- COMMIT_STATUS START -->
 > **커밋 상태**
-> - 기준 커밋: `f85a0183f40110ce1f5dde4e0df746c67ca1c9d3` (`feat/co-parent-notifications`)
-> - 최근 커밋: `f85a0183f401` feat(notifications): 공동양육자 인앱 알림 (Phase 1)
-> - 커밋 일시: `2026-07-06T14:27:05+09:00`
+> - 기준 커밋: `010bf5cbf28e5e0be8589f4cec7a36045b59c02b` (`feat/co-parent-push`)
+> - 최근 커밋: `010bf5cbf28e` feat(notifications): 공동양육자 FCM 기기 푸시 (Phase 2 · 코드)
+> - 커밋 일시: `2026-07-07T16:52:20+09:00`
 > - 워킹트리: `clean`
-> - 문서 갱신: `2026-07-06 14:28:26 +0900`
+> - 문서 갱신: `2026-07-07 16:52:38 +0900`
 <!-- COMMIT_STATUS END -->
 
 # Architecture Decision Records (ADR)
