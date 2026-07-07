@@ -8,6 +8,7 @@ import 'package:app_links/app_links.dart';
 import 'package:crypto/crypto.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -142,6 +143,12 @@ const String _googleIosClientId = String.fromEnvironment(
 const bool _enableIosIapFallback = bool.fromEnvironment(
   'GIJILAI_ENABLE_IOS_IAP_FALLBACK',
 );
+
+// FCM 백그라운드 핸들러(top-level 필수). notification 페이로드는 백그라운드에서
+// 시스템이 자동 표시하므로 별도 처리는 하지 않는다.
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {}
+
 Future<void> main() async {
   await runZonedGuarded(
     () async {
@@ -154,6 +161,8 @@ Future<void> main() async {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
+
+      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
       await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(
         !kDebugMode,
@@ -316,6 +325,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     unawaited(_initAppLinks());
     unawaited(_initIAP());
     unawaited(_initLocalNotifications());
+    unawaited(_setupFcm());
     unawaited(_initWebView());
     unawaited(_restoreTutorialState());
   }
@@ -444,6 +454,20 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         settings,
         onDidReceiveNotificationResponse: _handleNotificationResponse,
       );
+
+      // 공동양육자 푸시(FCM)용 안드로이드 알림 채널. fcm.ts의 channel_id 'coparent'와 일치해야 한다.
+      final androidPlugin = _localNotifications
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
+      await androidPlugin?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          'coparent',
+          '공동양육자 알림',
+          description: '공동양육자가 상담을 남기면 알려드려요.',
+          importance: Importance.high,
+        ),
+      );
+
       final launchDetails = await _localNotifications
           .getNotificationAppLaunchDetails();
       final launchPayload = launchDetails?.notificationResponse?.payload;
@@ -478,6 +502,99 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     );
     _pendingAppOpenUri = uri;
     await _consumePendingAppOpenUri();
+  }
+
+  // ===== FCM (원격 푸시) =====
+  // 네이티브가 토큰을 얻어 WebView(세션 보유)로 넘기면 웹이 /api/notifications/token 에 등록한다.
+  String? _fcmToken;
+
+  Future<void> _setupFcm() async {
+    try {
+      final messaging = FirebaseMessaging.instance;
+      await messaging.requestPermission();
+      // iOS 포그라운드에서도 배너 표시
+      await messaging.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+
+      final token = await messaging.getToken();
+      if (token != null && token.isNotEmpty) {
+        _fcmToken = token;
+        unawaited(_pushFcmTokenToWeb());
+      }
+      messaging.onTokenRefresh.listen((newToken) {
+        _fcmToken = newToken;
+        unawaited(_pushFcmTokenToWeb());
+      });
+
+      // 포그라운드 수신 → 로컬 알림으로 표시(안드로이드는 자동 표시 안 됨)
+      FirebaseMessaging.onMessage.listen(_showFcmForegroundNotification);
+      // 백그라운드에서 알림 탭 → 딥링크 이동
+      FirebaseMessaging.onMessageOpenedApp.listen(_handleFcmMessageTap);
+      // 종료 상태에서 알림 탭으로 앱이 열린 경우
+      final initial = await messaging.getInitialMessage();
+      if (initial != null) _handleFcmMessageTap(initial);
+    } catch (e) {
+      debugPrint('FCM setup error: $e');
+    }
+  }
+
+  Future<void> _pushFcmTokenToWeb() async {
+    final controller = _controller;
+    final token = _fcmToken;
+    if (controller == null || token == null || token.isEmpty) return;
+    final platform = Platform.isIOS ? 'ios' : 'android';
+    final payload = jsonEncode({'token': token, 'platform': platform});
+    try {
+      await controller.runJavaScript('''
+        window.__gijilaiFcmToken = $payload;
+        window.dispatchEvent(new CustomEvent('gijilai:fcmToken', { detail: window.__gijilaiFcmToken }));
+      ''');
+    } catch (e) {
+      debugPrint('FCM token bridge error: $e');
+    }
+  }
+
+  String? _fcmDeepLink(RemoteMessage message) {
+    final url = message.data['url'];
+    if (url is String && url.isNotEmpty) return url;
+    final sessionId = message.data['sessionId'];
+    if (sessionId is String && sessionId.isNotEmpty) {
+      return '/consultations/$sessionId';
+    }
+    return null;
+  }
+
+  void _handleFcmMessageTap(RemoteMessage message) {
+    final path = _fcmDeepLink(message);
+    if (path != null) unawaited(_openWebPath(path));
+  }
+
+  Future<void> _showFcmForegroundNotification(RemoteMessage message) async {
+    final notification = message.notification;
+    if (notification == null) return;
+    try {
+      await _localNotifications.show(
+        notification.hashCode,
+        notification.title,
+        notification.body,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'coparent',
+            '공동양육자 알림',
+            channelDescription: '공동양육자가 상담을 남기면 알려드려요.',
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+          iOS: DarwinNotificationDetails(),
+        ),
+        payload: _fcmDeepLink(message),
+      );
+    } catch (e) {
+      debugPrint('FCM foreground notification error: $e');
+    }
   }
 
   Uri _appVersionPolicyUri({required String platform, required int build}) {
@@ -1211,6 +1328,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
   void _handlePageFinished(String url) {
     unawaited(_syncWebAppContext());
+    unawaited(_pushFcmTokenToWeb());
 
     final uri = Uri.tryParse(url);
     final isNativeLoginRoute = _isNativeLoginRoute(uri);

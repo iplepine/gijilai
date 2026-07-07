@@ -565,18 +565,30 @@ interface Prescription {
 - 트리거 지점 근거: `consult/page.tsx`는 처방 성공 후에만 세션 row를 만들므로, 세션 INSERT = "새 상담 완료"의 정확한 신호.
 - 알림 문구는 저장하지 않고 구조 참조(actor/child/session)만 저장 → 표시 시 호칭 모델로 조합(i18n·호칭 변경에 강건).
 
-### Phase 2 — 진짜 푸시 (FCM) — 📋 해야 할 작업 (미착수)
-> 인앱 알림은 앱을 열어야 보인다. 실제 푸시로 확장한다. 현재 서버→기기 푸시 인프라는 전무(웹 FCM/서비스워커 없음, Flutter는 로컬 알림만, `firebase_messaging` 미설치).
+### Phase 2 — 진짜 푸시 (FCM) — 🟡 코드 완료 / 외부 설정 대기
+> 인앱 알림(Phase 1)은 앱을 열어야 보인다 → FCM 기기 푸시로 확장. **코드(웹 백엔드·앱 클라이언트)는 구현·검증 완료**, 실제 발송은 외부 콘솔 설정 필요.
+> 설정 가이드: [`docs/operations/coparent-push-setup.md`](docs/operations/coparent-push-setup.md). 발송 흐름: `notifications` INSERT →(Supabase DB Webhook)→ `/api/webhooks/notification-created` →(FCM v1)→ 기기.
 
-- [ ] **Flutter: `firebase_messaging` 추가** — 이미 초기화된 Firebase Core에 메시징 패키지 도입(`gijilai_app/pubspec.yaml`)
-- [ ] **iOS APNs 세팅** — Apple Developer에서 APNs 인증키(.p8) 발급 → Firebase 콘솔 등록 (유일하게 번거로운 지점)
-- [ ] **기기 토큰 저장** — `device_tokens` 테이블(`user_id`, `token`, `platform`, `updated_at`) + 앱 로그인/토큰 갱신 시 upsert API(`POST /api/notifications/token`)
-- [ ] **웹뷰↔네이티브 토큰 브릿지** — 기존 `ReminderBridge` 패턴 재사용해 FCM 토큰을 웹으로 전달하거나, 앱에서 직접 Supabase에 저장
-- [ ] **발송 트리거 전환/보강** — DB 트리거가 만든 notifications row를 Supabase Edge Function(또는 서버 라우트)이 감지해 수신자 토큰으로 FCM 발송. (권장: `pg_net`/Edge Function `on insert`, 또는 앱 코드에서 세션 저장 직후 발송 호출)
-- [ ] **푸시 클릭 딥링크** — 알림 탭 시 `/consultations/{sessionId}`로 진입
-- [ ] **권한/설정 연동** — 기존 `settings/notifications`에 공동양육자 푸시 on/off 토글 추가
-- [ ] **조용한 시간(방해금지)·중복 억제** — 야간 발송 지연, 동일 세션 중복 발송 방지
-- [ ] (선택) **웹푸시/이메일/카카오 알림톡** — 앱 미설치 사용자 대비 fallback 채널
+**코드 (완료 · `next build` + `flutter analyze` 통과)**
+- [x] 마이그레이션 `027`: `device_tokens` 테이블 + RLS, `profiles.coparent_push_enabled`(기본 ON)
+- [x] `POST/DELETE /api/notifications/token` — 기기 토큰 등록/해제(세션 스코프, onConflict 재매핑)
+- [x] `lib/fcm.ts` — 제로 의존성 FCM v1 클라이언트(서비스계정 JWT→OAuth2→발송, 액세스토큰 캐시, 무효토큰 표시)
+- [x] `POST /api/webhooks/notification-created` — Supabase DB Webhook 수신(`x-webhook-secret`) → 토큰 조회 → FCM 발송 → 무효토큰 정리
+- [x] 웹뷰↔네이티브 토큰 브릿지 — 네이티브 `firebase_messaging` → `window.__gijilaiFcmToken`+이벤트 → 웹 `FcmTokenSync`(세션 보유) → 토큰 API
+- [x] Flutter: `firebase_messaging` 추가, 권한·토큰·refresh, 포그라운드 로컬알림(채널 `coparent`), 백그라운드/종료 탭 → `_openWebPath` 딥링크
+- [x] 푸시 클릭 딥링크 → `/consultations/{sessionId}` (data.url)
+- [x] 설정 토글 — `settings/notifications` "공동양육자 상담 알림" on/off(`coparent_push_enabled`), 디스패처가 확인
+
+**외부 설정 (사용자 — [setup 가이드](docs/operations/coparent-push-setup.md))**
+- [ ] Firebase 서비스계정 키 → Vercel `FCM_SERVICE_ACCOUNT_JSON`
+- [ ] iOS APNs .p8 키 → Firebase 업로드 + Xcode Push 권한(안드로이드는 추가 설정 없음)
+- [ ] Supabase Database Webhook (`notifications` INSERT → 디스패치 라우트, `x-webhook-secret`) + 마이그레이션 `027` 적용
+- [ ] Vercel `NOTIFICATION_WEBHOOK_SECRET`
+- [ ] 앱 빌드/스토어 릴리스 + 2계정 실기기 스모크테스트
+
+**후속(선택)**
+- [ ] 조용한 시간(방해금지)·중복 억제 — 야간 발송 지연, 동일 세션 중복 억제
+- [ ] 웹푸시/이메일/카카오 알림톡 — 앱 미설치 사용자 대비 fallback 채널
 
 ### Phase 1.5 — 후보(옵션, 사용자 결정 대기)
 - [ ] 알림 on/off 토글(설정) — 지금은 공유 범위와 일치해 항상 켜짐. 부담되면 옵트아웃 제공

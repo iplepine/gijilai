@@ -13,6 +13,15 @@
 
 ---
 
+## 2026-07-07 | 공동양육자 FCM 푸시(Phase 2) — DB Webhook → Next.js → FCM v1, 제로 의존성
+
+- **결정**: Phase 1 인앱 알림을 실제 기기 푸시로 확장한다(마이그레이션 `027`). (1) **발송 경로 = Supabase Database Webhook → Next.js 라우트 → FCM**: `notifications` INSERT를 Supabase DB Webhook이 `POST /api/webhooks/notification-created`(헤더 `x-webhook-secret`)로 보내고, 라우트가 수신자 `device_tokens`를 조회해 FCM HTTP v1로 발송한다. 기존 IAP 웹훅(`/api/payment/iap/*`)과 동일한 "외부 웹훅 → Next.js 라우트" 패턴을 재사용 — 별도 Edge Function/인프라 없이 Vercel 배포에 얹는다. (2) **제로 의존성 FCM 클라이언트**(`lib/fcm.ts`): `firebase-admin`/`google-auth-library`를 추가하지 않고 Node `crypto`로 서비스계정 RS256 JWT→OAuth2 액세스토큰→FCM v1을 직접 호출(토큰 캐시, 무효토큰 표시 후 정리). (3) **토큰↔사용자 매핑은 웹이 담당**: 네이티브 앱엔 user id가 없고 인증이 WebView Supabase 세션에만 있으므로, 네이티브가 얻은 FCM 토큰을 `window.__gijilaiFcmToken`+CustomEvent로 웹에 주입하고 웹 `FcmTokenSync`가 세션으로 `POST /api/notifications/token`에 등록한다(기존 IAP/ReminderBridge 브릿지 패턴과 동일). (4) **탭 딥링크는 기존 `gijilai://open`→`_openWebPath` 재사용** → `/consultations/{sessionId}`. (5) **옵트아웃**: `profiles.coparent_push_enabled`(기본 ON), 설정 토글, 디스패처가 확인. 인앱 알림은 이 값과 무관하게 항상 남는다.
+- **이유**: 발송 주체가 이미 DB 트리거(026)라 서버 앱에 발송 훅이 없다 → notifications INSERT를 신호로 삼는 DB Webhook이 자연스럽고, 트리거에 `pg_net`을 박아 insert 트랜잭션을 네트워크에 묶는 것보다 안전(비동기·관리형). IAP 웹훅이라는 선례가 있어 팀에 익숙한 패턴. 제로 의존성은 Vercel 서버리스 콜드스타트와 번들을 가볍게 유지하고 lean한 package.json 기조와 일치. 토큰 저장을 웹에 둔 것은 네이티브가 세션/유저를 모르기 때문(구조적 제약).
+- **대안**: (a) Supabase Edge Function으로 발송 — Edge 배포·시크릿 관리라는 새 인프라가 늘어 기각(웹훅→Next.js가 기존 자산 재사용). (b) `firebase-admin` 채택 — 콜드스타트·번들 부담으로 기각(직접 JWT 20줄로 충분). (c) 네이티브가 직접 토큰 저장 — user id를 모르고 세션 쿠키도 없어 불가. (d) 웹푸시(서비스워커) — iOS Safari 제약 + 사용자는 대부분 Flutter 앱 안이라 후순위.
+- **알려진 한계/후속**: (1) 실제 발송은 **외부 콘솔 설정 필요**(Firebase 서비스계정 키, iOS APNs .p8, Supabase Webhook, Vercel env) — 코드와 분리해 `docs/operations/coparent-push-setup.md`로 핸드오프. 미설정 시 디스패처는 `fcm_not_configured`로 조용히 통과(인앱은 정상). (2) 문구는 서버에서 한국어로 조합(인앱은 클라 i18n) — en 로케일 푸시는 Phase 2.5. (3) 방해금지·야간 지연·중복 억제 미구현. (4) 앱 릴리스 후에만 토큰 등록 → 배포 리드타임 존재. **검증**: `next build`(웹)·`flutter analyze`(앱) 통과. E2E(2계정 실기기)는 외부 설정 후.
+
+---
+
 ## 2026-07-06 | 공동양육자 인앱 알림(Phase 1) — DB 트리거 기반, CHILD 전용
 
 - **결정**: 한 양육자가 아이 상담을 남기면 상대 양육자에게 인앱 알림을 남기는 기능을 추가한다(마이그레이션 `026`). (1) **발생 지점 = DB 트리거**: 앱 코드가 아니라 `consultation_sessions` AFTER INSERT 트리거(`notify_co_parents_on_consultation_session`, SECURITY DEFINER)로 알림을 만든다. 근거 — CHILD 상담 세션 row는 `consult/page.tsx`가 처방 성공 직후에만 생성하므로 세션 INSERT가 "새 상담 완료"의 가장 정확·견고한 신호이고, 클라이언트 저장 경로가 바뀌어도 누락이 없다. (2) **CHILD 전용**: 트리거가 `type='CHILD'`만 처리 → `SELF_PARENT`(양육자 사적 반성문)는 마이그레이션 020의 가시성 차단에 이어 알림에서도 구조적으로 배제. (3) **구조 참조만 저장**: `notifications` 행에는 텍스트 문구가 아니라 actor/child/session 참조만 저장하고, 표시 문구는 조회 시 호칭 모델(018)로 조합한다. (4) **발송은 트리거/서버만**: RLS는 수신자 본인 SELECT/UPDATE/DELETE만 허용하고 INSERT 정책을 두지 않아 클라이언트 위조 불가. 조회 API는 service-role로 조합하되 항상 인증 세션의 `user_id`로 스코프. (5) **UI**: `/notifications` 화면 + 홈 상단바 벨/뱃지, 벨은 `isCoParentInvitesEnabled()` 플래그를 따른다(현재 알림원이 공동양육자뿐이므로).
