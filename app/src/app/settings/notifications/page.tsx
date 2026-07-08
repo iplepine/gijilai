@@ -69,6 +69,9 @@ export default function NotificationsPage() {
   const [marketingEnabled, setMarketingEnabled] = useState(false);
   const [marketingLoaded, setMarketingLoaded] = useState(false);
   const [isSavingMarketing, setIsSavingMarketing] = useState(false);
+  const [coParentPushEnabled, setCoParentPushEnabled] = useState(true);
+  const [coParentPushLoaded, setCoParentPushLoaded] = useState(false);
+  const [isSavingCoParentPush, setIsSavingCoParentPush] = useState(false);
   const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
   const [reminderSnapshot, setReminderSnapshot] =
     useState<ReminderPracticeSnapshot>({
@@ -188,6 +191,8 @@ export default function NotificationsPage() {
     if (!user?.id) {
       setMarketingEnabled(false);
       setMarketingLoaded(true);
+      setCoParentPushEnabled(true);
+      setCoParentPushLoaded(true);
       return;
     }
 
@@ -203,6 +208,12 @@ export default function NotificationsPage() {
                 .marketing_opt_in
             : false;
         setMarketingEnabled(marketingOptIn ?? false);
+        const coParentPush =
+          "coparent_push_enabled" in profile
+            ? (profile as { coparent_push_enabled?: boolean | null })
+                .coparent_push_enabled
+            : true;
+        setCoParentPushEnabled(coParentPush ?? true);
       } catch (error) {
         console.error("Failed to load marketing preference:", error);
         if (isCancelled) return;
@@ -210,6 +221,7 @@ export default function NotificationsPage() {
       } finally {
         if (!isCancelled) {
           setMarketingLoaded(true);
+          setCoParentPushLoaded(true);
         }
       }
     };
@@ -451,6 +463,29 @@ export default function NotificationsPage() {
     }
   };
 
+  const toggleCoParentPush = async () => {
+    if (!user?.id || isSavingCoParentPush) return;
+
+    const previousValue = coParentPushEnabled;
+    const nextValue = !previousValue;
+
+    setCoParentPushEnabled(nextValue);
+    setIsSavingCoParentPush(true);
+
+    try {
+      await db.updateUserProfile(user.id, { coparent_push_enabled: nextValue });
+      trackEvent("coparent_push_opt_in_changed", {
+        enabled: nextValue,
+      });
+    } catch (error) {
+      console.error("Failed to update co-parent push preference:", error);
+      setCoParentPushEnabled(previousValue);
+      alert(t("settings.coParentPushUpdateError"));
+    } finally {
+      setIsSavingCoParentPush(false);
+    }
+  };
+
   return (
     <div className="bg-background-light dark:bg-background-dark min-h-screen">
       <div className="max-w-md mx-auto relative min-h-screen flex flex-col">
@@ -575,6 +610,28 @@ export default function NotificationsPage() {
               >
                 <div
                   className={`w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform ${marketingEnabled ? "translate-x-6" : "translate-x-1"}`}
+                />
+              </button>
+            </div>
+
+            <hr className="border-gray-100 dark:border-gray-800" />
+
+            <div className="flex items-center justify-between">
+              <div className="flex-1 pr-6 flex flex-col gap-1">
+                <h2 className="text-[15px] font-bold text-navy dark:text-white">
+                  {t("settings.coParentPushNotifications")}
+                </h2>
+                <p className="text-[13px] text-gray-500 break-keep">
+                  {t("settings.coParentPushDescription")}
+                </p>
+              </div>
+              <button
+                onClick={() => void toggleCoParentPush()}
+                disabled={!coParentPushLoaded || !user || isSavingCoParentPush}
+                className={`w-12 h-6 rounded-full transition-colors flex items-center shrink-0 disabled:opacity-50 ${coParentPushEnabled ? "bg-primary" : "bg-gray-200 dark:bg-gray-700"}`}
+              >
+                <div
+                  className={`w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform ${coParentPushEnabled ? "translate-x-6" : "translate-x-1"}`}
                 />
               </button>
             </div>

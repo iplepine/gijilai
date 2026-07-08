@@ -3,6 +3,7 @@ import { Jua, Lexend, Noto_Sans_KR } from "next/font/google";
 import Script from "next/script";
 import { FirebaseAnalytics } from "@/components/analytics/FirebaseAnalytics";
 import { AuthProvider } from "@/components/auth/AuthProvider";
+import { FcmTokenSync } from "@/components/notifications/FcmTokenSync";
 import { ForceUpdateGate } from "@/components/layout/ForceUpdateGate";
 import { KeyboardViewportTracker } from "@/components/layout/KeyboardViewportTracker";
 import { ReferralHandler } from "@/components/layout/ReferralHandler";
@@ -213,6 +214,7 @@ export default function RootLayout({
               <KeyboardViewportTracker />
               <ReferralHandler />
               <SurveyRestoreProvider />
+              <FcmTokenSync />
               {children}
               <ForceUpdateGate />
             </div>
