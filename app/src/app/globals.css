@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Tailwind v4 의 dark: 는 기본이 prefers-color-scheme 이지만, 이 앱의 다크 모드는
+ * html.dark 클래스로 토글한다(DarkModeToggle + layout.tsx 초기화 스크립트).
+ * 이 선언이 없으면 .dark 는 CSS 변수만 뒤집고 dark:* 유틸리티는 OS 설정을 따라가서,
+ * OS 라이트 + 인앱 다크일 때 흰 배경 위에 밝은 글씨가 찍힌다. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ========== Design System Colors ========== */
 :root {
   /* Legacy Colors (keeping for safe migration) */
@@ -396,6 +402,11 @@ html[data-native-platform='android'] .consult-problem-voice-button {
     transition: none;
     will-change: auto;
   }
+
+  .app-toast {
+    animation-duration: 1ms;
+    transform: none;
+  }
 }
 
 .app-modal-overlay {
@@ -427,4 +438,25 @@ html[data-native-platform='android'] .consult-problem-voice-button {
 
 .app-bottom-sheet-actions {
   padding-bottom: calc(var(--safe-area-bottom) + 1rem);
+}
+
+/* 토스트: 상단 배치 — 하단 내비/고정 CTA와 겹치지 않게 한다. */
+.app-toast-viewport {
+  top: calc(var(--visual-viewport-offset-top) + var(--safe-area-top) + 0.75rem);
+}
+
+.app-toast {
+  animation: toast-in 200ms ease-out;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

@@ -9,6 +9,8 @@ import {
 } from '@/lib/coParent';
 import { trackEvent } from '@/lib/analytics';
 import { Icon } from '@/components/ui/Icon';
+import { useConfirm } from '@/components/ui/ConfirmProvider';
+import { useToast } from '@/components/ui/Toast';
 
 // 인라인용 작은 스피너 — TabLoadingIndicator의 LoadingSpinner와 같은 패턴, 사이즈만 작게.
 function InlineSpinner({ className = '' }: { className?: string }) {
@@ -88,6 +90,8 @@ export function OwnerCoParentSection({
   const [generating, setGenerating] = useState(false);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const confirm = useConfirm();
+  const toast = useToast();
 
   const labelBusy = savingLabel !== null;
 
@@ -191,7 +195,8 @@ export function OwnerCoParentSection({
     try {
       await navigator.clipboard.writeText(link);
       trackEvent('co_parent_invite_link_shared', { channel: 'copy' });
-      setActionError('초대 링크를 복사했어요. 카카오톡으로 보내주세요.');
+      // 성공 안내 — actionError(빨간 글씨)로 보내면 복사 성공이 오류처럼 보인다.
+      toast.success('초대 링크를 복사했어요. 카카오톡으로 보내주세요.');
     } catch (err) {
       console.error('[OwnerCoParentSection] clipboard error:', err);
       setActionError('초대 링크 복사에 실패했어요. 링크를 직접 복사해주세요.');
@@ -199,7 +204,13 @@ export function OwnerCoParentSection({
   };
 
   const handleRevoke = async (membershipId: string) => {
-    if (!confirm('함께 보는 분 연결을 해제할까요?')) return;
+    const ok = await confirm({
+      title: '함께 보는 분 연결을 해제할까요?',
+      description: '해제하면 상대방은 이 아이의 리포트·상담·실천 기록을 더 이상 볼 수 없어요. 다시 초대할 수는 있어요.',
+      confirmLabel: '해제하기',
+      tone: 'danger',
+    });
+    if (!ok) return;
     try {
       const res = await fetch(
         `/api/children/${childId}/collaborators?membershipId=${encodeURIComponent(membershipId)}`,

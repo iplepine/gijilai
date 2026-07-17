@@ -9,6 +9,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/Button';
+import { useConfirm } from '@/components/ui/ConfirmProvider';
 import { Icon } from '@/components/ui/Icon';
 import { useAppStore } from '@/store/useAppStore';
 import { useAuth } from '@/components/auth/AuthProvider';
@@ -45,7 +46,7 @@ function ResultSummary({
 
       {/* 신뢰도 정확도 박스는 캘리브레이션 후에만 노출(§5.4 가짜 신뢰도 금지). */}
       {CONFIDENCE_CALIBRATED && (
-        <div className="mt-5 rounded-[20px] bg-white p-4 shadow-sm">
+        <div className="mt-5 rounded-[20px] bg-white dark:bg-surface-dark p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-[13px] font-bold text-text-main">측정 정확도</span>
             <span className="text-[13px] font-black" style={{ color: ACCENT }}>
@@ -68,12 +69,32 @@ export function PhasedChildSurvey() {
   const { user } = useAuth();
   const { intake, cbqResponses, setCbqResponse, selectedChildId } = useAppStore();
   const [hasFullAccess, setHasFullAccess] = useState(false);
+  // 구독 조회가 끝나기 전엔 게이팅을 확정하지 않는다 — 확정 전에 잠금 UI를 보여주면
+  // 구독자에게 "구독하고 이어가기"가 뜨고 결제 화면으로 튕겨나간다.
+  const [accessReady, setAccessReady] = useState(false);
   const [enteredPhase, setEnteredPhase] = useState(0); // 사용자가 "심화 받기"로 진입한 차수
   const savedPhaseRef = useRef(-1);
+  // 이전 문항을 다시 보는 중이면 그 인덱스(null=자연 흐름: 첫 미응답 문항).
+  const [reviewIndex, setReviewIndex] = useState<number | null>(null);
+  // 선택 직후 220ms 동안 잡아두는 값 — 선택 표시를 보여주고, 그 사이 입력을 잠근다.
+  const [pendingScore, setPendingScore] = useState<number | null>(null);
+  const [navDirection, setNavDirection] = useState<'next' | 'prev'>('next');
+  const advanceTimer = useRef<number | null>(null);
+  const confirm = useConfirm();
+
+  useEffect(
+    () => () => {
+      if (advanceTimer.current) window.clearTimeout(advanceTimer.current);
+    },
+    [],
+  );
 
   // 클라이언트 구독/접근 상태 — access.ts 의 hasActiveSubscription 와 동일한 쿼리. 실패 시 fail-closed.
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setAccessReady(true);
+      return;
+    }
     let active = true;
     (async () => {
       try {
@@ -91,6 +112,8 @@ export function PhasedChildSurvey() {
         setHasFullAccess(access.hasFullAccess);
       } catch {
         /* fail-closed: phase≥2 잠금 유지 */
+      } finally {
+        if (active) setAccessReady(true);
       }
     })();
     return () => {
@@ -112,7 +135,8 @@ export function PhasedChildSurvey() {
   const { numPhases, completedPhase } = flow;
   const targetPhase = Math.min(completedPhase + 1, numPhases);
   const phaseFullyDone = completedPhase >= numPhases;
-  const gatedNext = !hasFullAccess && targetPhase > FREE_PHASE_MAX;
+  // accessReady 전에는 잠금으로 단정하지 않는다(구독자 오인 방지).
+  const gatedNext = accessReady && !hasFullAccess && targetPhase > FREE_PHASE_MAX;
 
   // 차수 완료 시점마다 정확한 상태로 저장(전부 끝 → COMPLETED, 그 외 → IN_PROGRESS).
   useEffect(() => {
@@ -131,6 +155,8 @@ export function PhasedChildSurvey() {
       : 'QUESTION';
 
   const proceedToDeeper = () => {
+    // 접근 권한이 확정되기 전에는 진입도 결제 유도도 하지 않는다.
+    if (!accessReady) return;
     if (gatedNext) {
       router.push('/settings/subscription');
       return;
@@ -141,7 +167,7 @@ export function PhasedChildSurvey() {
   // ── 모든 차수 완료 ────────────────────────────────────────────────────────
   if (view === 'TERMINAL') {
     return (
-      <div className="min-h-screen flex flex-col items-center font-body" style={{ backgroundColor: '#FFF8F0' }}>
+      <div className="min-h-screen flex flex-col items-center font-body dark:!bg-background-dark" style={{ backgroundColor: '#FFF8F0' }}>
         <div className="w-full max-w-md flex flex-col min-h-screen">
           <Navbar title="우리 아이 기질" showBack onBackClick={() => router.push('/')} />
           <main className="flex-1 px-6 py-8">
@@ -164,7 +190,7 @@ export function PhasedChildSurvey() {
   // ── 차수 완료 체크포인트: "더 정확하게 — 심화 검사 받기" ───────────────────
   if (view === 'CHECKPOINT') {
     return (
-      <div className="min-h-screen flex flex-col items-center font-body" style={{ backgroundColor: '#FFF8F0' }}>
+      <div className="min-h-screen flex flex-col items-center font-body dark:!bg-background-dark" style={{ backgroundColor: '#FFF8F0' }}>
         <div className="w-full max-w-md flex flex-col min-h-screen">
           <Navbar title="우리 아이 기질" showBack onBackClick={() => router.push('/')} />
           <main className="flex-1 px-6 py-8">
@@ -191,9 +217,14 @@ export function PhasedChildSurvey() {
                 variant="secondary"
                 fullWidth
                 onClick={proceedToDeeper}
+                disabled={!accessReady}
                 className="mt-4 rounded-2xl h-12 text-[14px] font-bold"
               >
-                {gatedNext ? `구독하고 ${targetPhase}차 이어가기` : `${targetPhase}차 검사 이어가기`}
+                {!accessReady
+                  ? '확인 중…'
+                  : gatedNext
+                    ? `구독하고 ${targetPhase}차 이어가기`
+                    : `${targetPhase}차 검사 이어가기`}
               </Button>
             </div>
 
@@ -205,23 +236,72 @@ export function PhasedChildSurvey() {
   }
 
   // ── 문항 화면 ────────────────────────────────────────────────────────────
-  const currentIndex = flow.visibleItems.findIndex((q) => cbqResponses[String(q.id)] === undefined);
+  // 첫 미응답 문항 = 진행 한계선. 검토 중이 아니면 이 문항을 보여준다.
+  const frontier = flow.visibleItems.findIndex((item) => cbqResponses[String(item.id)] === undefined);
+  // 차수가 바뀌어 reviewIndex 가 낡았을 수 있으므로 한계선 안으로 잘라낸다.
+  const currentIndex = reviewIndex !== null && reviewIndex < frontier ? reviewIndex : frontier;
   const q = currentIndex >= 0 ? flow.visibleItems[currentIndex] : null;
   if (!q) return null;
-  const currentAnswer = cbqResponses[String(q.id)];
-  const phasePct = flow.totalInCurrentPhase
-    ? Math.round((flow.answeredInCurrentPhase / flow.totalInCurrentPhase) * 100)
-    : 0;
+  const storedAnswer = cbqResponses[String(q.id)];
+  // 선택 직후에는 저장 전이라도 눌린 보기를 즉시 표시한다.
+  const displayAnswer = pendingScore ?? storedAnswer;
+  const isAdvancing = pendingScore !== null;
+  // 진행 표시는 보고 있는 문항이 속한 차수 기준으로 센다 —
+  // visibleItems 는 여러 차수를 합친 목록이라 전체 인덱스를 그대로 쓰면 "2차 · 16/15"가 된다.
+  const questionPhase = q.phase ?? flow.currentPhase;
+  const phaseItems = flow.visibleItems.filter((item) => (item.phase ?? flow.currentPhase) === questionPhase);
+  const positionInPhase = phaseItems.findIndex((item) => item.id === q.id) + 1;
+  const totalInPhase = phaseItems.length;
+  const phasePct = totalInPhase ? Math.round((positionInPhase / totalInPhase) * 100) : 0;
+
+  const handleExit = async () => {
+    if (
+      await confirm({
+        title: '검사를 그만둘까요?',
+        description: '지금까지 답한 내용은 저장돼 있어요. 다음에 이어서 하실 수 있어요.',
+        confirmLabel: '나가기',
+        cancelLabel: '계속하기',
+      })
+    ) {
+      router.push('/');
+    }
+  };
+
+  // 답을 저장하면 다음 문항이 같은 자리에 즉시 나타난다 —
+  // 잠금이 없으면 더블탭의 두 번째 탭이 '읽지도 않은 다음 문항'에 찍힌다.
+  const handleSelect = (score: number) => {
+    if (isAdvancing) return;
+    const questionId = String(q.id);
+    setNavDirection('next');
+    setPendingScore(score);
+    advanceTimer.current = window.setTimeout(() => {
+      setCbqResponse(questionId, score);
+      // 검토 중이었다면 한 칸 앞으로, 한계선에 닿으면 자연 흐름으로 복귀.
+      setReviewIndex((prev) => (prev === null ? null : prev + 1 < frontier ? prev + 1 : null));
+      setPendingScore(null);
+      advanceTimer.current = null;
+    }, 220);
+  };
+
+  const handlePrev = () => {
+    if (isAdvancing) return;
+    if (currentIndex <= 0) {
+      void handleExit();
+      return;
+    }
+    setNavDirection('prev');
+    setReviewIndex(currentIndex - 1);
+  };
 
   return (
-    <div className="min-h-screen flex flex-col items-center font-body" style={{ backgroundColor: '#FFF8F0' }}>
+    <div className="min-h-screen flex flex-col items-center font-body dark:!bg-background-dark" style={{ backgroundColor: '#FFF8F0' }}>
       <div className="w-full max-w-md flex flex-col min-h-screen relative">
-        <Navbar title="우리 아이 기질" showBack onBackClick={() => router.push('/')} />
+        <Navbar title="우리 아이 기질" showBack onBackClick={handlePrev} />
 
-        <div className="bg-white/80 backdrop-blur-sm border-b border-beige-main/20 sticky top-0 z-10 px-4 py-3">
+        <div className="bg-white/80 dark:bg-surface-dark/80 backdrop-blur-sm border-b border-beige-main/20 dark:border-white/10 sticky top-0 z-10 px-4 py-3">
           <div className="flex items-center justify-between mb-1.5 px-1">
             <span className="text-xs font-semibold text-text-sub">
-              {flow.currentPhase}차 · {flow.answeredInCurrentPhase + 1}/{flow.totalInCurrentPhase}
+              {questionPhase}차 · {positionInPhase}/{totalInPhase}
             </span>
             <span className="text-xs font-bold" style={{ color: ACCENT }}>{phasePct}%</span>
           </div>
@@ -230,7 +310,11 @@ export function PhasedChildSurvey() {
           </div>
         </div>
 
-        <main className="flex-1 px-5 py-4 overflow-y-auto no-scrollbar">
+        {/* key: 문항이 바뀌면 스크롤 위치를 리셋하고 전환 애니메이션을 다시 태운다. */}
+        <main
+          key={q.id}
+          className={`question-slide question-slide-${navDirection} flex-1 px-5 py-4 overflow-y-auto no-scrollbar`}
+        >
           <h2 className="text-[18px] font-extrabold text-text-main leading-snug mb-4 break-keep">
             <span className="mr-2" style={{ color: ACCENT }}>Q.</span>
             {q.context}
@@ -238,13 +322,14 @@ export function PhasedChildSurvey() {
           <div className="space-y-2.5">
             {q.choices?.map((choice, idx) => {
               const score = idx + 1;
-              const isSelected = currentAnswer === score;
+              const isSelected = displayAnswer === score;
               return (
                 <button
                   key={idx}
-                  onClick={() => setCbqResponse(String(q.id), score)}
+                  onClick={() => handleSelect(score)}
+                  disabled={isAdvancing}
                   className={`w-full text-left p-3.5 rounded-2xl border-2 transition-all duration-200 flex items-center gap-3.5 ${
-                    isSelected ? 'shadow-card' : 'border-transparent bg-white shadow-sm hover:-translate-y-0.5'
+                    isSelected ? 'shadow-card' : 'border-transparent bg-white dark:bg-surface-dark shadow-sm hover:-translate-y-0.5'
                   }`}
                   style={isSelected ? { borderColor: ACCENT, backgroundColor: `${ACCENT}08` } : undefined}
                 >
@@ -263,14 +348,18 @@ export function PhasedChildSurvey() {
           </div>
         </main>
 
-        <div className="border-t border-beige-main/20 px-4 py-3">
+        <div className="border-t border-beige-main/20 dark:border-white/10 px-4 py-3 flex items-center justify-between">
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push('/')}
+            onClick={handlePrev}
+            disabled={currentIndex <= 0 || isAdvancing}
             className="text-text-sub"
             icon={<Icon name="arrow_back" size="sm" />}
           >
+            이전 문항
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleExit} className="text-text-sub">
             나가기
           </Button>
         </div>

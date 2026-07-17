@@ -7,10 +7,12 @@ import { db } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import { Navbar } from '@/components/layout/Navbar';
 import { Avatar } from '@/components/ui/Avatar';
+import { useToast } from '@/components/ui/Toast';
 import { useLocale } from '@/i18n/LocaleProvider';
 
 export default function ProfileEditPage() {
     const { t } = useLocale();
+    const toast = useToast();
     const router = useRouter();
     const { user, loading: authLoading } = useAuth();
     const [ready, setReady] = useState(false);
@@ -57,7 +59,7 @@ export default function ProfileEditPage() {
             });
         } catch (error) {
             console.error('Failed to upload image:', error);
-            alert(t('settings.imageUploadFailed'));
+            toast.error(t('settings.imageUploadFailed'));
         } finally {
             setIsSaving(false);
         }
@@ -75,11 +77,12 @@ export default function ProfileEditPage() {
                 data: { full_name: fullName.trim() }
             });
 
-            alert(t('settings.profileUpdated'));
+            // 성공 안내로 화면을 막지 않는다 — 토스트를 띄우고 곧바로 이동한다.
+            toast.success(t('settings.profileUpdated'));
             router.push('/settings/profile');
         } catch (error) {
             console.error('Failed to update profile:', error);
-            alert(t('settings.profileUpdateError'));
+            toast.error(t('settings.profileUpdateError'));
         } finally {
             setIsSaving(false);
         }

@@ -10,12 +10,16 @@ import BottomNav from '@/components/layout/BottomNav';
 import { Navbar } from '@/components/layout/Navbar';
 import { TabLoadingScreen } from '@/components/ui/TabLoadingScreen';
 import { Avatar } from '@/components/ui/Avatar';
+import { useConfirm } from '@/components/ui/ConfirmProvider';
+import { useToast } from '@/components/ui/Toast';
 import Link from 'next/link';
 import { useLocale } from '@/i18n/LocaleProvider';
 import { getRuntimeAppInfo, type RuntimeAppInfo } from '@/lib/appInfo';
 
 export default function ProfilePage() {
     const { t } = useLocale();
+    const confirm = useConfirm();
+    const toast = useToast();
     const router = useRouter();
     const { user, loading: authLoading, signOut } = useAuth();
     const resetAppStore = useAppStore((s) => s.resetAll);
@@ -62,14 +66,24 @@ export default function ProfilePage() {
     }, []);
 
     const handleLogout = async () => {
-        if (confirm(t('settings.logoutConfirm'))) {
+        if (await confirm({
+            title: t('settings.logoutConfirm'),
+            confirmLabel: t('common.logout'),
+        })) {
             await signOut();
             router.replace('/login');
         }
     };
 
     const handleDeleteAccount = async () => {
-        if (confirm(t('settings.deleteAccountConfirm'))) {
+        // 되돌릴 수 없는 작업 — 제목/본문을 분리하고 확인 버튼을 danger 로 표시한다.
+        const [confirmTitle, ...confirmBody] = t('settings.deleteAccountConfirm').split('\n');
+        if (await confirm({
+            title: confirmTitle,
+            description: confirmBody.join('\n'),
+            confirmLabel: t('settings.deleteAccount'),
+            tone: 'danger',
+        })) {
             try {
                 if (user) {
                     setDeleting(true);
@@ -88,7 +102,7 @@ export default function ProfilePage() {
             } catch (error) {
                 setDeleting(false);
                 console.error("Failed to delete account:", error);
-                alert(t('settings.deleteAccountError'));
+                toast.error(t('settings.deleteAccountError'));
             }
         }
     };

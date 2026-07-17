@@ -17,6 +17,7 @@ import { db, ObservationData, PracticeItemData, PracticeLogData, ChildProfile } 
 import { getFeatureAccess } from '@/lib/access';
 import { getRandomExamples } from '@/data/consultExamples';
 import { useLocale } from '@/i18n/LocaleProvider';
+import { useToast } from '@/components/ui/Toast';
 import { trackEvent } from '@/lib/analytics';
 import { getApiErrorMessage, readJsonResponse } from '@/lib/api';
 import { buildInstallPageUrl, isAppWebView } from '@/lib/install';
@@ -269,6 +270,7 @@ function ConsultContent() {
     const reportKind = searchParams.get('report_kind');
     const { user } = useAuth();
     const { t, locale } = useLocale();
+    const toast = useToast();
     const { intake, cbqResponses, atqResponses, selectedChildId, setSelectedChildId } = useAppStore();
     const [childName, setChildName] = useState<string | null>(intake.childName || null);
     const [childBirthDate, setChildBirthDate] = useState<string | undefined>(intake.birthDate || undefined);
@@ -407,6 +409,8 @@ function ConsultContent() {
     // RESULT STATE
     const [prescription, setPrescription] = useState<Prescription | null>(null);
     const [selectedActionIndex, setSelectedActionIndex] = useState<number | null>(null);
+    // 실천 항목 저장은 DB insert — 잠그지 않으면 더블탭에 실천이 두 개 생긴다.
+    const [isSavingPractice, setIsSavingPractice] = useState(false);
     const [savedConsultId, setSavedConsultId] = useState<string | null>(null);
     const [showInstallPrompt, setShowInstallPrompt] = useState(false);
     const trackedFollowupContextRef = useRef(false);
@@ -1571,6 +1575,8 @@ function ConsultContent() {
                                 )}
                                 <button
                                     onClick={async () => {
+                                        if (isSavingPractice) return;
+                                        setIsSavingPractice(true);
                                         try {
                                             if (user && sessionId && savedConsultId && prescription?.actionItems && selectedActionIndex !== null) {
                                                 const item = prescription.actionItems[selectedActionIndex];
@@ -1607,13 +1613,17 @@ function ConsultContent() {
                                             router.push('/practices');
                                         } catch (error) {
                                             console.error('Failed to save practice item:', error);
-                                            alert(t('consult.practiceSaveError'));
+                                            toast.error(t('consult.practiceSaveError'));
+                                            // 실패했으면 다시 시도할 수 있어야 한다(성공 시엔 이동하므로 풀지 않는다).
+                                            setIsSavingPractice(false);
                                         }
                                     }}
-                                    disabled={selectedActionIndex === null}
-                                    className={`w-full py-4 rounded-2xl font-bold text-[15px] transition-all active:scale-[0.98] ${selectedActionIndex !== null ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                                    disabled={selectedActionIndex === null || isSavingPractice}
+                                    className={`w-full py-4 rounded-2xl font-bold text-[15px] transition-all active:scale-[0.98] disabled:opacity-60 ${selectedActionIndex !== null ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
                                 >
-                                    {selectedActionIndex !== null ? (replacePracticeIdParam ? t('consult.replacePractice') : t('consult.startPractice')) : t('consult.selectActionItem')}
+                                    {isSavingPractice
+                                        ? t('common.saving')
+                                        : selectedActionIndex !== null ? (replacePracticeIdParam ? t('consult.replacePractice') : t('consult.startPractice')) : t('consult.selectActionItem')}
                                 </button>
                                 <button
                                     onClick={() => router.push('/')}

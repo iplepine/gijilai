@@ -9,6 +9,8 @@ import { KeyboardViewportTracker } from "@/components/layout/KeyboardViewportTra
 import { ReferralHandler } from "@/components/layout/ReferralHandler";
 import { SurveyRestoreProvider } from "@/components/layout/SurveyRestoreProvider";
 import { LocaleProvider } from "@/i18n/LocaleProvider";
+import { ToastProvider } from "@/components/ui/Toast";
+import { ConfirmProvider } from "@/components/ui/ConfirmProvider";
 import { StructuredData } from "@/components/seo/StructuredData";
 import "./globals.css";
 
@@ -209,15 +211,19 @@ export default function RootLayout({
         />
         <AuthProvider>
           <LocaleProvider>
-            <div className="min-h-screen bg-background-light dark:bg-background-dark">
-              <FirebaseAnalytics />
-              <KeyboardViewportTracker />
-              <ReferralHandler />
-              <SurveyRestoreProvider />
-              <FcmTokenSync />
-              {children}
-              <ForceUpdateGate />
-            </div>
+            <ToastProvider>
+              <ConfirmProvider>
+                <div className="min-h-screen bg-background-light dark:bg-background-dark">
+                  <FirebaseAnalytics />
+                  <KeyboardViewportTracker />
+                  <ReferralHandler />
+                  <SurveyRestoreProvider />
+                  <FcmTokenSync />
+                  {children}
+                  <ForceUpdateGate />
+                </div>
+              </ConfirmProvider>
+            </ToastProvider>
           </LocaleProvider>
         </AuthProvider>
       </body>

@@ -13,6 +13,27 @@
 
 ---
 
+## 2026-07-17 | 다크 모드는 클래스 기준(`@custom-variant dark`)으로 고정
+
+- **결정**: `globals.css`에 `@custom-variant dark (&:where(.dark, .dark *));`를 선언해 모든 `dark:*` 유틸리티가 `html.dark` 클래스를 따르게 한다.
+- **이유**: Tailwind v4의 `dark:`는 기본값이 `prefers-color-scheme` 미디어 쿼리인데, 이 앱의 다크 모드는 `DarkModeToggle`과 `layout.tsx` 초기화 스크립트가 **클래스**로 토글한다. 두 기준이 어긋나 있어서 `.dark`는 CSS 변수(`--text-main` 등)만 뒤집고 `dark:*` 유틸리티(빌드 결과 221개 규칙)는 OS 설정을 따라갔다. 결과적으로 **OS 라이트 + 인앱 다크**에서 흰 배경 위에 밝은 글씨가 찍혀 본문이 사실상 읽히지 않았고, **OS 다크 + 인앱 라이트**에서도 반대 방향으로 깨졌다. 코드베이스는 처음부터 클래스 기준(v3 `darkMode: 'class'`)을 전제로 쓰였으므로, 유틸리티를 클래스에 맞추는 것이 의도 복원이다.
+- **대안**: (a) 토글을 없애고 OS 설정만 따르기 — 사용자가 고른 테마를 무시하게 되고 `DarkModeToggle`·초기화 스크립트를 걷어내야 해서 기각. (b) `dark:*` 사용처를 CSS 변수로 일일이 치환 — 221개 규칙을 손대야 하는 대공사라 기각(한 줄로 같은 결과).
+
+## 2026-07-17 | 사용자 피드백은 Toast, 확인은 `useConfirm` — 네이티브 `alert`/`confirm` 대체
+
+- **결정**: `ToastProvider`(`components/ui/Toast.tsx`)와 `ConfirmProvider`(`components/ui/ConfirmProvider.tsx`)를 `layout.tsx`의 `LocaleProvider` 안에 둔다. 알림은 `useToast().success/error/info`, 확인은 `await useConfirm()({ title, description, tone })`로 쓴다. 되돌릴 수 없는 작업은 `tone: 'danger'`.
+- **이유**: 앱이 Flutter WebView에서 도는데 `alert`/`confirm`은 도메인이 박힌 OS 대화상자로 떠서 조잡하다. 특히 저장 성공 같은 안내까지 화면을 막았다. 잘 만든 `ConfirmDialog`가 이미 있었는데도 52곳이 네이티브를 쓴 이유는 **호출부마다 상태 15줄을 배선해야 했기 때문**(`report/page.tsx` 1곳만 채택). 그래서 프라미스 기반 `useConfirm()`으로 `confirm()`과 같은 한 줄 모양(`if (await confirm({...}))`)을 제공해, 쉬운 길이 곧 올바른 길이 되게 했다. Toast는 상단 배치 — 하단 내비/고정 CTA와 겹치지 않는다.
+- **대안**: (a) 호출부마다 `ConfirmDialog`를 직접 배선 — 지금까지 아무도 안 한 방식이라 반복될 이유가 없어 기각. (b) 외부 토스트 라이브러리 — lean한 package.json 기조와 어긋나고 safe-area/haptics/다크 토큰을 어차피 직접 맞춰야 해서 기각.
+- **알려진 한계/후속**: 인프라 도입과 함께 회원 탈퇴·공동양육자 해제·검사 이탈·프로필 저장 등 위험도 높은 곳부터 이관했고, **남은 네이티브 호출 44곳은 미이관**(같은 패턴으로 기계적 치환 가능).
+
+## 2026-07-17 | 차수화 검사(`PhasedChildSurvey`)는 파생 인덱스 + 진행 잠금으로 운용
+
+- **결정**: 현재 문항을 "첫 미응답 문항"으로 파생하는 구조는 유지하되, 답 선택 시 220ms `pendingScore` 잠금을 두고(레거시 `survey/page.tsx`의 `isAdvancing`+220ms와 동일 규약), `reviewIndex`로 이전 문항 재열람을 허용한다. 진행 표시는 문항이 속한 차수 기준으로 센다.
+- **이유**: 답을 저장하면 파생 인덱스가 즉시 다음 문항으로 넘어가 **같은 좌표에** 새 문항이 나타난다. 잠금이 없으면 더블탭의 두 번째 탭이 부모가 읽지도 않은 문항에 찍힌다 — 심리검사 도구에서 채점 데이터 오염이고, 되돌릴 수단도 없었다. 잠금은 이미 레거시 검사가 쓰던 검증된 규약이라 새 패턴을 만들지 않았다. `visibleItems`는 여러 차수를 합친 목록이라 전체 인덱스를 그대로 표시하면 "2차 · 16/15"가 되므로 차수 스코프로 센다.
+- **대안**: (a) 현재 인덱스를 상태로 승격 — `buildAssessmentFlow`(순수 selector)와 이중 소스가 되어 기각. (b) 잠금 없이 전환 애니메이션만 추가 — 애니메이션 중에도 탭은 들어와 오염을 못 막아 기각.
+
+---
+
 ## 2026-07-07 | 공동양육자 FCM 푸시(Phase 2) — DB Webhook → Next.js → FCM v1, 제로 의존성
 
 - **결정**: Phase 1 인앱 알림을 실제 기기 푸시로 확장한다(마이그레이션 `027`). (1) **발송 경로 = Supabase Database Webhook → Next.js 라우트 → FCM**: `notifications` INSERT를 Supabase DB Webhook이 `POST /api/webhooks/notification-created`(헤더 `x-webhook-secret`)로 보내고, 라우트가 수신자 `device_tokens`를 조회해 FCM HTTP v1로 발송한다. 기존 IAP 웹훅(`/api/payment/iap/*`)과 동일한 "외부 웹훅 → Next.js 라우트" 패턴을 재사용 — 별도 Edge Function/인프라 없이 Vercel 배포에 얹는다. (2) **제로 의존성 FCM 클라이언트**(`lib/fcm.ts`): `firebase-admin`/`google-auth-library`를 추가하지 않고 Node `crypto`로 서비스계정 RS256 JWT→OAuth2 액세스토큰→FCM v1을 직접 호출(토큰 캐시, 무효토큰 표시 후 정리). (3) **토큰↔사용자 매핑은 웹이 담당**: 네이티브 앱엔 user id가 없고 인증이 WebView Supabase 세션에만 있으므로, 네이티브가 얻은 FCM 토큰을 `window.__gijilaiFcmToken`+CustomEvent로 웹에 주입하고 웹 `FcmTokenSync`가 세션으로 `POST /api/notifications/token`에 등록한다(기존 IAP/ReminderBridge 브릿지 패턴과 동일). (4) **탭 딥링크는 기존 `gijilai://open`→`_openWebPath` 재사용** → `/consultations/{sessionId}`. (5) **옵트아웃**: `profiles.coparent_push_enabled`(기본 ON), 설정 토글, 디스패처가 확인. 인앱 알림은 이 값과 무관하게 항상 남는다.

@@ -10,6 +10,8 @@ interface ConfirmDialogProps {
   onCancel: () => void;
   onConfirm: () => void | Promise<void>;
   isConfirming?: boolean;
+  /** 되돌릴 수 없는 작업이면 'danger' — 확인 버튼을 빨간색으로 표시한다. */
+  tone?: 'default' | 'danger';
 }
 
 export function ConfirmDialog({
@@ -20,6 +22,7 @@ export function ConfirmDialog({
   onCancel,
   onConfirm,
   isConfirming = false,
+  tone = 'default',
 }: ConfirmDialogProps) {
   return (
     <div
@@ -34,7 +37,7 @@ export function ConfirmDialog({
           <h2 id="confirm-dialog-title" className="text-[20px] font-black leading-tight text-text-main dark:text-white">
             {title}
           </h2>
-          <p id="confirm-dialog-description" className="text-[14px] leading-relaxed text-text-sub dark:text-slate-300 break-keep">
+          <p id="confirm-dialog-description" className="whitespace-pre-line text-[14px] leading-relaxed text-text-sub dark:text-slate-300 break-keep">
             {description}
           </p>
         </div>
@@ -56,7 +59,9 @@ export function ConfirmDialog({
             fullWidth
             onClick={onConfirm}
             disabled={isConfirming}
-            className="h-12 rounded-2xl"
+            className={`h-12 rounded-2xl ${
+              tone === 'danger' ? 'bg-rose-600 shadow-rose-600/20' : ''
+            }`}
           >
             {confirmLabel}
           </Button>

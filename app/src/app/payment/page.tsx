@@ -79,6 +79,9 @@ export default function PaymentPage() {
   const { user } = useAuth();
   const { t } = useLocale();
   const [status, setStatus] = useState<LoadingStatus>('idle');
+  // 네이티브 결제 시트가 뜨는 동안 CTA 를 잠근다. status 를 쓰지 않는 이유:
+  // 'paying' 은 CTA 자체를 언마운트시켜서, 사용자가 결제를 취소하면 돌아올 화면이 사라진다.
+  const [iapRequesting, setIapRequesting] = useState(false);
   const [loadingIndex, setLoadingIndex] = useState(0);
   const [isApp, setIsApp] = useState(false);
   const [availableCoupon, setAvailableCoupon] = useState<Coupon | null>(null);
@@ -142,9 +145,12 @@ export default function PaymentPage() {
     // Flutter 결제 콜백
     window.onPaymentComplete = (data: { status?: string }) => {
       if (data.status === 'success') {
+        setIapRequesting(false);
         handlePaymentSuccess();
         return;
       }
+      // 취소·실패로 돌아왔으면 CTA 를 다시 살려준다(안 그러면 다시 결제할 방법이 없다).
+      setIapRequesting(false);
       trackEvent(data.status === 'cancelled' ? 'payment_cancelled' : 'payment_failed', {
         source: entrySource,
         entry_cta: entryCta,
@@ -169,6 +175,13 @@ export default function PaymentPage() {
 
     return () => { delete window.onPaymentComplete; };
   }, [entryCta, entrySource, finalAmount, handlePaymentSuccess, payMethod, reportKind, reportTab, router, t, useCoupon, user]);
+
+  // 네이티브 콜백이 유실돼도 결제 버튼이 영구히 잠기지 않도록 하는 안전장치.
+  useEffect(() => {
+    if (!iapRequesting) return;
+    const timer = window.setTimeout(() => setIapRequesting(false), 60_000);
+    return () => window.clearTimeout(timer);
+  }, [iapRequesting]);
 
   // 분석 로딩 애니메이션
   useEffect(() => {
@@ -203,6 +216,8 @@ export default function PaymentPage() {
 
   const handlePaymentStart = async () => {
     if (!user) return;
+    // 렌더 전 연타까지 막는다 — 아래 trackEvent/결제 요청이 두 번 나가지 않도록 가장 앞에서 잠근다.
+    if (iapRequesting) return;
 
     trackEvent('payment_started', {
       source: entrySource,
@@ -229,6 +244,8 @@ export default function PaymentPage() {
     // Flutter IAP
     if (isApp) {
       if (window.PaymentBridge) {
+        // 시트가 열리는 동안 CTA 를 잠근다 — 풀어주는 건 onPaymentComplete(취소/실패 포함).
+        setIapRequesting(true);
         window.PaymentBridge.postMessage(JSON.stringify({
           type: 'PAYMENT_REQUEST',
           provider: 'APPLE_GOOGLE',
@@ -507,12 +524,21 @@ export default function PaymentPage() {
             {/* CTA */}
             {status === 'idle' && (
               <div className="app-fixed-cta absolute bottom-0 left-0 right-0 p-6 bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl border-t border-beige-main/20 z-30">
-                <Button variant="primary" size="lg" fullWidth onClick={handlePaymentStart} className="h-16 rounded-2xl text-lg font-bold shadow-glow">
-                  {finalAmount === 0
-                    ? t('payment.freeWithCoupon')
-                    : isApp
-                      ? t('payment.payAndGetReport')
-                      : t('payment.payWithAmount', { amount: finalAmount.toLocaleString() })
+                <Button
+                  variant="primary"
+                  size="lg"
+                  fullWidth
+                  onClick={handlePaymentStart}
+                  disabled={iapRequesting}
+                  className="h-16 rounded-2xl text-lg font-bold shadow-glow"
+                >
+                  {iapRequesting
+                    ? t('common.pleaseWait')
+                    : finalAmount === 0
+                      ? t('payment.freeWithCoupon')
+                      : isApp
+                        ? t('payment.payAndGetReport')
+                        : t('payment.payWithAmount', { amount: finalAmount.toLocaleString() })
                   }
                 </Button>
               </div>
