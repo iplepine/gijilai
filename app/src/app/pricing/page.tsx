@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
+import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useLocale } from '@/i18n/LocaleProvider';
 import { trackEvent, trackPurchase } from '@/lib/analytics';
@@ -158,6 +159,7 @@ function PricingContent() {
   const searchParams = useSearchParams();
   const { user } = useAuth();
   const { locale, t, currency } = useLocale();
+  const toast = useToast();
   const [loading, setLoading] = useState(false);
   const [buyerPhone, setBuyerPhone] = useState('');
   const [buyerPhoneError, setBuyerPhoneError] = useState('');
@@ -470,7 +472,7 @@ function PricingContent() {
         report_tab: reportTab ?? undefined,
         report_kind: reportKind ?? undefined,
       });
-      alert(t('pricing.subscribeError', { message: getErrorMessage(error) }));
+      toast.error(t('pricing.subscribeError', { message: getErrorMessage(error) }));
     } finally {
       setLoading(false);
     }
@@ -523,7 +525,7 @@ function PricingContent() {
         subscription_source: existingSubscription?.source ?? 'unknown',
         reason: 'server_error',
       });
-      alert(t('settings.reactivateError'));
+      toast.error(t('settings.reactivateError'));
       console.error('Reactivate subscription error:', error);
     } finally {
       setReactivating(false);

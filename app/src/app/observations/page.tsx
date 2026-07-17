@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/Button';
 import { Navbar } from '@/components/layout/Navbar';
 import { TabLoadingIndicator } from '@/components/ui/TabLoadingIndicator';
 import { useLocale } from '@/i18n/LocaleProvider';
+import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmProvider';
 import { trackEvent } from '@/lib/analytics';
 import type { Database } from '@/types/supabase';
 
@@ -27,6 +29,8 @@ function getActionItem(value: Consultation['ai_prescription']): string | null {
 }
 
 export default function RecordPage() {
+    const toast = useToast();
+    const confirm = useConfirm();
     const router = useRouter();
     const { user, loading: authLoading } = useAuth();
     const { t } = useLocale();
@@ -172,7 +176,7 @@ export default function RecordPage() {
                 entry_mode: persistedMode,
                 reason: 'db_error',
             });
-            alert(t('observations.saveFailed'));
+            toast.error(t('observations.saveFailed'));
         } finally {
             setIsSubmitting(false);
         }
@@ -189,7 +193,12 @@ export default function RecordPage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm(t('observations.deleteConfirm'))) return;
+        const ok = await confirm({
+            title: t('observations.deleteConfirm'),
+            confirmLabel: t('common.delete'),
+            tone: 'danger',
+        });
+        if (!ok) return;
         const prev = observations;
         setObservations(obs => obs.filter(o => o.id !== id));
         try {
@@ -203,7 +212,7 @@ export default function RecordPage() {
                 reason: 'db_error',
             });
             setObservations(prev);
-            alert(t('observations.deleteFailed'));
+            toast.error(t('observations.deleteFailed'));
         }
     };
 

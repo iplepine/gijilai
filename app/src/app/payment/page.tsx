@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
+import { useToast } from '@/components/ui/Toast';
 import { trackEvent } from '@/lib/analytics';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { db } from '@/lib/db';
@@ -78,6 +79,7 @@ export default function PaymentPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { t } = useLocale();
+  const toast = useToast();
   const [status, setStatus] = useState<LoadingStatus>('idle');
   // 네이티브 결제 시트가 뜨는 동안 CTA 를 잠근다. status 를 쓰지 않는 이유:
   // 'paying' 은 CTA 자체를 언마운트시켜서, 사용자가 결제를 취소하면 돌아올 화면이 사라진다.
@@ -264,7 +266,7 @@ export default function PaymentPage() {
           report_tab: reportTab,
           report_kind: reportKind,
         });
-        alert(t('payment.appBridgeNotFound'));
+        toast.error(t('payment.appBridgeNotFound'));
       }
       return;
     }
@@ -282,7 +284,7 @@ export default function PaymentPage() {
         report_tab: reportTab,
         report_kind: reportKind,
       });
-      alert(t('payment.payModuleLoading'));
+      toast.info(t('payment.payModuleLoading'));
       return;
     }
 
@@ -386,7 +388,7 @@ export default function PaymentPage() {
           report_tab: reportTab,
           report_kind: reportKind,
         });
-        alert(t('payment.paymentFailed', { message }));
+        toast.error(t('payment.paymentFailed', { message }));
       }
     }
   };

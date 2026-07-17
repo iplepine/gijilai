@@ -5,6 +5,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
+import { useToast } from "@/components/ui/Toast";
 import { useLocale } from "@/i18n/LocaleProvider";
 import { trackEvent } from "@/lib/analytics";
 import { db, type PracticeItemData, type PracticeLogData } from "@/lib/db";
@@ -62,6 +63,7 @@ const MINUTE_OPTIONS = Array.from({ length: 12 }, (_, index) => index * 5);
 
 export default function NotificationsPage() {
   const { locale, t } = useLocale();
+  const toast = useToast();
   const { user, loading: authLoading } = useAuth();
   const [settings, setSettings] =
     useState<NotificationSettings>(DEFAULT_SETTINGS);
@@ -457,7 +459,7 @@ export default function NotificationsPage() {
         reason: "db_error",
       });
       setMarketingEnabled(previousValue);
-      alert(t("settings.marketingUpdateError"));
+      toast.error(t("settings.marketingUpdateError"));
     } finally {
       setIsSavingMarketing(false);
     }
@@ -480,7 +482,7 @@ export default function NotificationsPage() {
     } catch (error) {
       console.error("Failed to update co-parent push preference:", error);
       setCoParentPushEnabled(previousValue);
-      alert(t("settings.coParentPushUpdateError"));
+      toast.error(t("settings.coParentPushUpdateError"));
     } finally {
       setIsSavingCoParentPush(false);
     }

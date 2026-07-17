@@ -454,13 +454,17 @@
     "addConsult": "이어서 상담하기",
     "resolvedMsg": "이 고민은 해결됐어요",
     "deleteRecord": "기록 삭제",
-    "confirmDeleteSession": "이 고민과 관련된 모든 상담·실천 기록이 삭제돼요.\n정말 삭제할까요?",
     "confirmDeleteConsult": "이 상담 기록을 삭제할까요?",
-    "confirmDropPractices": "진행 중인 실천이 {count}개 있어요.\n\n{names}\n\n실천도 함께 종료할까요?",
     "confirmLeaveForHome": "상담을 나가면 현재 입력 중인 내용이 사라질 수 있어요.\n홈으로 이동할까요?",
     "timeoutRetry": "응답이 오래 걸리고 있어요. 잠시 후 다시 시도해주세요.",
     "cancelGenerating": "그만두기",
-    "cancelledGenerating": "상담을 멈췄어요. 적어주신 내용은 그대로 있어요."
+    "cancelledGenerating": "상담을 멈췄어요. 적어주신 내용은 그대로 있어요.",
+    "dropPracticesTitle": "실천도 함께 종료할까요?",
+    "dropPracticesBody": "진행 중인 실천이 {count}개 있어요.\n\n{names}",
+    "deleteSessionTitle": "이 고민을 삭제할까요?",
+    "deleteSessionBody": "이 고민과 관련된 모든 상담·실천 기록이 삭제돼요.",
+    "deleteLastConsultTitle": "이 고민 전체를 삭제할까요?",
+    "deleteLastConsultBody": "마지막 상담 기록이라, 삭제하면 이 고민과 관련된 상담·실천 기록이 모두 사라져요."
   },
   "translate": {
     "navTitle": "아이말 번역기",
@@ -685,7 +689,8 @@
     "paymentSubscription": "구독",
     "paymentRenewal": "갱신",
     "paymentComplete": "완료",
-    "paymentFailed": "실패"
+    "paymentFailed": "실패",
+    "deleteChildTitle": "이 아이 정보를 삭제할까요?"
   },
   "practices": {
     "title": "실천 기록",
@@ -948,7 +953,9 @@
     "autonomySupport": "자율성 지지",
     "emotionalResponsiveness": "정서적 반응성",
     "medicalDisclaimerTitle": "의료 관련 안내",
-    "medicalDisclaimerBody": "이 리포트는 기질 이해를 돕기 위한 참고 자료이며, 의학적·심리학적 진단을 대체하지 않습니다. 건강이나 발달 관련 우려가 있다면 전문기관에 상담해 주세요."
+    "medicalDisclaimerBody": "이 리포트는 기질 이해를 돕기 위한 참고 자료이며, 의학적·심리학적 진단을 대체하지 않습니다. 건강이나 발달 관련 우려가 있다면 전문기관에 상담해 주세요.",
+    "styleSurveyNeededTitle": "양육 태도 검사가 필요해요",
+    "parentSurveyNeededTitle": "양육자 기질 검사가 필요해요"
   },
   "payment": {
     "title": "결제",

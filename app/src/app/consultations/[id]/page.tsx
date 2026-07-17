@@ -9,6 +9,7 @@ import BottomNav from '@/components/layout/BottomNav';
 import { Navbar } from '@/components/layout/Navbar';
 import { TabLoadingIndicator } from '@/components/ui/TabLoadingIndicator';
 import { useLocale } from '@/i18n/LocaleProvider';
+import { useConfirm } from '@/components/ui/ConfirmProvider';
 import type { Database } from '@/types/supabase';
 import {
     findCaregiver,
@@ -42,6 +43,7 @@ export default function ConsultationDetailPage() {
     const { id } = useParams<{ id: string }>();
     const { user, loading: authLoading } = useAuth();
     const { t, locale } = useLocale();
+    const confirm = useConfirm();
 
     const [session, setSession] = useState<(SessionData & { childName?: string }) | null>(null);
     const [consults, setConsults] = useState<ConsultationRow[]>([]);
@@ -130,9 +132,10 @@ export default function ConsultationDetailPage() {
 
         if (activePractices && activePractices.length > 0) {
             const names = activePractices.map(p => `• ${p.title}`).join('\n');
-            const dropPractices = window.confirm(
-                t('consult.confirmDropPractices', { count: activePractices.length, names })
-            );
+            const dropPractices = await confirm({
+                title: t('consult.dropPracticesTitle'),
+                description: t('consult.dropPracticesBody', { count: activePractices.length, names }),
+            });
             if (dropPractices) {
                 await Promise.all(
                     activePractices.map(p =>
@@ -147,13 +150,27 @@ export default function ConsultationDetailPage() {
 
     const handleDeleteSession = async () => {
         if (!session) return;
-        if (!window.confirm(t('consult.confirmDeleteSession'))) return;
+        const ok = await confirm({
+            title: t('consult.deleteSessionTitle'),
+            description: t('consult.deleteSessionBody'),
+            confirmLabel: t('common.delete'),
+            tone: 'danger',
+        });
+        if (!ok) return;
         await db.deleteSession(session.id);
         router.replace('/consultations');
     };
 
     const handleDeleteConsultation = async (consultationId: string) => {
-        if (!window.confirm(t('consult.confirmDeleteConsult'))) return;
+        // 마지막 한 건을 지우면 아래에서 세션까지 지운다 — 그 사실을 미리 알린다.
+        const isLastConsult = consults.length <= 1;
+        const ok = await confirm({
+            title: isLastConsult ? t('consult.deleteLastConsultTitle') : t('consult.confirmDeleteConsult'),
+            description: isLastConsult ? t('consult.deleteLastConsultBody') : undefined,
+            confirmLabel: t('common.delete'),
+            tone: 'danger',
+        });
+        if (!ok) return;
         await db.deleteConsultation(consultationId);
         const remaining = consults.filter(c => c.id !== consultationId);
         if (remaining.length === 0) {

@@ -8,6 +8,8 @@ import { Icon } from '@/components/ui/Icon';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { Navbar } from '@/components/layout/Navbar';
 import { useLocale } from '@/i18n/LocaleProvider';
+import { useToast } from '@/components/ui/Toast';
+import { useConfirm } from '@/components/ui/ConfirmProvider';
 import { LAST_FREE_CHILD_DELETE_BLOCKED_CODE } from '@/lib/access';
 import { OwnerCoParentSection } from '@/components/coParent/OwnerCoParentSection';
 import { isCaregiverLabel, type CaregiverLabel } from '@/lib/coParent';
@@ -19,6 +21,8 @@ type ChildDeleteResponse = {
 
 export default function EditChildPage() {
     const { t } = useLocale();
+    const toast = useToast();
+    const confirm = useConfirm();
     const router = useRouter();
     const params = useParams();
     const childId = params.id as string;
@@ -67,7 +71,7 @@ export default function EditChildPage() {
                 }
             } catch (error) {
                 console.error('Error fetching child:', error);
-                alert(t('settings.fetchChildFailed'));
+                toast.error(t('settings.fetchChildFailed'));
                 router.back();
             } finally {
                 setLoading(false);
@@ -77,7 +81,7 @@ export default function EditChildPage() {
         if (childId) {
             fetchChild();
         }
-    }, [childId, router, t]);
+    }, [childId, router, t, toast]);
 
     const handleOwnerLabelChange = async (label: CaregiverLabel) => {
         const res = await fetch(`/api/children/${childId}/owner-label`, {
@@ -121,7 +125,7 @@ export default function EditChildPage() {
                     imageUrl = await db.uploadChildAvatar(avatarFile, user.id);
                 } catch (uploadError) {
                     console.error('Avatar upload failed:', uploadError);
-                    alert(t('settings.photoUploadFailed').replace('{message}', getErrorMessage(uploadError)));
+                    toast.error(t('settings.photoUploadFailed').replace('{message}', getErrorMessage(uploadError)));
                     return;
                 }
             }
@@ -143,14 +147,20 @@ export default function EditChildPage() {
             router.replace('/');
         } catch (error) {
             console.error('Error updating child:', error);
-            alert(t('settings.updateFailed').replace('{message}', getErrorMessage(error)));
+            toast.error(t('settings.updateFailed').replace('{message}', getErrorMessage(error)));
         } finally {
             setSaving(false);
         }
     };
 
     const handleDelete = async () => {
-        if (!confirm(t('settings.deleteConfirm'))) return;
+        const ok = await confirm({
+            title: t('settings.deleteChildTitle'),
+            description: t('settings.deleteConfirm'),
+            confirmLabel: t('common.delete'),
+            tone: 'danger',
+        });
+        if (!ok) return;
 
         try {
             setSaving(true);
@@ -159,7 +169,7 @@ export default function EditChildPage() {
 
             if (!response.ok) {
                 if (payload?.code === LAST_FREE_CHILD_DELETE_BLOCKED_CODE || payload?.error === LAST_FREE_CHILD_DELETE_BLOCKED_CODE) {
-                    alert(t('settings.lastFreeChildDeleteBlocked'));
+                    toast.info(t('settings.lastFreeChildDeleteBlocked'));
                     return;
                 }
                 throw new Error(payload?.error || t('settings.deleteFailed'));
@@ -169,7 +179,7 @@ export default function EditChildPage() {
             router.replace('/');
         } catch (error) {
             console.error('Error deleting child:', error);
-            alert(t('settings.deleteFailed'));
+            toast.error(t('settings.deleteFailed'));
         } finally {
             setSaving(false);
         }

@@ -7,6 +7,7 @@ import {
     type MouseEvent,
     type PointerEvent,
 } from 'react';
+import { useToast } from '@/components/ui/Toast';
 import { useLocale } from '@/i18n/LocaleProvider';
 import { getNativeCapabilities } from '@/lib/nativeCapabilities';
 import {
@@ -166,6 +167,7 @@ function requestNativeVoiceInput(languageTag: string): Promise<NativeVoiceInputR
 
 export function VoiceInputButton({ value, onChange, maxLength, className = '' }: VoiceInputButtonProps) {
     const { locale, t } = useLocale();
+    const toast = useToast();
     const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
     const baseValueRef = useRef(value);
     const transcriptSegmentsRef = useRef<SpeechRecognitionTranscriptSegment[]>([]);
@@ -220,7 +222,7 @@ export function VoiceInputButton({ value, onChange, maxLength, className = '' }:
                     return;
                 }
                 if (result.status !== 'cancelled') {
-                    alert(getVoiceErrorMessage(t, result.code ?? 'unknown'));
+                    toast.error(getVoiceErrorMessage(t, result.code ?? 'unknown'));
                 }
             } finally {
                 setStarting(false);
@@ -230,7 +232,7 @@ export function VoiceInputButton({ value, onChange, maxLength, className = '' }:
 
         const SpeechRecognition = getSpeechRecognition();
         if (!SpeechRecognition) {
-            alert(t('voice.unsupported'));
+            toast.info(t('voice.unsupported'));
             return;
         }
 
@@ -254,7 +256,7 @@ export function VoiceInputButton({ value, onChange, maxLength, className = '' }:
         recognition.onerror = (event) => {
             const code = normalizeSpeechRecognitionError(event.error);
             console.warn('SpeechRecognition error:', event.error);
-            alert(getVoiceErrorMessage(t, code));
+            toast.error(getVoiceErrorMessage(t, code));
             stopListening();
         };
 
@@ -271,7 +273,7 @@ export function VoiceInputButton({ value, onChange, maxLength, className = '' }:
         } catch {
             recognitionRef.current = null;
             console.warn('SpeechRecognition start failed');
-            alert(t('voice.errorUnknown'));
+            toast.error(t('voice.errorUnknown'));
         } finally {
             setStarting(false);
         }

@@ -453,13 +453,17 @@
     "addConsult": "Continue consultation",
     "resolvedMsg": "This concern is resolved",
     "deleteRecord": "Delete record",
-    "confirmDeleteSession": "All consultation and practice records related to this concern will be deleted.\nAre you sure?",
     "confirmDeleteConsult": "Delete this consultation record?",
-    "confirmDropPractices": "You have {count} active practices.\n\n{names}\n\nEnd practices too?",
     "confirmLeaveForHome": "Leaving now may discard what you are entering in this consultation.\nGo home?",
     "timeoutRetry": "This is taking longer than expected. Please try again in a moment.",
     "cancelGenerating": "Stop",
-    "cancelledGenerating": "Stopped. What you wrote is still here."
+    "cancelledGenerating": "Stopped. What you wrote is still here.",
+    "dropPracticesTitle": "End practices too?",
+    "dropPracticesBody": "You have {count} active practices.\n\n{names}",
+    "deleteSessionTitle": "Delete this concern?",
+    "deleteSessionBody": "All consultation and practice records related to this concern will be deleted.",
+    "deleteLastConsultTitle": "Delete this entire concern?",
+    "deleteLastConsultBody": "This is the last consultation record, so deleting it removes the whole concern and all its records."
   },
   "translate": {
     "navTitle": "Kid-speak translator",
@@ -684,7 +688,8 @@
     "paymentSubscription": "Subscription",
     "paymentRenewal": "Renewal",
     "paymentComplete": "Completed",
-    "paymentFailed": "Failed"
+    "paymentFailed": "Failed",
+    "deleteChildTitle": "Delete this child?"
   },
   "practices": {
     "title": "Practice Log",
@@ -947,7 +952,9 @@
     "autonomySupport": "Autonomy Support",
     "emotionalResponsiveness": "Emotional Responsiveness",
     "medicalDisclaimerTitle": "Medical Notice",
-    "medicalDisclaimerBody": "This report is reference material to help understand temperament and does not replace medical or psychological diagnosis. If you have concerns about health or development, please consult a qualified professional."
+    "medicalDisclaimerBody": "This report is reference material to help understand temperament and does not replace medical or psychological diagnosis. If you have concerns about health or development, please consult a qualified professional.",
+    "styleSurveyNeededTitle": "Parenting style assessment needed",
+    "parentSurveyNeededTitle": "Parent temperament assessment needed"
   },
   "payment": {
     "title": "Payment",

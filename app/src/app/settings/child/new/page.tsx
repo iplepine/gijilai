@@ -7,6 +7,7 @@ import { db } from '@/lib/db';
 import { useAppStore } from '@/store/useAppStore';
 import { Icon } from '@/components/ui/Icon';
 import { DatePicker } from '@/components/ui/DatePicker';
+import { useToast } from '@/components/ui/Toast';
 import { Navbar } from '@/components/layout/Navbar';
 import { useLocale } from '@/i18n/LocaleProvider';
 import { CHILD_PROFILE_LIMIT_REACHED_CODE, type ChildProfileAccess } from '@/lib/access';
@@ -30,6 +31,7 @@ type ChildAccessPayload = {
 export default function RegisterChildPage() {
     const { t } = useLocale();
     const router = useRouter();
+    const toast = useToast();
     const setSelectedChildId = useAppStore((s) => s.setSelectedChildId);
     const [loading, setLoading] = useState(false);
     const [accessLoading, setAccessLoading] = useState(true);
@@ -90,7 +92,7 @@ export default function RegisterChildPage() {
 
             const latestAccess = await loadChildAccess();
             if (latestAccess && !latestAccess.canCreateChild) {
-                alert(t('settings.childProfileLimitReached'));
+                toast.info(t('settings.childProfileLimitReached'));
                 router.push('/pricing');
                 return;
             }
@@ -101,7 +103,7 @@ export default function RegisterChildPage() {
                     imageUrl = await db.uploadChildAvatar(avatarFile, user.id);
                 } catch (uploadError) {
                     console.error('Avatar upload failed:', uploadError);
-                    alert(t('settings.photoUploadFailedContinue'));
+                    toast.error(t('settings.photoUploadFailedContinue'));
                 }
             }
 
@@ -120,7 +122,7 @@ export default function RegisterChildPage() {
 
             if (!response.ok) {
                 if (payload?.code === CHILD_PROFILE_LIMIT_REACHED_CODE || payload?.error === CHILD_PROFILE_LIMIT_REACHED_CODE) {
-                    alert(t('settings.childProfileLimitReached'));
+                    toast.info(t('settings.childProfileLimitReached'));
                     router.push('/pricing');
                     return;
                 }
@@ -135,7 +137,7 @@ export default function RegisterChildPage() {
             router.replace('/');
         } catch (error) {
             console.error('Error registering child:', error);
-            alert(`${t('settings.registerFailed')}\n${getErrorMessage(error)}`);
+            toast.error(`${t('settings.registerFailed')}\n${getErrorMessage(error)}`);
         } finally {
             setLoading(false);
         }

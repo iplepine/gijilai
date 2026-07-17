@@ -32,7 +32,9 @@
 - **결정**: `ToastProvider`(`components/ui/Toast.tsx`)와 `ConfirmProvider`(`components/ui/ConfirmProvider.tsx`)를 `layout.tsx`의 `LocaleProvider` 안에 둔다. 알림은 `useToast().success/error/info`, 확인은 `await useConfirm()({ title, description, tone })`로 쓴다. 되돌릴 수 없는 작업은 `tone: 'danger'`.
 - **이유**: 앱이 Flutter WebView에서 도는데 `alert`/`confirm`은 도메인이 박힌 OS 대화상자로 떠서 조잡하다. 특히 저장 성공 같은 안내까지 화면을 막았다. 잘 만든 `ConfirmDialog`가 이미 있었는데도 52곳이 네이티브를 쓴 이유는 **호출부마다 상태 15줄을 배선해야 했기 때문**(`report/page.tsx` 1곳만 채택). 그래서 프라미스 기반 `useConfirm()`으로 `confirm()`과 같은 한 줄 모양(`if (await confirm({...}))`)을 제공해, 쉬운 길이 곧 올바른 길이 되게 했다. Toast는 상단 배치 — 하단 내비/고정 CTA와 겹치지 않는다.
 - **대안**: (a) 호출부마다 `ConfirmDialog`를 직접 배선 — 지금까지 아무도 안 한 방식이라 반복될 이유가 없어 기각. (b) 외부 토스트 라이브러리 — lean한 package.json 기조와 어긋나고 safe-area/haptics/다크 토큰을 어차피 직접 맞춰야 해서 기각.
-- **알려진 한계/후속**: 인프라 도입과 함께 회원 탈퇴·공동양육자 해제·검사 이탈·프로필 저장 등 위험도 높은 곳부터 이관했고, **남은 네이티브 호출 44곳은 미이관**(같은 패턴으로 기계적 치환 가능).
+- **톤 규칙**: `toast.error`=실패, `toast.info`=정책 안내·검증·차단(사용자 잘못이 아님), `toast.success`=성공. 무료 플랜 한도(`childProfileLimitReached`)나 재검사 쿨다운처럼 "사용자 잘못이 아닌 안내"는 error 가 아니라 info 로 둔다.
+- **의도적으로 남긴 네이티브 호출 2곳**: (1) `consult/page.tsx:1021` — `Navbar`의 `onHomeClick`이 `() => boolean | void` **동기 계약**이라 `await confirm()`을 쓰려면 Navbar와 이를 쓰는 모든 화면을 바꿔야 한다. (2) `install-app/page.tsx:214`의 `window.prompt` — `navigator.clipboard` 실패 시 **선택 가능한 텍스트로 URL을 보여주는 폴백**이라, 자동으로 사라지고 선택도 안 되는 토스트로 바꾸면 오히려 기능이 나빠진다. 네이티브 다이얼로그라고 전부 결함은 아니다.
+- **파생 정리**: 확인창 문구가 네이티브 alert 용으로 제목·본문·질문이 한 덩어리(`\n` 포함)로 뭉쳐 있던 것을 제목/본문 키로 분리했다(`consult.confirmDropPractices`·`confirmDeleteSession` → `dropPracticesTitle`/`Body`, `deleteSessionTitle`/`Body`). 이 과정에서 **`confirmDeleteConsult`가 "이 상담 기록을 삭제할까요?"라고 묻고는 마지막 한 건이면 세션 전체를 지우던 불일치**를 발견해, 마지막 건일 때 `deleteLastConsultTitle`/`Body`로 사실대로 알리도록 고쳤다.
 
 ## 2026-07-17 | 차수화 검사(`PhasedChildSurvey`)는 파생 인덱스 + 진행 잠금으로 운용
 

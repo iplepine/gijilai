@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useAppStore } from "@/store/useAppStore";
 import BottomNav from "@/components/layout/BottomNav";
+import { useToast } from "@/components/ui/Toast";
 import { HomeHeader } from "@/components/home/HomeHeader";
 import { HomeLoadingScreen } from "@/components/home/HomeLoadingScreen";
 import { HomeWelcomeState } from "@/components/home/HomeWelcomeState";
@@ -81,6 +82,7 @@ function HomeModuleReveal({
 export default function HomePage() {
   const router = useRouter();
   const { locale, t } = useLocale();
+  const toast = useToast();
   const { user, loading: authLoading } = useAuth();
   const {
     intake,
@@ -313,7 +315,7 @@ export default function HomePage() {
   const handleHarmonyBadgeClick = useCallback(() => {
     if (!parentTemperament?.hasData) return;
     if (!temperamentInfo) {
-      alert(t("home.childTestAlert", { name: childName }));
+      toast.info(t("home.childTestAlert", { name: childName }));
       router.push("/survey/intro");
       return;
     }
@@ -322,7 +324,7 @@ export default function HomePage() {
       has_subscription: !!subscription,
     });
     router.push("/report?tab=parent");
-  }, [parentTemperament, temperamentInfo, t, router, subscription, childName]);
+  }, [parentTemperament, temperamentInfo, t, router, subscription, childName, toast]);
   const uncheckedPracticeItems = useMemo(
     () =>
       practices.uncheckedItems.filter(
@@ -612,7 +614,7 @@ export default function HomePage() {
       await db.updateChildProfile(mainChild.id, { image_url: imageUrl });
     } catch (error) {
       console.error("Failed to update profile image:", error);
-      alert(t("home.imageUploadFailed"));
+      toast.error(t("home.imageUploadFailed"));
     } finally {
       setUploading(false);
     }

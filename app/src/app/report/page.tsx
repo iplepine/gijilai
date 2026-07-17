@@ -21,6 +21,8 @@ import Link from 'next/link';
 import { Icon } from '@/components/ui/Icon';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useConfirm } from '@/components/ui/ConfirmProvider';
+import { useToast } from '@/components/ui/Toast';
 import { MedicalDisclaimer } from '@/components/ui/MedicalDisclaimer';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { TabLoadingIndicator } from '@/components/ui/TabLoadingIndicator';
@@ -273,6 +275,8 @@ function ReportContent() {
 
   const { user, loading: authLoading } = useAuth();
   const { t, locale } = useLocale();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [activeTab, setActiveTab] = useState<ReportTab>(() => getReportTabFromParam(tabParam));
   const {
     intake,
@@ -735,12 +739,12 @@ function ReportContent() {
       }
     } catch (e) {
       console.error('Failed to load report:', e);
-      alert(t('report.loadingError'));
+      toast.error(t('report.loadingError'));
     } finally {
       setIsSavedReportLoaded(true);
       setExistingReportLoadingType(null);
     }
-  }, [normalizeReportTextForName, t]);
+  }, [normalizeReportTextForName, t, toast]);
 
   // URL ID가 있을 경우 DB에서 리포트 로드
   useEffect(() => {
@@ -904,21 +908,21 @@ function ReportContent() {
       const currentHasSubscription = await resolveCurrentSubscription();
       const status = getSurveyRetakeCooldown(target, currentHasSubscription);
       if (!status.isAvailable) {
-        alert(getRetakeCooldownMessage(status, currentHasSubscription));
+        toast.info(getRetakeCooldownMessage(status, currentHasSubscription));
         return;
       }
     }
 
     setRestartTarget(target);
     setIsRestartDialogOpen(true);
-  }, [getRetakeCooldownMessage, getSurveyRetakeCooldown, resolveCurrentSubscription]);
+  }, [getRetakeCooldownMessage, getSurveyRetakeCooldown, resolveCurrentSubscription, toast]);
 
   const handleFreshSurveyRestart = useCallback(async () => {
     const surveyTarget: SurveyReanalysisTarget = restartTarget === 'child' ? 'child' : 'parent';
     const currentHasSubscription = await resolveCurrentSubscription();
     const cooldownStatus = getSurveyRetakeCooldown(surveyTarget, currentHasSubscription);
     if (!cooldownStatus.isAvailable) {
-      alert(getRetakeCooldownMessage(cooldownStatus, currentHasSubscription));
+      toast.info(getRetakeCooldownMessage(cooldownStatus, currentHasSubscription));
       setIsRestartDialogOpen(false);
       return;
     }
@@ -941,7 +945,7 @@ function ReportContent() {
       router.replace(buildTrackedPath(destination));
     } catch (error) {
       console.error('Failed to start fresh survey:', error);
-      alert(t('report.restartAnalysisError'));
+      toast.error(t('report.restartAnalysisError'));
       setIsStartingFreshSurvey(false);
     }
   }, [
@@ -956,6 +960,7 @@ function ReportContent() {
     selectedChildId,
     t,
     trackReportCtaClick,
+    toast,
     user,
   ]);
 
@@ -1401,7 +1406,8 @@ function ReportContent() {
         return next;
       });
       setChildReportId(previousChildReportId);
-      alert(isChildProfileLimitError(error) ? t('settings.childProfileLimitReached') : t('report.generationError'));
+      if (isChildProfileLimitError(error)) toast.info(t('settings.childProfileLimitReached'));
+      else toast.error(t('report.generationError'));
     } finally {
       if (inflightControllersRef.current.get('CHILD') === controller) {
         inflightControllersRef.current.delete('CHILD');
@@ -1412,7 +1418,7 @@ function ReportContent() {
         }
       }
     }
-  }, [childAiReport, childAnswerMap, childName, childReportId, childScores, childType.desc, childType.keywords, childType.label, currentChildReport?.id, fetchChildReportStream, normalizeReportTextForName, reportDates.child, t]);
+  }, [childAiReport, childAnswerMap, childName, childReportId, childScores, childType.desc, childType.keywords, childType.label, currentChildReport?.id, fetchChildReportStream, normalizeReportTextForName, reportDates.child, t, toast]);
 
   const generateParentAIReport = useCallback(async (refresh = false) => {
     if (generatingRef.current.has('PARENT')) return;
@@ -1467,7 +1473,8 @@ function ReportContent() {
         }
         return next;
       });
-      alert(isChildProfileLimitError(error) ? t('settings.childProfileLimitReached') : t('report.generationError'));
+      if (isChildProfileLimitError(error)) toast.info(t('settings.childProfileLimitReached'));
+      else toast.error(t('report.generationError'));
     } finally {
       if (inflightControllersRef.current.get('PARENT') === controller) {
         inflightControllersRef.current.delete('PARENT');
@@ -1478,7 +1485,7 @@ function ReportContent() {
         }
       }
     }
-  }, [currentParentReport?.id, fetchParentReportStream, parentAiReport, parentAnswerMap, parentScores, parentType.keywords, parentType.label, reportDates.parent, t]);
+  }, [currentParentReport?.id, fetchParentReportStream, parentAiReport, parentAnswerMap, parentScores, parentType.keywords, parentType.label, reportDates.parent, t, toast]);
 
   const generateHarmonyAIReport = useCallback(async (refresh = false) => {
     if (generatingRef.current.has('HARMONY')) return;
@@ -1513,7 +1520,8 @@ function ReportContent() {
         return false;
       }
       console.error(error);
-      alert(isChildProfileLimitError(error) ? t('settings.childProfileLimitReached') : t('report.harmonyError'));
+      if (isChildProfileLimitError(error)) toast.info(t('settings.childProfileLimitReached'));
+      else toast.error(t('report.harmonyError'));
       return false;
     } finally {
       if (inflightControllersRef.current.get('HARMONY') === controller) {
@@ -1526,11 +1534,15 @@ function ReportContent() {
       }
     }
     return false;
-  }, [childAnswerMap, childName, childScores, childType.keywords, childType.label, currentHarmonyReport?.id, fetchReport, normalizeReportTextForName, parentAnswerMap, parentScores, parentType.keywords, parentType.label, parentingResponses, styleScores, t]);
+  }, [childAnswerMap, childName, childScores, childType.keywords, childType.label, currentHarmonyReport?.id, fetchReport, normalizeReportTextForName, parentAnswerMap, parentScores, parentType.keywords, parentType.label, parentingResponses, styleScores, t, toast]);
 
   const handleHarmonyRefresh = useCallback(async () => {
     if (!isStyleSurveyComplete) {
-      if (confirm(t('report.styleSurveyNeeded'))) {
+      if (await confirm({
+        title: t('report.styleSurveyNeededTitle'),
+        description: t('report.styleSurveyNeeded'),
+        confirmLabel: t('common.start'),
+      })) {
         const destination = '/survey?type=STYLE';
         trackReportCtaClick('continue_parenting_style_for_harmony_refresh', 'footer', destination);
         router.push(buildTrackedPath(destination));
@@ -1559,7 +1571,7 @@ function ReportContent() {
         return next;
       });
     }
-  }, [buildTrackedPath, generateHarmonyAIReport, harmonyAiReport, isStyleSurveyComplete, reportDates.parenting, router, t, trackReportCtaClick]);
+  }, [buildTrackedPath, generateHarmonyAIReport, harmonyAiReport, isStyleSurveyComplete, reportDates.parenting, router, t, trackReportCtaClick, confirm]);
 
   const handleRestartAnalysisConfirm = useCallback(async () => {
     if (restartTarget === 'harmony') {
@@ -1947,9 +1959,13 @@ function ReportContent() {
                     {t('report.childTab')}
                   </button>
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       if (isParentSurveyComplete) handleTabChange('parent');
-                      else if (confirm(t('report.parentSurveyNeeded'))) {
+                      else if (await confirm({
+                        title: t('report.parentSurveyNeededTitle'),
+                        description: t('report.parentSurveyNeeded'),
+                        confirmLabel: t('common.start'),
+                      })) {
                         trackReportCtaClick('continue_parent_survey', 'hero', '/survey?type=PARENT');
                         router.push(buildTrackedPath('/survey?type=PARENT'));
                       }
@@ -1959,9 +1975,13 @@ function ReportContent() {
                     {t('report.parentTab')}
                   </button>
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       if (isStyleSurveyComplete) handleTabChange('parenting');
-                      else if (confirm(t('report.styleSurveyNeeded'))) {
+                      else if (await confirm({
+                        title: t('report.styleSurveyNeededTitle'),
+                        description: t('report.styleSurveyNeeded'),
+                        confirmLabel: t('common.start'),
+                      })) {
                         trackReportCtaClick('continue_parenting_style', 'hero', '/survey?type=STYLE');
                         router.push(buildTrackedPath('/survey?type=STYLE'));
                       }
