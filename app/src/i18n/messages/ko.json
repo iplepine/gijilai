@@ -457,7 +457,10 @@
     "confirmDeleteSession": "이 고민과 관련된 모든 상담·실천 기록이 삭제돼요.\n정말 삭제할까요?",
     "confirmDeleteConsult": "이 상담 기록을 삭제할까요?",
     "confirmDropPractices": "진행 중인 실천이 {count}개 있어요.\n\n{names}\n\n실천도 함께 종료할까요?",
-    "confirmLeaveForHome": "상담을 나가면 현재 입력 중인 내용이 사라질 수 있어요.\n홈으로 이동할까요?"
+    "confirmLeaveForHome": "상담을 나가면 현재 입력 중인 내용이 사라질 수 있어요.\n홈으로 이동할까요?",
+    "timeoutRetry": "응답이 오래 걸리고 있어요. 잠시 후 다시 시도해주세요.",
+    "cancelGenerating": "그만두기",
+    "cancelledGenerating": "상담을 멈췄어요. 적어주신 내용은 그대로 있어요."
   },
   "translate": {
     "navTitle": "아이말 번역기",

@@ -456,7 +456,10 @@
     "confirmDeleteSession": "All consultation and practice records related to this concern will be deleted.\nAre you sure?",
     "confirmDeleteConsult": "Delete this consultation record?",
     "confirmDropPractices": "You have {count} active practices.\n\n{names}\n\nEnd practices too?",
-    "confirmLeaveForHome": "Leaving now may discard what you are entering in this consultation.\nGo home?"
+    "confirmLeaveForHome": "Leaving now may discard what you are entering in this consultation.\nGo home?",
+    "timeoutRetry": "This is taking longer than expected. Please try again in a moment.",
+    "cancelGenerating": "Stop",
+    "cancelledGenerating": "Stopped. What you wrote is still here."
   },
   "translate": {
     "navTitle": "Kid-speak translator",

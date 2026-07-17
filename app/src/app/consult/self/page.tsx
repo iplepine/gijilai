@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useEffect, useCallback, useMemo } from 'react';
+import { Suspense, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useAppStore } from '@/store/useAppStore';
@@ -10,6 +10,7 @@ import { ConsultModeToggle } from '@/components/consult/ConsultModeToggle';
 import { VoiceInputButton } from '@/components/ui/VoiceInputButton';
 import { TabLoadingScreen } from '@/components/ui/TabLoadingScreen';
 import { useLocale } from '@/i18n/LocaleProvider';
+import { createConsultRequestController, isAbortError } from '@/lib/consultRequest';
 import { trackEvent } from '@/lib/analytics';
 import { getApiErrorMessage, readJsonResponse } from '@/lib/api';
 import {
@@ -57,6 +58,8 @@ function SelfConsultInner() {
   const [reflection, setReflection] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingLabel, setLoadingLabel] = useState('');
+  // LLM 호출 취소/타임아웃 — 없으면 통신이 멎었을 때 전체화면 스피너에 갇힌다.
+  const consultRequest = useRef(createConsultRequestController()).current;
   const [error, setError] = useState<string | null>(null);
 
   const [empathy, setEmpathy] = useState('');
@@ -87,7 +90,7 @@ function SelfConsultInner() {
     setIsLoading(true);
     setLoadingLabel(t('selfParent.questionsLoading'));
     try {
-      const res = await fetch('/api/consult/self/questions', {
+      const res = await consultRequest.run('/api/consult/self/questions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reflection: trimmed, childId: childIdParam }),
@@ -118,12 +121,17 @@ function SelfConsultInner() {
       setStep('QUESTIONS');
       trackEvent('self_parent_questions_received', {});
     } catch (err) {
+      // 취소는 실패가 아니다 — 적어둔 반성문은 그대로 두고 조용히 입력 화면으로.
+      if (isAbortError(err)) {
+        if (consultRequest.reasonRef.current === 'timeout') setError(t('consult.timeoutRetry'));
+        return;
+      }
       console.error('[self consult] start error:', err);
       setError(t('selfParent.genericError'));
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, reflection, childIdParam, router, t]);
+  }, [isLoading, reflection, childIdParam, router, t, consultRequest]);
 
   const submitForPrescription = useCallback(async () => {
     if (isLoading) return;
@@ -131,7 +139,7 @@ function SelfConsultInner() {
     setIsLoading(true);
     setLoadingLabel(t('selfParent.prescriptionLoading'));
     try {
-      const res = await fetch('/api/consult/self/prescription', {
+      const res = await consultRequest.run('/api/consult/self/prescription', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -167,12 +175,16 @@ function SelfConsultInner() {
       setStep('RESULT');
       trackEvent('self_parent_prescription_received', { tool: pp.prescription.action.tool });
     } catch (err) {
+      if (isAbortError(err)) {
+        if (consultRequest.reasonRef.current === 'timeout') setError(t('consult.timeoutRetry'));
+        return;
+      }
       console.error('[self consult] prescription error:', err);
       setError(t('selfParent.genericError'));
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, reflection, questions, answers, childIdParam, router, t]);
+  }, [isLoading, reflection, questions, answers, childIdParam, router, t, consultRequest]);
 
   const handleQuestionNext = useCallback(() => {
     if (questionIndex < questions.length - 1) {
@@ -330,6 +342,14 @@ function SelfConsultInner() {
           <div className="fixed inset-0 bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-md z-50 flex flex-col items-center justify-center gap-5 px-8">
             <span className="h-12 w-12 animate-spin rounded-full border-4 border-secondary/15 border-t-secondary" />
             <p className="text-[15px] font-medium text-text-sub dark:text-gray-300 text-center">{loadingLabel}</p>
+            {/* 이 오버레이는 화면 전체(내비 포함)를 덮는다 — 빠져나갈 길을 같이 준다. */}
+            <button
+              type="button"
+              onClick={() => consultRequest.cancel()}
+              className="px-5 py-2.5 rounded-full text-[13px] font-bold text-text-sub dark:text-gray-400 border border-text-sub/20 dark:border-gray-600 active:scale-[0.98] transition-all"
+            >
+              {t('consult.cancelGenerating')}
+            </button>
           </div>
         )}
       </div>

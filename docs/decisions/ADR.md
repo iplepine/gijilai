@@ -13,6 +13,14 @@
 
 ---
 
+## 2026-07-17 | 상담 LLM 호출은 60초 타임아웃 + 사용자 취소 (실천 피드백 15초와 분리)
+
+- **결정**: 상담 LLM fetch를 `lib/consultRequest.ts`의 `createConsultRequestController()`로 감싼다. 클라이언트 타임아웃 **60초**(`CONSULT_LLM_TIMEOUT_MS`), 전체화면 로딩 오버레이에 **그만두기** 버튼, 중단 사유를 `user`/`timeout`으로 구분해 안내를 다르게 한다. 적용 대상은 `consult`(questions/initial·questions/followup·prescription)과 `consult/self`(questions·prescription).
+- **이유**: 앱의 다른 LLM 호출(홈·실천의 `practice-feedback`)은 15초 `AbortController`가 있는데, **정작 가장 오래 걸리는 상담 생성만 아무 가드가 없어** 통신이 멎으면 `fixed inset-0 z-50` 오버레이(내비까지 덮음)에 갇혀 앱을 죽이는 것 외엔 탈출구가 없었다. 15초를 그대로 쓰지 않은 이유는 성격이 달라서다 — `practice-feedback`은 사용자가 기다리지 않는 배경 보강이라 짧게 끊어도 되지만, 문진/처방은 사용자가 화면을 보며 기다리는 생성 호출이라 15초로 끊으면 정상 응답을 죽인다. 서버측 OpenAI 클라이언트 타임아웃(`lib/openai.ts` 120초)보다는 짧게 둬서 사용자가 서버보다 먼저 풀려나게 했다. 취소와 타임아웃을 구분한 건, 사용자가 스스로 멈춘 건 실패가 아니라 안내 문구가 달라야 하기 때문.
+- **대안**: (a) 15초 통일 — 정상 생성을 죽여 기각. (b) 취소 없이 타임아웃만 — 60초를 강제로 기다리게 되어 기각(그만두기 버튼이 실제 탈출구). (c) 스트리밍 전환 — 체감이 가장 좋지만 라우트·프롬프트·파싱을 모두 바꿔야 해서 별건으로 분리.
+- **주의(회귀 위험)**: `handleCheckFollowUp`은 실패 시 곧바로 `handleGeneratePrescription`을 부르는 폴백이 있어서, **중단을 일반 오류와 같이 처리하면 그만두려던 사용자가 두 번째 LLM 호출에 다시 갇힌다.** 그래서 `isAbortError`면 폴백을 타지 않고 반환한다. `lib/consultRequest.test.ts`(7개)가 취소/타임아웃/타임아웃 직전 미중단/성공 시 타이머 정리를 고정한다.
+- **알려진 한계/후속**: 상담 API 라우트에 `maxDuration` 선언이 없어 Vercel 기본 실행 제한을 따른다(생성이 그보다 길어지면 클라이언트 타임아웃 전에 504). 필요하면 라우트별 `export const maxDuration`을 검토 — 비용/플랜 판단이라 보류. `Navbar`의 `onHomeClick`은 `() => boolean | void` 동기 계약이라 `consult/page.tsx:1021`의 `window.confirm` 1곳은 남겨뒀다(비동기화하면 Navbar를 쓰는 모든 화면에 영향).
+
 ## 2026-07-17 | 다크 모드는 클래스 기준(`@custom-variant dark`)으로 고정
 
 - **결정**: `globals.css`에 `@custom-variant dark (&:where(.dark, .dark *));`를 선언해 모든 `dark:*` 유틸리티가 `html.dark` 클래스를 따르게 한다.

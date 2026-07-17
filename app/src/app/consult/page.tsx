@@ -18,6 +18,7 @@ import { getFeatureAccess } from '@/lib/access';
 import { getRandomExamples } from '@/data/consultExamples';
 import { useLocale } from '@/i18n/LocaleProvider';
 import { useToast } from '@/components/ui/Toast';
+import { createConsultRequestController, isAbortError } from '@/lib/consultRequest';
 import { trackEvent } from '@/lib/analytics';
 import { getApiErrorMessage, readJsonResponse } from '@/lib/api';
 import { buildInstallPageUrl, isAppWebView } from '@/lib/install';
@@ -411,6 +412,8 @@ function ConsultContent() {
     const [selectedActionIndex, setSelectedActionIndex] = useState<number | null>(null);
     // 실천 항목 저장은 DB insert — 잠그지 않으면 더블탭에 실천이 두 개 생긴다.
     const [isSavingPractice, setIsSavingPractice] = useState(false);
+    // LLM 호출 취소/타임아웃 — 없으면 통신이 멎었을 때 전체화면 스피너에 갇힌다.
+    const consultRequest = useRef(createConsultRequestController()).current;
     const [savedConsultId, setSavedConsultId] = useState<string | null>(null);
     const [showInstallPrompt, setShowInstallPrompt] = useState(false);
     const trackedFollowupContextRef = useRef(false);
@@ -731,7 +734,7 @@ function ConsultContent() {
                 }
             }
 
-            const res = await fetch('/api/consult/questions/initial', {
+            const res = await consultRequest.run('/api/consult/questions/initial', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -769,8 +772,17 @@ function ConsultContent() {
             setQuestionNavDirection('next');
             setCurrentQuestionIndex(0);
         } catch (error) {
+            // 취소·타임아웃은 실패가 아니다 — 적어둔 고민은 그대로 두고 입력 화면으로 돌려보낸다.
+            if (isAbortError(error)) {
+                toast.info(
+                    consultRequest.reasonRef.current === 'timeout'
+                        ? t('consult.timeoutRetry')
+                        : t('consult.cancelledGenerating'),
+                );
+                return;
+            }
             console.error(error);
-            alert(t('consult.errorRetry'));
+            toast.error(t('consult.errorRetry'));
         } finally {
             setIsLoading(false);
             setLoadingStage(null);
@@ -809,7 +821,7 @@ function ConsultContent() {
         setIsLoading(true);
         try {
             const fullProblem = problemDesc;
-            const res = await fetch('/api/consult/questions/followup', {
+            const res = await consultRequest.run('/api/consult/questions/followup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -854,6 +866,16 @@ function ConsultContent() {
                 await handleGeneratePrescription(currentAnswers);
             }
         } catch (error) {
+            // 사용자가 멈췄거나 타임아웃이면 처방 생성으로 넘어가지 않는다 —
+            // 그냥 두면 그만두려던 사람이 두 번째 LLM 호출에 다시 갇힌다.
+            if (isAbortError(error)) {
+                toast.info(
+                    consultRequest.reasonRef.current === 'timeout'
+                        ? t('consult.timeoutRetry')
+                        : t('consult.cancelledGenerating'),
+                );
+                return;
+            }
             console.error(error);
             await handleGeneratePrescription(currentAnswers); // Fallback to results
         } finally {
@@ -881,7 +903,7 @@ function ConsultContent() {
                 }
             }
 
-            const res = await fetch('/api/consult/prescription', {
+            const res = await consultRequest.run('/api/consult/prescription', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -970,8 +992,16 @@ function ConsultContent() {
                 if (savedConsult) setSavedConsultId(savedConsult.id);
             }
         } catch (error) {
+            if (isAbortError(error)) {
+                toast.info(
+                    consultRequest.reasonRef.current === 'timeout'
+                        ? t('consult.timeoutRetry')
+                        : t('consult.cancelledGenerating'),
+                );
+                return;
+            }
             console.error(error);
-            alert(t('consult.prescriptionError'));
+            toast.error(t('consult.prescriptionError'));
         } finally {
             setIsLoading(false);
             setLoadingStage(null);
@@ -1371,7 +1401,7 @@ function ConsultContent() {
                                                                     setCurrentTextAnswer('');
                                                                     setFreeTextOptionId(null);
                                                                 } else {
-                                                                    alert(t('consult.pleaseEnterAnswer'));
+                                                                    toast.info(t('consult.pleaseEnterAnswer'));
                                                                 }
                                                             }}
                                                             className="w-full py-4 rounded-2xl bg-primary text-white font-bold transition-all active:scale-95"
@@ -1406,7 +1436,7 @@ function ConsultContent() {
                                                 handleAnswer(currentQuestion.id, currentTextAnswer);
                                                 setCurrentTextAnswer('');
                                             } else {
-                                                alert(t('consult.pleaseEnterAnswer'));
+                                                toast.info(t('consult.pleaseEnterAnswer'));
                                             }
                                         }}
                                         className="w-full py-4 rounded-2xl bg-primary text-white font-bold transition-all active:scale-95"
@@ -1689,6 +1719,15 @@ function ConsultContent() {
                                     <p className="text-[14px] text-text-main dark:text-gray-200 leading-relaxed line-clamp-4">{problemDesc}</p>
                                 </div>
                             )}
+
+                            {/* 이 오버레이는 화면 전체(내비 포함)를 덮는다 — 빠져나갈 길을 같이 준다. */}
+                            <button
+                                type="button"
+                                onClick={() => consultRequest.cancel()}
+                                className="mt-1 px-5 py-2.5 rounded-full text-[13px] font-bold text-text-sub dark:text-gray-400 border border-text-sub/20 dark:border-gray-600 active:scale-[0.98] transition-all"
+                            >
+                                {t('consult.cancelGenerating')}
+                            </button>
                         </div>
                     )}
                 </main>
