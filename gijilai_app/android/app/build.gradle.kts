@@ -33,7 +33,10 @@ if (requestedReleaseBuild && !hasReleaseSigningConfig) {
 
 android {
     namespace = "com.devho.gijilai"
-    compileSdk = flutter.compileSdkVersion
+    // Google Play 타겟 API 요구사항(Android 16)에 맞춰 명시 고정.
+    // flutter.compileSdkVersion/targetSdkVersion은 Flutter SDK 기본값(현재 35)을 따라가므로,
+    // 최신 타겟(36)을 보장하려면 여기서 직접 지정한다.
+    compileSdk = 36
     ndkVersion = "27.0.12077973"
 
     compileOptions {
@@ -60,7 +63,7 @@ android {
     defaultConfig {
         applicationId = "com.devho.gijilai"
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         ndk {
