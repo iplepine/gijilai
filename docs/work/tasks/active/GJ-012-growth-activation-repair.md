@@ -1,10 +1,10 @@
 <!-- COMMIT_STATUS START -->
 > **커밋 상태**
-> - 기준 커밋: `fd3e1013a129f86b00a73bec88674626bb5a9d28` (`fix/live-survey-and-ux-polish`)
-> - 최근 커밋: `fd3e1013a129` release(android): Google Play Billing Library 8.0.0 상향 + v1.0.11+37 프로덕션 배포
-> - 커밋 일시: `2026-08-05T22:01:45+09:00`
-> - 워킹트리: `dirty (45 files)`
-> - 문서 갱신: `2026-09-17 11:31:50 +0900`
+> - 기준 커밋: `286294f3774eadc8024eabe1f4712eabbd2cb257` (`fix/live-survey-and-ux-polish`)
+> - 최근 커밋: `286294f3774e` fix: include next-intl SWC helper in dependency lock
+> - 커밋 일시: `2026-09-17T12:31:57+09:00`
+> - 워킹트리: `dirty (7 files)`
+> - 문서 갱신: `2026-09-17 12:34:55 +0900`
 <!-- COMMIT_STATUS END -->
 
 # Task
@@ -13,7 +13,7 @@ ID: `GJ-012-growth-activation-repair`
 
 유형: `Build`
 
-상태: `Active` — 구현·로컬 검증 완료, 배포 후 운영 검증 대기
+상태: `Active` — 구현·프로덕션 배포·공개 흐름 smoke 완료, 인증/실기기·측정 운영 후속
 
 연결 Roadmap: `R-001-consult-report-conversion`
 
@@ -102,7 +102,7 @@ Postconditions:
 - 로그인 성공 시 원래 검사 목적지가 유지되고 기존 응답은 보존된다.
 
 Implementation Status:
-- 현재 구현 — 로컬 통합 검증 완료, 미배포.
+- 현재 구현 — 코드 `92f6a81`, 로컬 통합 검증 및 2026-09-17 웹 프로덕션 배포·공개 흐름 smoke 완료.
 
 What the user must understand:
 - 예시는 개인 맞춤 분석 결과가 아니다. 아이에 맞는 설명은 실제 검사와 기존 상담에서 이어진다.
@@ -147,6 +147,16 @@ Defaults / recommendations to show:
 - [x] 관련 제품·내비게이션·분석·퍼널 문서 동기화
 
 한계: 로그인 공급자 왕복, 인증된 실제 아이의 전체 검사→AI 생성→운영 저장, iOS/Android WebView는 이번에 실사용 계정으로 실행하지 않았다. 인증/API는 모의 의존성 회귀테스트로 검증했고 운영 DB는 집계 조회만 수행했다. 실제 성장 효과는 미확인이다.
+
+배포 결과 (2026-09-17):
+- 코드 커밋 `92f6a81`을 작업 브랜치 및 `main`에 푸시했다. 기존 Vercel Git 연동 Production deployment `6494952895`가 12:26 KST `success`로 완료됐다.
+- 운영 URL: https://gijilai.com · Vercel deployment `Hd9dAqgiZxibNtFazZzKH3vNr7fK`.
+- 운영 HTTP smoke 9개 URL 모두 200. 공개 예시의 SSR·canonical·3장면·잘못된 장면 fallback·로그인 목적지·sitemap·robots 확인.
+- 실제 운영 브라우저에서 예시 3종 전환 및 검사 CTA의 `/login?redirect=%2Fintake` 이동 확인, error 로그 0건. 인증·AI 생성 API 쓰기는 실행하지 않았다.
+- 후속 커밋 `286294f`: CI clean install에서 드러난 `next-intl` 선택적 SWC helper 잠금 항목 누락을 보완했다. 기존 버전·앱 코드 변경 없이 Node 22/npm 10 환경의 설치 사전 검증을 통과했다.
+- `286294f` 전체 GitHub CI [35178521126](https://github.com/iplepine/gijilai/actions/runs/35178521126) 성공: Web clean install·타입 검사·lint·test 및 Flutter analyze·test 모두 통과.
+- `286294f` 최종 Production 재배포는 12:33:34 KST `success`(GitHub deployment `6495034200`, Vercel `14hMmcVKFZ3Dn7Z1g1GkobkvzSNX`).
+- 신규 DB 마이그레이션이나 모바일 스토어 릴리스는 포함하지 않았다. 상세 기록은 [출시 준비](../../../operations/RELEASE_READINESS.md)에 남긴다.
 
 운영 후속:
 - 배포 후 실제 소셜 로그인/이메일 확인 복귀, GA DebugView, 7일 활성화 기준선 확인.

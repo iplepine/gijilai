@@ -1,10 +1,10 @@
 <!-- COMMIT_STATUS START -->
 > **커밋 상태**
-> - 기준 커밋: `fd3e1013a129f86b00a73bec88674626bb5a9d28` (`fix/live-survey-and-ux-polish`)
-> - 최근 커밋: `fd3e1013a129` release(android): Google Play Billing Library 8.0.0 상향 + v1.0.11+37 프로덕션 배포
-> - 커밋 일시: `2026-08-05T22:01:45+09:00`
-> - 워킹트리: `dirty (45 files)`
-> - 문서 갱신: `2026-09-17 11:31:50 +0900`
+> - 기준 커밋: `286294f3774eadc8024eabe1f4712eabbd2cb257` (`fix/live-survey-and-ux-polish`)
+> - 최근 커밋: `286294f3774e` fix: include next-intl SWC helper in dependency lock
+> - 커밋 일시: `2026-09-17T12:31:57+09:00`
+> - 워킹트리: `dirty (7 files)`
+> - 문서 갱신: `2026-09-17 12:34:55 +0900`
 <!-- COMMIT_STATUS END -->
 
 # 작업 관리
@@ -24,7 +24,7 @@
 
 현재 active tasks:
 
-- [GJ-012-growth-activation-repair](tasks/active/GJ-012-growth-activation-repair.md) — 사용자 요청 우선: 공개 대화 예시, 첫 검사·인증 복귀, 차수검사 리포트, 측정 보완. 구현·로컬 검증 완료(325 tests/브라우저 15시나리오), 배포 후 운영 검증 대기.
+- [GJ-012-growth-activation-repair](tasks/active/GJ-012-growth-activation-repair.md) — 공개 대화 예시, 첫 검사·인증 복귀, 차수검사 리포트, 측정 보완. 코드 `92f6a81` 웹 프로덕션 배포 및 운영 공개 흐름 smoke 완료(로컬 325 tests/브라우저 15시나리오). 인증/실기기·측정 운영 후속.
 - `GJ-005-report-trust-baseline-qa` (코드 완료, 배포 환경 DebugView 확인만 남아 운영 후속화)
 - `GJ-006-practice-loop-usability-qa` (코드 완료, 모바일 WebView 회귀 QA만 남아 운영 후속화)
 - `GJ-007-manual-followup-test`
@@ -38,7 +38,7 @@
 
 2026-06-20 정리: active task가 여전히 6개로 운영 규칙(최대 3개)을 초과한다. 신규 개발은 멈추고 `GJ-005`/`GJ-006` 운영 QA, `GJ-009/010/011` 마이그레이션·실기기 확인 중 먼저 닫을 수 있는 것부터 done으로 이동한다. 최근 HEAD는 차수화 신뢰도 캘리브레이션이므로 `docs/README.md`의 차수화/spec 색인도 다음 문서 정리에서 확인한다.
 
-2026-09-17 예외: 사용자의 명시적 “문제 개선·필요 기능 추가” 요청으로 GJ-012를 우선 진행한다. 기존 6개를 완료로 간주하지 않고 유지해 active 7개인 예외 상태를 기록한다. 이후 같은 날 사용자 요청으로 커밋·푸시 및 웹 프로덕션 배포를 진행한다. 최근 31일 집계와 해석 한계는 [기준선 지표](BASELINE_METRICS.md)의 2차 스냅샷에 기록했다.
+2026-09-17 예외: 사용자의 명시적 “문제 개선·필요 기능 추가” 요청으로 GJ-012를 우선 진행한다. 기존 6개를 완료로 간주하지 않고 유지해 active 7개인 예외 상태를 기록한다. 이후 같은 날 사용자 요청으로 커밋·푸시 및 웹 프로덕션 배포를 완료했다. 최근 31일 집계와 해석 한계는 [기준선 지표](BASELINE_METRICS.md)의 2차 스냅샷에 기록했다.
 
 현재 TODO: [TODO.md](TODO.md)
 

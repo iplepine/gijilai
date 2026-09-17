@@ -1,10 +1,10 @@
 <!-- COMMIT_STATUS START -->
 > **커밋 상태**
-> - 기준 커밋: `fd3e1013a129f86b00a73bec88674626bb5a9d28` (`fix/live-survey-and-ux-polish`)
-> - 최근 커밋: `fd3e1013a129` release(android): Google Play Billing Library 8.0.0 상향 + v1.0.11+37 프로덕션 배포
-> - 커밋 일시: `2026-08-05T22:01:45+09:00`
-> - 워킹트리: `dirty (45 files)`
-> - 문서 갱신: `2026-09-17 11:31:50 +0900`
+> - 기준 커밋: `286294f3774eadc8024eabe1f4712eabbd2cb257` (`fix/live-survey-and-ux-polish`)
+> - 최근 커밋: `286294f3774e` fix: include next-intl SWC helper in dependency lock
+> - 커밋 일시: `2026-09-17T12:31:57+09:00`
+> - 워킹트리: `dirty (7 files)`
+> - 문서 갱신: `2026-09-17 12:34:55 +0900`
 <!-- COMMIT_STATUS END -->
 
 # 표준 유즈케이스 요약
@@ -145,4 +145,4 @@ Defaults / recommendations to show:
 - 공개 랜딩 또는 `/preview`에서 세 가지 가상 상황의 대화·실천 예시를 확인하고 링크를 복사한다.
 - 예시는 개인화 분석이 아님을 안내하고, 실제 검사 CTA는 로그인→아이 정보·동의 입력→빠른 검사로 연결한다.
 - 필수 유즈케이스 필드와 성공·실패 시나리오 정본: [GJ-012의 UC-01](../work/tasks/active/GJ-012-growth-activation-repair.md#uc-01-가입-전에-대화-예시를-보고-빠른-검사로-이어가기).
-- 상태: 작업 트리 구현, 미배포.
+- 상태: 코드 커밋 `92f6a81`, 로컬 통합 검증 완료. 배포 상태는 [출시 준비](../operations/RELEASE_READINESS.md) 참고.

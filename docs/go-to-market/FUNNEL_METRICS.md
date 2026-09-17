@@ -1,10 +1,10 @@
 <!-- COMMIT_STATUS START -->
 > **커밋 상태**
-> - 기준 커밋: `fd3e1013a129f86b00a73bec88674626bb5a9d28` (`fix/live-survey-and-ux-polish`)
-> - 최근 커밋: `fd3e1013a129` release(android): Google Play Billing Library 8.0.0 상향 + v1.0.11+37 프로덕션 배포
-> - 커밋 일시: `2026-08-05T22:01:45+09:00`
-> - 워킹트리: `dirty (45 files)`
-> - 문서 갱신: `2026-09-17 11:31:50 +0900`
+> - 기준 커밋: `286294f3774eadc8024eabe1f4712eabbd2cb257` (`fix/live-survey-and-ux-polish`)
+> - 최근 커밋: `286294f3774e` fix: include next-intl SWC helper in dependency lock
+> - 커밋 일시: `2026-09-17T12:31:57+09:00`
+> - 워킹트리: `dirty (7 files)`
+> - 문서 갱신: `2026-09-17 12:34:55 +0900`
 <!-- COMMIT_STATUS END -->
 
 # 퍼널 지표
@@ -31,7 +31,7 @@
 
 `pricing_viewed`, `payment_started`, `payment_completed`는 `source`, `entry_cta`, `report_tab`, `report_kind`를 유지해 리포트 하단 CTA와 가격/결제 단계를 연결한다.
 
-## 가입 전 가치 확인 실험 (2026-09-17 구현, 미배포)
+## 가입 전 가치 확인 실험 (2026-09-17 구현, 코드 `92f6a81`)
 
 `landing_cta_clicked(target=preview) → preview_viewed → preview_signup_clicked → 로그인 → intake_completed → assessment_phase_completed(phase=1) → report_viewed`
 

@@ -1,10 +1,10 @@
 <!-- COMMIT_STATUS START -->
 > **커밋 상태**
-> - 기준 커밋: `fd3e1013a129f86b00a73bec88674626bb5a9d28` (`fix/live-survey-and-ux-polish`)
-> - 최근 커밋: `fd3e1013a129` release(android): Google Play Billing Library 8.0.0 상향 + v1.0.11+37 프로덕션 배포
-> - 커밋 일시: `2026-08-05T22:01:45+09:00`
-> - 워킹트리: `dirty (45 files)`
-> - 문서 갱신: `2026-09-17 11:31:50 +0900`
+> - 기준 커밋: `286294f3774eadc8024eabe1f4712eabbd2cb257` (`fix/live-survey-and-ux-polish`)
+> - 최근 커밋: `286294f3774e` fix: include next-intl SWC helper in dependency lock
+> - 커밋 일시: `2026-09-17T12:31:57+09:00`
+> - 워킹트리: `dirty (7 files)`
+> - 문서 갱신: `2026-09-17 12:34:55 +0900`
 <!-- COMMIT_STATUS END -->
 
 # 출시 초기 기준선 지표 (1차)

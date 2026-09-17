@@ -1,15 +1,15 @@
 <!-- COMMIT_STATUS START -->
 > **커밋 상태**
-> - 기준 커밋: `425ffe550f386bbd28c1035ed096ef4c513e3e51` (`claude/enable-phased-assessment`)
-> - 최근 커밋: `425ffe550f38` docs: refresh project documentation status
-> - 커밋 일시: `2026-06-20T22:38:59+09:00`
-> - 워킹트리: `clean`
-> - 문서 갱신: `2026-06-20 22:39:28 +0900`
+> - 기준 커밋: `286294f3774eadc8024eabe1f4712eabbd2cb257` (`fix/live-survey-and-ux-polish`)
+> - 최근 커밋: `286294f3774e` fix: include next-intl SWC helper in dependency lock
+> - 커밋 일시: `2026-09-17T12:31:57+09:00`
+> - 워킹트리: `dirty (7 files)`
+> - 문서 갱신: `2026-09-17 12:34:55 +0900`
 <!-- COMMIT_STATUS END -->
 
 # 출시 준비 체크리스트
 
-마지막 갱신일: 2026-06-03
+마지막 갱신일: 2026-09-17
 
 ## 앱 심사 계정 (App Review)
 
@@ -35,6 +35,14 @@
 
 ## 최근 배포
 
+- 2026-09-17: Web production 코드 `92f6a81` 배포 완료. `main` fast-forward push 후 기존 Vercel Git 연동으로 배포했고 GitHub Production deployment `6494952895`의 `success`를 12:26 KST에 확인했다. Vercel deployment `Hd9dAqgiZxibNtFazZzKH3vNr7fK` ([배포 URL](https://gijilai-8jqbdvu3k-devhohouse.vercel.app)), 운영 도메인 [gijilai.com](https://gijilai.com).
+  - 변경: 공개 생활 장면 대화 예시, 웹 검사 CTA, 인증 목적지 보존, 차수별 리포트/입력 캐시/이력 보존, 선택 아이 응답 복원, 초기 분석 이벤트 보존·민감 경로 정제. 신규 DB 마이그레이션·모바일 스토어 배포 없음.
+  - 배포 전: 40 suites/325 tests, lint, TypeScript, production build, 공개 흐름 브라우저 15개 검증 통과.
+  - 설치 재현성 보완 `286294f`: GitHub의 clean install에서 발견한 `next-intl`의 선택적 peer `@swc/helpers@0.5.23` 잠금 항목 누락을 11줄 추가로 수정했다. Node 22.23.2/npm 10.9.9 격리 환경의 `npm ci --dry-run --ignore-scripts` 통과. 기존 의존성 버전·앱 코드 변경 없음.
+  - 후속 전체 CI: [GitHub Actions 35178521126](https://github.com/iplepine/gijilai/actions/runs/35178521126) 성공. Web `npm ci`·타입 검사·lint·test, Flutter 의존성 설치·analyze·test 모두 통과.
+  - 최종 코드 `286294f` 재배포도 12:33:34 KST Production `success`: GitHub deployment `6495034200`, Vercel `14hMmcVKFZ3Dn7Z1g1GkobkvzSNX` ([배포 URL](https://gijilai-408u8mcde-devhohouse.vercel.app)).
+  - 배포 후: 운영 `/`, `/preview`, 장면 3종·잘못된 장면, 로그인 목적지, sitemap·robots 9개 URL HTTP 200. SSR·canonical·예시 sitemap 포함 확인. 실제 브라우저 장면 전환 3종과 `/login?redirect=%2Fintake` CTA 확인, 브라우저 error 로그 0건.
+  - 한계: 실제 소셜/이메일 인증 왕복과 인증된 전체 검사→AI 생성·저장, 모바일 WebView 실기기 및 GA DebugView는 후속 검증이다. 성장 효과는 7일 기준선으로 별도 확인한다. [GJ-012](../work/tasks/active/GJ-012-growth-activation-repair.md) 참조.
 - 2026-05-08: Android Google Play internal/production `1.0.7+33` 배포 완료. 카카오톡 공유를 Flutter 네이티브 Kakao Share SDK 브리지로 전환했다.
 - 2026-05-07: Web production `df173e6` Vercel 배포 완료. Deployment `dpl_2KBWLmpyEx6e4SmwyLQPmYFYDzoH` (`gijilai-oqjn5ixzr-gijilai.vercel.app`) READY 확인.
 - 2026-05-07: iOS TestFlight `1.0.6+32` 업로드 완료. `1.0.5+32`는 App Store Connect에서 `1.0.5` pre-release train이 닫혀 거절되어 marketing version을 `1.0.6`으로 올려 재업로드했다.
