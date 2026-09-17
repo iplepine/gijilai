@@ -143,27 +143,10 @@ export default function RootLayout({
         {/* PortOne V2 SDK */}
         <script src="https://cdn.portone.io/v2/browser-sdk.js" async></script>
         {measurementId ? (
-          <>
-            <Script
-              src={`https://www.googletagmanager.com/gtag/js?id=${measurementId}`}
-              strategy="afterInteractive"
-            />
-            <Script
-              id="firebase-analytics"
-              strategy="afterInteractive"
-              dangerouslySetInnerHTML={{
-                __html: `
-                  window.dataLayer = window.dataLayer || [];
-                  function gtag(){dataLayer.push(arguments);}
-                  window.gtag = gtag;
-                  gtag('js', new Date());
-                  gtag('config', '${measurementId}', {
-                    send_page_view: false
-                  });
-                `,
-              }}
-            />
-          </>
+          <Script
+            src={`https://www.googletagmanager.com/gtag/js?id=${measurementId}`}
+            strategy="afterInteractive"
+          />
         ) : null}
       </head>
       <body className={`${displayFont.variable} ${bodyFont.variable} ${koreanFont.variable} antialiased min-h-screen relative font-sans text-slate-800 dark:text-[#E8E2D6]`} suppressHydrationWarning>

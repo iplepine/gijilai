@@ -1,10 +1,11 @@
 'use client';
 
-import { Suspense, useEffect } from 'react';
+import { Suspense, useEffect, useRef } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/auth/AuthProvider';
 import {
   isAnalyticsEnabled,
+  sanitizeAnalyticsPath,
   setAnalyticsContext,
   setAnalyticsUser,
   setAnalyticsUserProperties,
@@ -17,27 +18,27 @@ function FirebaseAnalyticsContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { user } = useAuth();
+  const lastTrackedPath = useRef<string | null>(null);
 
-  // platform(web/ios/android)을 공통 컨텍스트로 1회 주입 — 모든 이벤트의 웹/앱 세그먼트 기준.
+  // Set both dimensions before the page-view effect, including the first visit.
   useEffect(() => {
     if (!isAnalyticsEnabled()) return;
-    setAnalyticsContext({ platform: getRuntimeAppInfo().platform });
-  }, []);
+    setAnalyticsContext({
+      platform: getRuntimeAppInfo().platform,
+      auth_state: user?.id ? 'authed' : 'guest',
+    });
+    setAnalyticsUser(user?.id ?? null);
+  }, [user?.id]);
 
   useEffect(() => {
     if (!isAnalyticsEnabled()) return;
 
     const query = searchParams.toString();
-    const path = query ? `${pathname}?${query}` : pathname;
+    const path = sanitizeAnalyticsPath(query ? `${pathname}?${query}` : pathname);
+    if (lastTrackedPath.current === path) return;
+    lastTrackedPath.current = path;
     trackPageView(path);
   }, [pathname, searchParams]);
-
-  useEffect(() => {
-    if (!isAnalyticsEnabled()) return;
-    // auth_state를 공통 컨텍스트로 — 게스트/회원 funnel 세그먼트 기준.
-    setAnalyticsContext({ auth_state: user?.id ? 'authed' : 'guest' });
-    setAnalyticsUser(user?.id ?? null);
-  }, [user?.id]);
 
   useEffect(() => {
     if (!isAnalyticsEnabled()) return;

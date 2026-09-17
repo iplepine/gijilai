@@ -16,9 +16,10 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { supabase } from '@/lib/supabase';
 import { getFeatureAccess } from '@/lib/access';
 import { CONFIDENCE_CALIBRATED, FREE_PHASE_MAX } from '@/lib/assessmentConfig';
-import { db } from '@/lib/db';
+import { trackEvent } from '@/lib/analytics';
 import { CHILD_ASSESSMENT_BANK } from '@/data/childAssessmentBank';
 import { buildAssessmentFlow } from '@/lib/assessmentFlow';
+import { getChildAssessmentResult } from '@/lib/childAssessmentResult';
 import { TemperamentClassifier } from '@/lib/TemperamentClassifier';
 import { AssessmentTrendCard } from './AssessmentTrendCard';
 
@@ -73,7 +74,7 @@ export function PhasedChildSurvey() {
   // 구독자에게 "구독하고 이어가기"가 뜨고 결제 화면으로 튕겨나간다.
   const [accessReady, setAccessReady] = useState(false);
   const [enteredPhase, setEnteredPhase] = useState(0); // 사용자가 "심화 받기"로 진입한 차수
-  const savedPhaseRef = useRef(-1);
+  const reportOpenedRef = useRef(false);
   // 이전 문항을 다시 보는 중이면 그 인덱스(null=자연 흐름: 첫 미응답 문항).
   const [reviewIndex, setReviewIndex] = useState<number | null>(null);
   // 선택 직후 220ms 동안 잡아두는 값 — 선택 표시를 보여주고, 그 사이 입력을 잠근다.
@@ -138,13 +139,16 @@ export function PhasedChildSurvey() {
   // accessReady 전에는 잠금으로 단정하지 않는다(구독자 오인 방지).
   const gatedNext = accessReady && !hasFullAccess && targetPhase > FREE_PHASE_MAX;
 
-  // 차수 완료 시점마다 정확한 상태로 저장(전부 끝 → COMPLETED, 그 외 → IN_PROGRESS).
-  useEffect(() => {
-    if (!user || completedPhase < 1 || savedPhaseRef.current === completedPhase) return;
-    savedPhaseRef.current = completedPhase;
-    const status = completedPhase >= numPhases ? 'COMPLETED' : 'IN_PROGRESS';
-    db.saveSurveyResponses(user.id, 'CHILD', cbqResponses, status, selectedChildId).catch(() => {});
-  }, [user, completedPhase, numPhases, cbqResponses, selectedChildId]);
+  // SurveyContent의 useSurveySync가 단독 저장한다. 별도 writer는 완료 상태를 덮어쓸 수 있다.
+  const openReport = () => {
+    if (reportOpenedRef.current) return;
+    reportOpenedRef.current = true;
+    trackEvent('survey_flow_completed', {
+      answered_questions: Object.keys(cbqResponses).length,
+      report_kind: 'child_only',
+    });
+    router.replace(`/report?child_only=true&refresh=child&assessment_phase=${completedPhase}`);
+  };
 
   const result = useMemo(() => TemperamentClassifier.analyzeChild(flow.scores), [flow.scores]);
 
@@ -175,7 +179,7 @@ export function PhasedChildSurvey() {
             <Button
               size="lg"
               fullWidth
-              onClick={() => router.replace('/report?child_only=true')}
+              onClick={openReport}
               className="mt-6 rounded-2xl h-14 text-[16px] font-bold"
             >
               결과 리포트 보기
@@ -200,7 +204,7 @@ export function PhasedChildSurvey() {
             <Button
               size="lg"
               fullWidth
-              onClick={() => router.replace('/report?child_only=true')}
+              onClick={openReport}
               className="mt-6 rounded-2xl h-14 text-[16px] font-bold"
             >
               결과 리포트 보기
@@ -275,7 +279,24 @@ export function PhasedChildSurvey() {
     setNavDirection('next');
     setPendingScore(score);
     advanceTimer.current = window.setTimeout(() => {
+      const nextAnswers = { ...cbqResponses, [questionId]: score };
+      const nextPhase = getChildAssessmentResult(nextAnswers, {
+        mode: 'phased', birthDate: intake.birthDate,
+      }).completedPhase;
       setCbqResponse(questionId, score);
+      // 실제 응답으로 완료한 차수만 집계한다(저장된 응답 복원/새로고침은 제외).
+      if (nextPhase > completedPhase) {
+        trackEvent('assessment_phase_completed', {
+          phase: nextPhase,
+          answered_questions: Object.keys(nextAnswers).length,
+        });
+        if (nextPhase === 1) {
+          trackEvent('survey_module_completed', {
+            module: 'child',
+            answered_questions: Object.keys(nextAnswers).length,
+          });
+        }
+      }
       // 검토 중이었다면 한 칸 앞으로, 한계선에 닿으면 자연 흐름으로 복귀.
       setReviewIndex((prev) => (prev === null ? null : prev + 1 < frontier ? prev + 1 : null));
       setPendingScore(null);

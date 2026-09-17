@@ -1,10 +1,10 @@
 <!-- COMMIT_STATUS START -->
 > **커밋 상태**
-> - 기준 커밋: `425ffe550f386bbd28c1035ed096ef4c513e3e51` (`claude/enable-phased-assessment`)
-> - 최근 커밋: `425ffe550f38` docs: refresh project documentation status
-> - 커밋 일시: `2026-06-20T22:38:59+09:00`
-> - 워킹트리: `clean`
-> - 문서 갱신: `2026-06-20 22:39:28 +0900`
+> - 기준 커밋: `fd3e1013a129f86b00a73bec88674626bb5a9d28` (`fix/live-survey-and-ux-polish`)
+> - 최근 커밋: `fd3e1013a129` release(android): Google Play Billing Library 8.0.0 상향 + v1.0.11+37 프로덕션 배포
+> - 커밋 일시: `2026-08-05T22:01:45+09:00`
+> - 워킹트리: `dirty (45 files)`
+> - 문서 갱신: `2026-09-17 11:31:50 +0900`
 <!-- COMMIT_STATUS END -->
 
 # 네비게이션 및 UI 정책
@@ -65,6 +65,11 @@
 ```
 
 ## 네비게이션 규칙
+
+- 공개 랜딩과 `/preview`의 무료 검사 CTA는 `/login?redirect=%2Fintake`로 이동한다. 인증 후 아이 정보·필수 동의를 거친 뒤 빠른 검사를 시작하며 빈 프로필로 검사를 건너뛰지 않는다.
+- `/preview`는 일반 스크롤 `app-page-scroll`과 공통 `Navbar`의 safe area를 사용한다. 세 가지 고정 대화 예시는 로그인 없이 열리며 링크에는 `scenario` enum만 포함한다.
+- 웹 소셜 로그인과 이메일 확인 callback은 검증한 내부 `next` 목적지를 유지한다. 외부 URL·역슬래시·인증 화면 재진입은 홈으로 정리한다. 네이티브 callback scheme은 기존 계약을 유지한다.
+- 설문 소개의 이어가기는 로그인한 사용자가 접근 가능한 선택 아이와 해당 아이의 DB 응답을 확인한 뒤 이동한다. 다른 아이의 로컬 응답을 합치지 않으며 조회 실패 시 재시도를 안내한다. 접수·검사·리포트 경로에서는 전역 설문 복원이 진행 중 입력을 덮어쓰지 않는다.
 
 - 내부 페이지 전환 시 `router.replace()` 사용 (`router.push()` 대신, WebView 뒤로가기 스택 이슈 방지)
 - 헤더/상단바의 기질아이 로고는 모든 위치에서 홈(`/`)으로 이동한다. 로고 홈 이동은 WebView 뒤로가기 스택을 늘리지 않도록 `router.replace('/')`를 사용하고, 접근성 라벨은 `홈으로 이동`으로 둔다.

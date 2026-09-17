@@ -333,7 +333,12 @@
     "option2": "Disagree",
     "option3": "Neutral",
     "option4": "Agree",
-    "option5": "Strongly agree"
+    "option5": "Strongly agree",
+    "continueQuickReport": "Continue child assessment",
+    "continueQuickReportHint": "Continue with saved answers for the selected child. Completed stages can be viewed again.",
+    "preparingEntry": "Checking your saved assessment",
+    "entryLoadFailed": "We could not load your saved assessment. Please try again shortly.",
+    "entrySelectionChanged": "The selected child has changed. Please start again."
   },
   "consult": {
     "title": "AI Consultation",
@@ -1105,7 +1110,7 @@
     "heroTitle4": "",
     "heroDesc": "Start with a 3-minute child temperament report,\nthen get practical phrases for today's parenting concern.",
     "startFree": "Install app for free report",
-    "startWeb": "Start on web",
+    "startWeb": "Start free assessment on web",
     "childQuestion": "Why does my child react this way?",
     "parentQuestion": "What type of parent am I?",
     "temperamentType": "Temperament type",
@@ -1121,7 +1126,7 @@
     "step04Desc": "Continue into parenting consultation when needed and track small daily changes.",
     "featuresTitle": "Tantrums and sensitivity\nchange when you understand temperament",
     "feature1Title": "Child Temperament Test",
-    "feature1Desc": "Measure parent and child temperaments with CBQ (child) and ATQ (adult) assessments. Classified into 8 types across 4 temperament dimensions.",
+    "feature1Desc": "A parenting reference informed by CBQ (child) and ATQ (adult) temperament theory and questionnaire structures. Answers are summarized across 4 dimensions and 8 types.",
     "feature2Title": "Magic Phrases",
     "feature2Desc": "Instead of \"No!\", we suggest conversation methods that match your child's temperament. Use specific situation-based scripts starting tonight.",
     "feature3Title": "AI Consult & Practice",
@@ -1133,10 +1138,14 @@
     "ctaTitle": "Change what you say today",
     "ctaHighlight": "with temperament",
     "ctaTitleEnd": "",
-    "ctaDesc": "Open the app for a free 3-minute child temperament report\nand practical phrases for your current concern.",
+    "ctaDesc": "Start a free child assessment on the web\nand receive your first report to help understand their reactions.",
     "startTest": "Open free report in app",
     "footerDisclaimer": "This service does not replace medical diagnosis.",
-    "footerCompanyInfo": "DevHoHouse | CEO: Jungho Park | Business Registration: 898-35-01596\nMail-order Registration: 2026-Seoul Jungnang-0133\n155 Sinnae-ro, Jungnang-gu, Seoul | Tel: 010-3830-8960 | Contact: devhohouse@gmail.com"
+    "footerCompanyInfo": "DevHoHouse | CEO: Jungho Park | Business Registration: 898-35-01596\nMail-order Registration: 2026-Seoul Jungnang-0133\n155 Sinnae-ro, Jungnang-gu, Seoul | Tel: 010-3830-8960 | Contact: devhohouse@gmail.com",
+    "previewCta": "See examples without signing up",
+    "webHint": "Login to assess · Free report · No installation needed",
+    "previewTitle": "Does this happen in your home too?",
+    "previewHint": "Choose a situation to see a conversation and a small action."
   },
   "auth": {
     "loginTitle": "Log in",
@@ -1189,5 +1198,45 @@
     "refund": "Refund & Cancellation Policy",
     "support": "Support",
     "about": "About Us"
+  },
+  "preview": {
+    "navTitle": "Conversation examples",
+    "eyebrow": "Explore before signing up",
+    "title": "A phrase to try with your child today",
+    "description": "Choose a familiar situation to see a conversation and a small action. No child details or app installation needed.",
+    "chooseScenario": "Choose a situation",
+    "sampleLabel": "An illustrative fictional situation",
+    "sayLabel": "Something you could say",
+    "practiceLabel": "A small action to try",
+    "limit": "These are prewritten general examples, not an analysis of your child's temperament. Adapt them to your child's response. They do not replace medical or psychological diagnosis.",
+    "nextTitle": "Curious about your child's reactions?",
+    "nextDescription": "Take the child temperament assessment and read a free report based on your answers.",
+    "startTest": "Start the free child assessment",
+    "signupHint": "After login, add your child and begin the assessment. You can start on the web without installing the app.",
+    "copyLink": "Copy a link to this example",
+    "copied": "Link copied.",
+    "copyFailed": "Automatic copy is unavailable. Select and copy the link below.",
+    "backHome": "About Gijilai",
+    "transition": {
+      "label": "Ending playtime",
+      "title": "It is tidy-up time, but play is not over yet",
+      "context": "Your child says “Just a little longer!” when it is time to put the toys away. Here is an example of making the next step concrete.",
+      "phrase": "“You want to keep playing. Let’s roll the car once more, then park it. Red car first, or blue car?”",
+      "practice": "Agree on one last play action before tidying up. Put the first toy away together."
+    },
+    "separation": {
+      "label": "Saying goodbye at daycare",
+      "title": "Your child holds on at the daycare entrance",
+      "context": "Your child holds your hand tightly at goodbye time. This example acknowledges the feeling and makes your return concrete.",
+      "phrase": "“It’s hard to say goodbye. Let’s have a hug. I’ll come back after your afternoon snack.”",
+      "practice": "Use a return time that matches your actual schedule. Agree on one short goodbye routine together."
+    },
+    "tantrum": {
+      "label": "Wanting a toy at the store",
+      "title": "Your child cries for a toy at the store",
+      "context": "Your child wants a toy and starts crying. This example acknowledges the wish while keeping today’s limit clear.",
+      "phrase": "“You really want that toy. We’re not buying toys today. Shall we put it on your wish list together?”",
+      "practice": "Acknowledge the wish briefly, then state today’s limit in one sentence. If conversation is difficult, pause together in a safe place."
+    }
   }
 }

@@ -3,6 +3,7 @@
 import { useAuth } from '@/components/auth/AuthProvider';
 import { HomeLogoButton } from '@/components/layout/HomeLogoButton';
 import { trackEvent } from '@/lib/analytics';
+import { getSafeAuthRedirect } from '@/lib/authRedirect';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useLocale } from '@/i18n/LocaleProvider';
@@ -38,13 +39,6 @@ function AppleLoginSymbol() {
             />
         </svg>
     );
-}
-
-function getSafeRedirect(value: string | null) {
-    if (!value || !value.startsWith('/') || value.startsWith('//')) {
-        return '/';
-    }
-    return value;
 }
 
 function getAuthFailureReason(error: unknown) {
@@ -131,7 +125,7 @@ export default function LoginPage() {
     useEffect(() => {
         if (user) {
             const params = new URLSearchParams(window.location.search);
-            router.replace(getSafeRedirect(params.get('redirect')));
+            router.replace(getSafeAuthRedirect(params.get('redirect')));
         }
     }, [user, router]);
 

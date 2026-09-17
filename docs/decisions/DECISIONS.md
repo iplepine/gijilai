@@ -1,10 +1,10 @@
 <!-- COMMIT_STATUS START -->
 > **커밋 상태**
-> - 기준 커밋: `425ffe550f386bbd28c1035ed096ef4c513e3e51` (`claude/enable-phased-assessment`)
-> - 최근 커밋: `425ffe550f38` docs: refresh project documentation status
-> - 커밋 일시: `2026-06-20T22:38:59+09:00`
-> - 워킹트리: `clean`
-> - 문서 갱신: `2026-06-20 22:39:28 +0900`
+> - 기준 커밋: `fd3e1013a129f86b00a73bec88674626bb5a9d28` (`fix/live-survey-and-ux-polish`)
+> - 최근 커밋: `fd3e1013a129` release(android): Google Play Billing Library 8.0.0 상향 + v1.0.11+37 프로덕션 배포
+> - 커밋 일시: `2026-08-05T22:01:45+09:00`
+> - 워킹트리: `dirty (45 files)`
+> - 문서 갱신: `2026-09-17 11:31:50 +0900`
 <!-- COMMIT_STATUS END -->
 
 # 의사결정 기록
@@ -24,6 +24,8 @@
 | 분석 원칙 | 리포트 전환 퍼널과 상담-실천 반복 지표를 우선 측정 |
 
 ## 보류/추가 검토
+
+2026-09-17 사용자 요청에 따른 구현: 첫 가치 도달을 우선해 공개 고정 대화 예시와 웹 검사 진입을 추가하고 인증·차수 리포트·측정 오류를 수정한다. 비로그인 AI 호출이나 새 가격·검사 분류 체계는 추가하지 않는다. 기능은 로컬 구현이며 배포와 성장 효과는 별도 검증한다. 상세 범위·근거: [GJ-012](../work/tasks/active/GJ-012-growth-activation-repair.md).
 
 | 주제 | 상태 |
 |------|------|

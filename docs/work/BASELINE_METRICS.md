@@ -1,10 +1,10 @@
 <!-- COMMIT_STATUS START -->
 > **커밋 상태**
-> - 기준 커밋: `425ffe550f386bbd28c1035ed096ef4c513e3e51` (`claude/enable-phased-assessment`)
-> - 최근 커밋: `425ffe550f38` docs: refresh project documentation status
-> - 커밋 일시: `2026-06-20T22:38:59+09:00`
-> - 워킹트리: `clean`
-> - 문서 갱신: `2026-06-20 22:39:28 +0900`
+> - 기준 커밋: `fd3e1013a129f86b00a73bec88674626bb5a9d28` (`fix/live-survey-and-ux-polish`)
+> - 최근 커밋: `fd3e1013a129` release(android): Google Play Billing Library 8.0.0 상향 + v1.0.11+37 프로덕션 배포
+> - 커밋 일시: `2026-08-05T22:01:45+09:00`
+> - 워킹트리: `dirty (45 files)`
+> - 문서 갱신: `2026-09-17 11:31:50 +0900`
 <!-- COMMIT_STATUS END -->
 
 # 출시 초기 기준선 지표 (1차)
@@ -49,3 +49,35 @@
 
 - 마이그레이션 적용 + 다음 배포 후 1주 뒤 같은 스크립트로 재수집해 이 문서에 2차 스냅샷 추가
 - GA4 퍼널 수치(report_viewed → pricing_viewed → payment_started)는 GA 콘솔에서 수동 기입 (GJ-005와 함께)
+
+## 2차 스냅샷 — 2026-09-17
+
+대상 기간: **2026-08-17~2026-09-17 UTC, 31일**. 수집 방식: Supabase 읽기 전용 테이블 집계. 연결 작업: [GJ-012](tasks/active/GJ-012-growth-activation-repair.md).
+
+| 테이블 / 집계 | 해당 기간 행 수 |
+|---|---:|
+| profiles | 11 |
+| children | 9 |
+| surveys | 22 |
+| surveys — COMPLETED / IN_PROGRESS | 18 / 4 |
+| surveys — CHILD / PARENT / PARENTING_STYLE | 12 / 4 / 6 |
+| reports | 8 |
+| reports — CHILD / PARENT / HARMONY | 4 / 2 / 2 |
+| consultation_sessions / consultations | 0 / 0 |
+| practice_items / practice_logs | 0 / 0 |
+| observations | 0 |
+| payments / subscriptions | 0 / 0 |
+| subscription_usage_events | 0 |
+
+### 집계 한계와 해석
+
+- `Signal`: 최근 31일에는 가입·설문·리포트 행이 생성됐지만 상담·실천·결제 관련 신규 행은 관찰되지 않았다.
+- **각 테이블의 행 수이지 고유 사용자나 신규 가입 코호트의 단계별 수가 아니다.** profiles 11을 분모로 8/11 리포트 전환율을 계산할 수 없다. surveys의 완료 18/전체 22 역시 사용자별 검사 완료율이 아니다.
+- 기간 밖 생성 행의 재사용, 반복 저장, 내부 테스트 여부, 사용자별 연결 관계는 이 집계만으로 구분되지 않는다. 구독 0은 이 기간 신규 행 0이며 전체 활성 구독자 0이라는 뜻이 아니다.
+- GA 방문자·세션 수, 채널별 유입량이 없어 **유입 부족과 화면 이탈 중 무엇이 성장 정체의 주원인인지 단정하지 않는다.** 위 1차 해석의 “유입이 병목”, “전환은 건강”은 과거 가설이며 이 스냅샷으로 재확인된 사실이 아니다.
+- `Evidence` — 코드 점검에서 인증 후 목적지 유실과 차수검사 완료/리포트 판정 불일치를 발견했다. 이 결함은 수정 대상이나 실제 이탈 규모를 이 집계에서 추정하지 않는다.
+- `Assumption`: 공개 생활 장면 예시와 첫 검사 흐름 복구가 가치 이해·활성화를 개선할 수 있다. 개선 효과는 아직 측정하지 않았다.
+
+### 다음 비교 기준
+
+GJ-012가 배포된 뒤 첫 7일 동안 방문 → 예시 → 검사 CTA → 로그인 복귀 → 1차 검사 → 리포트 → 첫 상담을 같은 세션/사용자 기준으로 측정한다. 배포 전후 동일한 기간·플랫폼·인증 상태를 구분하며, GA 이벤트의 준비 전 누락과 민감한 경로 값 정제를 함께 확인한다. 현재는 코드 구현/검증 단계이며 배포나 7일 후 자동 수집을 실행한 상태가 아니다.

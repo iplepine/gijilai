@@ -4,19 +4,22 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { useAppStore } from '@/store/useAppStore';
 import { db } from '@/lib/db';
-import { CHILD_QUESTIONS, PARENT_QUESTIONS, PARENTING_STYLE_QUESTIONS } from '@/data/questions';
+import { PARENT_QUESTIONS, PARENTING_STYLE_QUESTIONS } from '@/data/questions';
+import { getChildAssessmentResult } from '@/lib/childAssessmentResult';
 
 /**
  * 설문 응답을 Supabase에 자동 동기화하는 훅.
  * - 응답 변경 시 2초 debounce로 서버에 저장
  * - 비로그인 시 건너뜀 (localStorage만 사용)
  */
-export function useSurveySync() {
+export function useSurveySync(options: { childAssessmentMode?: 'phased' | 'legacy' } = {}) {
+    const { childAssessmentMode } = options;
     const { user } = useAuth();
     const cbqResponses = useAppStore((s) => s.cbqResponses);
     const atqResponses = useAppStore((s) => s.atqResponses);
     const parentingResponses = useAppStore((s) => s.parentingResponses);
     const selectedChildId = useAppStore((s) => s.selectedChildId);
+    const birthDate = useAppStore((s) => s.intake.birthDate);
 
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const prevRef = useRef<string>('');
@@ -30,7 +33,7 @@ export function useSurveySync() {
         if (Object.keys(cbqResponses).length > 0) {
             saves.push(
                 db.saveSurveyResponses(user.id, 'CHILD', cbqResponses,
-                    Object.keys(cbqResponses).length >= CHILD_QUESTIONS.length ? 'COMPLETED' : 'IN_PROGRESS',
+                    getChildAssessmentResult(cbqResponses, { mode: childAssessmentMode, birthDate }).status,
                     selectedChildId)
             );
         }
@@ -43,7 +46,8 @@ export function useSurveySync() {
         if (Object.keys(parentingResponses).length > 0) {
             saves.push(
                 db.saveSurveyResponses(user.id, 'PARENTING_STYLE', parentingResponses,
-                    Object.keys(parentingResponses).length >= PARENTING_STYLE_QUESTIONS.length ? 'COMPLETED' : 'IN_PROGRESS')
+                    Object.keys(parentingResponses).length >= PARENTING_STYLE_QUESTIONS.length ? 'COMPLETED' : 'IN_PROGRESS',
+                    selectedChildId)
             );
         }
 
@@ -52,7 +56,7 @@ export function useSurveySync() {
         } catch (e) {
             console.warn('Survey sync failed (will retry on next change):', e);
         }
-    }, [user, cbqResponses, atqResponses, parentingResponses, selectedChildId]);
+    }, [user, cbqResponses, atqResponses, parentingResponses, selectedChildId, childAssessmentMode, birthDate]);
 
     useEffect(() => {
         latestSyncRef.current = syncToServer;
@@ -73,6 +77,7 @@ export function useSurveySync() {
 
         const fingerprint = JSON.stringify({
             childId: selectedChildId,
+            childAssessmentMode,
             c: sortResponses(cbqResponses),
             a: sortResponses(atqResponses),
             p: sortResponses(parentingResponses),
@@ -86,7 +91,7 @@ export function useSurveySync() {
             timerRef.current = null;
             void latestSyncRef.current();
         }, 2000);
-    }, [user, cbqResponses, atqResponses, parentingResponses, selectedChildId]);
+    }, [user, cbqResponses, atqResponses, parentingResponses, selectedChildId, childAssessmentMode]);
 }
 
 function sortResponses(responses: Record<string, number>) {

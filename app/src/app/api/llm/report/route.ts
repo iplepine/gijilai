@@ -8,6 +8,7 @@ import { normalizeTemperamentDimensions, type ChildAiReport, type ParentAiReport
 import { CHILD_PROFILE_LIMIT_REACHED_CODE, getServerChildProfileAccess } from '@/lib/access';
 import { consumeLlmQuota, LLM_QUOTA_EXCEEDED_CODE } from '@/lib/llm-quota';
 import { CHILD_NAME_PSEUDONYM, unmaskChildNameDeep } from '@/lib/childPseudonym';
+import { createReportInputFingerprint, hasMatchingReportInput, withReportInputFingerprint } from '@/lib/reportInputFingerprint';
 import type { Json } from '@/types/supabase';
 
 const REPORT_MODEL = 'gpt-4o-mini';
@@ -30,6 +31,7 @@ type ReportRequestBody = {
     childType?: TemperamentSummary;
     parentType?: TemperamentSummary;
     refresh?: boolean;
+    assessmentPhase?: number;
     intake?: IntakePayload | null;
     styleScores?: TemperamentScores;
     childId?: string | null;
@@ -247,6 +249,31 @@ function buildChildReportStreamPayload(params: {
     return JSON.stringify(payload);
 }
 
+function childReportInputFingerprint(params: {
+    userName: string;
+    scores: TemperamentScores;
+    answers?: AnswerItem[];
+    childType?: TemperamentSummary;
+    childInfo: ChildInfo | null;
+}) {
+    return createReportInputFingerprint({
+        type: 'CHILD',
+        model: REPORT_MODEL,
+        prompt: CHILD_REPORT_STREAM_PROMPT,
+        language: 'ko', // This generation route currently uses the Korean prompt for every UI locale.
+        answers: params.answers,
+        context: {
+            userName: params.userName,
+            scores: params.scores,
+            childType: params.childType,
+            childInfo: params.childInfo && {
+                ...params.childInfo,
+                age: calculateChildAgeLabel(params.childInfo.birthDate),
+            },
+        },
+    });
+}
+
 function buildParentReportStreamPayload(params: {
     userName: string;
     scores: TemperamentScores;
@@ -381,6 +408,7 @@ async function persistGeneratedReport(params: {
     type: 'CHILD' | 'PARENT' | 'HARMONY';
     report: Json;
     refresh: boolean;
+    preserveHistory?: boolean;
     logPrefix: string;
 }) {
     let savedReportId: string | null = null;
@@ -405,7 +433,7 @@ async function persistGeneratedReport(params: {
         savedReportId = savedReport?.id || null;
         persisted = !!savedReportId;
 
-        if (params.refresh && savedReportId) {
+        if (params.refresh && !params.preserveHistory && savedReportId) {
             let deleteQuery = params.supabase
                 .from('reports')
                 .delete()
@@ -438,6 +466,8 @@ async function generateStreamFallbackReport(params: {
     childId: string | null;
     surveyId: string | null;
     refresh: boolean;
+    inputFingerprint?: string;
+    preserveHistory?: boolean;
 }) {
     const report = await generateReport(
         params.userName,
@@ -458,18 +488,22 @@ async function generateStreamFallbackReport(params: {
         : isParentReportComplete(report);
     if (!isComplete) throw new Error(`INVALID_${params.type}_FALLBACK_REPORT`);
 
+    const reportForStorage = params.inputFingerprint
+        ? withReportInputFingerprint(report as Json, params.inputFingerprint)
+        : report as Json;
     const { savedReportId, persisted } = await persistGeneratedReport({
         supabase: params.supabase,
         userId: params.userId,
         childId: params.childId,
         surveyId: params.surveyId,
         type: params.type,
-        report: report as Json,
+        report: reportForStorage,
         refresh: params.refresh,
+        preserveHistory: params.preserveHistory,
         logPrefix: `[Report Stream API] ${params.type} fallback`,
     });
 
-    return { report: report as Json, savedReportId, persisted };
+    return { report: reportForStorage, savedReportId, persisted };
 }
 
 function streamChildReportResponse(params: {
@@ -480,6 +514,7 @@ function streamChildReportResponse(params: {
     answers?: AnswerItem[];
     childType?: TemperamentSummary;
     refresh: boolean;
+    assessmentPhase?: number;
     intake?: IntakePayload | null;
     userCreatedAt?: string | null;
     clientChildId?: string | null;
@@ -496,19 +531,34 @@ function streamChildReportResponse(params: {
             let childInfoForReport: ChildInfo | null = null;
             let surveyIdForReport: string | null = null;
             let canRetryWithJsonFallback = false;
+            let inputFingerprint: string | undefined;
+            let resolvedChild: Awaited<ReturnType<typeof resolveChildForReport>> | null = null;
 
             try {
                 send('started', { type: 'CHILD' });
 
-                if (!params.refresh) {
+                // An explicit assessment result action may reuse exactly the same generated inputs.
+                // Resolve current child context first only for refresh; ordinary saved-report reads stay unchanged.
+                if (params.refresh) {
+                    resolvedChild = await resolveChildForReport({
+                        supabase: params.supabase,
+                        userId: params.userId,
+                        userCreatedAt: params.userCreatedAt,
+                        clientChildId: params.clientChildId,
+                        intake: params.intake,
+                    });
+                    inputFingerprint = childReportInputFingerprint({ ...params, childInfo: resolvedChild.childInfo });
+                }
+                {
                     let cacheQuery = params.supabase
                         .from('reports')
                         .select('id, analysis_json, created_at, is_paid')
                         .eq('user_id', params.userId)
                         .eq('type', 'CHILD');
 
-                    if (params.clientChildId) {
-                        cacheQuery = cacheQuery.eq('child_id', params.clientChildId);
+                    const cachedChildId = resolvedChild?.childId ?? params.clientChildId;
+                    if (cachedChildId) {
+                        cacheQuery = cacheQuery.eq('child_id', cachedChildId);
                     }
 
                     const { data: cachedRows, error: cacheError } = await cacheQuery
@@ -518,7 +568,8 @@ function streamChildReportResponse(params: {
                     perf.mark('cache_query', { cacheHit: !!cachedRows?.length });
 
                     const cachedReport = cachedRows?.[0]?.analysis_json;
-                    if (isChildReportValid(cachedReport)) {
+                    if (isChildReportValid(cachedReport)
+                        && (!params.refresh || (inputFingerprint && hasMatchingReportInput(cachedReport, inputFingerprint)))) {
                         send('cached', {
                             report: cachedReport as Json,
                             reportId: cachedRows[0].id,
@@ -540,7 +591,7 @@ function streamChildReportResponse(params: {
                     throw new Error(LLM_QUOTA_EXCEEDED_CODE);
                 }
 
-                const { childId, childInfo } = await resolveChildForReport({
+                const { childId, childInfo } = resolvedChild ?? await resolveChildForReport({
                     supabase: params.supabase,
                     userId: params.userId,
                     userCreatedAt: params.userCreatedAt,
@@ -549,6 +600,7 @@ function streamChildReportResponse(params: {
                 });
                 childIdForReport = childId;
                 childInfoForReport = childInfo;
+                inputFingerprint ??= childReportInputFingerprint({ ...params, childInfo });
                 perf.mark('child_lookup', { childId });
 
                 const surveyId = await insertCompletedSurvey({
@@ -640,21 +692,23 @@ function streamChildReportResponse(params: {
                     throw new Error('INVALID_STREAMED_CHILD_REPORT');
                 }
 
+                const reportForStorage = withReportInputFingerprint(report as Json, inputFingerprint);
                 const { savedReportId, persisted } = await persistGeneratedReport({
                     supabase: params.supabase,
                     userId: params.userId,
                     childId,
                     surveyId,
                     type: 'CHILD',
-                    report: report as Json,
+                    report: reportForStorage,
                     refresh: params.refresh,
+                    preserveHistory: params.assessmentPhase !== undefined,
                     logPrefix: '[Report Stream API] CHILD stream',
                 });
                 perf.mark(persisted ? 'report_insert' : 'report_persist_failed', { hasReportId: persisted });
-                if (params.refresh && savedReportId) perf.mark('refresh_cleanup');
+                if (params.refresh && params.assessmentPhase === undefined && savedReportId) perf.mark('refresh_cleanup');
 
                 send('completed', {
-                    report: report as Json,
+                    report: reportForStorage,
                     reportId: savedReportId,
                     createdAt: new Date().toISOString(),
                     cached: false,
@@ -685,6 +739,8 @@ function streamChildReportResponse(params: {
                         childId: childIdForReport,
                         surveyId: surveyIdForReport,
                         refresh: params.refresh,
+                        inputFingerprint,
+                        preserveHistory: params.assessmentPhase !== undefined,
                     });
                     perf.mark('stream_fallback_completed', { persisted: fallback.persisted });
                     send('completed', {
@@ -979,6 +1035,7 @@ export async function POST(request: Request) {
             refresh = false,
             intake, styleScores,
             childId: clientChildId,
+            assessmentPhase,
             stream = false
         } = body;
         perf.mark('request_parsed', {
@@ -1001,6 +1058,11 @@ export async function POST(request: Request) {
                 { error: 'Invalid type. Must be PARENT, CHILD, or HARMONY.' },
                 { status: 400 }
             );
+        }
+
+        if (assessmentPhase !== undefined
+            && (type !== 'CHILD' || !stream || ![1, 2, 3].includes(assessmentPhase))) {
+            return NextResponse.json({ error: 'Invalid child assessment phase.' }, { status: 400 });
         }
 
         if (stream) {
@@ -1034,6 +1096,7 @@ export async function POST(request: Request) {
                 answers,
                 childType,
                 refresh,
+                assessmentPhase,
                 intake,
                 userCreatedAt: session.user.created_at,
                 clientChildId,

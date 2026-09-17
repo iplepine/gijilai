@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAppStore } from '@/store/useAppStore';
 import { useSurveyStore } from '@/store/surveyStore';
-import { CHILD_QUESTIONS, PARENT_QUESTIONS, PARENTING_STYLE_QUESTIONS } from '@/data/questions';
+import { PARENT_QUESTIONS, PARENTING_STYLE_QUESTIONS } from '@/data/questions';
 import BottomNav from '@/components/layout/BottomNav';
 import {
   Chart as ChartJS,
@@ -33,6 +33,8 @@ import { trackEvent } from '@/lib/analytics';
 import { db, type ChildProfile, type ReportData, type SurveyData } from '@/lib/db';
 import { createPerfTracker } from '@/lib/perf';
 import { TemperamentScorer } from '@/lib/TemperamentScorer';
+import { getChildAssessmentResult } from '@/lib/childAssessmentResult';
+import { ASSESSMENT_PHASED_ENABLED } from '@/lib/assessmentConfig';
 import { TemperamentClassifier } from '@/lib/TemperamentClassifier';
 import { TCI_TERMINOLOGY } from '@/constants/terminology';
 import { useAuth } from '@/components/auth/AuthProvider';
@@ -272,6 +274,8 @@ function ReportContent() {
   const entrySource = searchParams.get('source') ?? (searchParams.get('id') ? 'saved_report' : 'direct');
   const reportKind = isChildOnly ? 'child_only' : 'full';
   const reportRefreshParam = searchParams.get('refresh');
+  const requestedAssessmentPhase = Number(searchParams.get('assessment_phase'));
+  const assessmentPhase = [1, 2, 3].includes(requestedAssessmentPhase) ? requestedAssessmentPhase : null;
 
   const { user, loading: authLoading } = useAuth();
   const { t, locale } = useLocale();
@@ -435,7 +439,10 @@ function ReportContent() {
     return surveys.find((survey) => (
       survey.type === 'CHILD'
       && survey.child_id === currentChild.id
-      && survey.status === 'COMPLETED'
+      && (survey.status === 'COMPLETED' || getChildAssessmentResult(
+        parseAnswerMap(survey.answers) ?? {},
+        { birthDate: currentChild.birth_date, allowPhaseOneReport: ASSESSMENT_PHASED_ENABLED, ...survey },
+      ).isReportReady)
     )) ?? null;
   }, [currentChild, surveys]);
 
@@ -713,7 +720,10 @@ function ReportContent() {
             || (isTemperamentScores(surveyData?.scores) ? surveyData.scores : null)
             || (() => {
               const surveyAnswers = parseAnswerMap(surveyData?.answers);
-              return surveyAnswers ? TemperamentScorer.calculate(CHILD_QUESTIONS, surveyAnswers) : null;
+              return surveyAnswers ? getChildAssessmentResult(surveyAnswers, {
+                birthDate: childData?.birth_date,
+                ...surveyData,
+              }).scores : null;
             })()
           );
           setActiveTab('child');
@@ -1257,7 +1267,12 @@ function ReportContent() {
     return result;
   }, [currentChild?.id, intake, selectedChildId]);
 
-  const hasCompleteLocalChildResponses = Object.keys(cbqResponses).length >= CHILD_QUESTIONS.length;
+  const localChildAssessment = useMemo(() => getChildAssessmentResult(cbqResponses, {
+    phase: assessmentPhase,
+    birthDate: currentChild?.birth_date || intake.birthDate,
+    allowPhaseOneReport: ASSESSMENT_PHASED_ENABLED,
+  }), [assessmentPhase, cbqResponses, currentChild?.birth_date, intake.birthDate]);
+  const hasCompleteLocalChildResponses = localChildAssessment.isReportReady;
   const hasCompleteLocalParentResponses = Object.keys(atqResponses).length >= PARENT_QUESTIONS.length;
   const prefersFreshChildResponses =
     (reportRefreshParam === 'all' || reportRefreshParam === 'child')
@@ -1267,13 +1282,16 @@ function ReportContent() {
     && hasCompleteLocalParentResponses;
 
   const childScores = useMemo(() => {
-    if (prefersFreshChildResponses) return TemperamentScorer.calculate(CHILD_QUESTIONS, cbqResponses);
+    if (prefersFreshChildResponses) return localChildAssessment.scores;
     if (savedChildScores) return savedChildScores;
     if (currentChildReportScores) return currentChildReportScores;
     if (currentChildSurveyScores) return currentChildSurveyScores;
-    if (currentChildSurveyAnswers) return TemperamentScorer.calculate(CHILD_QUESTIONS, currentChildSurveyAnswers);
-    return TemperamentScorer.calculate(CHILD_QUESTIONS, cbqResponses);
-  }, [cbqResponses, currentChildReportScores, currentChildSurveyAnswers, currentChildSurveyScores, prefersFreshChildResponses, savedChildScores]);
+    if (currentChildSurveyAnswers) return getChildAssessmentResult(currentChildSurveyAnswers, {
+      birthDate: currentChild?.birth_date || intake.birthDate,
+      ...currentChildSurvey,
+    }).scores;
+    return localChildAssessment.scores;
+  }, [currentChild?.birth_date, currentChildReportScores, currentChildSurvey, currentChildSurveyAnswers, currentChildSurveyScores, intake.birthDate, localChildAssessment.scores, prefersFreshChildResponses, savedChildScores]);
 
   const parentScores = useMemo(() => {
     if (prefersFreshParentResponses) return TemperamentScorer.calculate(PARENT_QUESTIONS, atqResponses);
@@ -1371,6 +1389,7 @@ function ReportContent() {
         userName: childName || '아이',
         scores: childScores, type: 'CHILD', answers,
         refresh,
+        assessmentPhase: assessmentPhase ?? undefined,
         childType: { label: childType.label, keywords: childType.keywords, desc: childType.desc }
       }, (item) => {
         if (controller.signal.aborted) return;
@@ -1418,7 +1437,7 @@ function ReportContent() {
         }
       }
     }
-  }, [childAiReport, childAnswerMap, childName, childReportId, childScores, childType.desc, childType.keywords, childType.label, currentChildReport?.id, fetchChildReportStream, normalizeReportTextForName, reportDates.child, t, toast]);
+  }, [assessmentPhase, childAiReport, childAnswerMap, childName, childReportId, childScores, childType.desc, childType.keywords, childType.label, currentChildReport?.id, fetchChildReportStream, normalizeReportTextForName, reportDates.child, t, toast]);
 
   const generateParentAIReport = useCallback(async (refresh = false) => {
     if (generatingRef.current.has('PARENT')) return;
@@ -1589,12 +1608,13 @@ function ReportContent() {
     const hasCbq = hasCompleteLocalChildResponses
       || !!savedChildScores
       || !!currentChildReportScores
-      || !!currentChildSurveyScores;
+      || !!currentChildSurveyScores
+      || !!currentChildSurveyAnswers;
     if (activeTab === 'child' && !isGenerating && !reportId && hasCbq && !childAiReport) {
       const shouldRefresh = prefersFreshChildResponses && shouldRefreshReportType('CHILD');
       void generateChildAIReport(shouldRefresh);
     }
-  }, [activeTab, canUseReportContext, childAiReport, currentChildReportScores, currentChildSurveyScores, generateChildAIReport, hasCompleteLocalChildResponses, isGenerating, prefersFreshChildResponses, reportId, savedChildScores, shouldRefreshReportType]);
+  }, [activeTab, canUseReportContext, childAiReport, currentChildReportScores, currentChildSurveyAnswers, currentChildSurveyScores, generateChildAIReport, hasCompleteLocalChildResponses, isGenerating, prefersFreshChildResponses, reportId, savedChildScores, shouldRefreshReportType]);
 
   // 양육자 탭 진입 시 자동 생성
   useEffect(() => {

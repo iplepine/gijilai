@@ -1,16 +1,16 @@
 <!-- COMMIT_STATUS START -->
 > **커밋 상태**
-> - 기준 커밋: `425ffe550f386bbd28c1035ed096ef4c513e3e51` (`claude/enable-phased-assessment`)
-> - 최근 커밋: `425ffe550f38` docs: refresh project documentation status
-> - 커밋 일시: `2026-06-20T22:38:59+09:00`
-> - 워킹트리: `clean`
-> - 문서 갱신: `2026-06-20 22:39:28 +0900`
+> - 기준 커밋: `fd3e1013a129f86b00a73bec88674626bb5a9d28` (`fix/live-survey-and-ux-polish`)
+> - 최근 커밋: `fd3e1013a129` release(android): Google Play Billing Library 8.0.0 상향 + v1.0.11+37 프로덕션 배포
+> - 커밋 일시: `2026-08-05T22:01:45+09:00`
+> - 워킹트리: `dirty (45 files)`
+> - 문서 갱신: `2026-09-17 11:31:50 +0900`
 <!-- COMMIT_STATUS END -->
 
 # 분석 이벤트 정책
 
 운영 관점에서 확인해야 하는 기본 퍼널 및 이벤트 측정 규칙 정의.
-최종 동기화: 2026-05-11
+최종 동기화: 2026-09-17
 
 ## 목적
 
@@ -30,6 +30,11 @@
 |--------|------|---------------|
 | `page_view` | 화면별 방문 수, 경로별 이탈 확인 | `page_path`, `page_title` |
 | `landing_cta_clicked` | 랜딩 CTA 위치별 클릭률과 설치/웹 시작 선택 비교 | `placement`, `target` |
+| `preview_viewed` | 가입 전 대화 예시 확인 | `scenario` |
+| `preview_scenario_selected` | 예시 상황 선택 | `scenario` |
+| `preview_signup_clicked` | 예시에서 로그인·아이 정보 입력으로 이동 | `scenario` |
+| `preview_link_copied` | 고정 예시 링크 복사 성공 | `scenario` |
+| `assessment_phase_completed` | 실제 응답으로 차수 완료에 도달 | `phase`, `answered_questions` |
 | `login_attempt` | 로그인 수단별 시도량 확인 | `provider` |
 | `login_success` | 로그인 완료율 확인 | `provider` |
 | `login_failed` | 로그인 실패 지점 확인 | `provider`, `reason` |
@@ -97,6 +102,12 @@
 - 홈 SOS 상황 진입이 단순 상담 CTA보다 재방문과 상담 시작을 더 잘 만드는가
 
 ## 운영 원칙
+
+- 공개 예시의 `scenario`는 `transition`, `separation`, `tantrum`만 허용한다. 랜딩 `target`은 `web_start`, `preview`, `install_app`으로 구분한다.
+- 차수 검사는 실제 응답으로 첫 차수를 완료할 때 `survey_module_completed(module=child)`를 기록한다. 기존 완료 응답 복원만으로 다시 완료 이벤트를 보내지 않는다. 결과 보기 클릭은 `survey_flow_completed(report_kind=child_only)`이며, 이는 45문항 전체 완료와 다르다.
+- 초기 gtag 로딩 전에도 표준 `dataLayer` 명령 큐에 이벤트를 보존한다. `config(send_page_view=false)`는 페이지당 한 번만 실행하고 인증 변경은 `set`, 로그아웃은 `user_id=null`로 처리한다.
+- `page_path`/`page_location`은 코드의 경로·query 허용 목록을 통과한 값만 전송한다. 공유/초대 토큰·아이/상담 ID는 경로 템플릿으로 치환한다. `redirect`, `prefill`, `input`, 자유로운 캠페인 문자열은 포함하지 않는다.
+- 페이지 제목은 `기질아이`로 고정하고 referrer는 origin만 전송한다. 새 경로나 캠페인 enum은 `src/lib/analytics.ts`와 테스트에 함께 추가한다. GA 콘솔의 자동 방문 수집 설정은 배포 후 별도 점검한다.
 
 - 신규 기능 추가 시 가능하면 `page_view`만으로 끝내지 말고, 사용자의 핵심 행동을 별도 이벤트로 분리한다.
 - 이벤트명은 소문자 스네이크 케이스를 사용한다.

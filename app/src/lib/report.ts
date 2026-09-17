@@ -171,6 +171,7 @@ export type ReportApiPayload = {
     type: 'CHILD' | 'PARENT' | 'HARMONY';
     answers: Array<{ questionId: string; score: number }>;
     refresh?: boolean;
+    assessmentPhase?: number;
     childId?: string | null;
     parentScores?: TemperamentScores;
     styleScores?: ParentingStyleScores;

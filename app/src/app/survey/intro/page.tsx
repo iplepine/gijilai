@@ -1,39 +1,92 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAppStore } from '@/store/useAppStore';
 import { useSurveyStore } from '@/store/surveyStore';
 import { Navbar } from '@/components/layout/Navbar';
 import { useLocale } from '@/i18n/LocaleProvider';
+import { CHILD_QUESTIONS, PARENT_QUESTIONS, PARENTING_STYLE_QUESTIONS } from '@/data/questions';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { useToast } from '@/components/ui/Toast';
+import { db } from '@/lib/db';
+import { loadSurveyEntry } from '@/lib/surveyEntry';
 
 export default function IntroPage() {
     const router = useRouter();
-    const { resetAll, setCbqResponse, setAtqResponse, setParentingResponse, setSurveyProgress } = useAppStore();
+    const { selectedChildId, resetSurveyOnly, setCbqResponse, setAtqResponse, setParentingResponse, setSurveyProgress } = useAppStore();
+    const { user, loading: authLoading } = useAuth();
+    const toast = useToast();
     const { t } = useLocale();
+    const [isStarting, setIsStarting] = useState(false);
+    const [entryError, setEntryError] = useState<string | null>(null);
+    const requestVersion = useRef(0);
+    const startingRef = useRef(false);
+    const mounted = useRef(false);
 
-    const resetSurveyState = () => {
-        resetAll();
-        useSurveyStore.getState().resetSurvey();
-    };
+    useEffect(() => {
+        mounted.current = true;
+        return () => { mounted.current = false; };
+    }, []);
 
-    const startSurvey = (flow: 'quick' | 'full') => {
-        resetSurveyState();
-        router.replace(`/survey?flow=${flow}`);
+    useEffect(() => () => { requestVersion.current += 1; }, [user?.id, selectedChildId]);
+
+    const startSurvey = async (flow: 'quick' | 'full') => {
+        if (authLoading || startingRef.current) return;
+        if (!user) {
+            router.replace(`/login?redirect=${encodeURIComponent('/survey/intro')}`);
+            return;
+        }
+        startingRef.current = true;
+        setIsStarting(true);
+        setEntryError(null);
+        const version = ++requestVersion.current;
+        const entry = await loadSurveyEntry(user.id, selectedChildId, db);
+        if (!mounted.current) return;
+
+        if (version !== requestVersion.current || useAppStore.getState().selectedChildId !== selectedChildId) {
+            setEntryError(t('survey.entrySelectionChanged'));
+            toast.error(t('survey.entrySelectionChanged'));
+        } else if (entry.kind === 'read_failed') {
+            setEntryError(t('survey.entryLoadFailed'));
+            toast.error(t('survey.entryLoadFailed'));
+        } else if (entry.kind === 'selection_unavailable') {
+            setEntryError(t('survey.entrySelectionChanged'));
+            toast.error(t('survey.entrySelectionChanged'));
+        } else {
+            const store = useAppStore.getState();
+            store.resetSurveyOnly();
+            store.resetIntake();
+            useSurveyStore.getState().resetSurvey();
+            if (entry.kind === 'intake') {
+                store.setSelectedChildId(null);
+                router.replace('/intake');
+            } else {
+                store.setSelectedChildId(entry.childId);
+                store.setIntake(entry.intake);
+                store.restoreSurveyFromDB(entry.responses);
+                router.replace(`/survey?flow=${flow}`);
+            }
+        }
+        startingRef.current = false;
+        setIsStarting(false);
     };
 
     const startWithRandomData = () => {
-        resetSurveyState();
+        if (process.env.NODE_ENV !== 'development') return;
+        resetSurveyOnly();
+        useSurveyStore.getState().resetSurvey();
 
-        for (let i = 1; i <= 20; i++) {
-            setCbqResponse(i.toString(), Math.floor(Math.random() * 5) + 1);
+        // The developer shortcut fills the existing legacy report question IDs.
+        for (const question of CHILD_QUESTIONS) {
+            setCbqResponse(String(question.id), Math.floor(Math.random() * (question.choices?.length ?? 5)) + 1);
         }
-        for (let i = 21; i <= 40; i++) {
-            setAtqResponse(i.toString(), Math.floor(Math.random() * 5) + 1);
+        for (const question of PARENT_QUESTIONS) {
+            setAtqResponse(String(question.id), Math.floor(Math.random() * (question.choices?.length ?? 5)) + 1);
         }
-        for (let i = 41; i <= 50; i++) {
-            setParentingResponse(i.toString(), Math.floor(Math.random() * 5) + 1);
+        for (const question of PARENTING_STYLE_QUESTIONS) {
+            setParentingResponse(String(question.id), Math.floor(Math.random() * (question.choices?.length ?? 5)) + 1);
         }
 
         setSurveyProgress(100);
@@ -66,25 +119,29 @@ export default function IntroPage() {
                             <div className="pt-6 space-y-3">
                                 <button
                                     onClick={() => startSurvey('quick')}
-                                    className="w-full font-black py-4 px-8 rounded-2xl bg-primary text-white shadow-card transform transition hover:scale-105 active:scale-95 text-lg"
+                                    disabled={authLoading || isStarting}
+                                    className="w-full font-black py-4 px-8 rounded-2xl bg-primary text-white shadow-card transform transition hover:scale-105 active:scale-95 text-lg disabled:opacity-50 disabled:cursor-wait"
                                 >
-                                    {t('survey.startQuickReport')}
+                                    {t(isStarting ? 'survey.preparingEntry' : 'survey.continueQuickReport')}
                                 </button>
                                 <p className="text-[13px] text-text-sub leading-relaxed break-keep whitespace-pre-line px-2">
-                                    {t('survey.startQuickReportHint')}
+                                    {t('survey.continueQuickReportHint')}
                                 </p>
                                 <button
                                     onClick={() => startSurvey('full')}
-                                    className="w-full font-bold py-4 px-8 rounded-2xl bg-white dark:bg-surface-dark text-text-main dark:text-white border border-primary/15 shadow-sm transform transition hover:scale-[1.02] active:scale-95 text-base"
+                                    disabled={authLoading || isStarting}
+                                    className="w-full font-bold py-4 px-8 rounded-2xl bg-white dark:bg-surface-dark text-text-main dark:text-white border border-primary/15 shadow-sm transform transition hover:scale-[1.02] active:scale-95 text-base disabled:opacity-50 disabled:cursor-wait"
                                 >
                                     {t('survey.startFullAnalysis')}
                                 </button>
                                 <p className="text-[12px] text-text-sub/80 leading-relaxed break-keep px-2">
                                     {t('survey.startFullAnalysisHint')}
                                 </p>
+                                {entryError && <p role="alert" className="text-sm text-rose-600 dark:text-rose-400">{entryError}</p>}
                                 {process.env.NODE_ENV === 'development' && (
                                     <button
                                         onClick={startWithRandomData}
+                                        disabled={authLoading || isStarting}
                                         className="mt-4 w-full text-text-sub/50 text-xs font-medium underline underline-offset-4 hover:text-primary transition-colors"
                                     >
                                         {t('survey.devRandomData')}

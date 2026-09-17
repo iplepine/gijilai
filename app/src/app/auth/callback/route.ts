@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { type NextRequest, NextResponse } from 'next/server'
+import { getSafeAuthRedirect } from '@/lib/authRedirect'
 
 function getRedirectOrigin(request: NextRequest) {
     const configuredOrigin =
@@ -20,7 +21,7 @@ function getRedirectOrigin(request: NextRequest) {
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const code = searchParams.get('code')
-    const next = searchParams.get('next') ?? '/'
+    const next = getSafeAuthRedirect(searchParams.get('next'))
     const errorParam = searchParams.get('error')
     const errorDescription = searchParams.get('error_description')
 
@@ -28,7 +29,10 @@ export async function GET(request: NextRequest) {
 
     if (errorParam) {
         console.error('Auth callback error parameter:', errorParam, errorDescription)
-        return NextResponse.redirect(`${origin}/auth/auth-code-error?error=${errorParam}&description=${errorDescription}`)
+        const errorUrl = new URL('/auth/auth-code-error', origin)
+        errorUrl.searchParams.set('error', errorParam)
+        if (errorDescription) errorUrl.searchParams.set('description', errorDescription)
+        return NextResponse.redirect(errorUrl)
     }
 
     const response = NextResponse.redirect(`${origin}${next}`)

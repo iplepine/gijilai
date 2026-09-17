@@ -4,6 +4,7 @@ declare global {
   interface Window {
     dataLayer: unknown[];
     gtag?: (...args: unknown[]) => void;
+    __gijilaiAnalyticsMeasurementId?: string;
   }
 }
 
@@ -12,8 +13,98 @@ type AnalyticsParams = Record<string, AnalyticsValue>;
 
 const measurementId = process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID;
 
-function isAnalyticsReady() {
-  return typeof window !== 'undefined' && typeof window.gtag === 'function' && !!measurementId;
+// Keep route identifiers and arbitrary URL text out of Analytics. New public
+// routes should be added here together with their bounded attribution values.
+const PUBLIC_AND_APP_PATHS = new Set([
+  '/', '/preview', '/login', '/intake', '/survey', '/survey/intro',
+  '/survey/child', '/survey/parent', '/survey/parenting-style', '/report',
+  '/consult', '/consult/self', '/consult/self/records', '/consultations',
+  '/practices', '/observations', '/notifications', '/translate', '/share',
+  '/pricing', '/pricing/complete', '/payment', '/payment/success', '/install-app',
+  '/settings/profile', '/settings/profile/edit', '/settings/child/new',
+  '/settings/notifications', '/settings/subscription', '/auth/auth-code-error',
+  '/legal/about', '/legal/privacy', '/legal/terms', '/legal/refund', '/legal/support',
+]);
+
+const SAFE_QUERY_VALUES: Record<string, readonly string[]> = {
+  source: ['landing', 'home', 'report', 'consult', 'practices', 'subscription_settings',
+    'pricing_complete', 'payment', 'legacy_payment', 'direct', 'home_sos', 'followup',
+    'shared', 'share', 'preview'],
+  flow: ['quick', 'full'],
+  tab: ['child', 'parent', 'harmony'],
+  report_tab: ['child', 'parent', 'harmony'],
+  report_kind: ['child', 'parent', 'harmony'],
+  child_only: ['true', 'false'],
+  scenario: ['transition', 'separation', 'tantrum'],
+  utm_source: ['google', 'naver', 'kakao', 'instagram', 'facebook', 'youtube', 'newsletter'],
+  utm_medium: ['organic', 'social', 'referral', 'email', 'cpc', 'paid_social', 'share'],
+};
+
+export function sanitizeAnalyticsPath(value: string) {
+  let url: URL;
+  try {
+    url = new URL(value, 'https://gijilai.com');
+  } catch {
+    return '/other';
+  }
+
+  const pathname = url.pathname.replace(/\/+$/, '') || '/';
+  let path = PUBLIC_AND_APP_PATHS.has(pathname) ? pathname : '/other';
+  if (/^\/shared\/[^/]+$/.test(pathname)) path = '/shared/[token]';
+  if (/^\/invite\/[^/]+$/.test(pathname)) path = '/invite/[token]';
+  if (/^\/consultations\/[^/]+$/.test(pathname)) path = '/consultations/[id]';
+  if (/^\/settings\/child\/[^/]+$/.test(pathname) && pathname !== '/settings/child/new') {
+    path = '/settings/child/[id]';
+  }
+
+  const query = new URLSearchParams();
+  for (const [key, allowedValues] of Object.entries(SAFE_QUERY_VALUES)) {
+    const value = url.searchParams.get(key);
+    if (value && allowedValues.includes(value)) query.set(key, value);
+  }
+  return query.size ? `${path}?${query.toString()}` : path;
+}
+
+function getPageParams(path = window.location.href) {
+  const pagePath = sanitizeAnalyticsPath(path);
+  let referrer = '';
+  if (typeof document !== 'undefined' && document.referrer) {
+    try {
+      // Referrer paths and queries can contain another site's personal data.
+      referrer = new URL(document.referrer).origin;
+    } catch { /* Invalid referrers are omitted. */ }
+  }
+  return {
+    page_path: pagePath,
+    page_location: `${window.location.origin}${pagePath}`,
+    // Shared report metadata may contain a child's name, so don't use document.title.
+    page_title: '기질아이',
+    page_referrer: referrer,
+  };
+}
+
+function getAnalyticsTag() {
+  if (typeof window === 'undefined' || !measurementId) return null;
+
+  window.dataLayer = window.dataLayer || [];
+  if (typeof window.gtag !== 'function') {
+    // Google's command queue works before the remote gtag script has loaded.
+    window.gtag = function () {
+      // gtag consumes the arguments object, not a nested array of commands.
+      // eslint-disable-next-line prefer-rest-params
+      window.dataLayer.push(arguments);
+    };
+  }
+  const tag = window.gtag;
+  if (window.__gijilaiAnalyticsMeasurementId !== measurementId) {
+    window.__gijilaiAnalyticsMeasurementId = measurementId;
+    tag('js', new Date());
+    // Global page defaults remain updateable by set after client-side navigation;
+    // putting them in config would take precedence over later set commands.
+    tag('set', getPageParams());
+    tag('config', measurementId, { send_page_view: false });
+  }
+  return tag;
 }
 
 function normalizeParams(params: AnalyticsParams = {}) {
@@ -38,9 +129,10 @@ export function setAnalyticsContext(context: AnalyticsParams) {
 }
 
 function emit(eventName: string, params: AnalyticsParams = {}) {
-  if (!isAnalyticsReady()) return;
+  const tag = getAnalyticsTag();
+  if (!tag) return;
   // 명시 파라미터가 공통 컨텍스트를 덮어쓴다.
-  window.gtag!('event', eventName, normalizeParams({ ...ambientContext, ...params }));
+  tag('event', eventName, normalizeParams({ ...ambientContext, ...params, ...getPageParams() }));
 }
 
 export function trackEvent(eventName: string, params: AnalyticsParams = {}) {
@@ -48,11 +140,12 @@ export function trackEvent(eventName: string, params: AnalyticsParams = {}) {
 }
 
 export function trackPageView(path: string) {
-  emit('page_view', {
-    page_path: path,
-    page_location: typeof window !== 'undefined' ? window.location.href : undefined,
-    page_title: typeof document !== 'undefined' ? document.title : undefined,
-  });
+  const tag = getAnalyticsTag();
+  if (!tag) return;
+  const pageParams = getPageParams(path);
+  // Keep automatic tag events on the same sanitized page context after navigation.
+  tag('set', pageParams);
+  tag('event', 'page_view', normalizeParams({ ...ambientContext, ...pageParams }));
 }
 
 /**
@@ -72,11 +165,10 @@ export function trackPurchase(params: {
 }
 
 export function setAnalyticsUser(userId: string | null) {
-  if (!isAnalyticsReady()) return;
-
-  window.gtag!('config', measurementId!, {
-    user_id: userId ?? undefined,
-  });
+  const tag = getAnalyticsTag();
+  if (!tag) return;
+  // Re-running config can emit an implicit page_view. null explicitly clears logout.
+  tag('set', { user_id: userId });
 }
 
 /**
@@ -94,7 +186,8 @@ export type AnalyticsUserProperties = {
 };
 
 export function setAnalyticsUserProperties(properties: AnalyticsUserProperties) {
-  if (!isAnalyticsReady()) return;
+  const tag = getAnalyticsTag();
+  if (!tag) return;
 
   const sanitized: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(properties)) {
@@ -103,5 +196,5 @@ export function setAnalyticsUserProperties(properties: AnalyticsUserProperties) 
   }
   if (Object.keys(sanitized).length === 0) return;
 
-  window.gtag!('set', 'user_properties', sanitized);
+  tag('set', 'user_properties', sanitized);
 }

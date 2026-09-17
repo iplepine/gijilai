@@ -23,7 +23,9 @@ import LandingPage from "@/components/landing/LandingPage";
 import { db, ChildProfile, PracticeItemData } from "@/lib/db";
 import { TemperamentScorer } from "@/lib/TemperamentScorer";
 import { TemperamentClassifier } from "@/lib/TemperamentClassifier";
-import { CHILD_QUESTIONS, PARENT_QUESTIONS } from "@/data/questions";
+import { PARENT_QUESTIONS } from "@/data/questions";
+import { getChildAssessmentResult } from "@/lib/childAssessmentResult";
+import { ASSESSMENT_PHASED_ENABLED } from "@/lib/assessmentConfig";
 import { TCI_TERMINOLOGY } from "@/constants/terminology";
 import { useLocale } from "@/i18n/LocaleProvider";
 import { useHomeDashboard } from "@/hooks/useHomeDashboard";
@@ -225,7 +227,9 @@ export default function HomePage() {
   const hasFullAccess = access.hasFullAccess;
   const shouldShowTrialEndingCard =
     !subscription && !!trialStatus?.isActive && trialStatus.daysRemaining <= 2;
-  const hasCompleteLocalChildResponses = Object.keys(cbqResponses).length >= CHILD_QUESTIONS.length;
+  const hasCompleteLocalChildResponses = getChildAssessmentResult(cbqResponses, {
+    allowPhaseOneReport: ASSESSMENT_PHASED_ENABLED,
+  }).isReportReady;
   const hasCompleteLocalParentResponses = Object.keys(atqResponses).length >= PARENT_QUESTIONS.length;
   const shouldUseNativeLogin = !authLoading && !user && isAppWebView();
 
@@ -281,7 +285,7 @@ export default function HomePage() {
 
     const scores = isTemperamentScores(childAnswers)
       ? childAnswers
-      : TemperamentScorer.calculate(CHILD_QUESTIONS, childAnswers);
+      : getChildAssessmentResult(childAnswers, { birthDate: mainChild?.birth_date, ...latestSurvey }).scores;
 
     const childResult = TemperamentClassifier.analyzeChild(scores);
 

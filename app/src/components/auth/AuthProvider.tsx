@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { trackEvent } from '@/lib/analytics';
+import { getAuthCallbackUrl } from '@/lib/authRedirect';
 import type { NativeAuthProvider } from '@/lib/nativeCapabilities';
 import { createPerfTracker } from '@/lib/perf';
 import { supabase } from '@/lib/supabase';
@@ -43,8 +44,8 @@ const isAppWebView = () => (
 );
 
 const getRedirectTo = () => {
-    if (isAppWebView()) return 'gijilai://auth/callback';
-    return `${window.location.origin}/auth/callback`;
+    const params = new URLSearchParams(window.location.search);
+    return getAuthCallbackUrl(window.location.origin, params.get('redirect'), isAppWebView());
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -217,6 +218,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const { error } = await supabase.auth.signUp({
                 email,
                 password,
+                options: { emailRedirectTo: getRedirectTo() },
             });
             if (error) throw error;
         } catch (error) {

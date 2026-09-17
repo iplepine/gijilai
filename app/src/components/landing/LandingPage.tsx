@@ -1,37 +1,13 @@
 'use client';
 
-import Image from 'next/image';
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { trackEvent } from '@/lib/analytics';
 import { Icon } from '@/components/ui/Icon';
-import { Button } from '@/components/ui/Button';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { HomeLogoButton } from '@/components/layout/HomeLogoButton';
 import { useLocale } from '@/i18n/LocaleProvider';
 import { buildInstallPageUrl } from '@/lib/install';
-
-const CHILD_TYPES = [
-    { src: '/child_type/type_hll.jpg', label: '열정 탐험가' },
-    { src: '/child_type/type_hlh.jpg', label: '사교적 리더' },
-    { src: '/child_type/type_lll.jpg', label: '평화로운 관찰자' },
-    { src: '/child_type/type_llh.jpg', label: '섬세한 예술가' },
-    { src: '/child_type/type_hhl.jpg', label: '신중한 전략가' },
-    { src: '/child_type/type_lhl.jpg', label: '조용한 사색가' },
-    { src: '/child_type/type_hhh.jpg', label: '창의적 몽상가' },
-    { src: '/child_type/type_lhh.jpg', label: '세심한 돌봄이' },
-];
-
-const PARENT_TYPES = [
-    { src: '/parent_type/type_parent_hll.jpg', label: '열정형 부모' },
-    { src: '/parent_type/type_parent_hlh.jpg', label: '사교형 부모' },
-    { src: '/parent_type/type_parent_lll.jpg', label: '안정형 부모' },
-    { src: '/parent_type/type_parent_llh.jpg', label: '섬세형 부모' },
-    { src: '/parent_type/type_parent_hhl.jpg', label: '전략형 부모' },
-    { src: '/parent_type/type_parent_lhl.jpg', label: '사색형 부모' },
-    { src: '/parent_type/type_parent_hhh.jpg', label: '몽상형 부모' },
-    { src: '/parent_type/type_parent_lhh.jpg', label: '돌봄형 부모' },
-];
+import { getPreviewPath, PREVIEW_SCENARIOS, QUICK_ASSESSMENT_HREF } from '@/lib/preview';
 
 export default function LandingPage() {
     const { t } = useLocale();
@@ -65,22 +41,10 @@ export default function LandingPage() {
         },
     ];
 
-    const ALL_TYPES = [...CHILD_TYPES.map(t => ({ ...t, kind: 'child' as const })), ...PARENT_TYPES.map(t => ({ ...t, kind: 'parent' as const }))];
-    const QUESTIONS = { child: t('landing.childQuestion'), parent: t('landing.parentQuestion') };
-    const [currentIndex, setCurrentIndex] = useState(0);
-    const [mounted] = useState(() => typeof window !== 'undefined');
-
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setCurrentIndex((prev) => (prev + 1) % ALL_TYPES.length);
-        }, 1800);
-        return () => clearInterval(interval);
-    }, [ALL_TYPES.length]);
-
     return (
         <div className="min-h-screen bg-background-light dark:bg-background-dark overflow-x-hidden">
             {/* Hero Section */}
-            <section className="relative pt-24 pb-16 md:pt-32 md:pb-24 flex flex-col items-center overflow-hidden">
+            <section className="relative pt-[calc(var(--safe-area-top)+3rem)] pb-12 md:pt-24 md:pb-20 flex flex-col items-center overflow-hidden">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[150%] h-[800px] bg-gradient-to-b from-primary/5 via-primary/2 to-transparent rounded-full blur-[100px] -z-10" />
 
                 <div className="container max-w-6xl mx-auto px-6 flex flex-col items-center text-center">
@@ -93,59 +57,37 @@ export default function LandingPage() {
                         {t('landing.heroDesc')}
                     </p>
 
-                    <div className="w-full max-w-md flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-400">
-                        <Link
-                            href={heroInstallHref}
-                            onClick={() => trackEvent('landing_cta_clicked', { placement: 'hero', target: 'install_app' })}
-                        >
-                            <Button
-                                size="lg"
-                                fullWidth
-                                icon={<Icon name="download" size="lg" className="text-white" />}
-                                className="h-16 rounded-2xl text-lg font-black shadow-glow hover:scale-[1.02] transition-transform bg-primary text-white"
-                            >
-                                {t('landing.startFree')}
-                            </Button>
-                        </Link>
-                        <Link
-                            href="/login"
+                    <div className="w-full max-w-md flex flex-col gap-3">
+                        <Link href={QUICK_ASSESSMENT_HREF}
                             onClick={() => trackEvent('landing_cta_clicked', { placement: 'hero', target: 'web_start' })}
-                        >
-                            <Button
-                                variant="ghost"
-                                size="md"
-                                fullWidth
-                                icon={<Icon name="play_arrow" className="text-primary" />}
-                                className="rounded-xl text-primary dark:text-primary-light"
-                            >
-                                {t('landing.startWeb')}
-                            </Button>
+                            className="flex min-h-16 items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-4 text-base font-black text-white shadow-glow transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary">
+                            <Icon name="play_arrow" size="lg" />{t('landing.startWeb')}
+                        </Link>
+                        <p className="text-xs leading-relaxed text-text-sub">{t('landing.webHint')}</p>
+                        <Link href="/preview"
+                            onClick={() => trackEvent('landing_cta_clicked', { placement: 'hero', target: 'preview' })}
+                            className="flex min-h-12 items-center justify-center rounded-xl border border-primary/20 bg-white px-4 py-3 text-sm font-bold text-primary dark:bg-surface-dark dark:text-primary-light">
+                            {t('landing.previewCta')}
+                        </Link>
+                        <Link href={heroInstallHref}
+                            onClick={() => trackEvent('landing_cta_clicked', { placement: 'hero', target: 'install_app' })}
+                            className="py-2 text-sm text-text-sub underline underline-offset-4">
+                            {t('landing.startFree')}
                         </Link>
                     </div>
 
-                    {/* Animated Type Cycling */}
-                    <div className="mt-16 md:mt-20 w-full max-w-[280px] md:max-w-[320px] mx-auto animate-in fade-in zoom-in-95 duration-1000 delay-600">
-                        <div className="relative aspect-square rounded-3xl overflow-hidden shadow-card">
-                            {mounted && ALL_TYPES.map((type, i) => (
-                                <Image
-                                    key={type.src}
-                                    src={type.src}
-                                    alt={t('landing.temperamentType')}
-                                    fill
-                                    className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${
-                                        i === currentIndex ? 'opacity-100' : 'opacity-0'
-                                    }`}
-                                />
+                    <div className="mt-10 w-full max-w-2xl rounded-3xl border border-beige-main/40 bg-white p-6 text-left shadow-soft dark:bg-surface-dark md:p-8">
+                        <h2 className="text-lg font-bold text-text-main dark:text-white">{t('landing.previewTitle')}</h2>
+                        <p className="mt-2 text-sm leading-relaxed text-text-sub">{t('landing.previewHint')}</p>
+                        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                            {PREVIEW_SCENARIOS.map((scenario) => (
+                                <Link key={scenario} href={getPreviewPath(scenario)}
+                                    onClick={() => trackEvent('landing_cta_clicked', { placement: 'scenario', target: 'preview', scenario })}
+                                    className="flex min-h-11 items-center justify-between gap-3 rounded-xl bg-beige-light px-4 py-3 text-sm font-bold text-primary transition-colors hover:bg-primary/10 dark:bg-background-dark dark:text-primary-light">
+                                    {t(`preview.${scenario}.label`)}<span aria-hidden="true">→</span>
+                                </Link>
                             ))}
-                            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
-                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-                                <span className="text-white/90 text-xl md:text-2xl font-black">
-                                    {mounted ? QUESTIONS[ALL_TYPES[currentIndex].kind] : t('landing.childQuestion')}
-                                </span>
-                                <span className="text-white/40 text-xs tracking-widest">{t('landing.revealAfterTest')}</span>
-                            </div>
                         </div>
-                        <p className="text-center text-sm text-text-sub mt-5 break-keep">{t('landing.revealAfterTest')}</p>
                     </div>
                 </div>
             </section>
@@ -284,29 +226,20 @@ export default function LandingPage() {
                                 {t('landing.ctaDesc')}
                             </p>
                             <div className="flex flex-col items-center gap-4">
-                                <Link
-                                    href={finalInstallHref}
-                                    className="w-full max-w-sm"
-                                    onClick={() => trackEvent('landing_cta_clicked', { placement: 'final_cta', target: 'install_app' })}
-                                >
-                                    <Button
-                                        variant="secondary"
-                                        size="lg"
-                                        fullWidth
-                                        icon={<Icon name="download" size="lg" className="text-[#1F3629]" />}
-                                        className="h-16 rounded-2xl !bg-white !text-[#1F3629] text-lg font-black hover:bg-gray-100 transition-all shadow-glow"
-                                    >
-                                        {t('landing.startTest')}
-                                    </Button>
-                                </Link>
-                                <Link
-                                    href="/login"
-                                    className="w-full max-w-sm"
+                                <Link href={QUICK_ASSESSMENT_HREF}
                                     onClick={() => trackEvent('landing_cta_clicked', { placement: 'final_cta', target: 'web_start' })}
-                                >
-                                    <Button variant="ghost" size="md" fullWidth className="rounded-xl text-white/85 hover:bg-white/10">
-                                        {t('landing.startWeb')}
-                                    </Button>
+                                    className="flex min-h-16 w-full max-w-sm items-center justify-center rounded-2xl bg-white px-4 py-4 text-base font-black text-[#1F3629] shadow-glow">
+                                    {t('landing.startWeb')}
+                                </Link>
+                                <Link href="/preview"
+                                    onClick={() => trackEvent('landing_cta_clicked', { placement: 'final_cta', target: 'preview' })}
+                                    className="min-h-11 py-3 text-sm font-bold text-white/90 underline underline-offset-4">
+                                    {t('landing.previewCta')}
+                                </Link>
+                                <Link href={finalInstallHref}
+                                    onClick={() => trackEvent('landing_cta_clicked', { placement: 'final_cta', target: 'install_app' })}
+                                    className="min-h-11 py-3 text-sm text-white/75">
+                                    {t('landing.startFree')}
                                 </Link>
                             </div>
                         </div>

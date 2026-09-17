@@ -1,15 +1,15 @@
 <!-- COMMIT_STATUS START -->
 > **커밋 상태**
-> - 기준 커밋: `425ffe550f386bbd28c1035ed096ef4c513e3e51` (`claude/enable-phased-assessment`)
-> - 최근 커밋: `425ffe550f38` docs: refresh project documentation status
-> - 커밋 일시: `2026-06-20T22:38:59+09:00`
-> - 워킹트리: `clean`
-> - 문서 갱신: `2026-06-20 22:39:28 +0900`
+> - 기준 커밋: `fd3e1013a129f86b00a73bec88674626bb5a9d28` (`fix/live-survey-and-ux-polish`)
+> - 최근 커밋: `fd3e1013a129` release(android): Google Play Billing Library 8.0.0 상향 + v1.0.11+37 프로덕션 배포
+> - 커밋 일시: `2026-08-05T22:01:45+09:00`
+> - 워킹트리: `dirty (45 files)`
+> - 문서 갱신: `2026-09-17 11:31:50 +0900`
 <!-- COMMIT_STATUS END -->
 
 # 작업 관리
 
-마지막 갱신일: 2026-06-20
+마지막 갱신일: 2026-09-17
 
 ## 현재 집중
 
@@ -24,6 +24,7 @@
 
 현재 active tasks:
 
+- [GJ-012-growth-activation-repair](tasks/active/GJ-012-growth-activation-repair.md) — 사용자 요청 우선: 공개 대화 예시, 첫 검사·인증 복귀, 차수검사 리포트, 측정 보완. 구현·로컬 검증 완료(325 tests/브라우저 15시나리오), 배포 후 운영 검증 대기.
 - `GJ-005-report-trust-baseline-qa` (코드 완료, 배포 환경 DebugView 확인만 남아 운영 후속화)
 - `GJ-006-practice-loop-usability-qa` (코드 완료, 모바일 WebView 회귀 QA만 남아 운영 후속화)
 - `GJ-007-manual-followup-test`
@@ -31,11 +32,13 @@
 - `GJ-010-self-parent-reflection-thinslice` (R-004 self-parent Phase 1 — 코드 완료, 마이그레이션 적용·실기기 확인 남음)
 - `GJ-011-self-parent-practice-loop` (R-004 self-parent Phase 2 — 코드 완료, 마이그레이션 적용·실기기 확인 남음)
 
-신규 빌드는 GJ-009/010/011이 코드 완료 상태이고 운영 적용(마이그레이션 018·019·020)·실기기 확인이 남았다.
+기존 GJ-009/010/011은 코드 완료 상태이고 운영 적용(마이그레이션 018·019·020)·실기기 확인이 남았다. 이번 GJ-012는 가격·DB·운영 데이터 변경 없이 첫 가치 도달과 측정을 개선한다.
 
 다음 대기(Ready): `GJ-008-coparent-retention-test` — GJ-009 운영 적용 후 5쌍 모집/연결 vs 솔로 비교 시작. 파일은 `tasks/backlog/`에 둔다.
 
 2026-06-20 정리: active task가 여전히 6개로 운영 규칙(최대 3개)을 초과한다. 신규 개발은 멈추고 `GJ-005`/`GJ-006` 운영 QA, `GJ-009/010/011` 마이그레이션·실기기 확인 중 먼저 닫을 수 있는 것부터 done으로 이동한다. 최근 HEAD는 차수화 신뢰도 캘리브레이션이므로 `docs/README.md`의 차수화/spec 색인도 다음 문서 정리에서 확인한다.
+
+2026-09-17 예외: 사용자의 명시적 “문제 개선·필요 기능 추가” 요청으로 GJ-012를 우선 진행한다. 기존 6개를 완료로 간주하지 않고 유지해 active 7개인 예외 상태를 기록한다. 이후 같은 날 사용자 요청으로 커밋·푸시 및 웹 프로덕션 배포를 진행한다. 최근 31일 집계와 해석 한계는 [기준선 지표](BASELINE_METRICS.md)의 2차 스냅샷에 기록했다.
 
 현재 TODO: [TODO.md](TODO.md)
 

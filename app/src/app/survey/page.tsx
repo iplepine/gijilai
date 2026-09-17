@@ -75,10 +75,11 @@ function SurveyContent() {
     selectedChildId,
   } = useAppStore();
 
-  // 설문 응답을 Supabase에 자동 동기화
-  useSurveySync();
-
   const [currentModule, setCurrentModule] = useState<SurveyModule>(() => getInitialModule(typeParam));
+  // 차수 화면도 이 훅 하나로 저장해 20문항 시점의 잘못된 완료 판정을 막는다.
+  useSurveySync({
+    childAssessmentMode: ASSESSMENT_PHASED_ENABLED && currentModule === 'child' ? 'phased' : undefined,
+  });
   const surveyFlow = flowParam === 'full' ? 'full' : 'quick';
   const reportRefreshQuery =
     refreshParam === 'all'
