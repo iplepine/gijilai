@@ -823,8 +823,8 @@
     "analyzing": "Analyzing",
     "analysisAndPayment": "Analysis & Payment",
     "loadingError": "An error occurred while loading the report.",
-    "generationError": "An error occurred while generating the report.",
-    "harmonyError": "An error occurred while generating the harmony report.",
+    "generationError": "We couldn't create the report. Please try again in a moment.",
+    "harmonyError": "We couldn't create the harmony report. Please try again in a moment.",
     "childTab": "Child Analysis",
     "parentTab": "Parent Analysis",
     "harmonyTab": "Custom Parenting",
@@ -1238,5 +1238,10 @@
       "phrase": "“You really want that toy. We’re not buying toys today. Shall we put it on your wish list together?”",
       "practice": "Acknowledge the wish briefly, then state today’s limit in one sentence. If conversation is difficult, pause together in a safe place."
     }
+  },
+  "ageNotice": {
+    "title": "This assessment is designed for ages 3–7",
+    "tooYoung": "Before age 3, temperament is still taking shape, so results may differ from how your child really is. You can still continue, but please treat the results as a reference.",
+    "tooOld": "From age 8, some questions may not fit your child's daily life. You can still continue, but please treat the results as a reference."
   }
 }

@@ -6,7 +6,9 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
 import { DatePicker } from '@/components/ui/DatePicker';
+import { AssessmentAgeNotice } from '@/components/child/AssessmentAgeNotice';
 import { trackEvent } from '@/lib/analytics';
+import { getAssessmentAgeStatus } from '@/lib/childAgeRange';
 import { useAppStore } from '@/store/useAppStore';
 import { Concern, CONCERN_LABELS } from '@/types';
 import { useLocale } from '@/i18n/LocaleProvider';
@@ -63,6 +65,7 @@ export default function IntakePage() {
     if (validate()) {
       trackEvent('intake_completed', {
         child_gender: intake.gender,
+        child_age_range: getAssessmentAgeStatus(intake.birthDate) ?? 'unknown',
         concern_count: intake.concerns.length,
         privacy_agreed: intake.privacyAgreed,
         disclaimer_agreed: intake.disclaimerAgreed,
@@ -146,6 +149,7 @@ export default function IntakePage() {
                   onChange={(date) => setIntake({ birthDate: date })}
                   error={errors.birthDate}
                 />
+                <AssessmentAgeNotice birthDate={intake.birthDate} />
               </div>
             </div>
           </section>

@@ -7,6 +7,7 @@ import { db } from '@/lib/db';
 import { useAppStore } from '@/store/useAppStore';
 import { Icon } from '@/components/ui/Icon';
 import { DatePicker } from '@/components/ui/DatePicker';
+import { AssessmentAgeNotice } from '@/components/child/AssessmentAgeNotice';
 import { useToast } from '@/components/ui/Toast';
 import { Navbar } from '@/components/layout/Navbar';
 import { useLocale } from '@/i18n/LocaleProvider';
@@ -218,6 +219,7 @@ export default function RegisterChildPage() {
                                 onChange={(date) => setFormData({ ...formData, birthdate: date })}
                                 disabled={formDisabled}
                             />
+                            <AssessmentAgeNotice birthDate={formData.birthdate} />
                         </div>
 
                         {/* Gender Selection */}

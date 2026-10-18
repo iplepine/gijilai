@@ -93,6 +93,8 @@
 - `app/src/app/api/consult/`
 - **운영 포인트**
 - 모델 변경 시 비용, 응답 시간, 품질 영향을 함께 검토
+- 모든 생성 호출은 `src/lib/llmModel.ts`의 단일 모델(`gpt-6-luna`)을 쓴다
+- 크레딧 소진(429 `insufficient_quota`)은 `src/lib/llmAlert.ts`가 감지해 서버 로그 `[OPS ALERT]`와 `OPS_ALERT_WEBHOOK_URL`(설정 시)로 알린다. Billing의 자동 충전·사용량 알림도 켜 둔다
 - 프롬프트 정책 변경 시 관련 정책 문서와 ADR 반영 여부 확인
 
 ### PortOne

@@ -41,7 +41,7 @@
 | `signup_attempt` | 이메일 가입 시도량 확인 | `provider` |
 | `signup_failed` | 이메일 가입 실패 지점 확인 | `provider`, `reason` |
 | `logout` | 세션 종료 추적 | 없음 |
-| `intake_completed` | 접수 완료율 확인 | `child_gender`, `concern_count` |
+| `intake_completed` | 접수 완료율 확인 | `child_gender`, `child_age_range`(`in_range`/`too_young`/`too_old`/`unknown`, 검사 기준 만 3~7세 대비), `concern_count` |
 | `survey_module_started` | 설문 모듈 진입량 확인 | `module`, `source`, `report_tab`, `report_kind` |
 | `survey_module_completed` | 모듈별 완료율 확인 | `module`, `answered_questions`, `source`, `report_tab`, `report_kind` |
 | `survey_flow_completed` | 전체 설문 완료율 확인 | `answered_questions`, `source`, `report_tab`, `report_kind` |

@@ -6,6 +6,7 @@ import {
 } from '@/lib/prompts';
 import { CHILD_NAME_PSEUDONYM, unmaskChildNameDeep, unmaskChildNameText } from '@/lib/childPseudonym';
 import { createPerfTracker } from '@/lib/perf';
+import { createQuotaAlertingFetch } from '@/lib/llmAlert';
 import { LLM_MODEL, LLM_REASONING_EFFORT } from '@/lib/llmModel';
 import { CHILD_QUESTIONS, PARENT_QUESTIONS, PARENTING_STYLE_QUESTIONS } from '@/data/questions';
 import { Question } from '@/types/survey';
@@ -21,6 +22,8 @@ export const openai = new OpenAI({
     // 스트림 리포트 생성이 가장 길다 — 행이 걸린 요청이 워커와 비용을 무한정 잡지 않게 상한을 둔다.
     timeout: 120_000,
     maxRetries: 1,
+    // 크레딧 소진(insufficient_quota)을 운영 알림으로 올린다.
+    fetch: createQuotaAlertingFetch(),
 });
 
 export type ReportType = 'PARENT' | 'CHILD' | 'HARMONY';
