@@ -844,23 +844,6 @@ export const db = {
     return data as PaymentData[];
   },
 
-  getMonthlyConsultCount: async (userId: string) => {
-    const now = new Date();
-    const startOfMonth = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      1,
-    ).toISOString();
-    const { count, error } = await supabase
-      .from("consultations")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .eq("status", "COMPLETED")
-      .gte("created_at", startOfMonth);
-    if (error) throw error;
-    return count || 0;
-  },
-
   /**
    * 7일 리버스 트라이얼 상태 확인
    * 가입일로부터 7일 이내면 트라이얼 활성, 이후는 만료

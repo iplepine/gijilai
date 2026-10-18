@@ -13,6 +13,15 @@
 
 ---
 
+## 2026-10-18 | 모든 LLM 생성을 gpt-6-luna 단일 모델로 통일
+
+- **결정**: 리포트(gpt-4o-mini), 상담 문진·처방(gpt-4o, 월 30건 초과 시 mini), 번역기·실천 피드백(mini/4o)으로 나뉘어 있던 모델을 `lib/llmModel.ts`의 `LLM_MODEL = 'gpt-6-luna'` 하나로 통일한다. GPT-5 계열 추론 모델이라 `temperature`를 넘기지 않고(기본값 1만 허용) `reasoning_effort: 'low'`를 기본으로 쓴다. 실천 피드백 `deep`만 `'medium'`. 2026-04-02의 "월 30건 초과 시 mini 폴백"(`consult-model.ts`, `db.getMonthlyConsultCount`)은 제거한다.
+- **이유**: CEO 결정. 공식 단가(1M 토큰당) gpt-6-luna $0.10/$0.50로 기존 리포트 모델 gpt-4o-mini($0.15/$0.60)보다 싸고 상담 모델 gpt-4o($2.50/$10)의 약 1/20이라, 비용 보호용 폴백이 필요 없어진다. 2024년 모델 대비 품질 향상을 기대하며, 궁합 리포트 유료화 검토 시 리포트 품질이 곧 상품 가치다. 실 API 확인: `temperature: 0.7`은 400, `reasoning_effort`는 none/low/medium/high/xhigh 지원(minimal 미지원), json_object·스트리밍 동작, 단문 스트리밍 첫 토큰 약 2초.
+- **대안**: (a) gpt-5-nano($0.05/$0.40) — 더 싸지만 현재 월 LLM 비용이 수백 원이라 절감 의미가 없고 품질 우선이라 기각. (b) gpt-5.6-luna($0.20/$1.20) — gpt-6-luna보다 비싸 기각. (c) 리포트·상담 모델 분리 유지 — 단가 차이가 사라져 분리 이유가 없음.
+- **알려진 한계/후속**: 기존 모델과 같은 입력 비교 평가(`scripts/run-consult-prompt-eval.cjs`)는 OpenAI 크레딧 소진(429)으로 끝내지 못했다. 크레딧 충전 후 상담 품질·지연·추론 토큰 비용, 리포트 스트리밍 첫 토큰 지연을 비교하고 배포한다. 모델 변경으로 리포트 입력 지문(`_generationCache`)이 달라져 같은 입력도 다음 요청에서 한 번 재생성된다.
+
+---
+
 ## 2026-07-17 | 상담 LLM 호출은 60초 타임아웃 + 사용자 취소 (실천 피드백 15초와 분리)
 
 - **결정**: 상담 LLM fetch를 `lib/consultRequest.ts`의 `createConsultRequestController()`로 감싼다. 클라이언트 타임아웃 **60초**(`CONSULT_LLM_TIMEOUT_MS`), 전체화면 로딩 오버레이에 **그만두기** 버튼, 중단 사유를 `user`/`timeout`으로 구분해 안내를 다르게 한다. 적용 대상은 `consult`(questions/initial·questions/followup·prescription)과 `consult/self`(questions·prescription).

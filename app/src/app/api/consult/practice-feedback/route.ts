@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { invalidJsonResponse, isInvalidJsonBodyError, isNonEmptyString, parseJsonBody } from '@/lib/api';
 import { getServerFeatureAccess } from '@/lib/access';
 import { consumeLlmQuota, LLM_QUOTA_EXCEEDED_CODE } from '@/lib/llm-quota';
+import { LLM_MODEL, LLM_REASONING_EFFORT } from '@/lib/llmModel';
 import { openai } from '@/lib/openai';
 import { recordSubscriptionUsageEvent } from '@/lib/subscription-usage';
 import { createClient } from '@/lib/supabaseServer';
@@ -61,8 +62,6 @@ type PracticeForFeedback = {
   };
 };
 
-const QUICK_FEEDBACK_MODEL = 'gpt-4o-mini';
-const DEEP_FEEDBACK_MODEL = 'gpt-4o';
 const LONG_NOTE_THRESHOLD = 40;
 
 const ATTEMPT_LABELS: Record<string, string> = {
@@ -262,7 +261,7 @@ export async function POST(request: Request) {
     const depth = shouldUseStaticFeedback
       ? 'quick'
       : chooseFeedbackDepth(log, recentNegativeCount, hasDeepFeedbackToday);
-    const model = depth === 'deep' ? DEEP_FEEDBACK_MODEL : QUICK_FEEDBACK_MODEL;
+    const model = LLM_MODEL;
     const attemptLabel = ATTEMPT_LABELS[log.practice_attempt_type] ?? log.practice_attempt_type;
     const reactionLabel = REACTION_LABELS[log.child_reaction_type] ?? log.child_reaction_type;
     const impressionLabel = IMPRESSION_LABELS[log.parent_impression_type] ?? log.parent_impression_type;
@@ -323,7 +322,7 @@ export async function POST(request: Request) {
             },
           ],
           response_format: { type: 'json_object' },
-          temperature: depth === 'deep' ? 0.45 : 0.35,
+          reasoning_effort: depth === 'deep' ? 'medium' : LLM_REASONING_EFFORT,
         });
 
         const content = response.choices[0].message.content;

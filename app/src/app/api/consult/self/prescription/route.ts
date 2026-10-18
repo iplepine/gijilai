@@ -7,7 +7,7 @@ import {
 } from '@/lib/api';
 import { openai } from '@/lib/openai';
 import { createClient } from '@/lib/supabaseServer';
-import { getConsultModel } from '@/lib/consult-model';
+import { LLM_MODEL, LLM_REASONING_EFFORT } from '@/lib/llmModel';
 import { getServerFeatureAccessForChild } from '@/lib/access';
 import { recordSubscriptionUsageEvent } from '@/lib/subscription-usage';
 import { buildSelfParentPrescriptionPrompt, type SelfParentCaregiverContext } from '@/lib/selfParentPromptBuilders';
@@ -135,12 +135,12 @@ export async function POST(request: Request) {
       answers: maskChildNameDeep(answers, realChildName),
       caregiverContext: promptCaregiverContext,
     });
-    const model = await getConsultModel(session.user.id);
+    const model = LLM_MODEL;
 
     const response = await openai.chat.completions.create({
       model,
       messages: [{ role: 'system', content: systemPrompt }],
-      temperature: 0.5,
+      reasoning_effort: LLM_REASONING_EFFORT,
       response_format: { type: 'json_object' },
     });
 

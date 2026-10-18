@@ -24,7 +24,7 @@
 
 | 서비스 | 용도 | 관리자 URL |
 |--------|------|------------|
-| **OpenAI** | 리포트 생성 / AI 상담 (gpt-4o) | https://platform.openai.com |
+| **OpenAI** | 리포트 생성 / AI 상담 (gpt-6-luna) | https://platform.openai.com |
 
 ## 결제
 

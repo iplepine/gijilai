@@ -25,9 +25,9 @@ function parseArgs(argv) {
     const args = {
         casesPath: DEFAULT_CASES_PATH,
         outDir: DEFAULT_OUT_DIR,
-        model: 'gpt-4o-mini',
+        model: 'gpt-6-luna',
         evalModel: 'gpt-4o-mini',
-        temperature: 0.45,
+        temperature: undefined,
         limit: undefined,
         noEval: false,
         dryRun: false,
@@ -74,9 +74,9 @@ function printHelp() {
 Options:
   --cases <path>       Case fixture JSON. Default: evals/consultation-prompt-tuning/cases.example.json
   --out <path>         Output directory for run artifacts.
-  --model <model>      Target generation model. Default: gpt-4o-mini
+  --model <model>      Target generation model. Default: gpt-6-luna
   --eval-model <model> Evaluator model. Default: gpt-4o-mini
-  --temperature <n>    Target generation temperature. Default: 0.45
+  --temperature <n>    Target generation temperature (non-reasoning models only). Default: unset
   --limit <n>          Run only the first n cases.
   --no-eval            Generate target outputs without AI scoring.
   --dry-run            Build prompts and write artifacts without calling OpenAI.
@@ -131,7 +131,7 @@ async function generatePrescription(client, caseItem, args) {
         messages: [
             { role: 'system', content: systemPrompt },
         ],
-        temperature: args.temperature,
+        ...(args.temperature === undefined ? { reasoning_effort: 'low' } : { temperature: args.temperature }),
         response_format: { type: 'json_object' },
     });
     const rawOutput = response.choices[0]?.message?.content || '{}';

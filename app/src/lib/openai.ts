@@ -6,6 +6,7 @@ import {
 } from '@/lib/prompts';
 import { CHILD_NAME_PSEUDONYM, unmaskChildNameDeep, unmaskChildNameText } from '@/lib/childPseudonym';
 import { createPerfTracker } from '@/lib/perf';
+import { LLM_MODEL, LLM_REASONING_EFFORT } from '@/lib/llmModel';
 import { CHILD_QUESTIONS, PARENT_QUESTIONS, PARENTING_STYLE_QUESTIONS } from '@/data/questions';
 import { Question } from '@/types/survey';
 
@@ -145,13 +146,13 @@ export const generateReport = async (
     perf.mark('prompt_prepared', { payloadBytes: userMessage.length });
 
     const response = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: LLM_MODEL,
         messages: [
             { role: 'system', content: promptToUse },
             { role: 'user', content: userMessage },
         ],
         response_format: { type: "json_object" },
-        temperature: 0.7,
+        reasoning_effort: LLM_REASONING_EFFORT,
     });
     perf.mark('openai_completion');
 

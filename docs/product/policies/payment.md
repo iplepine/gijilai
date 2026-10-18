@@ -150,7 +150,7 @@
 
 ## AI 리포트 생성
 
-- 리포트 모델: gpt-4o-mini / 상담 모델: gpt-4o
+- 리포트·상담 모델: gpt-6-luna (`src/lib/llmModel.ts`)
 - Temperature: 0.7
 - 응답 형식: JSON 객체 (`response_format: { type: "json_object" }`)
 - JSON 파싱 실패 시 원본 문자열로 폴백

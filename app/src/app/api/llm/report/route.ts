@@ -7,11 +7,12 @@ import { createClient } from '@/lib/supabaseServer';
 import { normalizeTemperamentDimensions, type ChildAiReport, type ParentAiReport } from '@/lib/report';
 import { CHILD_PROFILE_LIMIT_REACHED_CODE, getServerChildProfileAccess } from '@/lib/access';
 import { consumeLlmQuota, LLM_QUOTA_EXCEEDED_CODE } from '@/lib/llm-quota';
+import { LLM_MODEL, LLM_REASONING_EFFORT } from '@/lib/llmModel';
 import { CHILD_NAME_PSEUDONYM, unmaskChildNameDeep } from '@/lib/childPseudonym';
 import { createReportInputFingerprint, hasMatchingReportInput, withReportInputFingerprint } from '@/lib/reportInputFingerprint';
 import type { Json } from '@/types/supabase';
 
-const REPORT_MODEL = 'gpt-4o-mini';
+const REPORT_MODEL = LLM_MODEL;
 
 type TemperamentScores = { NS: number; HA: number; RD: number; P: number };
 type AnswerItem = { questionId: string; score: number };
@@ -630,7 +631,7 @@ function streamChildReportResponse(params: {
                         { role: 'system', content: CHILD_REPORT_STREAM_PROMPT },
                         { role: 'user', content: userMessage },
                     ],
-                    temperature: 0.7,
+                    reasoning_effort: LLM_REASONING_EFFORT,
                     stream: true,
                 });
 
@@ -878,7 +879,7 @@ function streamParentReportResponse(params: {
                         { role: 'system', content: PARENT_REPORT_STREAM_PROMPT },
                         { role: 'user', content: userMessage },
                     ],
-                    temperature: 0.7,
+                    reasoning_effort: LLM_REASONING_EFFORT,
                     stream: true,
                 });
 

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { invalidJsonResponse, isInvalidJsonBodyError, isNonEmptyString, parseJsonBody } from '@/lib/api';
 import { openai } from '@/lib/openai';
 import { createClient } from '@/lib/supabaseServer';
-import { getConsultModel } from '@/lib/consult-model';
+import { LLM_MODEL, LLM_REASONING_EFFORT } from '@/lib/llmModel';
 import { getServerFeatureAccessForChild } from '@/lib/access';
 import { recordSubscriptionUsageEvent } from '@/lib/subscription-usage';
 import { buildFollowUpConsultQuestionsPrompt } from '@/lib/consultPromptBuilders';
@@ -203,7 +203,7 @@ export async function POST(request: Request) {
             firstRoundQuestions,
         });
 
-        const model = await getConsultModel(session.user.id);
+        const model = LLM_MODEL;
 
         const response = await openai.chat.completions.create({
             model,
@@ -211,7 +211,7 @@ export async function POST(request: Request) {
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userMessage },
             ],
-            temperature: 0.7,
+            reasoning_effort: LLM_REASONING_EFFORT,
             response_format: { type: "json_object" }
         });
 

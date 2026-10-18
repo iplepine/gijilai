@@ -24,7 +24,7 @@
 - 상담 진입 전의 가벼운 무료 단발 도구. 양육자가 상황 + 아이가 한 말/행동을 한 번에 적으면, 아이의 1인칭 속마음(`childVoice`) · 지금 진짜 원하는 것(`need`) · 그 순간 건넬 한마디(`parentReply`)를 즉시 돌려준다. 다단계 문진 없이 단발로 끝낸다.
 - 진입: 홈 상단 “아이말 번역기” 카드(구 “지금 상황 SOS” 카드 대체) 또는 `/translate` 직접. 홈 한 줄 입력은 `/translate?input=...`로 프리필된다.
 - 권한: **구독 게이트 없음**(상단 퍼널 무료 훅). 인증만 요구하고, 남용은 `llm_usage_events`의 일일 쿼터(`TRANSLATE`, 기본 30건/24h, `consumeLlmQuota`)로만 막는다. 결과는 저장하지 않는 단발성 응답이다.
-- 모델: `gpt-4o-mini` 고정(저비용·저지연, 상담 모델 티어와 분리). 입력 검증은 상담과 동일하게 `validateConsultProblemInput`(최소 20자, 무의미 입력 차단)을 서버에서도 적용한다.
+- 모델: `gpt-6-luna` (`reasoning_effort: "low"`, 모든 생성 호출 공통). 입력 검증은 상담과 동일하게 `validateConsultProblemInput`(최소 20자, 무의미 입력 차단)을 서버에서도 적용한다.
 - 개인화: 선택된 아이(`childId`)가 있으면 서버에서 그 아이의 기질/이름/연령을 확정해 반영한다. 검사 데이터가 없으면 일반 눈높이로 통역한다. 아이 실명은 가명(`○○이`)으로 보내고 응답에서 복원한다(기존 LLM 프라이버시 정책 준수).
 - 표현 가드레일: 상담과 동일 — 영문 약어(NS/HA/RD/P/TCI) 금지, 단정형보다 가능성형, 결핍 프레이밍·부모 비난·성별 고정관념 금지, 진단 표현 금지.
 - 전환 경로: 결과 화면의 “이 고민으로 상담 이어가기”는 `/consult?source=translate&entry_cta=translate_result&prefill={원문}`으로 이동해 유료 상담 루프로 연결한다.
@@ -66,11 +66,11 @@
 
 | 엔드포인트 | 역할 | 모델 |
 | --- | --- | --- |
-| `/api/consult/questions/initial` | 공감 멘트 + 기초 질문 3\~5개 생성 | gpt-4o (월 30건 초과 시 gpt-4o-mini) |
-| `/api/consult/questions/followup` | 1차 답변 분석 후 심층 질문 필요 여부 판단 | gpt-4o (월 30건 초과 시 gpt-4o-mini) |
-| `/api/consult/prescription` | 마음 처방전 생성 | gpt-4o (월 30건 초과 시 gpt-4o-mini) |
+| `/api/consult/questions/initial` | 공감 멘트 + 기초 질문 3\~5개 생성 | gpt-6-luna |
+| `/api/consult/questions/followup` | 1차 답변 분석 후 심층 질문 필요 여부 판단 | gpt-6-luna |
+| `/api/consult/prescription` | 마음 처방전 생성 | gpt-6-luna |
 
-> **모델 폴백 정책**: 구독자 월 상담 30건까지 gpt-4o, 초과 시 gpt-4o-mini로 자동 전환. 로직은 `src/lib/consult-model.ts`에서 관리.
+> **모델 정책**: 모든 생성 호출은 `gpt-6-luna` 단일 모델(`src/lib/llmModel.ts`). 월 30건 초과 시 mini 폴백은 2026-10-18 제거(ADR).
 
 ### 처방전 구조
 
@@ -251,8 +251,8 @@
 
 ### 공통 설정
 
-- 모델: `gpt-4o`
-- temperature: 기본 `0.7`, 처방전 생성은 지시 준수와 문진해설 안정성을 위해 `0.45`
+- 모델: `gpt-6-luna` (`src/lib/llmModel.ts`)
+- 추론 강도: `reasoning_effort: "low"` (GPT-5 계열이라 temperature는 넘기지 않는다)
 - response_format: `{ type: "json_object" }`
 - 모든 프롬프트에서 JSON 형식만 출력하도록 지시 (markdown 기호 없이 순수 JSON)
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { PARENT_REPORT_PROMPT, CHILD_REPORT_PROMPT } from '@/lib/prompts';
+import { LLM_MODEL } from '@/lib/llmModel';
 
 export default function LLMConnectionTestPage() {
     const router = useRouter();
@@ -18,7 +19,7 @@ export default function LLMConnectionTestPage() {
     const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'PARENT' | 'CHILD'>('PARENT');
     const [customPrompt, setCustomPrompt] = useState<string>(PARENT_REPORT_PROMPT);
-    const [model, setModel] = useState<string>('gpt-4o');
+    const [model, setModel] = useState<string>(LLM_MODEL);
     const [includeAnswers, setIncludeAnswers] = useState(false);
 
     const [formData, setFormData] = useState({
@@ -143,9 +144,7 @@ export default function LLMConnectionTestPage() {
                             onChange={(e) => setModel(e.target.value)}
                             className="p-1 border rounded"
                         >
-                            <option value="gpt-4o">gpt-4o</option>
-                            <option value="gpt-4-turbo">gpt-4-turbo</option>
-                            <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+                            <option value={LLM_MODEL}>{LLM_MODEL}</option>
                         </select>
                     </div>
                 </div>

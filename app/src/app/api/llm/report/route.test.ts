@@ -1,6 +1,7 @@
 import { POST } from './route';
 import { createClient } from '@/lib/supabaseServer';
 import { consumeLlmQuota } from '@/lib/llm-quota';
+import { LLM_MODEL } from '@/lib/llmModel';
 import { generateReport, openai } from '@/lib/openai';
 import { createReportInputFingerprint, withReportInputFingerprint } from '@/lib/reportInputFingerprint';
 import type { Json } from '@/types/supabase';
@@ -30,7 +31,7 @@ const validReport = {
 
 function fingerprint(items = answers) {
   return createReportInputFingerprint({
-    type: 'CHILD', model: 'gpt-4o-mini', prompt: 'child-prompt', language: 'ko', answers: items,
+    type: 'CHILD', model: LLM_MODEL, prompt: 'child-prompt', language: 'ko', answers: items,
     context: {
       userName: '아이', scores,
       childInfo: { name: child.name, gender: child.gender, birthDate: child.birth_date, age: '5세 (63개월)' },

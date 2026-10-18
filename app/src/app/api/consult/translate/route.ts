@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { invalidJsonResponse, isInvalidJsonBodyError, isNonEmptyString, parseJsonBody } from '@/lib/api';
+import { LLM_MODEL, LLM_REASONING_EFFORT } from '@/lib/llmModel';
 import { openai } from '@/lib/openai';
 import { createClient } from '@/lib/supabaseServer';
 import { validateConsultProblemInput } from '@/lib/consultInputValidation';
@@ -94,9 +95,9 @@ export async function POST(request: Request) {
         });
 
         const response = await openai.chat.completions.create({
-            model: 'gpt-4o-mini',
+            model: LLM_MODEL,
             messages: [{ role: 'system', content: systemPrompt }],
-            temperature: 0.6,
+            reasoning_effort: LLM_REASONING_EFFORT,
             response_format: { type: 'json_object' },
         });
 

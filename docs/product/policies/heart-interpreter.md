@@ -222,12 +222,12 @@ AI가 공감 멘트와 함께 상황 분석 질문을 순차적으로 제시한�
 
 ## API 엔드포인트
 
-| 엔드포인트 | 역할 | 모델 | temperature |
-|-----------|------|------|-------------|
-| `POST /api/consult/questions/initial` | 공감 멘트 + 기초 질문 정확히 4개 생성 | gpt-4o | 0.7 |
-| `POST /api/consult/questions/followup` | 팔로업 필요 여부 판단 + 심층 질문 0~2개 | gpt-4o | 0.7 |
-| `POST /api/consult/prescription` | 마음 처방전 생성 | gpt-4o | 0.7 |
-| `POST /api/consult/options` | 대처 방식 4지선다 생성 (레거시) | gpt-4o | 0.7 |
+| 엔드포인트 | 역할 | 모델 | reasoning_effort |
+|-----------|------|------|------------------|
+| `POST /api/consult/questions/initial` | 공감 멘트 + 기초 질문 정확히 4개 생성 | gpt-6-luna | low |
+| `POST /api/consult/questions/followup` | 팔로업 필요 여부 판단 + 심층 질문 0~2개 | gpt-6-luna | low |
+| `POST /api/consult/prescription` | 마음 처방전 생성 | gpt-6-luna | low |
+| `POST /api/consult/options` | 대처 방식 4지선다 생성 (레거시) | gpt-6-luna | low |
 | `POST /api/consult/session-context` | 세션 + 상담 + 실천 기록 조회 | - | - |
 
 ### API 에러 처리 원칙
