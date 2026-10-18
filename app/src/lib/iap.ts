@@ -37,6 +37,10 @@ export interface VerifiedIapPurchase {
   introductoryPaymentCurrency?: string;
   introductoryPricePeriod?: string;
   introductoryPriceCycles?: number;
+  /** 구매 시 앱이 실어 보낸 계정 토큰(Apple appAccountToken / Google obfuscatedExternalAccountId). 단품은 아이 ID를 싣는다. */
+  accountToken?: string;
+  /** 환불·취소로 무효가 된 거래. */
+  revoked?: boolean;
 }
 
 type AppleServerEnvironment = 'production' | 'sandbox';
@@ -369,6 +373,10 @@ export async function verifyAppleTransaction(transactionId: string): Promise<Ver
     transactionId: string;
     originalTransactionId?: string;
     expiresDate?: number;
+    appAccountToken?: string;
+    price?: number;
+    currency?: string;
+    revocationDate?: number;
   }>(data.signedTransactionInfo);
 
   return {
@@ -377,6 +385,11 @@ export async function verifyAppleTransaction(transactionId: string): Promise<Ver
     transactionId: payload.transactionId,
     originalTransactionId: payload.originalTransactionId || payload.transactionId,
     expiresDate: payload.expiresDate ? new Date(payload.expiresDate) : null,
+    // StoreKit 서버 API의 price는 밀리 단위(₩3,900 → 3900000)다.
+    paymentAmount: typeof payload.price === 'number' ? payload.price / 1000 : undefined,
+    paymentCurrency: payload.currency,
+    accountToken: payload.appAccountToken,
+    revoked: typeof payload.revocationDate === 'number',
   };
 }
 
@@ -520,6 +533,54 @@ export async function verifyGoogleSubscription(productId: string, purchaseToken:
         ? data.introductoryPriceInfo.introductoryPriceCycles
         : undefined,
   };
+}
+
+/**
+ * 일회성(소모성) 인앱 상품 구매 검증. 구독과 엔드포인트가 다르다(purchases/products).
+ * purchaseState: 0 구매 완료, 1 취소, 2 대기.
+ */
+export async function verifyGoogleProductPurchase(productId: string, purchaseToken: string): Promise<VerifiedIapPurchase> {
+  const accessToken = await getGoogleAccessToken();
+  const packageName = process.env.GOOGLE_PLAY_PACKAGE_NAME || 'com.devho.gijilai';
+
+  const verifyResponse = await fetch(
+    `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${packageName}/purchases/products/${productId}/tokens/${purchaseToken}`,
+    {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }
+  );
+
+  if (!verifyResponse.ok) {
+    const text = await verifyResponse.text();
+    throw new Error(`Google product verification failed (${verifyResponse.status}): ${text}`);
+  }
+
+  const data = await verifyResponse.json() as {
+    purchaseState?: number;
+    orderId?: string;
+    obfuscatedExternalAccountId?: string;
+  };
+
+  if (data.purchaseState !== 0) {
+    throw new IapPurchaseNotCompletedError(data.purchaseState);
+  }
+
+  return {
+    platform: 'GOOGLE_PLAY',
+    productId,
+    transactionId: purchaseToken,
+    originalTransactionId: data.orderId || purchaseToken,
+    expiresDate: null,
+    accountToken: data.obfuscatedExternalAccountId,
+    revoked: false,
+  };
+}
+
+export class IapPurchaseNotCompletedError extends Error {
+  constructor(readonly purchaseState: number | undefined) {
+    super(`IAP purchase is not completed (purchaseState=${purchaseState ?? 'unknown'})`);
+    this.name = 'IapPurchaseNotCompletedError';
+  }
 }
 
 function parseGoogleMicrosAmount(value: unknown): number | undefined {

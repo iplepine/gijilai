@@ -44,6 +44,10 @@ import { childNamePossessive, normalizeChildNameParticlesInValue } from '@/lib/k
 import { extractReportScores, isTemperamentScores, parseAnswerMap } from '@/lib/home';
 import { checkCooldown, type CooldownStatus } from '@/lib/dateUtils';
 import { CHILD_PROFILE_LIMIT_REACHED_CODE } from '@/lib/access';
+import { hasLockedHarmonyContent, type HarmonyAccessResponse } from '@/lib/harmonyUnlock';
+import { isAppWebView } from '@/lib/install';
+import { getNativeCapabilities } from '@/lib/nativeCapabilities';
+import { HarmonyUnlockCard, type HarmonyPaywallMode } from '@/components/report/HarmonyUnlockCard';
 import {
   asChildAiReport,
   asHarmonyAiReport,
@@ -308,6 +312,11 @@ function ReportContent() {
   const [childReportId, setChildReportId] = useState<string | null>(null);
   const [parentReportId, setParentReportId] = useState<string | null>(null);
   const [harmonyReportId, setHarmonyReportId] = useState<string | null>(null);
+  // 저장된 궁합 리포트(?id=)를 열면 그 리포트의 아이 기준으로 잠금을 판단한다.
+  const [savedHarmonyChildId, setSavedHarmonyChildId] = useState<string | null>(null);
+  const [harmonyPaywallMode, setHarmonyPaywallMode] = useState<HarmonyPaywallMode | null>(null);
+  const [harmonyAccess, setHarmonyAccess] = useState<HarmonyAccessResponse | null>(null);
+  const [harmonyAccessVersion, setHarmonyAccessVersion] = useState(0);
   const [hasSubscription, setHasSubscription] = useState(false);
   const [isSubscriptionLoaded, setIsSubscriptionLoaded] = useState(false);
   const [harmonyRefreshSource, setHarmonyRefreshSource] = useState<HarmonyRefreshSource>(() => getHarmonyRefreshSource(reportRefreshParam));
@@ -418,6 +427,45 @@ function ReportContent() {
     }
     return children[0] ?? null;
   }, [children, selectedChildId]);
+
+  const harmonyChildId = (reportId ? savedHarmonyChildId : null) ?? currentChild?.id ?? null;
+
+  // 궁합 심층 리포트 잠금: 단품 인앱결제를 지원하는 앱 버전에서만 켠다(구버전 앱은 그대로 무료).
+  // 브라우저는 결제를 앱으로 보내므로, 새 앱 출시 후 NEXT_PUBLIC_HARMONY_PAYWALL_WEB=true로 켠다.
+  useEffect(() => {
+    if (isAppWebView()) {
+      setHarmonyPaywallMode(getNativeCapabilities()?.harmonyReportPurchase === true ? 'app' : null);
+    } else {
+      setHarmonyPaywallMode(process.env.NEXT_PUBLIC_HARMONY_PAYWALL_WEB === 'true' ? 'web' : null);
+    }
+  }, []);
+
+  useEffect(() => {
+    setHarmonyAccess(null);
+    if (!harmonyPaywallMode || !user || !harmonyChildId) return;
+
+    let isActive = true;
+    fetch(`/api/harmony/access?childId=${encodeURIComponent(harmonyChildId)}`)
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`HARMONY_ACCESS_${res.status}`);
+        return await res.json() as HarmonyAccessResponse;
+      })
+      .then((access) => {
+        if (isActive) setHarmonyAccess(access);
+      })
+      .catch((error) => {
+        // 잠금 판단이 실패하면 결제한 사람을 막지 않도록 연다.
+        console.error('Failed to load harmony access:', error);
+        if (isActive) setHarmonyAccess({ unlocked: true, reason: null });
+      });
+    return () => {
+      isActive = false;
+    };
+  }, [harmonyAccessVersion, harmonyChildId, harmonyPaywallMode, user]);
+
+  const isHarmonyDeepHidden = !!harmonyPaywallMode
+    && harmonyAccess?.unlocked !== true
+    && hasLockedHarmonyContent(harmonyAiReport);
 
   useEffect(() => {
     if (reportId || !currentChild) return;
@@ -743,6 +791,7 @@ function ReportContent() {
         } else if (data.type === 'HARMONY') {
           setHarmonyAiReport(normalizeReportTextForName(asHarmonyAiReport(data.analysis_json), childData?.name));
           setHarmonyReportId(data.id);
+          setSavedHarmonyChildId(data.child_id ?? null);
           setReportDates(prev => ({ ...prev, parenting: data.created_at }));
           setActiveTab('parenting');
         }
@@ -2842,6 +2891,18 @@ function ReportContent() {
                           </section>
                         )}
 
+                        {isHarmonyDeepHidden ? (
+                          harmonyAccess && harmonyPaywallMode && harmonyChildId && (
+                            <HarmonyUnlockCard
+                              mode={harmonyPaywallMode}
+                              childId={harmonyChildId}
+                              principleCount={harmonyAiReport.parentingPrinciples?.length ?? 0}
+                              tipCount={harmonyAiReport.situationalTips?.length ?? 0}
+                              onPurchased={() => setHarmonyAccessVersion((version) => version + 1)}
+                            />
+                          )
+                        ) : (
+                          <>
                         {/* 4. 양육 원칙 */}
                         {harmonyAiReport.parentingPrinciples && (
                           <section className="space-y-3">
@@ -2924,6 +2985,8 @@ function ReportContent() {
                             </p>
                             <p className="text-text-sub text-[11px]">{t('report.putOnFridge')}</p>
                           </section>
+                        )}
+                          </>
                         )}
 	                      </ReportSectionGroup>
 	                    )}

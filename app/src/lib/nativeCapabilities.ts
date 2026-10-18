@@ -12,6 +12,8 @@ export interface NativeCapabilities {
   voiceInput?: boolean;
   supportedScreens?: Partial<Record<NativeScreenKey, boolean>>;
   nativeAuthProviders?: Partial<Record<NativeAuthProvider, boolean>>;
+  /** 궁합 리포트 단품 인앱결제(소모성 상품)를 지원하는 앱 버전. */
+  harmonyReportPurchase?: boolean;
 }
 
 declare global {

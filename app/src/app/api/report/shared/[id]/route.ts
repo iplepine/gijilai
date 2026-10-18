@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { hasLockedHarmonyContent, stripLockedHarmonyFields } from '@/lib/harmonyUnlock';
 import { createClient } from '@supabase/supabase-js';
 import { isSharedReportType } from '@/lib/shareReport';
 
@@ -91,11 +92,20 @@ export async function GET(
     }
 
     const child = getRelationItem(report.children);
+    // 궁합 심층 항목(양육 원칙·대화 대본 등)은 유료 단품이라 공개 공유에는 요약까지만 내보낸다.
+    const harmonyLocked = report.type === 'HARMONY'
+      && !!report.analysis_json
+      && typeof report.analysis_json === 'object'
+      && hasLockedHarmonyContent(report.analysis_json);
+    const analysis = harmonyLocked
+      ? stripLockedHarmonyFields(report.analysis_json as object)
+      : report.analysis_json;
 
     return NextResponse.json({
       id: report.id,
       type: report.type,
-      analysis: report.analysis_json,
+      analysis,
+      harmonyLocked,
       createdAt: report.created_at,
       child: child
         ? { name: child.name, gender: child.gender, ageText: toAgeText(child.birth_date) }

@@ -24,12 +24,13 @@
 
 ## 가격
 
-구독 전용 모델 (건별 결제 폐지, 월 구독만 운영).
+월 구독 + 궁합 심층 리포트 단품(2026-10-18 추가).
 
 | 상품 | 한국 (KRW) | 글로벌 (USD) |
 |------|-----------|-------------|
 | 월 구독 | 12,000원/월 | $9.99/month |
 | 첫 달 혜택 | 신규 첫 구독 8,400원 | 스토어/PG offer 설정 기준 |
+| 궁합 심층 리포트 (아이별 1회) | 3,900원 | 스토어 가격 등급 기준 |
 
 > 가격 상수: `app/src/lib/portone.ts` `PRICE_TABLE`, `app/src/app/pricing/page.tsx` `PRICES`
 
@@ -143,6 +144,18 @@
 - 해지 예약은 `cancelled_at`만 설정하고, 사용 기간이 끝날 때까지 `ACTIVE`를 유지할 수 있다.
 - 환불/회수는 즉시 접근을 막기 위해 `CANCELLED` 또는 `EXPIRED`로 내린다.
 - 결제 금액은 앱 상품 코드 기준 서버 상수로 기록하며, 앱스토어 콘솔 가격과 항상 일치시켜야 한다.
+
+## 궁합 심층 리포트 단품 (2026-10-18)
+
+- **상품**: 앱 인앱결제 소모성 상품 `gijilai_harmony_report` (App Store·Google Play 같은 ID), 3,900원. 아이별로 한 번 사면 그 아이의 궁합 리포트 심층 항목이 계속 열린다(다시 분석해도 유지).
+- **무료**: 관계 카드(제목·궁합 점수·한 줄), 핵심 기질 차이, 가장 잘 맞는 기질. **유료**: 양육 원칙, 상황별 대화 대본(이럴 때 이렇게), 양육 스타일 점검, 오늘의 한마디.
+- **여는 조건**: 이 아이에 대한 단품 구매(owner든 공동양육자든 누가 샀든) 또는 활성 구독(본인, 공동양육자라면 owner 구독 포함). **7일 체험은 열지 않는다** — 첫날 리포트를 다 보는 사용자가 체험 중에도 결제 화면을 만나야 단품 수요를 확인할 수 있다.
+- **잠금 노출 조건**: 앱은 `__nativeCapabilities.harmonyReportPurchase`를 보내는 버전(1.0.12+)에서만 잠근다. 구버전 앱은 기존처럼 무료로 보인다. 브라우저는 `NEXT_PUBLIC_HARMONY_PAYWALL_WEB=true`일 때만 잠그고, 결제 버튼은 기존 정책대로 앱 설치(`/install-app`)로 보낸다.
+- **결제 흐름**: 웹 `PaymentBridge`에 `{ type: 'PAYMENT_REQUEST', product: 'harmony_report', childId }` → 앱이 `buyConsumable`(`applicationUserName = childId`, Android `autoConsume: false`) → `/api/payment/iap`가 Apple `appAccountToken` / Google `obfuscatedExternalAccountId`의 아이 ID를 우선 신뢰해 검증 → `payments`에 `ONE_TIME`·`PAID`·`metadata { product: 'harmony_report', childId }`로 기록(`iap_{platform}_{transactionId}`로 멱등) → 앱이 Android는 consume, iOS는 finish.
+- **잠금 판단 API**: `GET /api/harmony/access?childId=` → `{ unlocked, reason: 'subscription' | 'purchase' | null }`. 판단 실패 시 화면은 연다(결제자를 막지 않음).
+- **공유**: 공개 공유(`/api/report/shared/[token]`)는 궁합 리포트의 유료 항목을 서버에서 빼고 요약까지만 보낸다(`harmonyLocked: true`).
+- **한계**: 리포트 화면은 본인 리포트 전체를 DB에서 읽으므로 화면 잠금(soft paywall)이다. 환불(Apple revocation, Google voided)은 아직 자동 회수하지 않는다.
+- **고지**: 잠금 카드에 "결제 즉시 열람되는 디지털 콘텐츠라 열람 후 청약철회가 제한될 수 있고 환불은 스토어 정책을 따른다"고 표시한다.
 
 ## 건별 결제 (폐지)
 

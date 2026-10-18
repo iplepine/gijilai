@@ -1243,5 +1243,21 @@
     "title": "This assessment is designed for ages 3–7",
     "tooYoung": "Before age 3, temperament is still taking shape, so results may differ from how your child really is. You can still continue, but please treat the results as a reference.",
     "tooOld": "From age 8, some questions may not fit your child's daily life. You can still continue, but please treat the results as a reference."
+  },
+  "harmonyUnlock": {
+    "eyebrow": "In-depth harmony report",
+    "title": "Unlock the way of talking that fits the two of you",
+    "description": "How to handle the temperament gap between you and your child in real daily moments, written as words you can use right away.",
+    "includesPrinciples": "{count} parenting principles tailored to your relationship (do's and don'ts)",
+    "includesScripts": "{count} situation scripts — your child's feelings, common traps, and what to say",
+    "includesAudit": "A check of your current parenting style and what to adjust",
+    "includesReminder": "Today's reminder to stick on the fridge",
+    "price": "₩{amount}",
+    "ctaApp": "Unlock all for {price}",
+    "ctaWeb": "Unlock in the app",
+    "subscriptionNote": "Included at no extra cost with a subscription",
+    "legalNote": "Pay once for this child's harmony report and keep access. As digital content available immediately, withdrawal may be limited after viewing; refunds follow App Store and Google Play policies.",
+    "sharedLockedTitle": "Parenting principles and situation scripts are in the GIJILAI app",
+    "sharedLockedDesc": "Shared reports show the harmony summary only. Try the test for you and your child."
   }
 }

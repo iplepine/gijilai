@@ -55,6 +55,9 @@
 | `payment_started` | 결제 시도량 및 결제수단 비중 확인 | `source`, `entry_cta`, `pay_method`, `used_coupon`, `final_amount`, `report_tab`, `report_kind` |
 | `payment_completed` | 결제 완료율 및 쿠폰 효과 확인 | `source`, `entry_cta`, `pay_method`, `used_coupon`, `final_amount`, `report_tab`, `report_kind` |
 | `payment_cancelled` | 결제창/리다이렉트/IAP 취소 확인 | `source`, `entry_cta`, `pay_method`, `stage`, `reason`, `used_coupon`, `final_amount`, `report_tab`, `report_kind` |
+| `harmony_paywall_viewed` | 궁합 심층 리포트 잠금 카드 노출 | `paywall_mode`(`app`/`web`) |
+| `harmony_unlock_started` | 잠금 해제 버튼 클릭(앱: 인앱결제 시트 요청, 웹: 앱 설치로 이동) | `paywall_mode` |
+| `harmony_unlock_completed` | 단품 결제 완료 후 화면 잠금 해제 | `paywall_mode` |
 | `payment_failed` | 결제 모듈/검증/구독 생성 실패 확인 | `source`, `entry_cta`, `pay_method`, `stage`, `reason`, `used_coupon`, `final_amount`, `report_tab`, `report_kind` |
 | `subscription_action_clicked` | 구독 관리 CTA 클릭 확인 | `action`, `source`, `entry_cta`, `subscription_source`, `subscription_status`, `placement` |
 | `subscription_action_requested` | 구독 해지/재활성화 서버 요청 시작 확인 | `action`, `source`, `entry_cta`, `subscription_source`, `subscription_status` |

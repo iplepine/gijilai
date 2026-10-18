@@ -71,6 +71,7 @@ class NativeCapabilityRegistry {
 
   static const int contractVersion = 2;
   static const bool supportsHaptics = true;
+  static const bool supportsHarmonyReportPurchase = true;
   static bool get supportsVoiceInput => Platform.isAndroid;
   static bool get supportsKakaoLogin => Platform.isAndroid || Platform.isIOS;
   static bool get supportsKakaoNativeAuth =>
@@ -123,6 +124,7 @@ class NativeCapabilityRegistry {
         contractVersion: $contractVersion,
         haptics: $supportsHaptics,
         voiceInput: $supportsVoiceInput,
+        harmonyReportPurchase: $supportsHarmonyReportPurchase,
         supportedScreens: { $screens },
         nativeAuthProviders: { $authProviders }
       }
@@ -162,7 +164,9 @@ Future<void> main() async {
         options: DefaultFirebaseOptions.currentPlatform,
       );
 
-      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      FirebaseMessaging.onBackgroundMessage(
+        _firebaseMessagingBackgroundHandler,
+      );
 
       await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(
         !kDebugMode,
@@ -260,6 +264,9 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   );
   static const _iosSubscriptionProductId = 'gijilai_premium_montly';
   static const _androidSubscriptionProductId = 'monthly_premium';
+  // 궁합 리포트 단품(소모성) — 두 스토어 같은 ID. 웹 `HARMONY_REPORT_IAP_PRODUCT_ID`와 맞춘다.
+  static const _harmonyReportProductId = 'gijilai_harmony_report';
+  static const _harmonyReportProduct = 'harmony_report';
   static const _practiceReminderNotificationId = 1001;
   static const _practiceReminderTestNotificationId = 1002;
   static const _practiceReminderEnabledKey = 'practice_reminder_enabled';
@@ -296,6 +303,9 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   bool _hasRenderedFirstPage = false;
   bool _isWebPageLoading = false;
   bool _iapLaunchInProgress = false;
+  // 궁합 리포트 단품을 사려는 아이. 스토어 거래에도 계정 토큰으로 실리지만,
+  // 서버가 토큰을 못 읽는 경우를 대비해 진행 중인 구매에 한해 함께 보낸다.
+  String? _pendingHarmonyChildId;
   bool _iapDeliveryInProgress = false;
   bool _iapDeliveryWaitingForAuth = false;
   bool _iapUserRestoreInProgress = false;
@@ -458,7 +468,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       // 공동양육자 푸시(FCM)용 안드로이드 알림 채널. fcm.ts의 channel_id 'coparent'와 일치해야 한다.
       final androidPlugin = _localNotifications
           .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>();
+            AndroidFlutterLocalNotificationsPlugin
+          >();
       await androidPlugin?.createNotificationChannel(
         const AndroidNotificationChannel(
           'coparent',
@@ -2813,7 +2824,12 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     try {
       final data = jsonDecode(message.message);
       if (data['type'] == 'PAYMENT_REQUEST') {
-        unawaited(_startPurchase());
+        final childId = data['childId']?.toString() ?? '';
+        if (data['product'] == _harmonyReportProduct && childId.isNotEmpty) {
+          unawaited(_startHarmonyReportPurchase(childId));
+        } else {
+          unawaited(_startPurchase());
+        }
       } else if (data['type'] == 'RESTORE_REQUEST') {
         unawaited(_restoreIapPurchases(userInitiated: true));
       }
@@ -3413,6 +3429,75 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
     }
   }
 
+  /// 궁합 리포트 단품(소모성). 아이별로 다시 살 수 있어야 하므로 Android에서는
+  /// 서버 검증이 끝난 뒤에만 소비(consume)한다 — autoConsume을 끈다.
+  Future<void> _startHarmonyReportPurchase(String childId) async {
+    if (_iapLaunchInProgress) {
+      _notifyWebLoadingDone();
+      return;
+    }
+
+    _iapLaunchInProgress = true;
+    try {
+      if (!await _iap.isAvailable()) {
+        _showSnackBar('인앱결제를 사용할 수 없습니다', isError: true);
+        _finishIapPurchaseFlow();
+        return;
+      }
+
+      final response = await _iap.queryProductDetails({
+        _harmonyReportProductId,
+      });
+      if (response.productDetails.isEmpty) {
+        unawaited(
+          FirebaseCrashlytics.instance.recordError(
+            Exception(
+              'IAP product not found: $_harmonyReportProductId '
+              '(notFoundIDs=${response.notFoundIDs.join(",")}, '
+              'error=${response.error?.message ?? "none"})',
+            ),
+            StackTrace.current,
+            reason: 'Harmony report product details empty',
+          ),
+        );
+        _showSnackBar('상품 정보를 찾을 수 없습니다', isError: true);
+        _finishIapPurchaseFlow();
+        return;
+      }
+
+      final product = response.productDetails.first;
+      _pendingHarmonyChildId = childId;
+      final purchaseParam =
+          Platform.isAndroid && product is GooglePlayProductDetails
+          ? GooglePlayPurchaseParam(
+              productDetails: product,
+              applicationUserName: childId,
+            )
+          : PurchaseParam(
+              productDetails: product,
+              applicationUserName: childId,
+            );
+      final launched = await _iap.buyConsumable(
+        purchaseParam: purchaseParam,
+        autoConsume: false,
+      );
+      if (!launched) {
+        _showSnackBar('결제창을 열 수 없습니다', isError: true);
+        _finishIapPurchaseFlow();
+      }
+    } catch (e) {
+      unawaited(
+        FirebaseCrashlytics.instance.recordError(
+          e,
+          StackTrace.current,
+          reason: 'Harmony report purchase launch failed',
+        ),
+      );
+      _showSnackBar('결제를 시작할 수 없습니다', isError: true);
+      _finishIapPurchaseFlow();
+    }
+  }
+
   Future<void> _runIosDebugPurchaseFallback() async {
     final action = await showDialog<String>(
       context: context,
@@ -3643,6 +3728,11 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         return _IapDeliveryResult.failed;
       }
 
+      final isHarmonyReport = purchase.productID == _harmonyReportProductId;
+      final harmonyChildId = isHarmonyReport
+          ? _pendingHarmonyChildId ?? ''
+          : '';
+
       // WebView 쿠키/세션을 활용하기 위해 JavaScript fetch로 서버 검증
       // 결과를 window.__iapResult에 저장하여 Flutter에서 읽음
       final jsCode =
@@ -3656,7 +3746,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
                 platform: '$platform',
                 receiptToken: '${_escapeForJs(receiptToken)}',
                 productId: '${purchase.productID}',
-                originalTransactionId: '${_escapeForJs(purchase.purchaseID ?? '')}'
+                originalTransactionId: '${_escapeForJs(purchase.purchaseID ?? '')}',
+                childId: '${_escapeForJs(harmonyChildId)}'
               })
             });
             const data = await r.json().catch(() => ({}));
@@ -3710,6 +3801,25 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
 
       if (data['success'] == true) {
         shouldCompletePurchase = true;
+
+        if (isHarmonyReport) {
+          _pendingHarmonyChildId = null;
+          if (isRestoredSync) {
+            _iapLaunchInProgress = false;
+            return _IapDeliveryResult.delivered;
+          }
+          _showSnackBar('궁합 리포트가 열렸어요!');
+          final callbackHandled = await _notifyWebIapPaymentCompleted(
+            shouldNavigate: false,
+          );
+          if (!callbackHandled) {
+            _notifyWebLoadingDone();
+            await controller.loadRequest(
+              _webUriForInternalPath('/report?tab=parenting'),
+            );
+          }
+          return _IapDeliveryResult.delivered;
+        }
 
         if (isRestoredSync) {
           // 콜드 스타트/백그라운드 복구 — 사용자 플로우를 방해하지 않는다.
@@ -3799,7 +3909,14 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       return _IapDeliveryResult.retryable;
     } finally {
       _iapLaunchInProgress = false;
-      if (shouldCompletePurchase && purchase.pendingCompletePurchase) {
+      if (shouldCompletePurchase &&
+          Platform.isAndroid &&
+          purchase.productID == _harmonyReportProductId) {
+        // 소모성 상품은 소비해야 같은 상품(다른 아이)을 다시 살 수 있다. 소비가 확인 처리를 겸한다.
+        await _iap
+            .getPlatformAddition<InAppPurchaseAndroidPlatformAddition>()
+            .consumePurchase(purchase);
+      } else if (shouldCompletePurchase && purchase.pendingCompletePurchase) {
         await _iap.completePurchase(purchase);
       }
     }

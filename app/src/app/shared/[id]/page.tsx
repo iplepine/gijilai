@@ -30,6 +30,7 @@ interface SharedReport {
   createdAt: string;
   child: { name: string; gender: string; ageText: string | null } | null;
   scores: unknown;
+  harmonyLocked?: boolean;
 }
 
 export default function SharedReportPage() {
@@ -546,6 +547,15 @@ export default function SharedReportPage() {
                       <Icon name="sticky_note_2" size="sm" /> {t('report.dailyReminder')}
                     </p>
                     <p className="text-xl font-black leading-snug break-keep">{analysis.dailyReminder}</p>
+                  </section>
+                )}
+
+                {report.harmonyLocked && (
+                  <section className="bg-white dark:bg-surface-dark rounded-2xl px-6 py-5 shadow-card border border-beige-main/10 space-y-2">
+                    <p className="text-[12px] font-black text-text-main dark:text-white flex items-center gap-1.5">
+                      <Icon name="lock" size="sm" /> {t('harmonyUnlock.sharedLockedTitle')}
+                    </p>
+                    <p className="text-[13px] text-text-sub dark:text-slate-400 leading-relaxed break-keep">{t('harmonyUnlock.sharedLockedDesc')}</p>
                   </section>
                 )}
               </>

@@ -110,7 +110,7 @@ async function countRows(
 }
 
 // 단일 사용자(userId)의 활성 구독 여부만 조회. childId 컨텍스트는 다루지 않는다.
-async function hasActiveSubscription(
+export async function hasActiveSubscription(
   supabase: { from: (table: string) => unknown },
   userId: string,
 ): Promise<boolean> {
