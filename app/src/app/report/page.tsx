@@ -433,11 +433,17 @@ function ReportContent() {
   // 궁합 심층 리포트 잠금: 단품 인앱결제를 지원하는 앱 버전에서만 켠다(구버전 앱은 그대로 무료).
   // 브라우저는 결제를 앱으로 보내므로, 새 앱 출시 후 NEXT_PUBLIC_HARMONY_PAYWALL_WEB=true로 켠다.
   useEffect(() => {
-    if (isAppWebView()) {
-      setHarmonyPaywallMode(getNativeCapabilities()?.harmonyReportPurchase === true ? 'app' : null);
-    } else {
-      setHarmonyPaywallMode(process.env.NEXT_PUBLIC_HARMONY_PAYWALL_WEB === 'true' ? 'web' : null);
-    }
+    const syncPaywallMode = () => {
+      if (isAppWebView()) {
+        setHarmonyPaywallMode(getNativeCapabilities()?.harmonyReportPurchase === true ? 'app' : null);
+      } else {
+        setHarmonyPaywallMode(process.env.NEXT_PUBLIC_HARMONY_PAYWALL_WEB === 'true' ? 'web' : null);
+      }
+    };
+    syncPaywallMode();
+    // 앱은 스토어에서 단품 상품을 확인한 뒤 capability를 다시 보낸다.
+    window.addEventListener('gijilai:nativeContextReady', syncPaywallMode);
+    return () => window.removeEventListener('gijilai:nativeContextReady', syncPaywallMode);
   }, []);
 
   useEffect(() => {

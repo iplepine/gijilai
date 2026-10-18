@@ -71,7 +71,6 @@ class NativeCapabilityRegistry {
 
   static const int contractVersion = 2;
   static const bool supportsHaptics = true;
-  static const bool supportsHarmonyReportPurchase = true;
   static bool get supportsVoiceInput => Platform.isAndroid;
   static bool get supportsKakaoLogin => Platform.isAndroid || Platform.isIOS;
   static bool get supportsKakaoNativeAuth =>
@@ -112,7 +111,9 @@ class NativeCapabilityRegistry {
     };
   }
 
-  String toJavaScriptObjectLiteral() {
+  /// [harmonyReportPurchase]는 스토어가 궁합 리포트 단품을 실제로 돌려줄 때만 true다.
+  /// 상품이 없거나(미등록·심사 전) 조회에 실패하면 웹은 잠금을 켜지 않는다.
+  String toJavaScriptObjectLiteral({bool harmonyReportPurchase = false}) {
     final screens = supportedScreens.entries
         .map((entry) => "'${entry.key}': ${entry.value}")
         .join(', ');
@@ -124,7 +125,7 @@ class NativeCapabilityRegistry {
         contractVersion: $contractVersion,
         haptics: $supportsHaptics,
         voiceInput: $supportsVoiceInput,
-        harmonyReportPurchase: $supportsHarmonyReportPurchase,
+        harmonyReportPurchase: $harmonyReportPurchase,
         supportedScreens: { $screens },
         nativeAuthProviders: { $authProviders }
       }
@@ -306,6 +307,7 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
   // 궁합 리포트 단품을 사려는 아이. 스토어 거래에도 계정 토큰으로 실리지만,
   // 서버가 토큰을 못 읽는 경우를 대비해 진행 중인 구매에 한해 함께 보낸다.
   String? _pendingHarmonyChildId;
+  bool _harmonyReportProductAvailable = false;
   bool _iapDeliveryInProgress = false;
   bool _iapDeliveryWaitingForAuth = false;
   bool _iapUserRestoreInProgress = false;
@@ -1443,8 +1445,9 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       'appName': packageInfo.appName,
     });
 
-    final nativeCapabilitiesJs = _nativeCapabilities
-        .toJavaScriptObjectLiteral();
+    final nativeCapabilitiesJs = _nativeCapabilities.toJavaScriptObjectLiteral(
+      harmonyReportPurchase: _harmonyReportProductAvailable,
+    );
 
     await controller.runJavaScript('''
       (function() {
@@ -2778,6 +2781,8 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
         unawaited(_restoreIapPurchases(userInitiated: false));
       }
 
+      unawaited(_refreshHarmonyReportProductAvailability());
+
       // 상품 정보 로드
       final response = await _iap.queryProductDetails({_subscriptionProductId});
       debugPrint(
@@ -3426,6 +3431,24 @@ class _MainWebViewState extends State<MainWebView> with WidgetsBindingObserver {
       );
       _showSnackBar('결제를 시작할 수 없습니다', isError: true);
       _finishIapPurchaseFlow();
+    }
+  }
+
+  /// 스토어에 궁합 리포트 단품이 있을 때만 웹에 결제 가능 신호를 보낸다.
+  /// iOS는 심사 승인 전 상품을 실사용자에게 돌려주지 않으므로, 그 사이 잠금이 켜져 결제가 실패하는 일을 막는다.
+  Future<void> _refreshHarmonyReportProductAvailability() async {
+    try {
+      final response = await _iap.queryProductDetails({
+        _harmonyReportProductId,
+      });
+      final available = response.productDetails.isNotEmpty;
+      if (available == _harmonyReportProductAvailable) return;
+      _harmonyReportProductAvailable = available;
+      if (_controller != null && _hasRenderedFirstPage) {
+        await _syncWebAppContext();
+      }
+    } catch (e) {
+      debugPrint('Harmony report product query failed: $e');
     }
   }
 

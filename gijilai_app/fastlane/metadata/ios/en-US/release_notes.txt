@@ -1,5 +1,5 @@
-A tidier, more polished experience.
+Your harmony report goes deeper.
 
-• Long names and text now wrap neatly instead of running off-screen
-• Refined the launch screen logo alignment
-• Fixed minor wording on the consultation screen
+• Unlock parenting principles and situation scripts tailored to you and each child
+• AI reports and consultations now address your child's real situations more specifically
+• General stability improvements
