@@ -27,6 +27,7 @@ import { MedicalDisclaimer } from '@/components/ui/MedicalDisclaimer';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { TabLoadingIndicator } from '@/components/ui/TabLoadingIndicator';
 import { CoParentInsightCard } from '@/components/coParent/CoParentInsightCard';
+import { CoParentInviteCard } from '@/components/coParent/CoParentInviteCard';
 import { TemperamentLoadingState } from '@/components/ui/TemperamentLoadingState';
 import { PhasedAssessmentReportCard } from '@/components/survey/PhasedAssessmentReportCard';
 import { trackEvent } from '@/lib/analytics';
@@ -2759,6 +2760,9 @@ function ReportContent() {
                 {currentChild?.id && (
                   <CoParentInsightCard childId={currentChild.id} />
                 )}
+                {currentChild?.id && parentAiReport && (
+                  <CoParentInviteCard childId={currentChild.id} childName={currentChild.name} source="report_parent" />
+                )}
 
                 {/* Footer Actions */}
                 {parentAiReport && reportDates.parent && (
@@ -3023,6 +3027,9 @@ function ReportContent() {
 
                 {/* Footer Actions */}
                 {harmonyAiReport && <div className="flex flex-col gap-4 pt-10 pb-16 text-center px-4">
+                  {harmonyChildId && currentChild?.id === harmonyChildId && (
+                    <CoParentInviteCard childId={harmonyChildId} childName={currentChild.name} source="report_harmony" />
+                  )}
                   <MedicalDisclaimer title={t('report.medicalDisclaimerTitle')} body={t('report.medicalDisclaimerBody')} />
                   {showPremiumCta && <PremiumContinuationCard />}
                   <Button

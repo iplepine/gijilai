@@ -55,6 +55,7 @@
 | `payment_started` | 결제 시도량 및 결제수단 비중 확인 | `source`, `entry_cta`, `pay_method`, `used_coupon`, `final_amount`, `report_tab`, `report_kind` |
 | `payment_completed` | 결제 완료율 및 쿠폰 효과 확인 | `source`, `entry_cta`, `pay_method`, `used_coupon`, `final_amount`, `report_tab`, `report_kind` |
 | `payment_cancelled` | 결제창/리다이렉트/IAP 취소 확인 | `source`, `entry_cta`, `pay_method`, `stage`, `reason`, `used_coupon`, `final_amount`, `report_tab`, `report_kind` |
+| `co_parent_invite_card_viewed` | 리포트의 배우자 초대 카드 노출(유입 고리 분모) | `source`(`report_parent`/`report_harmony`) |
 | `harmony_paywall_viewed` | 궁합 심층 리포트 잠금 카드 노출 | `paywall_mode`(`app`/`web`) |
 | `harmony_unlock_started` | 잠금 해제 버튼 클릭(앱: 인앱결제 시트 요청, 웹: 앱 설치로 이동) | `paywall_mode` |
 | `harmony_unlock_completed` | 단품 결제 완료 후 화면 잠금 해제 | `paywall_mode` |

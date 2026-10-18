@@ -1259,5 +1259,17 @@
     "legalNote": "Pay once for this child's harmony report and keep access. As digital content available immediately, withdrawal may be limited after viewing; refunds follow App Store and Google Play policies.",
     "sharedLockedTitle": "Parenting principles and situation scripts are in the GIJILAI app",
     "sharedLockedDesc": "Shared reports show the harmony summary only. Try the test for you and your child."
+  },
+  "coParentInvite": {
+    "eyebrow": "Compare with your partner",
+    "title": "What kind of parent is your partner?",
+    "description": "Invite your partner to take the parent test and we'll compare the temperaments of the two people raising {name}, side by side. Knowing the gap means fewer clashes.",
+    "cta": "Invite my partner",
+    "shareTitle": "Let's look at {name}'s temperament together",
+    "shareText": "I tried {name}'s temperament test and I'm curious about your parenting temperament too. Open the link and let's compare! (Valid for 7 days)",
+    "copied": "Invite link copied. Send it to your partner.",
+    "copyFailed": "Couldn't copy the invite link. Please try again in a moment.",
+    "alreadyLinked": "Someone is already connected to share this child.",
+    "createFailed": "Couldn't create the invite link. Please try again in a moment."
   }
 }

@@ -64,6 +64,10 @@
 
 토큰은 일회용이다. 한 아이당 동시에 `PENDING` 1개만 허용한다. 새로 발급하면 기존 `PENDING`은 `REVOKED`로 만료된다.
 
+### 리포트 초대 카드 (2026-10-18)
+
+아이를 등록한 사람(owner)이고 함께 보는 사람이 아직 없으면, 양육자 리포트 탭과 궁합 리포트 하단에 "배우자 초대하기" 카드(`CoParentInviteCard`)를 보여준다. 누르면 설정 화면과 같은 초대를 만들고(`POST /api/co-parent/invites`), 앱에서는 네이티브 공유 시트(`ShareBridge`), 브라우저에서는 `navigator.share`나 클립보드로 바로 보낸다. 호칭 선택은 요구하지 않는다(API도 요구하지 않음). 수락한 사람은 홈의 다음 행동으로 양육자 검사를 안내받고, 검사를 마치면 두 양육자 비교(`CoParentInsightCard`)가 열린다. 목적은 한 사용자가 다른 사용자를 데려오는 유입 고리다.
+
 ## 동의
 
 초대 수락 화면 마지막 단계에서 한 줄 동의 문구를 노출한다.
@@ -124,8 +128,9 @@
 ## 측정 (kill 기준 판정용 최소 이벤트)
 
 ```
-co_parent_invite_generated   { child_id }
-co_parent_invite_link_shared { channel }
+co_parent_invite_card_viewed { source }            # 리포트 초대 카드 노출 (report_parent / report_harmony)
+co_parent_invite_generated   { child_id, source? }  # source 없음 = 설정 화면
+co_parent_invite_link_shared { channel, source? }   # channel: native_bridge / native_share / copy
 co_parent_invite_viewed      { token_age_days }
 co_parent_invite_accepted    { token_age_days, label }
 co_parent_invite_declined    { reason? }
