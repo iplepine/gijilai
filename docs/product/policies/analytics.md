@@ -38,6 +38,7 @@
 | `login_attempt` | 로그인 수단별 시도량 확인 | `provider` |
 | `login_success` | 로그인 완료율 확인 | `provider` |
 | `login_failed` | 로그인 실패 지점 확인 | `provider`, `reason` |
+| `sign_up` | 신규 가입(GA4 표준). 계정 생성 10분 안의 첫 로그인 | `method`, `acquisition_source`(`shared_report`/`co_parent_invite`/`direct`) |
 | `signup_attempt` | 이메일 가입 시도량 확인 | `provider` |
 | `signup_failed` | 이메일 가입 실패 지점 확인 | `provider`, `reason` |
 | `logout` | 세션 종료 추적 | 없음 |
@@ -47,6 +48,10 @@
 | `survey_flow_completed` | 전체 설문 완료율 확인 | `answered_questions`, `source`, `report_tab`, `report_kind` |
 | `survey_abandoned` | 설문 이탈 위치 확인 | `module`, `answered_questions`, `current_question_index`, `exit_type`, `source`, `report_tab`, `report_kind` |
 | `report_viewed` | 리포트 탭별 열람량과 진입 소스 확인 | `tab`, `child_only`, `report_kind`, `has_saved_report`, `source`, `has_subscription` |
+| `report_generated` | 리포트 생성·불러오기 성공. `existing=false`가 실제 AI 생성 | `report_type`, `refresh`, `existing`, `duration_ms` |
+| `report_generation_failed` | 리포트 생성 실패(AI 장애·한도 등 운영 경보용) | `report_type`, `refresh`, `existing`, `duration_ms`, `reason`(API 오류 코드 소문자 또는 `generation_error`/`child_profile_limit`) |
+| `shared_report_viewed` | 공유받은 리포트 열람(공유 고리의 받는 쪽) | `report_type`, `harmony_locked` |
+| `shared_report_cta_clicked` | 공유받은 사람이 "내 아이도 검사" 클릭 | `report_type`, `destination`(`own_report`/`survey`/`login`) |
 | `report_primary_cta_clicked` | 리포트에서 다음 행동 CTA 클릭률 확인 | `cta_type`, `placement`, `report_tab`, `report_kind`, `child_only`, `source` |
 | `share_action_completed` | 공유 채널별 완료량 확인 | `channel`, `source`, `entry_cta`, `report_kind`, `has_report_id`, `fallback_from` |
 | `share_action_failed` | 공유 실패와 복사 fallback 확인 | `channel`, `source`, `entry_cta`, `report_kind`, `has_report_id`, `fallback_used` |
@@ -88,6 +93,38 @@
 | `app_install_store_clicked` | 설치 유도 화면에서 스토어 이동 클릭 확인 | `source`, `entry_cta`, `report_tab`, `report_kind`, `platform`, `store` |
 | `app_install_app_open_clicked` | 모바일 설치 유도 화면에서 앱 딥링크 열기 시도 확인 | `source`, `entry_cta`, `report_tab`, `report_kind`, `platform`, `target_path` |
 | `app_install_link_copied` | PC 설치 유도 화면에서 휴대폰 전달용 링크 복사 확인 | `source`, `entry_cta`, `report_tab`, `report_kind`, `platform` |
+
+## 사용자 속성 (`/api/me/cohort` → `user_properties`)
+
+| 속성 | 값 | 용도 |
+|---|---|---|
+| `plan` | `FREE`/`MONTHLY` 등 | 구독 여부 |
+| `signup_cohort` | `YYYY-MM` | 가입 월 코호트 |
+| `first_paid_at` | `YYYY-MM-DD` | 첫 결제 코호트 |
+| `child_count` | 숫자 | 다자녀 여부 |
+| `trial_state` | `in_trial`/`trial_ended`/`subscribed` | 체험 중·후 행동 비교 |
+| `co_parent_role` | `solo`/`owner_linked`/`co_parent` | 배우자 연결 효과 |
+| `harmony_purchased` | true/false | 궁합 단품 구매자 |
+
+`user_id`는 Supabase 사용자 ID로 설정해 웹·앱 간 같은 사용자를 묶는다. 모든 이벤트에는 `platform`(`web`/`ios`/`android`)과 `auth_state`(`guest`/`authed`)가 자동으로 붙는다.
+
+## 운영 대시보드 (GA4 탐색 분석)
+
+| 질문 | 보는 방법 |
+|---|---|
+| 하루 몇 명이 들어오고 가입하나 | `page_view`(신규 사용자) → `sign_up`, `platform`별 |
+| 가입자가 첫 가치(리포트)까지 가나 | 퍼널: `sign_up → intake_completed → survey_module_completed → report_generated(existing=false)` |
+| AI 리포트가 실패하고 있지 않나 | `report_generation_failed` 일별 건수와 `reason` (0이 아니면 즉시 확인) |
+| 궁합 단품이 팔리나 | 퍼널: `harmony_paywall_viewed → harmony_unlock_started → harmony_unlock_completed`, 매출은 `purchase`(`item_id=gijilai_harmony_report`) |
+| 공유가 신규 가입을 만드나 | `share_action_completed`·`co_parent_invite_link_shared` → `shared_report_viewed`·`co_parent_invite_viewed` → `sign_up(acquisition_source≠direct)` |
+| 다시 오나 | GA 리텐션(코호트) 보고서, `trial_state`·`co_parent_role` 세그먼트 |
+
+### GA4 콘솔 설정 (한 번)
+
+- **맞춤 측정기준(이벤트 범위)**: `platform`, `auth_state`, `report_type`, `existing`, `reason`, `paywall_mode`, `source`, `acquisition_source`, `method`, `destination`, `harmony_locked`, `child_age_range`, `tab`, `report_kind`, `channel`
+- **맞춤 측정기준(사용자 범위)**: `plan`, `signup_cohort`, `trial_state`, `co_parent_role`, `harmony_purchased`, `child_count`
+- **맞춤 측정항목**: `duration_ms`(밀리초)
+- **주요 이벤트(전환)**: `sign_up`, `report_generated`, `harmony_unlock_completed`, `purchase`, `co_parent_invite_accepted`
 
 ## 리포트 전환 핵심 퍼널
 

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { db } from '@/lib/db';
 import { useLocale } from '@/i18n/LocaleProvider';
+import { rememberAcquisitionSource, trackEvent } from '@/lib/analytics';
 import { childNamePossessive } from '@/lib/koreanUtils';
 import {
   buildSharedReportSummary,
@@ -56,6 +57,10 @@ export default function SharedReportPage() {
         }
         const data = await res.json();
         setReport(data);
+        trackEvent('shared_report_viewed', {
+          report_type: typeof data?.type === 'string' ? data.type : 'unknown',
+          harmony_locked: data?.harmonyLocked === true,
+        });
       } catch {
         setError(t('shared.reportLoadError'));
       } finally {
@@ -98,6 +103,11 @@ export default function SharedReportPage() {
     : `${childName}${t('report.temperamentScores')}`;
 
   const handleCTA = () => {
+    trackEvent('shared_report_cta_clicked', {
+      report_type: report?.type ?? 'unknown',
+      destination: hasOwnReport ? 'own_report' : user ? 'survey' : 'login',
+    });
+    if (!user) rememberAcquisitionSource('shared_report');
     if (hasOwnReport) {
       router.push('/report');
     } else if (user) {

@@ -10,7 +10,7 @@ import {
   isCoParentInvitesEnabled,
   type CaregiverLabel,
 } from '@/lib/coParent';
-import { trackEvent } from '@/lib/analytics';
+import { rememberAcquisitionSource, trackEvent } from '@/lib/analytics';
 
 type PreviewResponse = {
   preview?: {
@@ -65,6 +65,7 @@ export default function CoParentInvitePage() {
         if (cancelled) return;
         if (res.ok && payload?.preview) {
           setPreview(payload.preview);
+          rememberAcquisitionSource('co_parent_invite');
           trackEvent('co_parent_invite_viewed', {
             token_age_days: Math.max(
               0,

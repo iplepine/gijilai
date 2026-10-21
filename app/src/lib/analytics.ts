@@ -177,12 +177,16 @@ export function setAnalyticsUser(userId: string | null) {
  * - first_paid_at: 첫 결제 일자 (YYYY-MM-DD) — 코호트 슬라이싱
  * - child_count: 등록 자녀 수
  * - signup_cohort: 가입 월 (YYYY-MM) — 코호트 슬라이싱
+ * - trial_state / co_parent_role / harmony_purchased: 운영 세그먼트 (체험 상태, 배우자 연결, 단품 구매)
  */
 export type AnalyticsUserProperties = {
   plan?: 'FREE' | 'MONTHLY' | 'YEARLY' | 'QUARTERLY' | 'FAMILY_MONTHLY' | 'FAMILY_YEARLY' | null;
   first_paid_at?: string | null;
   child_count?: number;
   signup_cohort?: string | null;
+  trial_state?: 'in_trial' | 'trial_ended' | 'subscribed';
+  co_parent_role?: 'solo' | 'owner_linked' | 'co_parent';
+  harmony_purchased?: boolean;
 };
 
 export function setAnalyticsUserProperties(properties: AnalyticsUserProperties) {
@@ -197,4 +201,24 @@ export function setAnalyticsUserProperties(properties: AnalyticsUserProperties) 
   if (Object.keys(sanitized).length === 0) return;
 
   tag('set', 'user_properties', sanitized);
+}
+
+/**
+ * 가입 경로(공유 리포트·배우자 초대 등)를 세션 동안 기억했다가 sign_up에 붙인다.
+ * 공유 고리가 실제로 신규 가입을 만드는지 보기 위한 값이라, 로그인 왕복 뒤에도 남도록 sessionStorage에 둔다.
+ */
+const ACQUISITION_SOURCE_KEY = 'gijilai:acquisition_source';
+
+export function rememberAcquisitionSource(source: string) {
+  try {
+    window.sessionStorage.setItem(ACQUISITION_SOURCE_KEY, source);
+  } catch { /* 저장소를 못 쓰면 출처 없이 집계한다. */ }
+}
+
+export function getAcquisitionSource(): string | undefined {
+  try {
+    return window.sessionStorage.getItem(ACQUISITION_SOURCE_KEY) ?? undefined;
+  } catch {
+    return undefined;
+  }
 }

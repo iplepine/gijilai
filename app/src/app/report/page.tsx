@@ -104,6 +104,29 @@ type ChildReportLoadingKey =
 function isChildProfileLimitError(error: unknown) {
   return error instanceof Error && error.message === CHILD_PROFILE_LIMIT_REACHED_CODE;
 }
+
+// 리포트 생성 성공·실패를 운영 지표로 남긴다. 기존 리포트를 불러온 경우(existing)는 생성 비용이 없어 구분한다.
+function trackReportGeneration(
+  reportType: 'CHILD' | 'PARENT' | 'HARMONY',
+  outcome: 'success' | 'failure',
+  params: { startedAt: number; refresh: boolean; existing: boolean; error?: unknown },
+) {
+  const base = {
+    report_type: reportType,
+    refresh: params.refresh,
+    existing: params.existing,
+    duration_ms: Date.now() - params.startedAt,
+  };
+  if (outcome === 'success') {
+    trackEvent('report_generated', base);
+    return;
+  }
+  const message = params.error instanceof Error ? params.error.message : '';
+  const reason = isChildProfileLimitError(params.error)
+    ? 'child_profile_limit'
+    : /^[A-Z][A-Z0-9_]{2,40}$/.test(message) ? message.toLowerCase() : 'generation_error';
+  trackEvent('report_generation_failed', { ...base, reason });
+}
 type ParentReportLoadingKey =
   | 'intro'
   | 'scores'
@@ -1431,6 +1454,7 @@ function ReportContent() {
     const controller = new AbortController();
     inflightControllersRef.current.set('CHILD', controller);
     generatingRef.current.add('CHILD');
+    const startedAt = Date.now();
     setIsGenerating(true);
     if (isLoadingExistingReport) setExistingReportLoadingType('CHILD');
     try {
@@ -1456,6 +1480,7 @@ function ReportContent() {
       }, controller.signal);
       if (controller.signal.aborted) return;
       if (result) {
+        trackReportGeneration('CHILD', 'success', { startedAt, refresh, existing: isLoadingExistingReport });
         setChildAiReport(normalizeReportTextForName(asChildAiReport(result.report), childName));
         if (result.reportId) setChildReportId(result.reportId);
         setReportDates(prev => ({ ...prev, child: result.createdAt }));
@@ -1481,6 +1506,7 @@ function ReportContent() {
         return next;
       });
       setChildReportId(previousChildReportId);
+      trackReportGeneration('CHILD', 'failure', { startedAt, refresh, existing: isLoadingExistingReport, error });
       if (isChildProfileLimitError(error)) toast.info(t('settings.childProfileLimitReached'));
       else toast.error(t('report.generationError'));
     } finally {
@@ -1503,6 +1529,7 @@ function ReportContent() {
     const controller = new AbortController();
     inflightControllersRef.current.set('PARENT', controller);
     generatingRef.current.add('PARENT');
+    const startedAt = Date.now();
     setIsGenerating(true);
     if (isLoadingExistingReport) setExistingReportLoadingType('PARENT');
     try {
@@ -1524,6 +1551,7 @@ function ReportContent() {
       }, controller.signal);
       if (controller.signal.aborted) return;
       if (result) {
+        trackReportGeneration('PARENT', 'success', { startedAt, refresh, existing: isLoadingExistingReport });
         setParentAiReport(asParentAiReport(result.report));
         if (result.reportId) setParentReportId(result.reportId);
         setReportDates(prev => ({ ...prev, parent: result.createdAt }));
@@ -1548,6 +1576,7 @@ function ReportContent() {
         }
         return next;
       });
+      trackReportGeneration('PARENT', 'failure', { startedAt, refresh, existing: isLoadingExistingReport, error });
       if (isChildProfileLimitError(error)) toast.info(t('settings.childProfileLimitReached'));
       else toast.error(t('report.generationError'));
     } finally {
@@ -1568,6 +1597,7 @@ function ReportContent() {
     const controller = new AbortController();
     inflightControllersRef.current.set('HARMONY', controller);
     generatingRef.current.add('HARMONY');
+    const startedAt = Date.now();
     setIsGenerating(true);
     if (isLoadingExistingReport) setExistingReportLoadingType('HARMONY');
     try {
@@ -1585,6 +1615,7 @@ function ReportContent() {
       }, controller.signal);
       if (controller.signal.aborted) return false;
       if (result) {
+        trackReportGeneration('HARMONY', 'success', { startedAt, refresh, existing: isLoadingExistingReport });
         setHarmonyAiReport(normalizeReportTextForName(asHarmonyAiReport(result.report), childName));
         if (result.reportId) setHarmonyReportId(result.reportId);
         setReportDates(prev => ({ ...prev, parenting: result.createdAt }));
@@ -1595,6 +1626,7 @@ function ReportContent() {
         return false;
       }
       console.error(error);
+      trackReportGeneration('HARMONY', 'failure', { startedAt, refresh, existing: isLoadingExistingReport, error });
       if (isChildProfileLimitError(error)) toast.info(t('settings.childProfileLimitReached'));
       else toast.error(t('report.harmonyError'));
       return false;

@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Icon } from '@/components/ui/Icon';
 import { useLocale } from '@/i18n/LocaleProvider';
-import { trackEvent } from '@/lib/analytics';
-import { HARMONY_REPORT_PRICE, HARMONY_REPORT_PRODUCT } from '@/lib/harmonyUnlock';
+import { trackEvent, trackPurchase } from '@/lib/analytics';
+import { HARMONY_REPORT_IAP_PRODUCT_ID, HARMONY_REPORT_PRICE, HARMONY_REPORT_PRODUCT } from '@/lib/harmonyUnlock';
 import { buildInstallPageUrl } from '@/lib/install';
 
 export type HarmonyPaywallMode = 'app' | 'web';
@@ -56,6 +56,13 @@ export function HarmonyUnlockCard({
     iapWindow.__iapPaymentCompleted = () => {
       setRequesting(false);
       trackEvent('harmony_unlock_completed', { paywall_mode: mode });
+      // GA4 총수익 집계용 표준 매출 이벤트. 서버 기록(payments)이 정본이고 이 값은 리포트용이다.
+      trackPurchase({
+        value: HARMONY_REPORT_PRICE.amount,
+        currency: HARMONY_REPORT_PRICE.currency,
+        item_id: HARMONY_REPORT_IAP_PRODUCT_ID,
+        source: 'harmony_unlock',
+      });
       onPurchasedRef.current();
     };
     return () => {

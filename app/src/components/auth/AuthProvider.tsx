@@ -2,11 +2,14 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
-import { trackEvent } from '@/lib/analytics';
+import { getAcquisitionSource, trackEvent } from '@/lib/analytics';
 import { getAuthCallbackUrl } from '@/lib/authRedirect';
 import type { NativeAuthProvider } from '@/lib/nativeCapabilities';
 import { createPerfTracker } from '@/lib/perf';
 import { supabase } from '@/lib/supabase';
+
+// 이 시간 안에 생성된 계정의 첫 로그인을 신규 가입으로 본다(소셜 로그인 왕복·이메일 가입 직후 포함).
+const SIGN_UP_WINDOW_MS = 10 * 60 * 1000;
 
 declare global {
     interface Window {
@@ -99,9 +102,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             // 진짜 로그인 = 세션 없음 → 있음 전환. 토큰 갱신/재포커스(id→id)는 제외.
             if (event === 'SIGNED_IN' && !prevUserId && nextUserId) {
-                trackEvent('login_success', {
-                    provider: session?.user?.app_metadata?.provider ?? 'unknown',
-                });
+                const provider = session?.user?.app_metadata?.provider ?? 'unknown';
+                trackEvent('login_success', { provider });
+                // 신규 가입 = 계정이 방금 만들어진 로그인. GA4 표준 sign_up으로 보내 획득 리포트에 잡히게 한다.
+                const createdAt = Date.parse(session?.user?.created_at ?? '');
+                if (Number.isFinite(createdAt) && Date.now() - createdAt < SIGN_UP_WINDOW_MS) {
+                    trackEvent('sign_up', { method: provider, acquisition_source: getAcquisitionSource() ?? 'direct' });
+                }
             } else if (event === 'SIGNED_OUT') {
                 trackEvent('logout');
             }
