@@ -176,3 +176,8 @@ create policy "Users can delete their own children."
 grant execute on function public.has_child_profile_full_access(uuid) to authenticated, service_role;
 grant execute on function public.child_profile_slot_count(uuid) to authenticated, service_role;
 grant execute on function public.child_profile_count(uuid) to authenticated, service_role;
+
+-- Explicit Data API access (Supabase default grants end 2026-10-30).
+-- Row access remains controlled by the RLS policies above; no anon grants.
+grant select on table public.child_profile_slots to authenticated;
+grant select, insert, update, delete on table public.child_profile_slots to service_role;

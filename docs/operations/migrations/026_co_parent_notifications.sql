@@ -114,3 +114,8 @@ create trigger trg_notify_co_parents_on_consultation_session
   for each row execute function public.notify_co_parents_on_consultation_session();
 
 grant execute on function public.notify_co_parents_on_consultation_session() to authenticated, service_role;
+
+-- Explicit Data API access (Supabase default grants end 2026-10-30).
+-- Row access remains controlled by the RLS policies above; no anon grants.
+grant select, update, delete on table public.notifications to authenticated;
+grant select, insert, update, delete on table public.notifications to service_role;

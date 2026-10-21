@@ -356,3 +356,8 @@ begin
     $POL$;
   end if;
 end$$;
+
+-- Explicit Data API access (Supabase default grants end 2026-10-30).
+-- Row access remains controlled by the RLS policies above; no anon grants.
+grant select, insert, update, delete on table public.child_co_parents to authenticated;
+grant select, insert, update, delete on table public.child_co_parents to service_role;

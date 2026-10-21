@@ -48,3 +48,10 @@ CREATE POLICY "System can create coupons" ON coupons
 
 CREATE POLICY "Users can use own coupons" ON coupons
     FOR UPDATE USING (auth.uid() = user_id);
+
+-- Explicit Data API access (Supabase default grants end 2026-10-30).
+-- Row access remains controlled by the RLS policies above; no anon grants.
+grant select, insert, update on table public.referrals to authenticated;
+grant select, insert, update, delete on table public.referrals to service_role;
+grant select, insert, update on table public.coupons to authenticated;
+grant select, insert, update, delete on table public.coupons to service_role;

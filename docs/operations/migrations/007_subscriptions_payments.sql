@@ -65,3 +65,10 @@ create policy "Service role can manage payments."
 create index idx_payments_user_id on public.payments (user_id);
 create index idx_payments_subscription_id on public.payments (subscription_id);
 create index idx_subscriptions_status on public.subscriptions (status, current_period_end);
+
+-- Explicit Data API access (Supabase default grants end 2026-10-30).
+-- Row access remains controlled by the RLS policies above; no anon grants.
+grant select on table public.subscriptions to authenticated;
+grant select, insert, update, delete on table public.subscriptions to service_role;
+grant select on table public.payments to authenticated;
+grant select, insert, update, delete on table public.payments to service_role;

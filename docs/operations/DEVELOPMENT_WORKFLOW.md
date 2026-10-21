@@ -1,10 +1,10 @@
 <!-- COMMIT_STATUS START -->
 > **커밋 상태**
-> - 기준 커밋: `425ffe550f386bbd28c1035ed096ef4c513e3e51` (`claude/enable-phased-assessment`)
-> - 최근 커밋: `425ffe550f38` docs: refresh project documentation status
-> - 커밋 일시: `2026-06-20T22:38:59+09:00`
-> - 워킹트리: `clean`
-> - 문서 갱신: `2026-06-20 22:39:28 +0900`
+> - 기준 커밋: `9580053b56be8f72b654d8a98306c7d9c6d72cec` (`feat/luna-model`)
+> - 최근 커밋: `9580053b56be` release(android): v1.0.12+38 to Play internal + production
+> - 커밋 일시: `2026-10-18T17:22:44+09:00`
+> - 워킹트리: `dirty (19 files)`
+> - 문서 갱신: `2026-10-20 20:15:42 +0900`
 <!-- COMMIT_STATUS END -->
 
 # Development Workflow
@@ -57,3 +57,7 @@ macOS/Apple Silicon 환경에서 Android Emulator GUI 경로가 `adb: device off
 - 수동 확인한 핵심 시나리오
 - 갱신한 문서
 - 커밋/푸시 여부
+
+## Supabase 테이블 생성 검증
+
+`public` 테이블을 생성하는 마이그레이션에는 명시적 역할별 GRANT와 RLS를 함께 작성한다. SQL 수정 후 `cd app && npm run check:db-grants`를 실행한다. 운영 조회 및 2026-10-30 대응 결과는 [Data API 권한 점검](SUPABASE_DATA_API_GRANTS.md)을 참고한다.

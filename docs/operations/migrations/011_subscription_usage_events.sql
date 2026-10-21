@@ -35,3 +35,8 @@ create index idx_subscription_usage_events_user_created
 
 create index idx_subscription_usage_events_subscription_created
   on public.subscription_usage_events (subscription_id, created_at desc);
+
+-- Explicit Data API access (Supabase default grants end 2026-10-30).
+-- Row access remains controlled by the RLS policies above; no anon grants.
+grant select on table public.subscription_usage_events to authenticated;
+grant select, insert, update, delete on table public.subscription_usage_events to service_role;

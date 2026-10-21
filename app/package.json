@@ -9,7 +9,8 @@
     "test": "jest",
     "lint": "eslint",
     "eval:consult": "node scripts/run-consult-prompt-eval.cjs",
-    "calibrate:assessment": "node scripts/calibrate-assessment-confidence.cjs"
+    "calibrate:assessment": "node scripts/calibrate-assessment-confidence.cjs",
+    "check:db-grants": "node --test scripts/check-db-grants.test.cjs && node scripts/check-db-grants.cjs"
   },
   "dependencies": {
     "@portone/server-sdk": "^0.19.0",

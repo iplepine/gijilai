@@ -158,3 +158,14 @@ begin
   end loop;
 end;
 $$;
+
+-- Explicit Data API access (Supabase default grants end 2026-10-30).
+-- Row access remains controlled by the RLS policies above; no anon grants.
+grant select, insert, update, delete on table public.consultation_sessions to authenticated;
+grant select, insert, update, delete on table public.consultation_sessions to service_role;
+grant select, insert, update on table public.practice_items to authenticated;
+grant select, insert, update, delete on table public.practice_items to service_role;
+grant select, insert, update on table public.practice_logs to authenticated;
+grant select, insert, update, delete on table public.practice_logs to service_role;
+grant select, insert on table public.practice_reviews to authenticated;
+grant select, insert, update, delete on table public.practice_reviews to service_role;

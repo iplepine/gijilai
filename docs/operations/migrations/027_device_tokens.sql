@@ -49,3 +49,8 @@ create policy "User can delete own device tokens."
 -- 공동양육자 푸시 수신 선호(기본 ON). 인앱 알림은 항상 남고, 이 값은 기기 푸시 발송만 좌우한다.
 alter table public.profiles
   add column if not exists coparent_push_enabled boolean not null default true;
+
+-- Explicit Data API access (Supabase default grants end 2026-10-30).
+-- Row access remains controlled by the RLS policies above; no anon grants.
+grant select, insert, update, delete on table public.device_tokens to authenticated;
+grant select, insert, update, delete on table public.device_tokens to service_role;

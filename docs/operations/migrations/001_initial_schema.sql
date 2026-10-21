@@ -173,3 +173,18 @@ create policy "Users can insert their own action_items."
 create policy "Users can update their own action_items."
   on public.action_items for update
   using ( auth.uid() = user_id );
+
+-- Explicit Data API access (Supabase default grants end 2026-10-30).
+-- Row access remains controlled by the RLS policies above; no anon grants.
+grant select, update on table public.profiles to authenticated;
+grant select, insert, update, delete on table public.profiles to service_role;
+grant select, insert, update, delete on table public.children to authenticated;
+grant select, insert, update, delete on table public.children to service_role;
+grant select, insert, update on table public.surveys to authenticated;
+grant select, insert, update, delete on table public.surveys to service_role;
+grant select, insert on table public.reports to authenticated;
+grant select, insert, update, delete on table public.reports to service_role;
+grant select, insert, update on table public.consultations to authenticated;
+grant select, insert, update, delete on table public.consultations to service_role;
+grant select, insert, update on table public.action_items to authenticated;
+grant select, insert, update, delete on table public.action_items to service_role;

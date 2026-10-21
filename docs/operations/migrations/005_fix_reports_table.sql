@@ -13,3 +13,6 @@ alter table public.reports add column is_paid boolean not null default false;
 create policy "Users can delete their own reports."
   on public.reports for delete
   using ( auth.uid() = user_id );
+
+-- Match the DELETE policy added in this migration.
+grant delete on table public.reports to authenticated;

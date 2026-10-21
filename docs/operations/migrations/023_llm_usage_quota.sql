@@ -49,3 +49,7 @@ alter table public.subscription_usage_events
     'SELF_PARENT_QUESTIONS',
     'SELF_PARENT_PRESCRIPTION'
   ));
+
+-- Explicit Data API access (Supabase default grants end 2026-10-30).
+-- Row access remains controlled by the RLS policies above; no anon grants.
+grant select, insert, update, delete on table public.llm_usage_events to service_role;

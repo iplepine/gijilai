@@ -94,3 +94,8 @@ create index if not exists idx_self_reflection_safety_events_user
   on public.self_reflection_safety_events (user_id, created_at);
 
 -- 주의: 이 테이블에는 자유 텍스트 원문을 저장하지 않는다. 카테고리와 시점만 남긴다.
+
+-- Explicit Data API access (Supabase default grants end 2026-10-30).
+-- Row access remains controlled by the RLS policies above; no anon grants.
+grant select, insert on table public.self_reflection_safety_events to authenticated;
+grant select, insert, update, delete on table public.self_reflection_safety_events to service_role;

@@ -47,3 +47,11 @@ Flutter WebView 앱 화면이나 모바일 웹 화면을 추가/수정할 때는
 4. **패턴 재사용** → 일반 스크롤 화면은 공통 safe-area 유틸리티(`app-page-scroll`), 하단 고정 CTA 화면은 전용 패턴(`app-fixed-cta-scroll`, `app-fixed-cta`)을 우선 사용한다.
 5. **개별 화면 예외 기록** → 공통 유틸리티로 부족해 화면별 추가 inset/padding이 필요하면 이유를 코드나 정책 문서에 남긴다.
 6. **정책 문서 동기화** → safe area 규칙이나 공통 레이아웃 패턴을 바꾸면 `docs/product/policies/navigation.md`와 관련 문서를 같이 갱신한다.
+
+# Supabase Data API 권한
+
+- `public` 테이블을 생성하는 SQL은 같은 마이그레이션에 명시적 테이블 `GRANT`를 포함한다.
+- `authenticated`에는 실제 호출과 RLS 정책이 필요한 연산만, 서버 전용 테이블은 `service_role`만 허용한다. `anon` 권한은 공개 접근이 승인된 경우에만 추가한다.
+- RLS와 정책은 별도로 유지한다. `GRANT ALL`, 모든 테이블 일괄 권한, 자동 기본 권한 복구로 해결하지 않는다.
+- serial/identity/nextval 시퀀스를 새로 쓰면 INSERT 역할의 시퀀스 권한도 검토한다.
+- SQL 변경 시 `cd app && npm run check:db-grants`를 실행한다. 점검 및 운영 조회 절차: `docs/operations/SUPABASE_DATA_API_GRANTS.md`.
